@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Gym App Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+    <!-- Preload the first video for instant playback -->
+    <link rel="preload" href="/static/videos/InclineDBPress.mp4?v=1" as="video" type="video/mp4">
+    <link rel="stylesheet" href="/static/css/style.css?v=1">
+</head>
+
+<body class="bg-gray-900 flex flex-col items-center justify-center min-h-screen">
+
+    <!-- DEBUG CONTROLS -->
+    <div class="fixed top-6 left-6 text-white/30 text-[10px] font-mono tracking-widest uppercase z-50">
+        <p class="mb-2">Prototype Config v5.5</p>
+        <div class="flex flex-col space-y-2">
+            <div class="space-x-2">
+                <a href="/?gym_id=iron_gym&role=client" class="hover:text-white transition">Iron Gym</a>
+                <a href="/?gym_id=zen_yoga&role=client" class="hover:text-white transition">Zen Yoga</a>
+            </div>
+            <div class="space-x-2">
+                <a href="/?gym_id=iron_gym&role=client"
+                    class="text-white transition">Client</a>
+                <a href="/?gym_id=iron_gym&role=trainer"
+                    class="hover:text-white transition">Trainer</a>
+                <a href="/?gym_id=iron_gym&role=owner"
+                    class="hover:text-white transition">Owner</a>
+            </div>
+            <button onclick="localStorage.clear(); location.reload(true);"
+                class="text-red-500 hover:text-red-400 text-left mt-2">HARD RESET</button>
+        </div>
+    </div>
+
+    <div class="mobile-frame flex flex-col relative">
+        
+
+<div class="p-6 pt-10 flex items-center space-x-4 bg-black/50 z-10">
+    <a href="client.html"
+        class="text-2xl tap-effect">←</a>
+    <h2 class="font-bold text-xl">My Nutrition</h2>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+
+    <!-- Health Score Hero -->
+    
+<div class="glass-card p-6 relative overflow-hidden"  >
+    
+    <div class="absolute top-0 right-0 w-40 h-40 bg-green-500/10 blur-3xl rounded-full -mr-10 -mt-10"></div>
+    <div class="flex justify-between items-center relative z-10">
+        <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Daily Health Score</p>
+            <h1 class="text-5xl font-black text-white" id="health-score">...</h1>
+            <p class="text-xs text-green-400 font-bold mt-1">Excellent! Top 5%</p>
+        </div>
+        <div class="w-24 h-24 relative flex items-center justify-center">
+            <svg class="w-full h-full transform -rotate-90">
+                <circle cx="48" cy="48" r="40" stroke="rgba(255,255,255,0.1)" stroke-width="8" fill="none" />
+                <circle cx="48" cy="48" r="40" stroke="#4ADE80" stroke-width="8" fill="none" stroke-dasharray="251.2"
+                    stroke-dashoffset="30" stroke-linecap="round" />
+            </svg>
+            <span class="absolute text-xl">🥗</span>
+        </div>
+    </div>
+    
+</div>
+
+
+    <!-- Quick Actions -->
+    <div class="flex space-x-3 overflow-x-auto pb-2">
+        <button data-action="quickAction" data-type="scan"
+            class="flex-shrink-0 bg-white/10 px-4 py-3 rounded-xl flex items-center space-x-2 tap-effect">
+            <span>📷</span> <span class="text-xs font-bold">Scan Meal</span>
+        </button>
+        <button data-action="quickAction" data-type="search"
+            class="flex-shrink-0 bg-white/10 px-4 py-3 rounded-xl flex items-center space-x-2 tap-effect">
+            <span>🔍</span> <span class="text-xs font-bold">Search</span>
+        </button>
+        <button data-action="quickAction" data-type="copy"
+            class="flex-shrink-0 bg-white/10 px-4 py-3 rounded-xl flex items-center space-x-2 tap-effect">
+            <span>📋</span> <span class="text-xs font-bold">Copy Yesterday</span>
+        </button>
+    </div>
+
+    <!-- Bento Grid: Hydration & Weekly -->
+    <div class="bento-grid">
+        <!-- Hydration Wave -->
+        
+<div class="glass-card wave-container h-40 flex flex-col justify-between p-4 relative tap-effect"  >
+    
+        <div class="relative z-10">
+            <p class="text-xs text-white/70 uppercase font-bold">Hydration</p>
+            <p class="text-2xl font-black text-white mt-1" id="hydro-val">...</p>
+        </div>
+        <div class="wave" id="hydro-wave" style="top: 50%;"></div>
+        <button data-action="addWater"
+            class="absolute bottom-3 right-3 z-20 w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/30 transition">+</button>
+        
+</div>
+
+
+        <!-- Weekly Consistency -->
+        
+<div class="glass-card p-4 flex flex-col justify-between"  >
+    
+        <p class="text-xs text-gray-400 uppercase font-bold">Consistency</p>
+        <div class="flex items-end justify-between h-20 mt-2 space-x-1" id="weekly-chart">
+            <!-- Bars injected by JS -->
+        </div>
+        
+</div>
+
+    </div>
+
+    <!-- Macro Dashboard -->
+    
+<div class="glass-card p-5"  >
+    
+    <div class="flex justify-between items-end mb-4">
+        <h3 class="text-sm font-bold text-white">Macros</h3>
+        <span class="text-xs text-gray-400" id="cals-remaining">... left</span>
+    </div>
+    <div class="flex justify-between px-2">
+        <div class="flex flex-col items-center">
+            <div class="macro-ring" id="ring-protein" style="background: conic-gradient(#4ADE80 0%, #333 0%);">
+                <div class="macro-content"><span class="text-[10px] text-gray-400">Pro</span><br><span
+                        class="text-xs font-bold text-white" id="val-protein">...</span></div>
+            </div>
+        </div>
+        <div class="flex flex-col items-center">
+            <div class="macro-ring" id="ring-carbs" style="background: conic-gradient(#60A5FA 0%, #333 0%);">
+                <div class="macro-content"><span class="text-[10px] text-gray-400">Carb</span><br><span
+                        class="text-xs font-bold text-white" id="val-carbs">...</span></div>
+            </div>
+        </div>
+        <div class="flex flex-col items-center">
+            <div class="macro-ring" id="ring-fat" style="background: conic-gradient(#F472B6 0%, #333 0%);">
+                <div class="macro-content"><span class="text-[10px] text-gray-400">Fat</span><br><span
+                        class="text-xs font-bold text-white" id="val-fat">...</span></div>
+            </div>
+        </div>
+    </div>
+    
+</div>
+
+
+    <!-- Grouped Diet Log -->
+    <div id="diet-log-container" class="space-y-4"></div>
+
+    <!-- Physique Photos -->
+    <div>
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Physique Update</h3>
+            <button data-action="addPhoto" class="text-xs bg-white/10 px-2 py-1 rounded text-white">+ Add</button>
+        </div>
+        <div class="flex space-x-3 overflow-x-auto pb-2" id="photo-gallery"></div>
+    </div>
+</div>
+
+
+
+
+        
+        <!-- Footer -->
+        <div
+            class="absolute bottom-0 w-full h-24 bg-gradient-to-t from-black to-transparent flex justify-around items-end pb-6 px-2">
+            <div
+                class="glass-card h-16 w-full mx-4 flex justify-around items-center backdrop-blur-xl bg-black/40 border-white/5">
+                <a href="/?gym_id=iron_gym&role=client"
+                    class="flex flex-col items-center text-white tap-effect"><span class="text-xl">🏠</span></a>
+                <a href="/?gym_id=iron_gym&role=client&mode=leaderboard"
+                    class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">🏆</span></a>
+                <a href="/?gym_id=iron_gym&role=client&mode=progress"
+                    class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">📊</span></a>
+                <div class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">👤</span></div>
+            </div>
+        </div>
+        
+    </div>
+
+    
+
+<div id="notification-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+    data-action="hideModal" data-target="notification-modal">
+    
+<div class="glass-card w-full max-w-sm p-6 slide-up"  >
+    
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg text-white">Notifications</h3>
+        <button data-action="hideModal" data-target="notification-modal" class="text-gray-400">✕</button>
+    </div>
+    <div class="space-y-3">
+        <div class="flex items-start space-x-3 p-3 bg-white/5 rounded-xl">
+            <span class="text-xl">🔥</span>
+            <div>
+                <p class="text-sm font-bold text-white">Streak Saver Used</p>
+                <p class="text-xs text-gray-400">Yesterday</p>
+            </div>
+        </div>
+        <div class="flex items-start space-x-3 p-3 bg-white/5 rounded-xl">
+            <span class="text-xl">🏆</span>
+            <div>
+                <p class="text-sm font-bold text-white">Weekly Challenge</p>
+                <p class="text-xs text-gray-400">You're in the top 10!</p>
+            </div>
+        </div>
+    </div>
+    
+</div>
+
+</div>
+
+<div id="shop-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+    data-action="hideModal" data-target="shop-modal">
+    
+<div class="glass-card w-full max-w-sm p-6 slide-up"  >
+    
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg text-white">Gem Shop</h3>
+        <button data-action="hideModal" data-target="shop-modal" class="text-gray-400">✕</button>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+        <div class="bg-white/5 p-3 rounded-xl text-center tap-effect" data-action="showToast"
+            data-message="Purchased! (Mock)">
+            <div class="text-3xl mb-2">🥤</div>
+            <p class="text-xs font-bold text-white">Protein Shake</p>
+            <p class="text-xs text-yellow-400">50 💎</p>
+        </div>
+        <div class="bg-white/5 p-3 rounded-xl text-center tap-effect" data-action="showToast"
+            data-message="Purchased! (Mock)">
+            <div class="text-3xl mb-2">👕</div>
+            <p class="text-xs font-bold text-white">Gym Tee</p>
+            <p class="text-xs text-yellow-400">500 💎</p>
+        </div>
+    </div>
+    
+</div>
+
+</div>
+
+<div id="profile-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+    data-action="hideModal" data-target="profile-modal">
+    
+<div class="glass-card w-full max-w-sm p-6 slide-up"  >
+    
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg text-white">Settings</h3>
+        <button data-action="hideModal" data-target="profile-modal" class="text-gray-400">✕</button>
+    </div>
+    <div class="space-y-4">
+        <div class="flex justify-between items-center">
+            <span class="text-sm text-gray-300">Dark Mode</span>
+            <div class="w-10 h-6 bg-green-500 rounded-full relative">
+                <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+            </div>
+        </div>
+        <div class="flex justify-between items-center">
+            <span class="text-sm text-gray-300">Notifications</span>
+            <div class="w-10 h-6 bg-green-500 rounded-full relative">
+                <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+            </div>
+        </div>
+        <button class="w-full py-3 bg-red-500/20 text-red-400 font-bold rounded-xl mt-4">Log Out</button>
+    </div>
+    
+</div>
+
+</div>
+
+<div id="client-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+    data-action="hideModal" data-target="client-modal">
+    
+<div class="glass-card w-full max-w-sm p-6 slide-up"  >
+    
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg text-white" id="modal-client-name">Client Details</h3>
+        <button data-action="hideModal" data-target="client-modal" class="text-gray-400">✕</button>
+    </div>
+    <div class="space-y-4">
+        <div class="bg-white/5 p-4 rounded-xl">
+            <p class="text-xs text-gray-400 uppercase">Current Plan</p>
+            <p class="text-lg font-bold text-white" id="modal-client-plan">...</p>
+        </div>
+        <div class="bg-white/5 p-4 rounded-xl">
+            <p class="text-xs text-gray-400 uppercase">Status</p>
+            <p class="text-lg font-bold text-white" id="modal-client-status">...</p>
+        </div>
+        <button class="w-full py-3 bg-primary text-white font-bold rounded-xl">Message Client</button>
+    </div>
+    
+</div>
+
+</div>
+
+    <script>
+        window.APP_CONFIG = {
+            gymId: "iron_gym",
+            role: "client"
+        };
+    </script>
+    <script type="module" src="/static/js/main.js?v=1"></script>
+</body>
+
+</html>

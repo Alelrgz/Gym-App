@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Gym App Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+    <!-- Preload the first video for instant playback -->
+    <link rel="preload" href="/static/videos/InclineDBPress.mp4?v=1" as="video" type="video/mp4">
+    <link rel="stylesheet" href="/static/css/style.css?v=1">
+</head>
+
+<body class="bg-gray-900 flex flex-col items-center justify-center min-h-screen">
+
+    <!-- DEBUG CONTROLS -->
+    <div class="fixed top-6 left-6 text-white/30 text-[10px] font-mono tracking-widest uppercase z-50">
+        <p class="mb-2">Prototype Config v5.5</p>
+        <div class="flex flex-col space-y-2">
+            <div class="space-x-2">
+                <a href="/?gym_id=iron_gym&role=owner" class="hover:text-white transition">Iron Gym</a>
+                <a href="/?gym_id=zen_yoga&role=owner" class="hover:text-white transition">Zen Yoga</a>
+            </div>
+            <div class="space-x-2">
+                <a href="/?gym_id=iron_gym&role=client"
+                    class="hover:text-white transition">Client</a>
+                <a href="/?gym_id=iron_gym&role=trainer"
+                    class="hover:text-white transition">Trainer</a>
+                <a href="/?gym_id=iron_gym&role=owner"
+                    class="text-white transition">Owner</a>
+            </div>
+            <button onclick="localStorage.clear(); location.reload(true);"
+                class="text-red-500 hover:text-red-400 text-left mt-2">HARD RESET</button>
+        </div>
+    </div>
+
+    <div class="mobile-frame flex flex-col relative">
+        
+<div class="p-6 pt-10">
+    <h2 class="text-xl font-bold text-center mb-6" id="gym-name-owner">...</h2>
+    
+<div class="glass-card p-6 mb-6 relative overflow-hidden"  >
+    
+    <div class="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent"></div>
+    <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Today's Revenue</p>
+    <h1 class="text-4xl font-black text-green-400 mb-4" id="revenue-display">...</h1>
+    <div class="flex space-x-4 text-xs text-gray-300">
+        <span><b id="active-members" class="text-white">...</b> Active</span>
+        <span><b id="staff-active" class="text-white">...</b> Staff</span>
+    </div>
+    
+</div>
+
+    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Live Feed</h3>
+    <div id="activity-feed" class="space-y-0 glass-card divide-y divide-white/5"></div>
+</div>
+
+
+        
+        <!-- Footer -->
+        <div
+            class="absolute bottom-0 w-full h-24 bg-gradient-to-t from-black to-transparent flex justify-around items-end pb-6 px-2">
+            <div
+                class="glass-card h-16 w-full mx-4 flex justify-around items-center backdrop-blur-xl bg-black/40 border-white/5">
+                <a href="/?gym_id=iron_gym&role=client"
+                    class="flex flex-col items-center text-white tap-effect"><span class="text-xl">🏠</span></a>
+                <a href="/?gym_id=iron_gym&role=client&mode=leaderboard"
+                    class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">🏆</span></a>
+                <a href="/?gym_id=iron_gym&role=client&mode=progress"
+                    class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">📊</span></a>
+                <div class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">👤</span></div>
+            </div>
+        </div>
+        
+    </div>
+
+    
+
+<div id="notification-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+    data-action="hideModal" data-target="notification-modal">
+    
+<div class="glass-card w-full max-w-sm p-6 slide-up"  >
+    
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg text-white">Notifications</h3>
+        <button data-action="hideModal" data-target="notification-modal" class="text-gray-400">✕</button>
+    </div>
+    <div class="space-y-3">
+        <div class="flex items-start space-x-3 p-3 bg-white/5 rounded-xl">
+            <span class="text-xl">🔥</span>
+            <div>
+                <p class="text-sm font-bold text-white">Streak Saver Used</p>
+                <p class="text-xs text-gray-400">Yesterday</p>
+            </div>
+        </div>
+        <div class="flex items-start space-x-3 p-3 bg-white/5 rounded-xl">
+            <span class="text-xl">🏆</span>
+            <div>
+                <p class="text-sm font-bold text-white">Weekly Challenge</p>
+                <p class="text-xs text-gray-400">You're in the top 10!</p>
+            </div>
+        </div>
+    </div>
+    
+</div>
+
+</div>
+
+<div id="shop-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+    data-action="hideModal" data-target="shop-modal">
+    
+<div class="glass-card w-full max-w-sm p-6 slide-up"  >
+    
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg text-white">Gem Shop</h3>
+        <button data-action="hideModal" data-target="shop-modal" class="text-gray-400">✕</button>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+        <div class="bg-white/5 p-3 rounded-xl text-center tap-effect" data-action="showToast"
+            data-message="Purchased! (Mock)">
+            <div class="text-3xl mb-2">🥤</div>
+            <p class="text-xs font-bold text-white">Protein Shake</p>
+            <p class="text-xs text-yellow-400">50 💎</p>
+        </div>
+        <div class="bg-white/5 p-3 rounded-xl text-center tap-effect" data-action="showToast"
+            data-message="Purchased! (Mock)">
+            <div class="text-3xl mb-2">👕</div>
+            <p class="text-xs font-bold text-white">Gym Tee</p>
+            <p class="text-xs text-yellow-400">500 💎</p>
+        </div>
+    </div>
+    
+</div>
+
+</div>
+
+<div id="profile-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+    data-action="hideModal" data-target="profile-modal">
+    
+<div class="glass-card w-full max-w-sm p-6 slide-up"  >
+    
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg text-white">Settings</h3>
+        <button data-action="hideModal" data-target="profile-modal" class="text-gray-400">✕</button>
+    </div>
+    <div class="space-y-4">
+        <div class="flex justify-between items-center">
+            <span class="text-sm text-gray-300">Dark Mode</span>
+            <div class="w-10 h-6 bg-green-500 rounded-full relative">
+                <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+            </div>
+        </div>
+        <div class="flex justify-between items-center">
+            <span class="text-sm text-gray-300">Notifications</span>
+            <div class="w-10 h-6 bg-green-500 rounded-full relative">
+                <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+            </div>
+        </div>
+        <button class="w-full py-3 bg-red-500/20 text-red-400 font-bold rounded-xl mt-4">Log Out</button>
+    </div>
+    
+</div>
+
+</div>
+
+<div id="client-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+    data-action="hideModal" data-target="client-modal">
+    
+<div class="glass-card w-full max-w-sm p-6 slide-up"  >
+    
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg text-white" id="modal-client-name">Client Details</h3>
+        <button data-action="hideModal" data-target="client-modal" class="text-gray-400">✕</button>
+    </div>
+    <div class="space-y-4">
+        <div class="bg-white/5 p-4 rounded-xl">
+            <p class="text-xs text-gray-400 uppercase">Current Plan</p>
+            <p class="text-lg font-bold text-white" id="modal-client-plan">...</p>
+        </div>
+        <div class="bg-white/5 p-4 rounded-xl">
+            <p class="text-xs text-gray-400 uppercase">Status</p>
+            <p class="text-lg font-bold text-white" id="modal-client-status">...</p>
+        </div>
+        <button class="w-full py-3 bg-primary text-white font-bold rounded-xl">Message Client</button>
+    </div>
+    
+</div>
+
+</div>
+
+    <script>
+        window.APP_CONFIG = {
+            gymId: "iron_gym",
+            role: "owner"
+        };
+    </script>
+    <script type="module" src="/static/js/main.js?v=1"></script>
+</body>
+
+</html>

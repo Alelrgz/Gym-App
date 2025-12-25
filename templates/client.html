@@ -1,0 +1,222 @@
+{% extends "base.html" %}
+{% from 'macros.html' import card %}
+
+{% block content %}
+{% if mode == "leaderboard" %}
+<div class="p-6 pt-10 flex items-center space-x-4 bg-black/50 z-10">
+    <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
+        class="text-2xl tap-effect">←</a>
+    <h2 class="font-bold text-xl">Weekly Leaderboard</h2>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+
+    <!-- Weekly Challenge -->
+    {% call card(classes="p-6 relative overflow-hidden") %}
+    <div class="absolute top-0 right-0 w-40 h-40 bg-purple-500/10 blur-3xl rounded-full -mr-10 -mt-10"></div>
+    <div class="relative z-10">
+        <div class="flex justify-between items-start mb-3">
+            <div>
+                <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Current Challenge</p>
+                <h3 class="text-lg font-black text-white" id="challenge-title">...</h3>
+                <p class="text-xs text-gray-400 mt-1" id="challenge-desc">...</p>
+            </div>
+            <span class="text-2xl">🏆</span>
+        </div>
+        <div class="mt-4">
+            <div class="flex justify-between text-xs mb-2">
+                <span class="text-gray-400">Progress</span>
+                <span class="text-white font-bold"><span id="challenge-progress">0</span>/<span
+                        id="challenge-target">0</span></span>
+            </div>
+            <div class="w-full h-3 bg-white/10 rounded-full overflow-hidden">
+                <div id="challenge-bar"
+                    class="h-full bg-gradient-to-r from-purple-600 to-pink-500 transition-all duration-500"
+                    style="width: 0%"></div>
+            </div>
+            <p class="text-xs text-yellow-400 font-bold mt-2">Reward: <span id="challenge-reward">0</span> 💎</p>
+        </div>
+    </div>
+    {% endcall %}
+
+    <!-- Rankings -->
+    <div>
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Rankings</h3>
+        <div id="leaderboard-list" class="space-y-2"></div>
+    </div>
+</div>
+
+{% elif mode == "progress" %}
+<div class="p-6 pt-10 flex items-center space-x-4 bg-black/50 z-10">
+    <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
+        class="text-2xl tap-effect">←</a>
+    <h2 class="font-bold text-xl">My Nutrition</h2>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+
+    <!-- Health Score Hero -->
+    {% call card(classes="p-6 relative overflow-hidden") %}
+    <div class="absolute top-0 right-0 w-40 h-40 bg-green-500/10 blur-3xl rounded-full -mr-10 -mt-10"></div>
+    <div class="flex justify-between items-center relative z-10">
+        <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Daily Health Score</p>
+            <h1 class="text-5xl font-black text-white" id="health-score">...</h1>
+            <p class="text-xs text-green-400 font-bold mt-1">Excellent! Top 5%</p>
+        </div>
+        <div class="w-24 h-24 relative flex items-center justify-center">
+            <svg class="w-full h-full transform -rotate-90">
+                <circle cx="48" cy="48" r="40" stroke="rgba(255,255,255,0.1)" stroke-width="8" fill="none" />
+                <circle cx="48" cy="48" r="40" stroke="#4ADE80" stroke-width="8" fill="none" stroke-dasharray="251.2"
+                    stroke-dashoffset="30" stroke-linecap="round" />
+            </svg>
+            <span class="absolute text-xl">🥗</span>
+        </div>
+    </div>
+    {% endcall %}
+
+    <!-- Quick Actions -->
+    <div class="flex space-x-3 overflow-x-auto pb-2">
+        <button data-action="quickAction" data-type="scan"
+            class="flex-shrink-0 bg-white/10 px-4 py-3 rounded-xl flex items-center space-x-2 tap-effect">
+            <span>📷</span> <span class="text-xs font-bold">Scan Meal</span>
+        </button>
+        <button data-action="quickAction" data-type="search"
+            class="flex-shrink-0 bg-white/10 px-4 py-3 rounded-xl flex items-center space-x-2 tap-effect">
+            <span>🔍</span> <span class="text-xs font-bold">Search</span>
+        </button>
+        <button data-action="quickAction" data-type="copy"
+            class="flex-shrink-0 bg-white/10 px-4 py-3 rounded-xl flex items-center space-x-2 tap-effect">
+            <span>📋</span> <span class="text-xs font-bold">Copy Yesterday</span>
+        </button>
+    </div>
+
+    <!-- Bento Grid: Hydration & Weekly -->
+    <div class="bento-grid">
+        <!-- Hydration Wave -->
+        {% call card(classes="wave-container h-40 flex flex-col justify-between p-4 relative tap-effect") %}
+        <div class="relative z-10">
+            <p class="text-xs text-white/70 uppercase font-bold">Hydration</p>
+            <p class="text-2xl font-black text-white mt-1" id="hydro-val">...</p>
+        </div>
+        <div class="wave" id="hydro-wave" style="top: 50%;"></div>
+        <button data-action="addWater"
+            class="absolute bottom-3 right-3 z-20 w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/30 transition">+</button>
+        {% endcall %}
+
+        <!-- Weekly Consistency -->
+        {% call card(classes="p-4 flex flex-col justify-between") %}
+        <p class="text-xs text-gray-400 uppercase font-bold">Consistency</p>
+        <div class="flex items-end justify-between h-20 mt-2 space-x-1" id="weekly-chart">
+            <!-- Bars injected by JS -->
+        </div>
+        {% endcall %}
+    </div>
+
+    <!-- Macro Dashboard -->
+    {% call card(classes="p-5") %}
+    <div class="flex justify-between items-end mb-4">
+        <h3 class="text-sm font-bold text-white">Macros</h3>
+        <span class="text-xs text-gray-400" id="cals-remaining">... left</span>
+    </div>
+    <div class="flex justify-between px-2">
+        <div class="flex flex-col items-center">
+            <div class="macro-ring" id="ring-protein" style="background: conic-gradient(#4ADE80 0%, #333 0%);">
+                <div class="macro-content"><span class="text-[10px] text-gray-400">Pro</span><br><span
+                        class="text-xs font-bold text-white" id="val-protein">...</span></div>
+            </div>
+        </div>
+        <div class="flex flex-col items-center">
+            <div class="macro-ring" id="ring-carbs" style="background: conic-gradient(#60A5FA 0%, #333 0%);">
+                <div class="macro-content"><span class="text-[10px] text-gray-400">Carb</span><br><span
+                        class="text-xs font-bold text-white" id="val-carbs">...</span></div>
+            </div>
+        </div>
+        <div class="flex flex-col items-center">
+            <div class="macro-ring" id="ring-fat" style="background: conic-gradient(#F472B6 0%, #333 0%);">
+                <div class="macro-content"><span class="text-[10px] text-gray-400">Fat</span><br><span
+                        class="text-xs font-bold text-white" id="val-fat">...</span></div>
+            </div>
+        </div>
+    </div>
+    {% endcall %}
+
+    <!-- Grouped Diet Log -->
+    <div id="diet-log-container" class="space-y-4"></div>
+
+    <!-- Physique Photos -->
+    <div>
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Physique Update</h3>
+            <button data-action="addPhoto" class="text-xs bg-white/10 px-2 py-1 rounded text-white">+ Add</button>
+        </div>
+        <div class="flex space-x-3 overflow-x-auto pb-2" id="photo-gallery"></div>
+    </div>
+</div>
+
+{% else %}
+<div class="p-6 pt-10 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent z-10">
+    <div class="flex items-center space-x-3">
+        <div data-action="showModal" data-target="profile-modal"
+            class="w-10 h-10 rounded-full bg-gradient-to-tr from-gray-700 to-gray-600 border border-white/10 overflow-hidden tap-effect">
+            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" class="w-full h-full">
+        </div>
+        <div>
+            <p class="text-xs text-gray-400 uppercase tracking-wider">Welcome back</p>
+            <h2 class="font-bold text-lg">Alex</h2>
+        </div>
+    </div>
+    <div data-action="showModal" data-target="notification-modal"
+        class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect">🔔
+    </div>
+</div>
+
+<div class="flex-1 overflow-y-auto p-4 pt-0 pb-24 space-y-6">
+    {% call card(classes="p-6 flex justify-between items-center relative overflow-hidden tap-effect slide-up") %}
+    <div class="absolute top-0 right-0 w-32 h-32 bg-orange-500/20 blur-3xl rounded-full -mr-10 -mt-10"></div>
+    <div>
+        <h1 class="text-5xl font-black text-white mb-1">12</h1>
+        <p class="text-orange-400 font-bold uppercase tracking-wider text-xs">Day Streak 🔥</p>
+    </div>
+    <div class="text-right">
+        <p class="text-gray-400 text-xs mb-1">Next Goal</p>
+        <p class="font-bold text-xl">14 Days</p>
+    </div>
+    {% endcall %}
+
+    <div class="bento-grid slide-up" style="animation-delay: 0.1s;">
+        {% call card(classes="bento-span-2 p-5 relative overflow-hidden group tap-effect") %}
+        <div class="absolute inset-0 bg-primary opacity-20 group-hover:opacity-30 transition"></div>
+        <div class="relative z-10">
+            <div class="flex justify-between items-start mb-4"><span
+                    class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's
+                    Plan</span><span class="text-xl">💪</span></div>
+            <h3 class="text-2xl font-black italic uppercase mb-1" id="workout-title">...</h3>
+            <p class="text-sm text-gray-300 mb-4"><span id="workout-duration"></span> • <span
+                    id="workout-difficulty"></span></p>
+            <a href="/?gym_id={{ gym_id }}&role=client&mode=workout"
+                class="block w-full py-3 bg-white text-black text-center font-bold rounded-xl hover:bg-gray-200 transition">START
+                SESSION</a>
+        </div>
+        {% endcall %}
+
+        <a href="/?gym_id={{ gym_id }}&role=client&mode=progress"
+            class="glass-card p-4 flex flex-col justify-center items-center tap-effect hover:bg-white/5 transition">
+            <span class="text-2xl mb-2">🥗</span>
+            <span class="text-sm font-bold">Diet</span>
+            <span class="text-[10px] text-gray-400 uppercase">Tracker</span>
+        </a>
+
+        <div data-action="showModal" data-target="shop-modal"
+            class="glass-card p-4 flex flex-col justify-center items-center tap-effect">
+            <span class="text-2xl mb-2">💎</span>
+            <span class="text-xl font-bold" id="gem-count">0</span>
+            <span class="text-[10px] text-gray-400 uppercase">Gems</span>
+        </div>
+    </div>
+
+    <div class="slide-up" style="animation-delay: 0.2s;">
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Daily Quests</h3>
+        <div class="space-y-3" id="quest-list"></div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}

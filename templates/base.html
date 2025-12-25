@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Gym App Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+    <!-- Preload the first video for instant playback -->
+    <link rel="preload" href="/static/videos/InclineDBPress.mp4?v=1" as="video" type="video/mp4">
+    <link rel="stylesheet" href="/static/css/style.css?v=1">
+</head>
+
+<body class="bg-gray-900 flex flex-col items-center justify-center min-h-screen">
+
+    <!-- DEBUG CONTROLS -->
+    <div class="fixed top-6 left-6 text-white/30 text-[10px] font-mono tracking-widest uppercase z-50">
+        <p class="mb-2">Prototype Config v5.5</p>
+        <div class="flex flex-col space-y-2">
+            <div class="space-x-2">
+                <a href="/?gym_id=iron_gym&role={{ role }}" class="hover:text-white transition">Iron Gym</a>
+                <a href="/?gym_id=zen_yoga&role={{ role }}" class="hover:text-white transition">Zen Yoga</a>
+            </div>
+            <div class="space-x-2">
+                <a href="/?gym_id={{ gym_id }}&role=client"
+                    class="{{ 'text-white' if role=='client' else 'hover:text-white' }} transition">Client</a>
+                <a href="/?gym_id={{ gym_id }}&role=trainer"
+                    class="{{ 'text-white' if role=='trainer' else 'hover:text-white' }} transition">Trainer</a>
+                <a href="/?gym_id={{ gym_id }}&role=owner"
+                    class="{{ 'text-white' if role=='owner' else 'hover:text-white' }} transition">Owner</a>
+            </div>
+            <button onclick="localStorage.clear(); location.reload(true);"
+                class="text-red-500 hover:text-red-400 text-left mt-2">HARD RESET</button>
+        </div>
+    </div>
+
+    <div class="mobile-frame flex flex-col relative">
+        {% block content %}{% endblock %}
+
+        {% if mode != 'workout' %}
+        <!-- Footer -->
+        <div
+            class="absolute bottom-0 w-full h-24 bg-gradient-to-t from-black to-transparent flex justify-around items-end pb-6 px-2">
+            <div
+                class="glass-card h-16 w-full mx-4 flex justify-around items-center backdrop-blur-xl bg-black/40 border-white/5">
+                <a href="/?gym_id={{ gym_id }}&role=client"
+                    class="flex flex-col items-center text-white tap-effect"><span class="text-xl">🏠</span></a>
+                <a href="/?gym_id={{ gym_id }}&role=client&mode=leaderboard"
+                    class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">🏆</span></a>
+                <a href="/?gym_id={{ gym_id }}&role=client&mode=progress"
+                    class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">📊</span></a>
+                <div class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">👤</span></div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% include 'modals.html' %}
+
+    <script>
+        window.APP_CONFIG = {
+            gymId: "{{ gym_id }}",
+            role: "{{ role }}"
+        };
+    </script>
+    <script type="module" src="/static/js/main.js?v=1"></script>
+</body>
+
+</html>

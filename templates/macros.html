@@ -1,0 +1,5 @@
+{% macro card(classes="", onclick="", style="") %}
+<div class="glass-card {{ classes }}" {% if onclick %}onclick="{{ onclick }}"{% endif %} {% if style %}style="{{ style }}"{% endif %}>
+    {{ caller() }}
+</div>
+{% endmacro %}

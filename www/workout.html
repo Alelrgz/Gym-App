@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Gym App Prototype</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+    <!-- Preload the first video for instant playback -->
+    <link rel="preload" href="/static/videos/InclineDBPress.mp4?v=1" as="video" type="video/mp4">
+    <link rel="stylesheet" href="/static/css/style.css?v=1">
+</head>
+
+<body class="bg-gray-900 flex flex-col items-center justify-center min-h-screen">
+
+    <!-- DEBUG CONTROLS -->
+    <div class="fixed top-6 left-6 text-white/30 text-[10px] font-mono tracking-widest uppercase z-50">
+        <p class="mb-2">Prototype Config v5.5</p>
+        <div class="flex flex-col space-y-2">
+            <div class="space-x-2">
+                <a href="/?gym_id=iron_gym&role=client" class="hover:text-white transition">Iron Gym</a>
+                <a href="/?gym_id=zen_yoga&role=client" class="hover:text-white transition">Zen Yoga</a>
+            </div>
+            <div class="space-x-2">
+                <a href="/?gym_id=iron_gym&role=client"
+                    class="text-white transition">Client</a>
+                <a href="/?gym_id=iron_gym&role=trainer"
+                    class="hover:text-white transition">Trainer</a>
+                <a href="/?gym_id=iron_gym&role=owner"
+                    class="hover:text-white transition">Owner</a>
+            </div>
+            <button onclick="localStorage.clear(); location.reload(true);"
+                class="text-red-500 hover:text-red-400 text-left mt-2">HARD RESET</button>
+        </div>
+    </div>
+
+    <div class="mobile-frame flex flex-col relative">
+        
+<div class="absolute inset-0 bg-gray-900 z-20 flex flex-col overflow-hidden" id="workout-screen">
+    <!-- Top Section: Fixed Video (40vh) -->
+    <div class="h-[40vh] w-full relative bg-black flex-shrink-0">
+        <video id="exercise-video" autoplay loop muted playsinline preload="auto"
+            class="absolute inset-0 w-full h-full object-cover opacity-100">
+            <source src="/static/videos/InclineDBPress.mp4?v=3" type="video/mp4">
+        </video>
+        <div class="absolute inset-0 bg-gradient-to-t from-gray-900 via-transparent to-black/60"></div>
+
+        <!-- Header Controls -->
+        <div class="absolute top-0 left-0 w-full p-6 pt-12 flex justify-between items-center z-10">
+            <a href="client.html"
+                class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white tap-effect border border-white/10">✕</a>
+            <div
+                class="flex items-center space-x-2 bg-red-500/20 px-3 py-1 rounded-full border border-red-500/30 backdrop-blur-md">
+                <div class="w-2 h-2 rounded-full bg-red-500 animate-pulse"></div>
+                <span class="text-xs font-bold text-red-400 tracking-wider">LIVE GUIDANCE</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Section: Scrollable Routine (Flex Grow) -->
+    <div
+        class="flex-1 overflow-y-auto relative z-10 -mt-6 bg-gray-900 rounded-t-[32px] shadow-[0_-10px_40px_rgba(0,0,0,0.5)] flex flex-col">
+        <!-- Drag Handle -->
+        <div class="w-full flex justify-center pt-3 pb-1">
+            <div class="w-12 h-1.5 bg-white/20 rounded-full"></div>
+        </div>
+
+        <!-- Active Exercise Controls -->
+        <div class="p-6 pb-2 text-center">
+            <h2 class="text-3xl font-black italic uppercase mb-1 text-white" id="exercise-name">Incline DB Press</h2>
+            <p class="text-gray-400 text-sm mb-6 font-medium" id="exercise-target">Set 1 of 4 • Target: 8-10 Reps</p>
+
+            <!-- Rep Counter -->
+            <div class="flex items-center justify-center space-x-6 mb-8">
+                <button data-action="adjustReps" data-delta="-1"
+                    class="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl text-white tap-effect hover:bg-white/10">-</button>
+                <div
+                    class="w-32 h-32 rounded-full border-[6px] border-primary bg-black/30 flex flex-col items-center justify-center relative overflow-hidden">
+                    <!-- Background Video -->
+                    <video id="rep-counter-video" autoplay loop muted playsinline
+                        class="absolute inset-0 w-full h-full object-cover opacity-40 grayscale">
+                        <source src="/static/videos/InclineDBPress.mp4?v=3" type="video/mp4">
+                    </video>
+                    <div class="absolute inset-0 bg-black/20"></div>
+
+                    <span class="text-5xl font-black text-white relative z-10" id="rep-counter">10</span>
+                    <span class="text-[10px] text-gray-300 uppercase tracking-widest relative z-10">Reps</span>
+                </div>
+                <button data-action="adjustReps" data-delta="1"
+                    class="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-2xl text-white tap-effect hover:bg-white/10">+</button>
+            </div>
+
+            <button data-action="completeSet"
+                class="w-full py-4 bg-red-500 rounded-2xl font-bold text-white tap-effect shadow-lg shadow-red-500/50 mb-8 animate-pulse"
+                id="complete-btn">COMPLETE SET</button>
+        </div>
+
+        <!-- Routine List -->
+        <div class="flex-1 bg-black/20 p-6 pt-6">
+            <div class="flex justify-between items-end mb-4">
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Workout Routine</h3>
+                <span class="text-xs text-gray-500" id="routine-progress">0% Complete</span>
+            </div>
+            <div id="workout-routine-list" class="space-y-3 pb-12">
+                <!-- List items injected by JS -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Celebration Overlay (Hidden by default) -->
+<div id="celebration-overlay"
+    class="absolute inset-0 bg-black/90 z-50 flex flex-col items-center justify-center hidden overflow-hidden">
+    <div id="confetti-container" class="absolute inset-0 pointer-events-none"></div>
+    <div class="text-center slide-up relative z-10">
+        <div class="text-8xl mb-6">🎉</div>
+        <h1 class="text-5xl font-black text-white mb-4">WORKOUT<br>COMPLETE!</h1>
+        <p class="text-xl text-gray-300 mb-8">You earned <span class="text-yellow-400 font-bold">+100 💎</span></p>
+        <a href="client.html"
+            class="inline-block px-8 py-4 bg-primary rounded-2xl font-bold text-white tap-effect">FINISH</a>
+    </div>
+</div>
+
+
+        
+    </div>
+
+    
+
+<div id="notification-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+    data-action="hideModal" data-target="notification-modal">
+    
+<div class="glass-card w-full max-w-sm p-6 slide-up"  >
+    
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg text-white">Notifications</h3>
+        <button data-action="hideModal" data-target="notification-modal" class="text-gray-400">✕</button>
+    </div>
+    <div class="space-y-3">
+        <div class="flex items-start space-x-3 p-3 bg-white/5 rounded-xl">
+            <span class="text-xl">🔥</span>
+            <div>
+                <p class="text-sm font-bold text-white">Streak Saver Used</p>
+                <p class="text-xs text-gray-400">Yesterday</p>
+            </div>
+        </div>
+        <div class="flex items-start space-x-3 p-3 bg-white/5 rounded-xl">
+            <span class="text-xl">🏆</span>
+            <div>
+                <p class="text-sm font-bold text-white">Weekly Challenge</p>
+                <p class="text-xs text-gray-400">You're in the top 10!</p>
+            </div>
+        </div>
+    </div>
+    
+</div>
+
+</div>
+
+<div id="shop-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+    data-action="hideModal" data-target="shop-modal">
+    
+<div class="glass-card w-full max-w-sm p-6 slide-up"  >
+    
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg text-white">Gem Shop</h3>
+        <button data-action="hideModal" data-target="shop-modal" class="text-gray-400">✕</button>
+    </div>
+    <div class="grid grid-cols-2 gap-3">
+        <div class="bg-white/5 p-3 rounded-xl text-center tap-effect" data-action="showToast"
+            data-message="Purchased! (Mock)">
+            <div class="text-3xl mb-2">🥤</div>
+            <p class="text-xs font-bold text-white">Protein Shake</p>
+            <p class="text-xs text-yellow-400">50 💎</p>
+        </div>
+        <div class="bg-white/5 p-3 rounded-xl text-center tap-effect" data-action="showToast"
+            data-message="Purchased! (Mock)">
+            <div class="text-3xl mb-2">👕</div>
+            <p class="text-xs font-bold text-white">Gym Tee</p>
+            <p class="text-xs text-yellow-400">500 💎</p>
+        </div>
+    </div>
+    
+</div>
+
+</div>
+
+<div id="profile-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+    data-action="hideModal" data-target="profile-modal">
+    
+<div class="glass-card w-full max-w-sm p-6 slide-up"  >
+    
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg text-white">Settings</h3>
+        <button data-action="hideModal" data-target="profile-modal" class="text-gray-400">✕</button>
+    </div>
+    <div class="space-y-4">
+        <div class="flex justify-between items-center">
+            <span class="text-sm text-gray-300">Dark Mode</span>
+            <div class="w-10 h-6 bg-green-500 rounded-full relative">
+                <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+            </div>
+        </div>
+        <div class="flex justify-between items-center">
+            <span class="text-sm text-gray-300">Notifications</span>
+            <div class="w-10 h-6 bg-green-500 rounded-full relative">
+                <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+            </div>
+        </div>
+        <button class="w-full py-3 bg-red-500/20 text-red-400 font-bold rounded-xl mt-4">Log Out</button>
+    </div>
+    
+</div>
+
+</div>
+
+<div id="client-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+    data-action="hideModal" data-target="client-modal">
+    
+<div class="glass-card w-full max-w-sm p-6 slide-up"  >
+    
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg text-white" id="modal-client-name">Client Details</h3>
+        <button data-action="hideModal" data-target="client-modal" class="text-gray-400">✕</button>
+    </div>
+    <div class="space-y-4">
+        <div class="bg-white/5 p-4 rounded-xl">
+            <p class="text-xs text-gray-400 uppercase">Current Plan</p>
+            <p class="text-lg font-bold text-white" id="modal-client-plan">...</p>
+        </div>
+        <div class="bg-white/5 p-4 rounded-xl">
+            <p class="text-xs text-gray-400 uppercase">Status</p>
+            <p class="text-lg font-bold text-white" id="modal-client-status">...</p>
+        </div>
+        <button class="w-full py-3 bg-primary text-white font-bold rounded-xl">Message Client</button>
+    </div>
+    
+</div>
+
+</div>
+
+    <script>
+        window.APP_CONFIG = {
+            gymId: "iron_gym",
+            role: "client"
+        };
+    </script>
+    <script type="module" src="/static/js/main.js?v=1"></script>
+</body>
+
+</html>

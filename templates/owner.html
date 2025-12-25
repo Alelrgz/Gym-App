@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from 'macros.html' import card %}
+
+{% block content %}
+<div class="p-6 pt-10">
+    <h2 class="text-xl font-bold text-center mb-6" id="gym-name-owner">...</h2>
+    {% call card(classes="p-6 mb-6 relative overflow-hidden") %}
+    <div class="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent"></div>
+    <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Today's Revenue</p>
+    <h1 class="text-4xl font-black text-green-400 mb-4" id="revenue-display">...</h1>
+    <div class="flex space-x-4 text-xs text-gray-300">
+        <span><b id="active-members" class="text-white">...</b> Active</span>
+        <span><b id="staff-active" class="text-white">...</b> Staff</span>
+    </div>
+    {% endcall %}
+    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Live Feed</h3>
+    <div id="activity-feed" class="space-y-0 glass-card divide-y divide-white/5"></div>
+</div>
+{% endblock %}

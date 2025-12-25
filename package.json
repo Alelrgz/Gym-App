@@ -1,0 +1,21 @@
+{
+  "name": "gym_app_prototype",
+  "version": "1.0.0",
+  "description": "A high-fidelity, white-label gym application prototype built with FastAPI and Vanilla JS.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "@capacitor/android": "^8.0.0",
+    "@capacitor/cli": "^8.0.0",
+    "@capacitor/core": "^8.0.0"
+  }
+}
