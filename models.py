@@ -16,7 +16,21 @@ class Exercise(BaseModel):
     rest: int
     video_id: str
 
+class ExerciseTemplate(BaseModel):
+    id: str
+    name: str
+    muscle: str
+    type: str
+    video_id: str
+
 class Workout(BaseModel):
+    title: str
+    duration: str
+    difficulty: str
+    exercises: List[Exercise]
+
+class WorkoutTemplate(BaseModel):
+    id: Optional[str] = None
     title: str
     duration: str
     difficulty: str

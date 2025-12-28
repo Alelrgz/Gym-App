@@ -38,3 +38,23 @@ async def get_leaderboard_data(service: LeaderboardService = Depends(get_leaderb
 @router.post("/api/trainer/assign_workout")
 async def assign_workout(assignment: WorkoutAssignment, service: UserService = Depends(get_user_service)) -> dict:
     return service.assign_workout(assignment)
+
+@router.get("/api/trainer/exercises")
+async def get_exercises(service: UserService = Depends(get_user_service)):
+    return service.get_exercises()
+
+@router.post("/api/trainer/exercises")
+async def create_exercise(exercise: dict, service: UserService = Depends(get_user_service)):
+    return service.create_exercise(exercise)
+
+@router.get("/api/trainer/workouts")
+async def get_workouts(service: UserService = Depends(get_user_service)):
+    return service.get_workouts()
+
+@router.post("/api/trainer/workouts")
+async def create_workout(workout: dict, service: UserService = Depends(get_user_service)):
+    return service.create_workout(workout)
+
+@router.post("/api/trainer/assign_workout")
+async def assign_workout(assignment: dict, service: UserService = Depends(get_user_service)):
+    return service.assign_workout(assignment)

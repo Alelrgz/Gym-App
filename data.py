@@ -15,6 +15,20 @@ GYMS_DB = {
     }
 }
 
+WORKOUTS_DB = {
+    "w1": {
+        "id": "w1",
+        "title": "Full Body Blast",
+        "duration": "45 min",
+        "difficulty": "Intermediate",
+        "exercises": [
+            {"name": "Barbell Squat", "sets": 3, "reps": "10", "rest": 60, "video_id": "Squat"},
+            {"name": "Push-Ups", "sets": 3, "reps": "15", "rest": 45, "video_id": "PushUps"},
+            {"name": "Pull-Up", "sets": 3, "reps": "8", "rest": 60, "video_id": "PullUp"}
+        ]
+    }
+}
+
 CLIENT_DATA = {
     "user_123": {
         "name": "Alex",
@@ -93,8 +107,8 @@ CLIENT_DATA = {
 
 TRAINER_DATA = {
     "clients": [
-        {"name": "Alex", "status": "On Track", "last_seen": "Today", "plan": "Hypertrophy"},
-        {"name": "Sarah", "status": "At Risk", "last_seen": "5 days ago", "plan": "Weight Loss"},
+        {"id": "user_123", "name": "Alex", "status": "On Track", "last_seen": "Today", "plan": "Hypertrophy"},
+        {"id": "user_456", "name": "Sarah", "status": "At Risk", "last_seen": "5 days ago", "plan": "Weight Loss"},
     ],
     "video_library": [
         {"id": "v1", "title": "Squat Form 101", "type": "Stock", "thumb": "https://images.unsplash.com/photo-1574680096141-1cddd32e04ca?w=150&h=150&fit=crop"},
@@ -130,3 +144,67 @@ LEADERBOARD_DATA = {
         "reward_gems": 200
     }
 }
+
+EXERCISE_LIBRARY = [
+    # --- CHEST ---
+    {"id": "ex_1", "name": "Barbell Bench Press", "muscle": "Chest", "type": "Compound", "video_id": "BenchPress"},
+    {"id": "ex_2", "name": "Incline Dumbbell Press", "muscle": "Chest", "type": "Compound", "video_id": "InclineDBPress"},
+    {"id": "ex_3", "name": "Cable Crossover", "muscle": "Chest", "type": "Isolation", "video_id": "CableCrossover"},
+    {"id": "ex_4", "name": "Machine Chest Fly", "muscle": "Chest", "type": "Isolation", "video_id": "MachineFly"},
+    {"id": "ex_5", "name": "Dips", "muscle": "Chest", "type": "Compound", "video_id": "Dips"},
+    {"id": "ex_6", "name": "Decline Bench Press", "muscle": "Chest", "type": "Compound", "video_id": "DeclineBench"},
+    {"id": "ex_7", "name": "Push-Ups", "muscle": "Chest", "type": "Bodyweight", "video_id": "PushUps"},
+    {"id": "ex_8", "name": "Dumbbell Pullover", "muscle": "Chest", "type": "Isolation", "video_id": "DBPullover"},
+    {"id": "ex_9", "name": "Smith Machine Bench Press", "muscle": "Chest", "type": "Compound", "video_id": "SmithBench"},
+    {"id": "ex_10", "name": "Pec Deck Fly", "muscle": "Chest", "type": "Isolation", "video_id": "PecDeck"},
+
+    # --- BACK ---
+    {"id": "ex_11", "name": "Deadlift", "muscle": "Back", "type": "Compound", "video_id": "Deadlift"},
+    {"id": "ex_12", "name": "Pull-Up", "muscle": "Back", "type": "Bodyweight", "video_id": "PullUp"},
+    {"id": "ex_13", "name": "Barbell Row", "muscle": "Back", "type": "Compound", "video_id": "BarbellRow"},
+    {"id": "ex_14", "name": "Lat Pulldown", "muscle": "Back", "type": "Compound", "video_id": "LatPulldown"},
+    {"id": "ex_15", "name": "Seated Cable Row", "muscle": "Back", "type": "Compound", "video_id": "SeatedRow"},
+    {"id": "ex_16", "name": "Single-Arm Dumbbell Row", "muscle": "Back", "type": "Isolation", "video_id": "DBRow"},
+    {"id": "ex_17", "name": "T-Bar Row", "muscle": "Back", "type": "Compound", "video_id": "TBarRow"},
+    {"id": "ex_18", "name": "Face Pull", "muscle": "Back", "type": "Isolation", "video_id": "FacePull"},
+    {"id": "ex_19", "name": "Hyperextension", "muscle": "Back", "type": "Isolation", "video_id": "Hyperextension"},
+    {"id": "ex_20", "name": "Straight-Arm Pulldown", "muscle": "Back", "type": "Isolation", "video_id": "StraightArmPulldown"},
+
+    # --- SHOULDERS ---
+    {"id": "ex_21", "name": "Overhead Press", "muscle": "Shoulders", "type": "Compound", "video_id": "OHP"},
+    {"id": "ex_22", "name": "Seated Dumbbell Press", "muscle": "Shoulders", "type": "Compound", "video_id": "SeatedDBPress"},
+    {"id": "ex_23", "name": "Dumbbell Lateral Raise", "muscle": "Shoulders", "type": "Isolation", "video_id": "LateralRaise"},
+    {"id": "ex_24", "name": "Front Raise", "muscle": "Shoulders", "type": "Isolation", "video_id": "FrontRaise"},
+    {"id": "ex_25", "name": "Reverse Pec Deck", "muscle": "Shoulders", "type": "Isolation", "video_id": "ReversePecDeck"},
+    {"id": "ex_26", "name": "Arnold Press", "muscle": "Shoulders", "type": "Compound", "video_id": "ArnoldPress"},
+    {"id": "ex_27", "name": "Upright Row", "muscle": "Shoulders", "type": "Compound", "video_id": "UprightRow"},
+    {"id": "ex_28", "name": "Cable Lateral Raise", "muscle": "Shoulders", "type": "Isolation", "video_id": "CableLateral"},
+
+    # --- LEGS ---
+    {"id": "ex_29", "name": "Barbell Squat", "muscle": "Legs", "type": "Compound", "video_id": "Squat"},
+    {"id": "ex_30", "name": "Leg Press", "muscle": "Legs", "type": "Compound", "video_id": "LegPress"},
+    {"id": "ex_31", "name": "Romanian Deadlift", "muscle": "Legs", "type": "Compound", "video_id": "RDL"},
+    {"id": "ex_32", "name": "Leg Extension", "muscle": "Legs", "type": "Isolation", "video_id": "LegExtension"},
+    {"id": "ex_33", "name": "Seated Leg Curl", "muscle": "Legs", "type": "Isolation", "video_id": "LegCurl"},
+    {"id": "ex_34", "name": "Walking Lunge", "muscle": "Legs", "type": "Compound", "video_id": "Lunge"},
+    {"id": "ex_35", "name": "Bulgarian Split Squat", "muscle": "Legs", "type": "Compound", "video_id": "SplitSquat"},
+    {"id": "ex_36", "name": "Calf Raise", "muscle": "Legs", "type": "Isolation", "video_id": "CalfRaise"},
+    {"id": "ex_37", "name": "Hack Squat", "muscle": "Legs", "type": "Compound", "video_id": "HackSquat"},
+    {"id": "ex_38", "name": "Goblet Squat", "muscle": "Legs", "type": "Compound", "video_id": "GobletSquat"},
+
+    # --- ARMS ---
+    {"id": "ex_39", "name": "Barbell Curl", "muscle": "Biceps", "type": "Isolation", "video_id": "BarbellCurl"},
+    {"id": "ex_40", "name": "Dumbbell Hammer Curl", "muscle": "Biceps", "type": "Isolation", "video_id": "HammerCurl"},
+    {"id": "ex_41", "name": "Preacher Curl", "muscle": "Biceps", "type": "Isolation", "video_id": "PreacherCurl"},
+    {"id": "ex_42", "name": "Tricep Rope Pushdown", "muscle": "Triceps", "type": "Isolation", "video_id": "TricepPushdown"},
+    {"id": "ex_43", "name": "Skullcrusher", "muscle": "Triceps", "type": "Isolation", "video_id": "Skullcrusher"},
+    {"id": "ex_44", "name": "Overhead Tricep Extension", "muscle": "Triceps", "type": "Isolation", "video_id": "OverheadExt"},
+    {"id": "ex_45", "name": "Concentration Curl", "muscle": "Biceps", "type": "Isolation", "video_id": "ConcentrationCurl"},
+
+    # --- ABS & CARDIO ---
+    {"id": "ex_46", "name": "Plank", "muscle": "Abs", "type": "Isometric", "video_id": "Plank"},
+    {"id": "ex_47", "name": "Hanging Leg Raise", "muscle": "Abs", "type": "Isolation", "video_id": "LegRaise"},
+    {"id": "ex_48", "name": "Cable Crunch", "muscle": "Abs", "type": "Isolation", "video_id": "CableCrunch"},
+    {"id": "ex_49", "name": "Russian Twist", "muscle": "Abs", "type": "Isolation", "video_id": "RussianTwist"},
+    {"id": "ex_50", "name": "HIIT Sprint", "muscle": "Cardio", "type": "Cardio", "video_id": "Sprint"},
+]

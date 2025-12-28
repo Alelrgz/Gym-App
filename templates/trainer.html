@@ -38,5 +38,26 @@
         </div>
         <div class="bento-grid" id="video-library"></div>
     </div>
+
+    <!-- Workouts Section -->
+    <div>
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1">Workouts</h3>
+            <button data-action="showModal" data-target="create-workout-modal"
+                class="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition">+ Create Workout</button>
+        </div>
+        <div id="workout-library" class="space-y-2"></div>
+    </div>
+
+    <!-- Exercise Library Section -->
+    <div>
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1">Exercise Database</h3>
+            <button data-action="showModal" data-target="create-exercise-modal"
+                class="text-xs bg-[#D32F2F] text-black font-bold px-3 py-1 rounded hover:bg-[#D32F2F]/80 transition">+
+                New Exercise</button>
+        </div>
+        <div id="exercise-library" class="space-y-2"></div>
+    </div>
 </div>
 {% endblock %}

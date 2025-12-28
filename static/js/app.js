@@ -38,8 +38,19 @@ window.showDayDetails = (dateStr, dayEvents, titleId, listId, isTrainer) => {
         if (addBtn) {
             addBtn.classList.remove('hidden');
             addBtn.onclick = () => {
-                const title = prompt("Enter workout title for " + dateStr);
-                if (title) showToast("Workout assigned: " + title);
+                // Open Assign Modal
+                document.getElementById('assign-date').value = dateStr;
+                document.getElementById('assign-modal-date').innerText = `Assigning for ${new Date(dateStr).toLocaleDateString()}`;
+                // We need client ID. Currently showDayDetails doesn't receive it directly but we can assume it's the currently viewed client.
+                // Let's store client ID in a global var or data attribute when opening client modal.
+                // For now, let's assume we can get it from the client modal's data or similar.
+                // Actually, openTrainerCalendar is called when viewing a client.
+                // We should store the current client ID when opening the calendar.
+                const clientId = document.getElementById('client-modal').dataset.clientId;
+                document.getElementById('assign-client-id').value = clientId;
+
+                populateWorkoutSelector();
+                showModal('assign-workout-modal');
             };
         }
     }
@@ -318,7 +329,7 @@ async function init() {
             data.clients.forEach(c => {
                 const div = document.createElement('div');
                 div.className = "glass-card p-4 flex justify-between items-center tap-effect";
-                div.onclick = function () { showClientModal(c.name, c.plan, c.status); };
+                div.onclick = function () { showClientModal(c.name, c.plan, c.status, c.id); };
                 const statusColor = c.status === 'At Risk' ? 'text-red-400' : 'text-green-400';
                 div.innerHTML = `<div class="flex items-center"><div class="w-10 h-10 rounded-full bg-white/10 mr-3 overflow-hidden"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${c.name}" /></div><div><p class="font-bold text-sm text-white">${c.name}</p><p class="text-[10px] text-gray-400">${c.plan} • Seen ${c.last_seen}</p></div></div><span class="text-xs font-bold ${statusColor}">${c.status}</span>`;
                 list.appendChild(div);
@@ -333,6 +344,17 @@ async function init() {
                 div.innerHTML = `<img src="${v.thumb}" class="w-full h-24 object-cover opacity-60 group-hover:opacity-100 transition"><div class="absolute bottom-0 w-full p-2 bg-gradient-to-t from-black to-transparent"><p class="text-[10px] font-bold text-white truncate">${v.title}</p><p class="text-[8px] text-gray-400 uppercase">${v.type}</p></div>`;
                 vidLib.appendChild(div);
             });
+        }
+
+        // Fetch and Render Exercise Library
+        if (document.getElementById('exercise-library')) {
+            fetchAndRenderExercises();
+        }
+
+        // Fetch and Render Workouts
+        if (document.getElementById('workout-library')) {
+            fetchAndRenderWorkouts();
+            populateExerciseSelector();
         }
     }
 
@@ -424,6 +446,8 @@ document.body.addEventListener('click', e => {
         completeSet();
     } else if (action === 'showModal') {
         showModal(target.dataset.target);
+    } else if (action === 'hideModal') {
+        hideModal(target.dataset.target);
     } else if (action === 'quickAction') {
         quickAction(target.dataset.type);
     } else if (action === 'addPhoto') {
@@ -482,11 +506,12 @@ function addWater() {
     }
 }
 
-function showClientModal(name, plan, status) {
+function showClientModal(name, plan, status, clientId) {
     document.getElementById('modal-client-name').innerText = name;
     document.getElementById('modal-client-plan').innerText = plan;
     document.getElementById('modal-client-status').innerText = status;
     document.getElementById('modal-client-status').className = `text-lg font-bold ${status === 'At Risk' ? 'text-red-400' : 'text-green-400'}`;
+    document.getElementById('client-modal').dataset.clientId = clientId;
     showModal('client-modal');
 }
 
@@ -549,6 +574,209 @@ function uploadVideo() {
         div.innerHTML = `<img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=150&h=150&fit=crop" class="w-full h-24 object-cover opacity-60 group-hover:opacity-100 transition"><div class="absolute bottom-0 w-full p-2 bg-gradient-to-t from-black to-transparent"><p class="text-[10px] font-bold text-white truncate">${title}</p><p class="text-[8px] text-gray-400 uppercase">Custom</p></div>`;
         vidLib.prepend(div);
         showToast('Video uploaded successfully! 🎥');
+    }
+}
+
+async function fetchAndRenderExercises() {
+    const res = await fetch('/api/trainer/exercises');
+    const exercises = await res.json();
+    const container = document.getElementById('exercise-library');
+    if (!container) return;
+
+    container.innerHTML = '';
+    exercises.forEach(ex => {
+        const div = document.createElement('div');
+        div.className = "glass-card p-3 flex justify-between items-center";
+        div.innerHTML = `
+            <div class="flex items-center">
+                <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center mr-3 text-xs font-bold text-gray-400">
+                    ${ex.muscle[0]}
+                </div>
+                <div>
+                    <p class="font-bold text-sm text-white">${ex.name}</p>
+                    <p class="text-[10px] text-gray-400">${ex.muscle} • ${ex.type}</p>
+                </div>
+            </div>
+            <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition">Edit</button>
+        `;
+        container.appendChild(div);
+    });
+}
+
+async function createExercise() {
+    const name = document.getElementById('new-ex-name').value;
+    const muscle = document.getElementById('new-ex-muscle').value;
+    const type = document.getElementById('new-ex-type').value;
+
+    if (!name) {
+        showToast('Please enter an exercise name');
+        return;
+    }
+
+    const res = await fetch('/api/trainer/exercises', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, muscle, type })
+    });
+
+    if (res.ok) {
+        showToast('Exercise created successfully! 💪');
+        hideModal('create-exercise-modal');
+        document.getElementById('new-ex-name').value = '';
+        fetchAndRenderExercises();
+    } else {
+        showToast('Failed to create exercise');
+    }
+}
+
+async function fetchAndRenderWorkouts() {
+    const res = await fetch('/api/trainer/workouts');
+    const workouts = await res.json();
+    const container = document.getElementById('workout-library');
+    if (!container) return;
+
+    container.innerHTML = '';
+    workouts.forEach(w => {
+        const div = document.createElement('div');
+        div.className = "glass-card p-3 flex justify-between items-center";
+        div.innerHTML = `
+            <div>
+                <p class="font-bold text-sm text-white">${w.title}</p>
+                <p class="text-[10px] text-gray-400">${w.exercises.length} Exercises • ${w.duration} • ${w.difficulty}</p>
+            </div>
+            <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition">Edit</button>
+        `;
+        container.appendChild(div);
+    });
+}
+
+async function populateExerciseSelector() {
+    const res = await fetch('/api/trainer/exercises');
+    const exercises = await res.json();
+    const container = document.getElementById('modal-exercise-list');
+    if (!container) return;
+
+    container.innerHTML = '';
+    exercises.forEach(ex => {
+        const div = document.createElement('div');
+        div.className = "flex items-center justify-between p-2 bg-white/5 rounded-lg mb-1";
+        div.innerHTML = `
+            <div class="flex items-center">
+                <input type="checkbox" class="mr-3 w-4 h-4 rounded border-gray-600 text-primary focus:ring-primary bg-gray-700" value="${ex.id}" data-name="${ex.name}" data-video="${ex.video_id}">
+                <span class="text-sm text-white">${ex.name}</span>
+            </div>
+            <div class="flex space-x-2">
+                <input type="number" class="w-12 bg-black/30 border border-white/10 rounded px-1 text-xs text-white text-center" placeholder="Sets" value="3">
+                <input type="text" class="w-12 bg-black/30 border border-white/10 rounded px-1 text-xs text-white text-center" placeholder="Reps" value="10">
+                <input type="number" class="w-12 bg-black/30 border border-white/10 rounded px-1 text-xs text-white text-center" placeholder="Rest" value="60">
+            </div>
+        `;
+        container.appendChild(div);
+    });
+}
+
+async function createWorkout() {
+    const title = document.getElementById('new-workout-title').value;
+    const duration = document.getElementById('new-workout-duration').value;
+    const difficulty = document.getElementById('new-workout-difficulty').value;
+
+    if (!title) {
+        showToast('Please enter a workout title');
+        return;
+    }
+
+    const selectedExercises = [];
+    const checkboxes = document.querySelectorAll('#modal-exercise-list input[type="checkbox"]:checked');
+
+    checkboxes.forEach(cb => {
+        const row = cb.closest('.flex.items-center.justify-between');
+        const inputs = row.querySelectorAll('input[type="text"], input[type="number"]');
+        // inputs[0] is checkbox, inputs[1] is sets (number), inputs[2] is reps (text), inputs[3] is rest (number)
+        // Wait, querySelectorAll returns in document order.
+        // The checkbox is an input.
+        // Let's select specifically.
+        const setsInput = row.querySelector('input[placeholder="Sets"]');
+        const repsInput = row.querySelector('input[placeholder="Reps"]');
+        const restInput = row.querySelector('input[placeholder="Rest"]');
+
+        selectedExercises.push({
+            name: cb.dataset.name,
+            sets: parseInt(setsInput.value) || 3,
+            reps: repsInput.value || "10",
+            rest: parseInt(restInput.value) || 60,
+            video_id: cb.dataset.video
+        });
+    });
+
+    if (selectedExercises.length === 0) {
+        showToast('Please select at least one exercise');
+        return;
+    }
+
+    const res = await fetch('/api/trainer/workouts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, duration, difficulty, exercises: selectedExercises })
+    });
+
+    if (res.ok) {
+        showToast('Workout created successfully! 💪');
+        hideModal('create-workout-modal');
+        document.getElementById('new-workout-title').value = '';
+        fetchAndRenderWorkouts();
+    } else {
+        showToast('Failed to create workout');
+    }
+}
+
+async function populateWorkoutSelector() {
+    const res = await fetch('/api/trainer/workouts');
+    const workouts = await res.json();
+    const select = document.getElementById('assign-workout-select');
+    if (!select) return;
+
+    select.innerHTML = '';
+    workouts.forEach(w => {
+        const option = document.createElement('option');
+        option.value = w.id;
+        option.innerText = w.title;
+        select.appendChild(option);
+    });
+}
+
+async function assignWorkout() {
+    const clientId = document.getElementById('assign-client-id').value;
+    const date = document.getElementById('assign-date').value;
+    const workoutId = document.getElementById('assign-workout-select').value;
+
+    if (!clientId || !date || !workoutId) {
+        showToast('Missing information');
+        return;
+    }
+
+    const res = await fetch('/api/trainer/assign_workout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ client_id: clientId, date: date, workout_id: workoutId })
+    });
+
+    if (res.ok) {
+        showToast('Workout assigned successfully! 📅');
+        hideModal('assign-workout-modal');
+        // Refresh calendar
+        // We need to re-fetch client data or just reload the calendar.
+        // Simple way: close calendar and let user re-open, or trigger a refresh.
+        // Let's try to refresh the calendar view if possible.
+        // window.openTrainerCalendar() fetches data again.
+        // But we are inside the calendar.
+        // Let's just hide the assign modal and maybe update the UI manually or close/open calendar.
+        // For better UX, let's close the calendar modal too so they can re-open to see changes, or just show toast.
+        // Ideally we re-render the calendar.
+        // We can call openTrainerCalendar() again?
+        // But we need the client ID.
+        // Let's just show toast for now.
+    } else {
+        showToast('Failed to assign workout');
     }
 }
 

@@ -59,6 +59,65 @@ class UserService:
     def get_owner(self) -> OwnerData:
         return OwnerData(**OWNER_DATA)
 
+    def get_exercises(self) -> list:
+        from data import EXERCISE_LIBRARY
+        return EXERCISE_LIBRARY
+
+    def create_exercise(self, exercise: dict) -> dict:
+        from data import EXERCISE_LIBRARY
+        # Generate ID
+        new_id = f"ex_{len(EXERCISE_LIBRARY) + 1}"
+        exercise["id"] = new_id
+        # Default video if not provided
+        if not exercise.get("video_id"):
+            exercise["video_id"] = "InclineDBPress" # Fallback
+        
+        EXERCISE_LIBRARY.insert(0, exercise) # Add to top
+        return exercise
+
+    def get_workouts(self) -> list:
+        from data import WORKOUTS_DB
+        return list(WORKOUTS_DB.values())
+
+    def create_workout(self, workout: dict) -> dict:
+        from data import WORKOUTS_DB
+        # Generate ID
+        new_id = f"w{len(WORKOUTS_DB) + 1}"
+        workout["id"] = new_id
+        WORKOUTS_DB[new_id] = workout
+        return workout
+
+    def assign_workout(self, assignment: dict) -> dict:
+        from data import CLIENT_DATA, WORKOUTS_DB
+        
+        client_id = assignment.get("client_id")
+        workout_id = assignment.get("workout_id")
+        date_str = assignment.get("date")
+
+        # In a real app, validate IDs
+        if client_id not in CLIENT_DATA:
+            return {"error": "Client not found"}
+        
+        workout = WORKOUTS_DB.get(workout_id)
+        if not workout:
+            return {"error": "Workout not found"}
+
+        # Create event
+        new_event = {
+            "date": date_str,
+            "title": workout["title"],
+            "type": "workout",
+            "completed": False,
+            "details": workout["difficulty"]
+        }
+
+        # Add to client's calendar
+        if "calendar" not in CLIENT_DATA[client_id]:
+            CLIENT_DATA[client_id]["calendar"] = {"events": []}
+        
+        CLIENT_DATA[client_id]["calendar"]["events"].append(new_event)
+        return {"status": "success", "event": new_event}
+
 class LeaderboardService:
     def get_leaderboard(self) -> LeaderboardData:
         return LeaderboardData(**LEADERBOARD_DATA)

@@ -1,19 +1,30 @@
-:root { 
-    --primary: #333; 
+:root {
+    --primary: #333;
     --glass-border: rgba(255, 255, 255, 0.08);
     --glass-bg: rgba(255, 255, 255, 0.03);
 }
-body { font-family: 'Inter', sans-serif; }
 
-.bg-primary { background-color: var(--primary); }
-.text-primary { color: var(--primary); }
+body {
+    font-family: 'Inter', sans-serif;
+}
+
+.bg-primary {
+    background-color: var(--primary);
+}
+
+.text-primary {
+    color: var(--primary);
+}
 
 .mobile-frame {
-    width: 375px; height: 812px; 
+    width: 375px;
+    height: 812px;
     border: 14px solid #000;
-    border-radius: 44px; overflow: hidden; position: relative;
+    border-radius: 44px;
+    overflow: hidden;
+    position: relative;
     box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-    margin: 20px auto; 
+    margin: 20px auto;
     background: #0f0f0f;
     color: white;
 }
@@ -26,57 +37,122 @@ body { font-family: 'Inter', sans-serif; }
     border-radius: 24px;
 }
 
-.bento-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-.bento-span-2 { grid-column: span 2; }
+.bento-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
 
-.tap-effect { transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1); cursor: pointer; }
-.tap-effect:active { transform: scale(0.96); }
+.bento-span-2 {
+    grid-column: span 2;
+}
 
-.slide-up { animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1); }
+.tap-effect {
+    transition: transform 0.1s cubic-bezier(0.4, 0, 0.2, 1);
+    cursor: pointer;
+}
+
+.tap-effect:active {
+    transform: scale(0.96);
+}
+
+.slide-up {
+    animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
 @keyframes slideUp {
-    from { transform: translateY(20px); opacity: 0; }
-    to { transform: translateY(0); opacity: 1; }
+    from {
+        transform: translateY(20px);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateY(0);
+        opacity: 1;
+    }
 }
 
 /* Macro Rings */
 .macro-ring {
-    width: 60px; height: 60px;
+    width: 60px;
+    height: 60px;
     border-radius: 50%;
-    display: flex; flex-direction: column;
-    align-items: center; justify-content: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
     position: relative;
 }
+
 .macro-ring::before {
-    content: ''; position: absolute; inset: 4px;
-    background: #0f0f0f; border-radius: 50%; z-index: 1;
+    content: '';
+    position: absolute;
+    inset: 4px;
+    background: #0f0f0f;
+    border-radius: 50%;
+    z-index: 1;
 }
-.macro-content { position: relative; z-index: 2; text-align: center; }
+
+.macro-content {
+    position: relative;
+    z-index: 2;
+    text-align: center;
+}
 
 /* Hydration Wave */
 .wave-container {
-    position: relative; overflow: hidden;
+    position: relative;
+    overflow: hidden;
     background: rgba(59, 130, 246, 0.2);
 }
+
 .wave {
-    position: absolute; bottom: 0; left: 0; width: 200%; height: 100%;
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 200%;
+    height: 100%;
     background: rgba(59, 130, 246, 0.6);
     transform-origin: 50% 100%;
     animation: wave 4s cubic-bezier(0.36, 0.45, 0.63, 0.53) infinite;
 }
+
 @keyframes wave {
-    0% { transform: translateX(0) translateZ(0) scaleY(1); }
-    50% { transform: translateX(-25%) translateZ(0) scaleY(0.8); }
-    100% { transform: translateX(-50%) translateZ(0) scaleY(1); }
+    0% {
+        transform: translateX(0) translateZ(0) scaleY(1);
+    }
+
+    50% {
+        transform: translateX(-25%) translateZ(0) scaleY(0.8);
+    }
+
+    100% {
+        transform: translateX(-50%) translateZ(0) scaleY(1);
+    }
 }
 
 /* Confetti */
 .confetti {
-    position: absolute; width: 10px; height: 10px;
+    position: absolute;
+    width: 10px;
+    height: 10px;
     background-color: #f00;
     animation: fall linear forwards;
 }
+
 @keyframes fall {
-    to { transform: translateY(100vh) rotate(720deg); }
+    to {
+        transform: translateY(100vh) rotate(720deg);
+    }
 }
 
-::-webkit-scrollbar { width: 0px; background: transparent; }
+::-webkit-scrollbar {
+    width: 0px;
+    background: transparent;
+}
+
+/* Fix for Select Options */
+select option {
+    background-color: #1a1a1a;
+    color: white;
+}
