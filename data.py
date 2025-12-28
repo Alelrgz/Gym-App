@@ -65,6 +65,28 @@ CLIENT_DATA = {
                     {"meal": "Steak & Asparagus", "cals": 470, "time": "07:00 PM"},
                 ]
             }
+        },
+        "calendar": {
+            "events": [
+                # 12-Day Streak (Dec 15 - Dec 26)
+                {"date": "2025-12-15", "title": "Streak Day 1", "type": "workout", "completed": True, "details": "Start of streak"},
+                {"date": "2025-12-16", "title": "Streak Day 2", "type": "workout", "completed": True, "details": "Cardio"},
+                {"date": "2025-12-17", "title": "Streak Day 3", "type": "workout", "completed": True, "details": "Upper Body"},
+                {"date": "2025-12-18", "title": "Streak Day 4", "type": "workout", "completed": True, "details": "Legs"},
+                {"date": "2025-12-19", "title": "Streak Day 5", "type": "workout", "completed": True, "details": "Abs"},
+                {"date": "2025-12-20", "title": "Streak Day 6", "type": "workout", "completed": True, "details": "Yoga"},
+                {"date": "2025-12-21", "title": "Streak Day 7", "type": "workout", "completed": True, "details": "HIIT"},
+                {"date": "2025-12-22", "title": "Streak Day 8", "type": "workout", "completed": True, "details": "Push Day"},
+                {"date": "2025-12-23", "title": "Streak Day 9", "type": "workout", "completed": True, "details": "Pull Day"},
+                {"date": "2025-12-24", "title": "Christmas Eve Pump", "type": "workout", "completed": True, "details": "Full Body"},
+                {"date": "2025-12-25", "title": "Christmas Cardio", "type": "workout", "completed": True, "details": "Morning Run"},
+                {"date": "2025-12-26", "title": "Cbum's Push Day", "type": "workout", "completed": True, "details": "Chest & Shoulders"},
+                
+                # Future
+                {"date": "2025-12-28", "title": "Leg Day", "type": "workout", "completed": False, "details": "Squats & Lunges"},
+                {"date": "2025-12-31", "title": "New Year's Eve Pump", "type": "workout", "completed": False, "details": "Arms & Abs"},
+                {"date": "2026-01-01", "title": "Recovery", "type": "rest", "completed": False, "details": "Stretching"}
+            ]
         }
     }
 }

@@ -12,6 +12,18 @@ templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
 app.include_router(router)
 
+from fastapi import WebSocket, WebSocketDisconnect
+from sockets import manager
+
+@app.websocket("/ws/{client_id}")
+async def websocket_endpoint(websocket: WebSocket, client_id: str):
+    await manager.connect(websocket)
+    try:
+        while True:
+            await websocket.receive_text()
+    except WebSocketDisconnect:
+        manager.disconnect(websocket)
+
 @app.middleware("http")
 async def add_no_cache_header(request, call_next):
     response = await call_next(request)
@@ -50,5 +62,10 @@ async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "cli
 
 if __name__ == "__main__":
     import os
+    from sockets import start_file_watcher
+    
+    # Start the file watcher in a background thread
+    start_file_watcher()
+    
     port = int(os.environ.get("PORT", 9007))
     uvicorn.run(app, host="0.0.0.0", port=port)

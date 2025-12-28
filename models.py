@@ -54,6 +54,17 @@ class Progress(BaseModel):
     macros: Macros
     diet_log: Dict[str, List[DietItem]]
 
+# --- CALENDAR ---
+class CalendarEvent(BaseModel):
+    date: str  # YYYY-MM-DD
+    title: str
+    type: str  # 'workout', 'rest', 'milestone'
+    completed: bool
+    details: str
+
+class CalendarData(BaseModel):
+    events: List[CalendarEvent]
+
 # --- CLIENT ---
 class ClientData(BaseModel):
     name: str
@@ -63,6 +74,7 @@ class ClientData(BaseModel):
     todays_workout: Workout
     daily_quests: List[DailyQuest]
     progress: Progress
+    calendar: CalendarData
 
 # --- TRAINER ---
 class ClientSummary(BaseModel):

@@ -152,6 +152,45 @@
     </div>
 </div>
 
+{% elif mode == "calendar" %}
+<div class="p-6 pt-10 flex items-center space-x-4 bg-black/50 z-10">
+    <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
+        class="text-2xl tap-effect">←</a>
+    <h2 class="font-bold text-xl">Schedule</h2>
+</div>
+<div class="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+    <!-- Calendar Header -->
+    <div class="flex justify-between items-center mb-4">
+        <button id="prev-month" class="p-2 bg-white/10 rounded-full tap-effect">←</button>
+        <h2 id="current-month-year" class="text-xl font-bold text-white">December 2025</h2>
+        <button id="next-month" class="p-2 bg-white/10 rounded-full tap-effect">→</button>
+    </div>
+
+    <!-- Calendar Grid -->
+    {% call card(classes="p-4") %}
+    <div class="grid grid-cols-7 gap-2 text-center mb-2">
+        <div class="text-xs text-gray-500 font-bold">S</div>
+        <div class="text-xs text-gray-500 font-bold">M</div>
+        <div class="text-xs text-gray-500 font-bold">T</div>
+        <div class="text-xs text-gray-500 font-bold">W</div>
+        <div class="text-xs text-gray-500 font-bold">T</div>
+        <div class="text-xs text-gray-500 font-bold">F</div>
+        <div class="text-xs text-gray-500 font-bold">S</div>
+    </div>
+    <div id="calendar-grid" class="grid grid-cols-7 gap-y-2 gap-x-0">
+        <!-- Days injected by JS -->
+    </div>
+    {% endcall %}
+
+    <!-- Selected Day Details -->
+    <div id="selected-day-details" class="space-y-3">
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1" id="selected-date-title">Today</h3>
+        <div id="day-events-list" class="space-y-2">
+            <!-- Events injected by JS -->
+        </div>
+    </div>
+</div>
+
 {% else %}
 <div class="p-6 pt-10 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent z-10">
     <div class="flex items-center space-x-3">
@@ -170,17 +209,19 @@
 </div>
 
 <div class="flex-1 overflow-y-auto p-4 pt-0 pb-24 space-y-6">
-    {% call card(classes="p-6 flex justify-between items-center relative overflow-hidden tap-effect slide-up") %}
-    <div class="absolute top-0 right-0 w-32 h-32 bg-orange-500/20 blur-3xl rounded-full -mr-10 -mt-10"></div>
-    <div>
-        <h1 class="text-5xl font-black text-white mb-1">12</h1>
-        <p class="text-orange-400 font-bold uppercase tracking-wider text-xs">Day Streak 🔥</p>
-    </div>
-    <div class="text-right">
-        <p class="text-gray-400 text-xs mb-1">Next Goal</p>
-        <p class="font-bold text-xl">14 Days</p>
-    </div>
-    {% endcall %}
+    <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=calendar' }}">
+        {% call card(classes="p-6 flex justify-between items-center relative overflow-hidden tap-effect slide-up") %}
+        <div class="absolute top-0 right-0 w-32 h-32 bg-orange-500/20 blur-3xl rounded-full -mr-10 -mt-10"></div>
+        <div>
+            <h1 class="text-5xl font-black text-white mb-1">12</h1>
+            <p class="text-orange-400 font-bold uppercase tracking-wider text-xs">Day Streak 🔥</p>
+        </div>
+        <div class="text-right">
+            <p class="text-gray-400 text-xs mb-1">Next Goal</p>
+            <p class="font-bold text-xl">14 Days</p>
+        </div>
+        {% endcall %}
+    </a>
 
     <div class="bento-grid slide-up" style="animation-delay: 0.1s;">
         {% call card(classes="bento-span-2 p-5 relative overflow-hidden group tap-effect") %}
