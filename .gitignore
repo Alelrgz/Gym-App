@@ -8,3 +8,12 @@ env/
 venv/
 node_modules/
 .DS_Store
+
+# Database files
+*.db
+db/
+
+# Test and debug files
+test_*.py
+debug_*.py
+repro_*.py

@@ -349,6 +349,15 @@ async function init() {
         // Fetch and Render Exercise Library
         if (document.getElementById('exercise-library')) {
             fetchAndRenderExercises();
+
+            // Add trainer selector change listener
+            const trainerSelector = document.getElementById('trainer-selector');
+            if (trainerSelector) {
+                trainerSelector.addEventListener('change', () => {
+                    fetchAndRenderExercises();
+                    showToast(`Switched to ${trainerSelector.options[trainerSelector.selectedIndex].text}`);
+                });
+            }
         }
 
         // Fetch and Render Workouts
@@ -577,8 +586,17 @@ function uploadVideo() {
     }
 }
 
+// Helper function to get current trainer ID
+function getCurrentTrainerId() {
+    const selector = document.getElementById('trainer-selector');
+    return selector ? selector.value : 'trainer_default';
+}
+
 async function fetchAndRenderExercises() {
-    const res = await fetch('/api/trainer/exercises');
+    const trainerId = getCurrentTrainerId();
+    const res = await fetch('/api/trainer/exercises', {
+        headers: { 'x-trainer-id': trainerId }
+    });
     const exercises = await res.json();
     const container = document.getElementById('exercise-library');
     if (!container) return;
@@ -613,9 +631,13 @@ async function createExercise() {
         return;
     }
 
+    const trainerId = getCurrentTrainerId();
     const res = await fetch('/api/trainer/exercises', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'x-trainer-id': trainerId
+        },
         body: JSON.stringify({ name, muscle, type })
     });
 
@@ -630,7 +652,10 @@ async function createExercise() {
 }
 
 async function fetchAndRenderWorkouts() {
-    const res = await fetch('/api/trainer/workouts');
+    const trainerId = getCurrentTrainerId();
+    const res = await fetch('/api/trainer/workouts', {
+        headers: { 'x-trainer-id': trainerId }
+    });
     const workouts = await res.json();
     const container = document.getElementById('workout-library');
     if (!container) return;
@@ -651,7 +676,10 @@ async function fetchAndRenderWorkouts() {
 }
 
 async function populateExerciseSelector() {
-    const res = await fetch('/api/trainer/exercises');
+    const trainerId = getCurrentTrainerId();
+    const res = await fetch('/api/trainer/exercises', {
+        headers: { 'x-trainer-id': trainerId }
+    });
     const exercises = await res.json();
     const container = document.getElementById('modal-exercise-list');
     if (!container) return;
@@ -713,9 +741,13 @@ async function createWorkout() {
         return;
     }
 
+    const trainerId = getCurrentTrainerId();
     const res = await fetch('/api/trainer/workouts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+            'Content-Type': 'application/json',
+            'x-trainer-id': trainerId
+        },
         body: JSON.stringify({ title, duration, difficulty, exercises: selectedExercises })
     });
 

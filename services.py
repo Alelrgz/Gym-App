@@ -1,8 +1,36 @@
 from fastapi import HTTPException
-from data import GYMS_DB, CLIENT_DATA, TRAINER_DATA, OWNER_DATA, LEADERBOARD_DATA
+import uuid
+from data import GYMS_DB, CLIENT_DATA, TRAINER_DATA, OWNER_DATA, LEADERBOARD_DATA, EXERCISE_LIBRARY
 from models import GymConfig, ClientData, TrainerData, OwnerData, LeaderboardData, WorkoutAssignment
+from database import global_engine, GlobalSessionLocal, get_trainer_session, Base
+from models_orm import ExerciseORM, WorkoutORM
+
+# Create tables
+Base.metadata.create_all(bind=global_engine)
+
+# Seed global database with exercises only
+def seed_global_database():
+    db = GlobalSessionLocal()
+    if db.query(ExerciseORM).count() == 0:
+        print("Seeding global database with default exercises...")
+        for ex in EXERCISE_LIBRARY:
+            db_ex = ExerciseORM(
+                id=ex["id"],
+                name=ex["name"],
+                muscle=ex["muscle"],
+                type=ex["type"],
+                video_id=ex["video_id"]
+            )
+            db.add(db_ex)
+        db.commit()
+    db.close()
+
+seed_global_database()
 
 class GymService:
+    def get_db(self):
+        return SessionLocal()
+
     def get_gym(self, gym_id: str) -> GymConfig:
         gym = GYMS_DB.get(gym_id)
         if not gym:
@@ -59,33 +87,153 @@ class UserService:
     def get_owner(self) -> OwnerData:
         return OwnerData(**OWNER_DATA)
 
-    def get_exercises(self) -> list:
-        from data import EXERCISE_LIBRARY
-        return EXERCISE_LIBRARY
-
-    def create_exercise(self, exercise: dict) -> dict:
-        from data import EXERCISE_LIBRARY
-        # Generate ID
-        new_id = f"ex_{len(EXERCISE_LIBRARY) + 1}"
-        exercise["id"] = new_id
-        # Default video if not provided
-        if not exercise.get("video_id"):
-            exercise["video_id"] = "InclineDBPress" # Fallback
+    def get_exercises(self, trainer_id: str) -> list:
+        # Get global exercises from global.db
+        global_db = GlobalSessionLocal()
+        global_exercises = global_db.query(ExerciseORM).all()
+        global_db.close()
         
-        EXERCISE_LIBRARY.insert(0, exercise) # Add to top
-        return exercise
+        # Get personal exercises from trainer's db
+        trainer_db = get_trainer_session(trainer_id)
+        personal_exercises = trainer_db.query(ExerciseORM).all()
+        trainer_db.close()
+        
+        # Merge and return
+        return list(global_exercises) + list(personal_exercises)
 
-    def get_workouts(self) -> list:
-        from data import WORKOUTS_DB
-        return list(WORKOUTS_DB.values())
+    def create_exercise(self, exercise: dict, trainer_id: str) -> dict:
+        # Save to trainer's personal database
+        db = get_trainer_session(trainer_id)
+        try:
+            # Generate UUID
+            new_id = str(uuid.uuid4())
+            
+            # Default video if not provided
+            video_id = exercise.get("video_id")
+            if not video_id:
+                video_id = "InclineDBPress" # Fallback
+            
+            db_ex = ExerciseORM(
+                id=new_id,
+                name=exercise["name"],
+                muscle=exercise["muscle"],
+                type=exercise["type"],
+                video_id=video_id
+            )
+            db.add(db_ex)
+            db.commit()
+            db.refresh(db_ex)
+            return db_ex
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to create exercise: {str(e)}")
+        finally:
+            db.close()
 
-    def create_workout(self, workout: dict) -> dict:
-        from data import WORKOUTS_DB
-        # Generate ID
-        new_id = f"w{len(WORKOUTS_DB) + 1}"
-        workout["id"] = new_id
-        WORKOUTS_DB[new_id] = workout
-        return workout
+    def update_exercise(self, exercise_id: str, updates: dict, trainer_id: str) -> dict:
+        db = SessionLocal()
+        try:
+            # Find the exercise
+            ex = db.query(ExerciseORM).filter(ExerciseORM.id == exercise_id).first()
+            if not ex:
+                raise HTTPException(status_code=404, detail="Exercise not found")
+
+            # Check ownership
+            if ex.owner_id == trainer_id:
+                # Direct Update
+                for key, value in updates.items():
+                    if hasattr(ex, key) and value is not None:
+                        setattr(ex, key, value)
+                db.commit()
+                db.refresh(ex)
+                return ex
+            elif ex.owner_id is None:
+                # Forking (Copy-on-Write)
+                # Create a new personal copy with updates
+                new_id = str(uuid.uuid4())
+                
+                # Merge old data with updates
+                new_data = {
+                    "name": updates.get("name", ex.name),
+                    "muscle": updates.get("muscle", ex.muscle),
+                    "type": updates.get("type", ex.type),
+                    "video_id": updates.get("video_id", ex.video_id)
+                }
+                
+                new_ex = ExerciseORM(
+                    id=new_id,
+                    name=new_data["name"],
+                    muscle=new_data["muscle"],
+                    type=new_data["type"],
+                    video_id=new_data["video_id"],
+                    owner_id=trainer_id # Personal Scope
+                )
+                db.add(new_ex)
+                db.commit()
+                db.refresh(new_ex)
+                return new_ex
+            else:
+                # Trying to edit someone else's personal exercise? Should not happen if get is filtered correctly.
+                raise HTTPException(status_code=403, detail="Cannot edit another trainer's exercise")
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to update exercise: {str(e)}")
+        finally:
+            db.close()
+
+    def get_workouts(self, trainer_id: str) -> list:
+        # Get workouts from trainer's personal database only
+        db = get_trainer_session(trainer_id)
+        try:
+            import json
+            workouts = db.query(WorkoutORM).all()
+            
+            # Convert to dict format with parsed exercises
+            result = []
+            for w in workouts:
+                result.append({
+                    "id": w.id,
+                    "title": w.title,
+                    "duration": w.duration,
+                    "difficulty": w.difficulty,
+                    "exercises": json.loads(w.exercises_json)
+                })
+            return result
+        finally:
+            db.close()
+
+    def create_workout(self, workout: dict, trainer_id: str) -> dict:
+        # Save to trainer's personal database
+        db = get_trainer_session(trainer_id)
+        try:
+            import json
+            # Generate UUID
+            new_id = str(uuid.uuid4())
+            workout["id"] = new_id
+            
+            db_workout = WorkoutORM(
+                id=new_id,
+                title=workout["title"],
+                duration=workout["duration"],
+                difficulty=workout["difficulty"],
+                exercises_json=json.dumps(workout["exercises"])
+            )
+            db.add(db_workout)
+            db.commit()
+            db.refresh(db_workout)
+            
+            return {
+                "id": db_workout.id,
+                "title": db_workout.title,
+                "duration": db_workout.duration,
+                "difficulty": db_workout.difficulty,
+                "exercises": json.loads(db_workout.exercises_json)
+            }
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to create workout: {str(e)}")
+        finally:
+            db.close()
 
     def assign_workout(self, assignment: dict) -> dict:
         from data import CLIENT_DATA, WORKOUTS_DB

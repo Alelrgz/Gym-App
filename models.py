@@ -17,11 +17,11 @@ class Exercise(BaseModel):
     video_id: str
 
 class ExerciseTemplate(BaseModel):
-    id: str
+    id: Optional[str] = None
     name: str
     muscle: str
     type: str
-    video_id: str
+    video_id: Optional[str] = None
 
 class Workout(BaseModel):
     title: str

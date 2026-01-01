@@ -1,5 +1,5 @@
-from fastapi import APIRouter, Depends
-from models import GymConfig, ClientData, TrainerData, OwnerData, LeaderboardData, WorkoutAssignment
+from fastapi import APIRouter, Depends, Header
+from models import GymConfig, ClientData, TrainerData, OwnerData, LeaderboardData, WorkoutAssignment, ExerciseTemplate
 from services import GymService, UserService, LeaderboardService
 
 router = APIRouter()
@@ -40,20 +40,44 @@ async def assign_workout(assignment: WorkoutAssignment, service: UserService = D
     return service.assign_workout(assignment)
 
 @router.get("/api/trainer/exercises")
-async def get_exercises(service: UserService = Depends(get_user_service)):
-    return service.get_exercises()
+async def get_exercises(
+    service: UserService = Depends(get_user_service),
+    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+):
+    return service.get_exercises(trainer_id)
 
 @router.post("/api/trainer/exercises")
-async def create_exercise(exercise: dict, service: UserService = Depends(get_user_service)):
-    return service.create_exercise(exercise)
+async def create_exercise(
+    exercise: ExerciseTemplate, 
+    service: UserService = Depends(get_user_service),
+    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+):
+    # Convert Pydantic model to dict for service layer
+    return service.create_exercise(exercise.model_dump(), trainer_id)
+
+@router.put("/api/trainer/exercises/{exercise_id}")
+async def update_exercise(
+    exercise_id: str,
+    exercise: ExerciseTemplate,
+    service: UserService = Depends(get_user_service),
+    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+):
+    return service.update_exercise(exercise_id, exercise.model_dump(exclude_unset=True), trainer_id)
 
 @router.get("/api/trainer/workouts")
-async def get_workouts(service: UserService = Depends(get_user_service)):
-    return service.get_workouts()
+async def get_workouts(
+    service: UserService = Depends(get_user_service),
+    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+):
+    return service.get_workouts(trainer_id)
 
 @router.post("/api/trainer/workouts")
-async def create_workout(workout: dict, service: UserService = Depends(get_user_service)):
-    return service.create_workout(workout)
+async def create_workout(
+    workout: dict, 
+    service: UserService = Depends(get_user_service),
+    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+):
+    return service.create_workout(workout, trainer_id)
 
 @router.post("/api/trainer/assign_workout")
 async def assign_workout(assignment: dict, service: UserService = Depends(get_user_service)):

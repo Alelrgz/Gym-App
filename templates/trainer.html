@@ -4,9 +4,17 @@
 {% block content %}
 <div class="p-6 pt-10 bg-primary pb-8 rounded-b-[40px] shadow-2xl z-10 relative">
     <div class="flex justify-between items-start mb-6">
-        <div>
+        <div class="flex-1">
             <p class="text-xs text-white/60 uppercase tracking-wider">Trainer Dashboard</p>
-            <h2 class="text-2xl font-bold">Coach Mike</h2>
+            <h2 class="text-2xl font-bold" id="trainer-name">Coach Mike</h2>
+            <!-- Trainer Selector for Testing Multi-Tenancy -->
+            <select id="trainer-selector"
+                class="mt-2 bg-white/10 text-white text-xs px-3 py-2 rounded border border-white/20 focus:border-white/40 outline-none">
+                <option value="trainer_default">Default Trainer</option>
+                <option value="trainer_A">Trainer A</option>
+                <option value="trainer_B">Trainer B</option>
+                <option value="trainer_C">Trainer C</option>
+            </select>
         </div>
         <div data-action="showModal" data-target="notification-modal"
             class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect">🔔</div>
