@@ -11,6 +11,7 @@ def build():
         {"filename": "client.html", "template": "client.html", "role": "client", "mode": "dashboard"},
         {"filename": "client_leaderboard.html", "template": "client.html", "role": "client", "mode": "leaderboard"},
         {"filename": "client_progress.html", "template": "client.html", "role": "client", "mode": "progress"},
+        {"filename": "client_calendar.html", "template": "client.html", "role": "client", "mode": "calendar"},
         {"filename": "trainer.html", "template": "trainer.html", "role": "trainer", "mode": "dashboard"},
         {"filename": "owner.html", "template": "owner.html", "role": "owner", "mode": "dashboard"},
         {"filename": "workout.html", "template": "workout.html", "role": "client", "mode": "workout"},

@@ -26,6 +26,19 @@ WORKOUTS_DB = {
             {"name": "Push-Ups", "sets": 3, "reps": "15", "rest": 45, "video_id": "PushUps"},
             {"name": "Pull-Up", "sets": 3, "reps": "8", "rest": 60, "video_id": "PullUp"}
         ]
+    },
+    "cbum_push": {
+        "id": "cbum_push",
+        "title": "Cbum's Push Day",
+        "duration": "75 min",
+        "difficulty": "Elite",
+        "exercises": [
+            {"name": "Incline DB Press", "sets": 4, "reps": "8-10", "rest": 90, "video_id": "InclineDBPress"},
+            {"name": "Seated Shoulder Press", "sets": 4, "reps": "8-10", "rest": 90, "video_id": "SeatedShoulderPress"},
+            {"name": "Machine Chest Fly", "sets": 3, "reps": "10-12", "rest": 60, "video_id": "MachineFly"},
+            {"name": "DB Lateral Raise", "sets": 4, "reps": "10-12", "rest": 60, "video_id": "LateralRaise"},
+            {"name": "Tricep Rope Pushdown", "sets": 4, "reps": "10-12", "rest": 60, "video_id": "TricepPushdown"}
+        ]
     }
 }
 

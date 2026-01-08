@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -13,9 +14,15 @@
     <!-- Preload the first video for instant playback -->
     <link rel="preload" href="/static/videos/InclineDBPress.mp4?v=1" as="video" type="video/mp4">
     <link rel="stylesheet" href="/static/css/style.css?v=1">
+    <script>
+        window.onerror = function (msg, url, line, col, error) {
+            alert("Error: " + msg + "\nurl: " + url + "\nline: " + line);
+            return false;
+        };
+    </script>
 </head>
 
-<body class="bg-gray-900 flex flex-col items-center justify-center min-h-screen">
+<body class="bg-gray-900 flex flex-col min-h-screen w-full pb-24">
 
     <!-- DEBUG CONTROLS -->
     <div class="fixed top-6 left-6 text-white/30 text-[10px] font-mono tracking-widest uppercase z-50">
@@ -26,11 +33,11 @@
                 <a href="/?gym_id=zen_yoga&role=client" class="hover:text-white transition">Zen Yoga</a>
             </div>
             <div class="space-x-2">
-                <a href="/?gym_id=iron_gym&role=client"
+                <a href="client.html"
                     class="text-white transition">Client</a>
-                <a href="/?gym_id=iron_gym&role=trainer"
+                <a href="trainer.html"
                     class="hover:text-white transition">Trainer</a>
-                <a href="/?gym_id=iron_gym&role=owner"
+                <a href="owner.html"
                     class="hover:text-white transition">Owner</a>
             </div>
             <button onclick="localStorage.clear(); location.reload(true);"
@@ -38,8 +45,7 @@
         </div>
     </div>
 
-    <div class="mobile-frame flex flex-col relative">
-        
+    
 
 <div class="p-6 pt-10 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent z-10">
     <div class="flex items-center space-x-3">
@@ -57,22 +63,24 @@
     </div>
 </div>
 
-<div class="flex-1 overflow-y-auto p-4 pt-0 pb-24 space-y-6">
-    
+<div class="flex-1 p-4 pt-0 space-y-6">
+    <a href="client_calendar.html">
+        
 <div class="glass-card p-6 flex justify-between items-center relative overflow-hidden tap-effect slide-up"  >
     
-    <div class="absolute top-0 right-0 w-32 h-32 bg-orange-500/20 blur-3xl rounded-full -mr-10 -mt-10"></div>
-    <div>
-        <h1 class="text-5xl font-black text-white mb-1">12</h1>
-        <p class="text-orange-400 font-bold uppercase tracking-wider text-xs">Day Streak 🔥</p>
-    </div>
-    <div class="text-right">
-        <p class="text-gray-400 text-xs mb-1">Next Goal</p>
-        <p class="font-bold text-xl">14 Days</p>
-    </div>
-    
+        <div class="absolute top-0 right-0 w-32 h-32 bg-orange-500/20 blur-3xl rounded-full -mr-10 -mt-10"></div>
+        <div>
+            <h1 class="text-5xl font-black text-white mb-1">12</h1>
+            <p class="text-orange-400 font-bold uppercase tracking-wider text-xs">Day Streak 🔥</p>
+        </div>
+        <div class="text-right">
+            <p class="text-gray-400 text-xs mb-1">Next Goal</p>
+            <p class="font-bold text-xl">14 Days</p>
+        </div>
+        
 </div>
 
+    </a>
 
     <div class="bento-grid slide-up" style="animation-delay: 0.1s;">
         
@@ -86,7 +94,7 @@
             <h3 class="text-2xl font-black italic uppercase mb-1" id="workout-title">...</h3>
             <p class="text-sm text-gray-300 mb-4"><span id="workout-duration"></span> • <span
                     id="workout-difficulty"></span></p>
-            <a href="/?gym_id=iron_gym&role=client&mode=workout"
+            <a href="workout.html"
                 class="block w-full py-3 bg-white text-black text-center font-bold rounded-xl hover:bg-gray-200 transition">START
                 SESSION</a>
         </div>
@@ -94,7 +102,7 @@
 </div>
 
 
-        <a href="/?gym_id=iron_gym&role=client&mode=progress"
+        <a href="client_progress.html"
             class="glass-card p-4 flex flex-col justify-center items-center tap-effect hover:bg-white/5 transition">
             <span class="text-2xl mb-2">🥗</span>
             <span class="text-sm font-bold">Diet</span>
@@ -117,25 +125,165 @@
 
 
 
-        
-        <!-- Footer -->
+    
+    <!-- Footer -->
+    <div
+        class="fixed bottom-0 w-full h-24 bg-gradient-to-t from-black to-transparent flex justify-around items-end pb-6 px-2 z-40 pointer-events-none">
         <div
-            class="absolute bottom-0 w-full h-24 bg-gradient-to-t from-black to-transparent flex justify-around items-end pb-6 px-2">
-            <div
-                class="glass-card h-16 w-full mx-4 flex justify-around items-center backdrop-blur-xl bg-black/40 border-white/5">
-                <a href="/?gym_id=iron_gym&role=client"
-                    class="flex flex-col items-center text-white tap-effect"><span class="text-xl">🏠</span></a>
-                <a href="/?gym_id=iron_gym&role=client&mode=leaderboard"
-                    class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">🏆</span></a>
-                <a href="/?gym_id=iron_gym&role=client&mode=progress"
-                    class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">📊</span></a>
-                <div class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">👤</span></div>
+            class="glass-card h-16 w-full mx-4 flex justify-around items-center backdrop-blur-xl bg-black/40 border-white/5 pointer-events-auto">
+            <a href="client.html"
+                class="flex flex-col items-center text-white tap-effect"><span class="text-xl">🏠</span></a>
+            <a href="client_leaderboard.html"
+                class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">🏆</span></a>
+            <a href="client_progress.html"
+                class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">📊</span></a>
+            <div class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">👤</span>
             </div>
         </div>
-        
     </div>
+    
 
     
+
+<!-- Create Exercise Modal -->
+<div id="create-exercise-modal"
+    class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm"
+    data-action="hideModal" data-target="create-exercise-modal">
+    <div class="bg-[#1a1a1a] w-full max-w-md rounded-3xl p-6 border border-white/10 relative slide-up"
+        onclick="event.stopPropagation()">
+        <button onclick="hideModal('create-exercise-modal')"
+            class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+
+        <h2 id="new-ex-title" class="text-2xl font-bold mb-1" style=" color: rgb(211,47,47)">New Exercise</h2>
+        <p class="text-sm text-gray-400 mb-6">Add a custom exercise to the database.</p>
+
+        <div class="space-y-4">
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Exercise Name</label>
+                <input type="text" id="new-ex-name"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                    placeholder="e.g. Bulgarian Split Squat">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Muscle Group</label>
+                    <select id="new-ex-muscle"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+                        <option>Chest</option>
+                        <option>Back</option>
+                        <option>Legs</option>
+                        <option>Shoulders</option>
+                        <option>Arms</option>
+                        <option>Abs</option>
+                        <option>Cardio</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Type</label>
+                    <select id="new-ex-type"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+                        <option>Compound</option>
+                        <option>Isolation</option>
+                        <option>Bodyweight</option>
+                        <option>Cardio</option>
+                    </select>
+                </div>
+            </div>
+
+            <button onclick="createExercise()"
+                class="w-full bg-primary text-black font-bold py-4 rounded-xl hover:bg-primary/90 transition mt-4">
+                Create Exercise
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Create Workout Modal -->
+<div id="create-workout-modal"
+    class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm"
+    data-action="hideModal" data-target="create-workout-modal">
+    <div class="bg-[#1a1a1a] w-full max-w-md rounded-3xl p-6 border border-white/10 relative slide-up max-h-[85vh] overflow-y-auto"
+        onclick="event.stopPropagation()">
+        <button onclick="hideModal('create-workout-modal')"
+            class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+
+        <h2 class="text-2xl font-bold mb-1 text-white">New Workout</h2>
+        <p class="text-sm text-gray-400 mb-6">Create a workout template.</p>
+
+        <div class="space-y-4">
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Workout Title</label>
+                <input type="text" id="new-workout-title"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                    placeholder="e.g. Leg Day Destruction">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Duration</label>
+                    <input type="text" id="new-workout-duration"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                        placeholder="e.g. 60 min">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Difficulty</label>
+                    <select id="new-workout-difficulty"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+                        <option>Beginner</option>
+                        <option>Intermediate</option>
+                        <option>Advanced</option>
+                        <option>Elite</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1 mb-2 block">Select Exercises</label>
+                <div id="modal-exercise-list" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                    <!-- Populated by JS -->
+                </div>
+            </div>
+
+            <button onclick="createWorkout()"
+                class="w-full bg-primary text-black font-bold py-4 rounded-xl hover:bg-primary/90 transition mt-4">
+                Create Workout
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Workout Modal -->
+<div id="assign-workout-modal"
+    class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm"
+    data-action="hideModal" data-target="assign-workout-modal">
+    <div class="bg-[#1a1a1a] w-full max-w-sm rounded-3xl p-6 border border-white/10 relative slide-up"
+        onclick="event.stopPropagation()">
+        <button onclick="hideModal('assign-workout-modal')"
+            class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+
+        <h2 class="text-xl font-bold mb-1 text-white">Assign Workout</h2>
+        <p class="text-sm text-gray-400 mb-6" id="assign-modal-date">Select a workout to assign.</p>
+
+        <input type="hidden" id="assign-client-id">
+        <input type="hidden" id="assign-date">
+
+        <div class="space-y-4">
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Workout Template</label>
+                <select id="assign-workout-select"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+                    <!-- Populated by JS -->
+                </select>
+            </div>
+
+            <button onclick="assignWorkout()"
+                class="w-full bg-primary text-black font-bold py-4 rounded-xl hover:bg-primary/90 transition mt-2">
+                Assign to Client
+            </button>
+        </div>
+    </div>
+</div>
 
 <div id="notification-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
     data-action="hideModal" data-target="notification-modal">
@@ -242,7 +390,54 @@
             <p class="text-xs text-gray-400 uppercase">Status</p>
             <p class="text-lg font-bold text-white" id="modal-client-status">...</p>
         </div>
+        <button class="w-full py-3 bg-white/10 text-white font-bold rounded-xl mb-2"
+            onclick="openTrainerCalendar()">View Schedule</button>
         <button class="w-full py-3 bg-primary text-white font-bold rounded-xl">Message Client</button>
+    </div>
+    
+</div>
+
+
+</div>
+
+<div id="calendar-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+    data-action="hideModal" data-target="calendar-modal">
+    
+<div class="glass-card w-full max-w-md p-6 slide-up max-h-[80vh] overflow-y-auto" onclick="event.stopPropagation()" >
+    
+    <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-lg text-white">Client Schedule</h3>
+        <button onclick="hideModal('calendar-modal')" class="text-gray-400">✕</button>
+    </div>
+
+    <!-- Calendar Header -->
+    <div class="flex justify-between items-center mb-4">
+        <button id="trainer-prev-month" class="p-2 bg-white/10 rounded-full tap-effect">←</button>
+        <h2 id="trainer-month-year" class="text-xl font-bold text-white">December 2025</h2>
+        <button id="trainer-next-month" class="p-2 bg-white/10 rounded-full tap-effect">→</button>
+    </div>
+
+    <!-- Calendar Grid -->
+    <div class="grid grid-cols-7 gap-2 text-center mb-2">
+        <div class="text-xs text-gray-500 font-bold">S</div>
+        <div class="text-xs text-gray-500 font-bold">M</div>
+        <div class="text-xs text-gray-500 font-bold">T</div>
+        <div class="text-xs text-gray-500 font-bold">W</div>
+        <div class="text-xs text-gray-500 font-bold">T</div>
+        <div class="text-xs text-gray-500 font-bold">F</div>
+        <div class="text-xs text-gray-500 font-bold">S</div>
+    </div>
+    <div id="trainer-calendar-grid" class="grid grid-cols-7 gap-y-2 gap-x-0">
+        <!-- Days injected by JS -->
+    </div>
+
+    <!-- Selected Day Details -->
+    <div id="trainer-day-details" class="space-y-3 mt-6">
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1" id="trainer-date-title">Select a day
+        </h3>
+        <div id="trainer-events-list" class="space-y-2"></div>
+        <button id="add-workout-btn" class="w-full py-3 bg-white/10 text-white font-bold rounded-xl mt-2 hidden">+ Add
+            Workout</button>
     </div>
     
 </div>
@@ -252,10 +447,11 @@
     <script>
         window.APP_CONFIG = {
             gymId: "iron_gym",
-            role: "client"
+            role: "client",
+            apiBase: "http://192.168.1.55:9007"
         };
     </script>
-    <script type="module" src="/static/js/main.js?v=1"></script>
+    <script src="/static/js/app.js?v=8563"></script>
 </body>
 
 </html>

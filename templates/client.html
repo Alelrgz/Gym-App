@@ -8,7 +8,7 @@
         class="text-2xl tap-effect">←</a>
     <h2 class="font-bold text-xl">Weekly Leaderboard</h2>
 </div>
-<div class="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+<div class="flex-1 p-4 space-y-4">
 
     <!-- Weekly Challenge -->
     {% call card(classes="p-6 relative overflow-hidden") %}
@@ -51,7 +51,7 @@
         class="text-2xl tap-effect">←</a>
     <h2 class="font-bold text-xl">My Nutrition</h2>
 </div>
-<div class="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+<div class="flex-1 p-4 space-y-4">
 
     <!-- Health Score Hero -->
     {% call card(classes="p-6 relative overflow-hidden") %}
@@ -158,7 +158,7 @@
         class="text-2xl tap-effect">←</a>
     <h2 class="font-bold text-xl">Schedule</h2>
 </div>
-<div class="flex-1 overflow-y-auto p-4 space-y-4 pb-24">
+<div class="flex-1 p-4 space-y-4">
     <!-- Calendar Header -->
     <div class="flex justify-between items-center mb-4">
         <button id="prev-month" class="p-2 bg-white/10 rounded-full tap-effect">←</button>
@@ -208,8 +208,8 @@
     </div>
 </div>
 
-<div class="flex-1 overflow-y-auto p-4 pt-0 pb-24 space-y-6">
-    <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=calendar' }}">
+<div class="flex-1 p-4 pt-0 space-y-6">
+    <a href="{{ 'client_calendar.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=calendar' }}">
         {% call card(classes="p-6 flex justify-between items-center relative overflow-hidden tap-effect slide-up") %}
         <div class="absolute top-0 right-0 w-32 h-32 bg-orange-500/20 blur-3xl rounded-full -mr-10 -mt-10"></div>
         <div>
@@ -233,13 +233,13 @@
             <h3 class="text-2xl font-black italic uppercase mb-1" id="workout-title">...</h3>
             <p class="text-sm text-gray-300 mb-4"><span id="workout-duration"></span> • <span
                     id="workout-difficulty"></span></p>
-            <a href="/?gym_id={{ gym_id }}&role=client&mode=workout"
+            <a href="{{ 'workout.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=workout' }}"
                 class="block w-full py-3 bg-white text-black text-center font-bold rounded-xl hover:bg-gray-200 transition">START
                 SESSION</a>
         </div>
         {% endcall %}
 
-        <a href="/?gym_id={{ gym_id }}&role=client&mode=progress"
+        <a href="{{ 'client_progress.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=progress' }}"
             class="glass-card p-4 flex flex-col justify-center items-center tap-effect hover:bg-white/5 transition">
             <span class="text-2xl mb-2">🥗</span>
             <span class="text-sm font-bold">Diet</span>

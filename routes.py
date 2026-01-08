@@ -35,9 +35,7 @@ async def get_owner_data(service: UserService = Depends(get_user_service)):
 async def get_leaderboard_data(service: LeaderboardService = Depends(get_leaderboard_service)):
     return service.get_leaderboard()
 
-@router.post("/api/trainer/assign_workout")
-async def assign_workout(assignment: WorkoutAssignment, service: UserService = Depends(get_user_service)) -> dict:
-    return service.assign_workout(assignment)
+
 
 @router.get("/api/trainer/exercises")
 async def get_exercises(
@@ -82,3 +80,23 @@ async def create_workout(
 @router.post("/api/trainer/assign_workout")
 async def assign_workout(assignment: dict, service: UserService = Depends(get_user_service)):
     return service.assign_workout(assignment)
+
+from fastapi import File, UploadFile
+import shutil
+import os
+import uuid
+
+@router.post("/api/upload")
+async def upload_file(file: UploadFile = File(...)):
+    upload_dir = "static/uploads"
+    os.makedirs(upload_dir, exist_ok=True)
+    
+    # Generate unique filename
+    file_ext = os.path.splitext(file.filename)[1]
+    unique_filename = f"{uuid.uuid4()}{file_ext}"
+    file_path = os.path.join(upload_dir, unique_filename)
+    
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+        
+    return {"url": f"/static/uploads/{unique_filename}", "filename": unique_filename}

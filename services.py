@@ -45,41 +45,7 @@ class UserService:
             raise HTTPException(status_code=404, detail="Client not found")
         return ClientData(**user)
 
-    def assign_workout(self, assignment: WorkoutAssignment) -> dict:
-        # Mock logic: Update the client's workout based on type
-        client = CLIENT_DATA["user_123"]
-        
-        new_workout = {
-            "title": f"Coach Assigned: {assignment.workout_type}",
-            "duration": "60 min",
-            "difficulty": "Hard",
-            "exercises": []
-        }
 
-        if assignment.workout_type == "Push":
-            new_workout["exercises"] = [
-                {"name": "Incline DB Press", "sets": 4, "reps": "8-10", "rest": 90, "video_id": "InclineDBPress"},
-                {"name": "Seated Shoulder Press", "sets": 4, "reps": "8-10", "rest": 90, "video_id": "SeatedShoulderPress"},
-                {"name": "Machine Chest Fly", "sets": 3, "reps": "10-12", "rest": 60, "video_id": "MachineFly"},
-                {"name": "Tricep Rope Pushdown", "sets": 4, "reps": "10-12", "rest": 60, "video_id": "TricepPushdown"}
-            ]
-        elif assignment.workout_type == "Pull":
-             new_workout["exercises"] = [
-                {"name": "Lat Pulldown", "sets": 4, "reps": "10-12", "rest": 60, "video_id": "TricepPushdown"}, # Placeholder
-                {"name": "Cable Row", "sets": 4, "reps": "10-12", "rest": 60, "video_id": "TricepPushdown"}
-            ]
-        elif assignment.workout_type == "Legs":
-             new_workout["exercises"] = [
-                {"name": "Squat", "sets": 4, "reps": "5-8", "rest": 120, "video_id": "InclineDBPress"}, # Placeholder
-                {"name": "Leg Extension", "sets": 3, "reps": "12-15", "rest": 60, "video_id": "InclineDBPress"}
-            ]
-        elif assignment.workout_type == "Cardio":
-             new_workout["exercises"] = [
-                {"name": "Treadmill Run", "sets": 1, "reps": "30 min", "rest": 0, "video_id": "InclineDBPress"} # Placeholder
-            ]
-        
-        client["todays_workout"] = new_workout
-        return {"status": "success", "message": f"Assigned {assignment.workout_type} to {assignment.client_name}"}
 
     def get_trainer(self) -> TrainerData:
         return TrainerData(**TRAINER_DATA)
@@ -98,8 +64,23 @@ class UserService:
         personal_exercises = trainer_db.query(ExerciseORM).all()
         trainer_db.close()
         
-        # Merge and return
-        return list(global_exercises) + list(personal_exercises)
+        import logging
+        logger = logging.getLogger("gym_app")
+        
+        # Deduplicate by name (Personal overrides Global)
+        exercise_map = {ex.name: ex for ex in global_exercises}
+        logger.info(f"DEBUG: Global keys: {list(exercise_map.keys())}")
+        
+        for ex in personal_exercises:
+            logger.info(f"DEBUG: Processing personal ex: {ex.name} (ID: {ex.id})")
+            if ex.name in exercise_map:
+                logger.info(f"DEBUG: Overriding global {ex.name}")
+            else:
+                logger.info(f"DEBUG: Adding new personal {ex.name}")
+            exercise_map[ex.name] = ex
+            
+        logger.info(f"DEBUG: Final keys: {list(exercise_map.keys())}")
+        return list(exercise_map.values())
 
     def create_exercise(self, exercise: dict, trainer_id: str) -> dict:
         # Save to trainer's personal database
@@ -131,55 +112,75 @@ class UserService:
             db.close()
 
     def update_exercise(self, exercise_id: str, updates: dict, trainer_id: str) -> dict:
-        db = SessionLocal()
+        # 1. Try to find in personal DB first
+        trainer_db = get_trainer_session(trainer_id)
         try:
-            # Find the exercise
-            ex = db.query(ExerciseORM).filter(ExerciseORM.id == exercise_id).first()
-            if not ex:
-                raise HTTPException(status_code=404, detail="Exercise not found")
-
-            # Check ownership
-            if ex.owner_id == trainer_id:
-                # Direct Update
+            ex = trainer_db.query(ExerciseORM).filter(ExerciseORM.id == exercise_id).first()
+            if ex:
+                # Found in personal DB, update it directly
                 for key, value in updates.items():
                     if hasattr(ex, key) and value is not None:
                         setattr(ex, key, value)
-                db.commit()
-                db.refresh(ex)
+                trainer_db.commit()
+                trainer_db.refresh(ex)
                 return ex
-            elif ex.owner_id is None:
-                # Forking (Copy-on-Write)
-                # Create a new personal copy with updates
-                new_id = str(uuid.uuid4())
-                
-                # Merge old data with updates
-                new_data = {
-                    "name": updates.get("name", ex.name),
-                    "muscle": updates.get("muscle", ex.muscle),
-                    "type": updates.get("type", ex.type),
-                    "video_id": updates.get("video_id", ex.video_id)
-                }
-                
-                new_ex = ExerciseORM(
-                    id=new_id,
-                    name=new_data["name"],
-                    muscle=new_data["muscle"],
-                    type=new_data["type"],
-                    video_id=new_data["video_id"],
-                    owner_id=trainer_id # Personal Scope
-                )
-                db.add(new_ex)
-                db.commit()
-                db.refresh(new_ex)
-                return new_ex
-            else:
-                # Trying to edit someone else's personal exercise? Should not happen if get is filtered correctly.
-                raise HTTPException(status_code=403, detail="Cannot edit another trainer's exercise")
         except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=f"Failed to update exercise: {str(e)}")
+            trainer_db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to update personal exercise: {str(e)}")
         finally:
-            db.close()
+            trainer_db.close()
+
+        # 2. Try to find in global DB
+        global_db = GlobalSessionLocal()
+        try:
+            ex = global_db.query(ExerciseORM).filter(ExerciseORM.id == exercise_id).first()
+            if ex:
+                # Found in global DB
+                # Check if we already have a fork for this exercise (by name)
+                trainer_db = get_trainer_session(trainer_id)
+                try:
+                    existing_fork = trainer_db.query(ExerciseORM).filter(ExerciseORM.name == ex.name).first()
+                    
+                    if existing_fork:
+                        # Update the existing fork
+                        for key, value in updates.items():
+                            if hasattr(existing_fork, key) and value is not None:
+                                setattr(existing_fork, key, value)
+                        trainer_db.commit()
+                        trainer_db.refresh(existing_fork)
+                        return existing_fork
+                    else:
+                        # Create new in PERSONAL DB (Fork)
+                        new_id = str(uuid.uuid4())
+                        
+                        # Merge old data with updates
+                        new_data = {
+                            "name": updates.get("name", ex.name),
+                            "muscle": updates.get("muscle", ex.muscle),
+                            "type": updates.get("type", ex.type),
+                            "video_id": updates.get("video_id", ex.video_id)
+                        }
+
+                        new_ex = ExerciseORM(
+                            id=new_id,
+                            name=new_data["name"],
+                            muscle=new_data["muscle"],
+                            type=new_data["type"],
+                            video_id=new_data["video_id"],
+                            owner_id=trainer_id
+                        )
+                        trainer_db.add(new_ex)
+                        trainer_db.commit()
+                        trainer_db.refresh(new_ex)
+                        return new_ex
+                finally:
+                    trainer_db.close()
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to fork global exercise: {str(e)}")
+        finally:
+            global_db.close()
+
+        raise HTTPException(status_code=404, detail="Exercise not found")
 
     def get_workouts(self, trainer_id: str) -> list:
         # Get workouts from trainer's personal database only
@@ -190,6 +191,12 @@ class UserService:
             
             # Convert to dict format with parsed exercises
             result = []
+            
+            # Add global workouts first
+            from data import WORKOUTS_DB
+            for w_id, w in WORKOUTS_DB.items():
+                result.append(w)
+
             for w in workouts:
                 result.append({
                     "id": w.id,
@@ -237,6 +244,7 @@ class UserService:
 
     def assign_workout(self, assignment: dict) -> dict:
         from data import CLIENT_DATA, WORKOUTS_DB
+        from datetime import date
         
         client_id = assignment.get("client_id")
         workout_id = assignment.get("workout_id")
@@ -246,7 +254,28 @@ class UserService:
         if client_id not in CLIENT_DATA:
             return {"error": "Client not found"}
         
+        # Try to find in global DB first, then trainer DB (not implemented here yet, assuming global for now)
         workout = WORKOUTS_DB.get(workout_id)
+        
+        # If not in global, check if it's a dynamic workout from the trainer's DB
+        if not workout:
+             # Fallback: Try to fetch from ORM if it's a UUID
+             try:
+                 db = get_trainer_session("trainer_default") # simplified
+                 w_orm = db.query(WorkoutORM).filter(WorkoutORM.id == workout_id).first()
+                 if w_orm:
+                     import json
+                     workout = {
+                         "id": w_orm.id,
+                         "title": w_orm.title,
+                         "duration": w_orm.duration,
+                         "difficulty": w_orm.difficulty,
+                         "exercises": json.loads(w_orm.exercises_json)
+                     }
+                 db.close()
+             except:
+                 pass
+
         if not workout:
             return {"error": "Workout not found"}
 
@@ -263,7 +292,19 @@ class UserService:
         if "calendar" not in CLIENT_DATA[client_id]:
             CLIENT_DATA[client_id]["calendar"] = {"events": []}
         
+        # Remove existing workout events for that day to avoid duplicates
+        CLIENT_DATA[client_id]["calendar"]["events"] = [
+            e for e in CLIENT_DATA[client_id]["calendar"]["events"] 
+            if e["date"] != date_str or e["type"] != "workout"
+        ]
         CLIENT_DATA[client_id]["calendar"]["events"].append(new_event)
+
+        # IF DATE IS TODAY, UPDATE DASHBOARD
+        today = date.today().isoformat()
+        if date_str == today:
+            CLIENT_DATA[client_id]["todays_workout"] = workout
+            print(f"Updated todays_workout for {client_id} to {workout['title']}")
+
         return {"status": "success", "event": new_event}
 
 class LeaderboardService:

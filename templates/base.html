@@ -3,7 +3,8 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
@@ -13,9 +14,15 @@
     <!-- Preload the first video for instant playback -->
     <link rel="preload" href="/static/videos/InclineDBPress.mp4?v=1" as="video" type="video/mp4">
     <link rel="stylesheet" href="/static/css/style.css?v=1">
+    <script>
+        window.onerror = function (msg, url, line, col, error) {
+            alert("Error: " + msg + "\nurl: " + url + "\nline: " + line);
+            return false;
+        };
+    </script>
 </head>
 
-<body class="bg-gray-900 flex flex-col items-center justify-center min-h-screen">
+<body class="bg-gray-900 flex flex-col min-h-screen w-full pb-24">
 
     <!-- DEBUG CONTROLS -->
     <div class="fixed top-6 left-6 text-white/30 text-[10px] font-mono tracking-widest uppercase z-50">
@@ -26,11 +33,11 @@
                 <a href="/?gym_id=zen_yoga&role={{ role }}" class="hover:text-white transition">Zen Yoga</a>
             </div>
             <div class="space-x-2">
-                <a href="/?gym_id={{ gym_id }}&role=client"
+                <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
                     class="{{ 'text-white' if role=='client' else 'hover:text-white' }} transition">Client</a>
-                <a href="/?gym_id={{ gym_id }}&role=trainer"
+                <a href="{{ 'trainer.html' if static_build else '/?gym_id=' + gym_id + '&role=trainer' }}"
                     class="{{ 'text-white' if role=='trainer' else 'hover:text-white' }} transition">Trainer</a>
-                <a href="/?gym_id={{ gym_id }}&role=owner"
+                <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner' }}"
                     class="{{ 'text-white' if role=='owner' else 'hover:text-white' }} transition">Owner</a>
             </div>
             <button onclick="localStorage.clear(); location.reload(true);"
@@ -38,33 +45,33 @@
         </div>
     </div>
 
-    <div class="mobile-frame flex flex-col relative">
-        {% block content %}{% endblock %}
+    {% block content %}{% endblock %}
 
-        {% if mode != 'workout' %}
-        <!-- Footer -->
+    {% if mode != 'workout' %}
+    <!-- Footer -->
+    <div
+        class="fixed bottom-0 w-full h-24 bg-gradient-to-t from-black to-transparent flex justify-around items-end pb-6 px-2 z-40 pointer-events-none">
         <div
-            class="absolute bottom-0 w-full h-24 bg-gradient-to-t from-black to-transparent flex justify-around items-end pb-6 px-2">
-            <div
-                class="glass-card h-16 w-full mx-4 flex justify-around items-center backdrop-blur-xl bg-black/40 border-white/5">
-                <a href="/?gym_id={{ gym_id }}&role=client"
-                    class="flex flex-col items-center text-white tap-effect"><span class="text-xl">🏠</span></a>
-                <a href="/?gym_id={{ gym_id }}&role=client&mode=leaderboard"
-                    class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">🏆</span></a>
-                <a href="/?gym_id={{ gym_id }}&role=client&mode=progress"
-                    class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">📊</span></a>
-                <div class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">👤</span></div>
+            class="glass-card h-16 w-full mx-4 flex justify-around items-center backdrop-blur-xl bg-black/40 border-white/5 pointer-events-auto">
+            <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
+                class="flex flex-col items-center text-white tap-effect"><span class="text-xl">🏠</span></a>
+            <a href="{{ 'client_leaderboard.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=leaderboard' }}"
+                class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">🏆</span></a>
+            <a href="{{ 'client_progress.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=progress' }}"
+                class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">📊</span></a>
+            <div class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">👤</span>
             </div>
         </div>
-        {% endif %}
     </div>
+    {% endif %}
 
     {% include 'modals.html' %}
 
     <script>
         window.APP_CONFIG = {
             gymId: "{{ gym_id }}",
-            role: "{{ role }}"
+            role: "{{ role }}",
+            apiBase: "{{ 'http://192.168.1.55:9007' if static_build else '' }}"
         };
     </script>
     <script src="/static/js/app.js?v={{ range(1, 10000) | random }}"></script>

@@ -1,11 +1,34 @@
-const { gymId, role } = window.APP_CONFIG;
+const { gymId, role, apiBase } = window.APP_CONFIG;
+alert("App.js loaded! apiBase: " + apiBase);
 console.log("App.js loaded (Restored Monolithic) v" + Math.random());
+
+// --- ACCESS CONTROL ---
+if (role === 'client') {
+    const isDesktop = window.innerWidth > 1024; // Simple check for now
+    const isCapacitor = !!window.Capacitor; // Check if running in native app
+
+    if (isDesktop && !isCapacitor) {
+        document.body.innerHTML = `
+            <div class="flex flex-col items-center justify-center min-h-screen bg-black text-white p-8 text-center">
+                <div class="text-6xl mb-4">📱</div>
+                <h1 class="text-2xl font-bold mb-2">Mobile App Only</h1>
+                <p class="text-gray-400 max-w-md">
+                    The Client experience is designed for your phone.
+                    Please download the app or log in from a mobile device.
+                </p>
+            </div>
+        `;
+        throw new Error("Desktop access blocked for client"); // Stop execution
+    }
+}
+
 let workoutState = null;
 
 // --- WEBSOCKET CONNECTION ---
 const clientId = Date.now().toString();
 const protocol = window.location.protocol === 'https:' ? 'wss' : 'ws';
-const wsUrl = `${protocol}://${window.location.host}/ws/${clientId}`;
+const wsHost = apiBase ? apiBase.replace('http', 'ws') : `${protocol}://${window.location.host}`;
+const wsUrl = `${wsHost}/ws/${clientId}`;
 const socket = new WebSocket(wsUrl);
 
 socket.onmessage = function (event) {
@@ -161,7 +184,7 @@ window.renderCalendar = (month, year, events, gridId, titleId, detailTitleId, de
 window.openTrainerCalendar = async () => {
     // Mock fetching client data for the calendar
     // In a real app, we'd pass the client ID
-    const res = await fetch('/api/client/data');
+    const res = await fetch(`${apiBase}/api/client/data`);
     const user = await res.json();
 
     if (user.calendar) {
@@ -189,236 +212,272 @@ window.openTrainerCalendar = async () => {
 // --- INITIALIZATION ---
 
 async function init() {
-    const gymRes = await fetch(`/api/config/${gymId}`);
-    const gymConfig = await gymRes.json();
-    document.documentElement.style.setProperty('--primary', gymConfig.primary_color);
-    const nameEls = document.querySelectorAll('#gym-name, #gym-name-owner');
-    nameEls.forEach(el => el.innerText = gymConfig.logo_text);
+    try {
+        const gymRes = await fetch(`${apiBase}/api/config/${gymId}`);
+        const gymConfig = await gymRes.json();
+        document.documentElement.style.setProperty('--primary', gymConfig.primary_color);
+        const nameEls = document.querySelectorAll('#gym-name, #gym-name-owner');
+        nameEls.forEach(el => el.innerText = gymConfig.logo_text);
 
-    if (role === 'client') {
-        const userRes = await fetch('/api/client/data');
-        const user = await userRes.json();
+        if (role === 'client') {
+            let user = null;
+            try {
+                console.log("Fetching client data from:", `${apiBase}/api/client/data`);
+                const userRes = await fetch(`${apiBase}/api/client/data`);
+                if (!userRes.ok) throw new Error(`API Error: ${userRes.status}`);
 
-        const setTxt = (id, val) => { if (document.getElementById(id)) document.getElementById(id).innerText = val; };
-        setTxt('streak-count', user.streak);
-        setTxt('gem-count', user.gems);
-        setTxt('workout-title', user.todays_workout.title);
-        setTxt('workout-duration', user.todays_workout.duration);
-        setTxt('workout-difficulty', user.todays_workout.difficulty);
-        setTxt('health-score', user.health_score);
+                user = await userRes.json();
+                console.log("Client Data Received:", user);
 
-        const questList = document.getElementById('quest-list');
-        if (questList) {
-            user.daily_quests.forEach(quest => {
-                const div = document.createElement('div');
-                div.className = "glass-card p-4 flex justify-between items-center tap-effect";
-                div.onclick = function () { toggleQuest(this); };
-                if (quest.completed) div.style.borderColor = "rgba(255, 255, 0, 0.3)";
-                div.innerHTML = `<div class="flex items-center"><div class="w-5 h-5 rounded-full border border-white/20 mr-3 flex items-center justify-center ${quest.completed ? 'bg-yellow-400 text-black border-none' : ''}">${quest.completed ? '✓' : ''}</div><span class="text-sm font-medium text-gray-200">${quest.text}</span></div><span class="text-xs font-bold text-yellow-500">+${quest.xp}</span>`;
-                questList.appendChild(div);
-            });
-        }
+                const setTxt = (id, val) => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.innerText = val;
+                    } else {
+                        console.warn(`Element #${id} not found`);
+                    }
+                };
 
-        // Progress Mode Logic
-        if (user.progress) {
-            // Hydration
-            if (document.getElementById('hydro-val')) {
-                const cur = user.progress.hydration.current;
-                const max = user.progress.hydration.target;
-                document.getElementById('hydro-val').innerText = `${cur}ml`;
-                const pct = 100 - ((cur / max) * 100);
-                document.getElementById('hydro-wave').style.top = `${pct}%`;
+                setTxt('streak-count', user.streak);
+                setTxt('gem-count', user.gems);
+                setTxt('health-score', user.health_score);
+
+                if (user.todays_workout) {
+                    console.log("Rendering workout:", user.todays_workout);
+                    setTxt('workout-title', user.todays_workout.title);
+                    setTxt('workout-duration', user.todays_workout.duration);
+                    setTxt('workout-difficulty', user.todays_workout.difficulty);
+                } else {
+                    console.warn("No todays_workout found in user data");
+                    setTxt('workout-title', "Rest Day");
+                    setTxt('workout-duration', "0 min");
+                    setTxt('workout-difficulty', "Relax");
+                }
+            } catch (e) {
+                console.error("Error fetching client data:", e);
+                alert("Client Data Error: " + e.message);
             }
 
-            // Weekly History
-            const chart = document.getElementById('weekly-chart');
-            if (chart && user.progress.weekly_history) {
-                user.progress.weekly_history.forEach(val => {
-                    const h = Math.min((val / 2500) * 100, 100);
-                    const bar = document.createElement('div');
-                    bar.className = "w-full bg-white/20 rounded-t-sm hover:bg-white/40 transition";
-                    bar.style.height = `${h}%`;
-                    chart.appendChild(bar);
+            const questList = document.getElementById('quest-list');
+            if (questList) {
+                user.daily_quests.forEach(quest => {
+                    const div = document.createElement('div');
+                    div.className = "glass-card p-4 flex justify-between items-center tap-effect";
+                    div.onclick = function () { toggleQuest(this); };
+                    if (quest.completed) div.style.borderColor = "rgba(255, 255, 0, 0.3)";
+                    div.innerHTML = `<div class="flex items-center"><div class="w-5 h-5 rounded-full border border-white/20 mr-3 flex items-center justify-center ${quest.completed ? 'bg-yellow-400 text-black border-none' : ''}">${quest.completed ? '✓' : ''}</div><span class="text-sm font-medium text-gray-200">${quest.text}</span></div><span class="text-xs font-bold text-yellow-500">+${quest.xp}</span>`;
+                    questList.appendChild(div);
                 });
             }
 
-            // Macros
-            const m = user.progress.macros;
-            if (m && document.getElementById('cals-remaining')) {
-                document.getElementById('cals-remaining').innerText = `${m.calories.target - m.calories.current} kcal left`;
+            // Progress Mode Logic
+            if (user.progress) {
+                // Hydration
+                if (document.getElementById('hydro-val')) {
+                    const cur = user.progress.hydration.current;
+                    const max = user.progress.hydration.target;
+                    document.getElementById('hydro-val').innerText = `${cur}ml`;
+                    const pct = 100 - ((cur / max) * 100);
+                    document.getElementById('hydro-wave').style.top = `${pct}%`;
+                }
 
-                const updateRing = (id, cur, max, color) => {
-                    const pct = (cur / max) * 100;
-                    const el = document.getElementById(id);
-                    if (el) {
-                        el.style.background = `conic-gradient(${color} ${pct}%, #333 0%)`;
-                        document.getElementById('val-' + id.split('-')[1]).innerText = `${cur}g`;
-                    }
-                };
-                updateRing('ring-protein', m.protein.current, m.protein.target, '#4ADE80');
-                updateRing('ring-carbs', m.carbs.current, m.carbs.target, '#60A5FA');
-                updateRing('ring-fat', m.fat.current, m.fat.target, '#F472B6');
-            }
-
-            // Grouped Diet Log
-            const dietContainer = document.getElementById('diet-log-container');
-            if (dietContainer && user.progress.diet_log) {
-                for (const [group, items] of Object.entries(user.progress.diet_log)) {
-                    const groupDiv = document.createElement('div');
-                    groupDiv.innerHTML = `<h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">${group}</h3>`;
-                    const listDiv = document.createElement('div');
-                    listDiv.className = "space-y-2";
-                    items.forEach(item => {
-                        const div = document.createElement('div');
-                        div.className = "glass-card p-3 flex justify-between items-center";
-                        div.innerHTML = `<div><p class="text-sm font-bold text-white">${item.meal}</p><p class="text-[10px] text-gray-400">${item.time}</p></div><span class="text-xs font-mono text-green-400">${item.cals}</span>`;
-                        listDiv.appendChild(div);
+                // Weekly History
+                const chart = document.getElementById('weekly-chart');
+                if (chart && user.progress.weekly_history) {
+                    user.progress.weekly_history.forEach(val => {
+                        const h = Math.min((val / 2500) * 100, 100);
+                        const bar = document.createElement('div');
+                        bar.className = "w-full bg-white/20 rounded-t-sm hover:bg-white/40 transition";
+                        bar.style.height = `${h}%`;
+                        chart.appendChild(bar);
                     });
-                    groupDiv.appendChild(listDiv);
-                    dietContainer.appendChild(groupDiv);
+                }
+
+                // Macros
+                const m = user.progress.macros;
+                if (m && document.getElementById('cals-remaining')) {
+                    document.getElementById('cals-remaining').innerText = `${m.calories.target - m.calories.current} kcal left`;
+
+                    const updateRing = (id, cur, max, color) => {
+                        const pct = (cur / max) * 100;
+                        const el = document.getElementById(id);
+                        if (el) {
+                            el.style.background = `conic-gradient(${color} ${pct}%, #333 0%)`;
+                            document.getElementById('val-' + id.split('-')[1]).innerText = `${cur}g`;
+                        }
+                    };
+                    updateRing('ring-protein', m.protein.current, m.protein.target, '#4ADE80');
+                    updateRing('ring-carbs', m.carbs.current, m.carbs.target, '#60A5FA');
+                    updateRing('ring-fat', m.fat.current, m.fat.target, '#F472B6');
+                }
+
+                // Grouped Diet Log
+                const dietContainer = document.getElementById('diet-log-container');
+                if (dietContainer && user.progress.diet_log) {
+                    for (const [group, items] of Object.entries(user.progress.diet_log)) {
+                        const groupDiv = document.createElement('div');
+                        groupDiv.innerHTML = `<h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">${group}</h3>`;
+                        const listDiv = document.createElement('div');
+                        listDiv.className = "space-y-2";
+                        items.forEach(item => {
+                            const div = document.createElement('div');
+                            div.className = "glass-card p-3 flex justify-between items-center";
+                            div.innerHTML = `<div><p class="text-sm font-bold text-white">${item.meal}</p><p class="text-[10px] text-gray-400">${item.time}</p></div><span class="text-xs font-mono text-green-400">${item.cals}</span>`;
+                            listDiv.appendChild(div);
+                        });
+                        groupDiv.appendChild(listDiv);
+                        dietContainer.appendChild(groupDiv);
+                    }
+                }
+
+                // Photos
+                const photoGallery = document.getElementById('photo-gallery');
+                if (photoGallery) {
+                    user.progress.photos.forEach(url => {
+                        const img = document.createElement('img');
+                        img.src = url;
+                        img.className = "w-24 h-32 object-cover rounded-xl border border-white/10 flex-shrink-0";
+                        photoGallery.appendChild(img);
+                    });
                 }
             }
 
-            // Photos
-            const photoGallery = document.getElementById('photo-gallery');
-            if (photoGallery) {
-                user.progress.photos.forEach(url => {
-                    const img = document.createElement('img');
-                    img.src = url;
-                    img.className = "w-24 h-32 object-cover rounded-xl border border-white/10 flex-shrink-0";
-                    photoGallery.appendChild(img);
+            // Calendar Mode Logic
+            const calendarGrid = document.getElementById('calendar-grid');
+
+            if (calendarGrid && user.calendar) {
+                let currentMonth = new Date().getMonth();
+                let currentYear = new Date().getFullYear();
+                const events = user.calendar.events;
+
+                // Initial render
+                try {
+                    window.renderCalendar(currentMonth, currentYear, events, 'calendar-grid', 'current-month-year', 'selected-date-title', 'day-events-list');
+                } catch (e) {
+                    console.error("Error rendering calendar:", e);
+                }
+
+                document.getElementById('prev-month').onclick = () => {
+                    currentMonth--;
+                    if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+                    window.renderCalendar(currentMonth, currentYear, events, 'calendar-grid', 'current-month-year', 'selected-date-title', 'day-events-list');
+                };
+
+                document.getElementById('next-month').onclick = () => {
+                    currentMonth++;
+                    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+                    window.renderCalendar(currentMonth, currentYear, events, 'calendar-grid', 'current-month-year', 'selected-date-title', 'day-events-list');
+                };
+
+                // Show today's details by default
+                const todayStr = new Date().toISOString().split('T')[0];
+                const todayEvents = events.filter(e => e.date === todayStr);
+                window.showDayDetails(todayStr, todayEvents, 'selected-date-title', 'day-events-list');
+            } else {
+                console.warn("Skipping calendar init. Grid:", !!calendarGrid, "Data:", !!user.calendar);
+                if (calendarGrid && !user.calendar) alert("Calendar data missing!");
+            }
+        }
+
+        if (role === 'trainer') {
+            const trainerRes = await fetch(`${apiBase}/api/trainer/data`);
+            const data = await trainerRes.json();
+
+            const list = document.getElementById('client-list');
+            if (list) {
+                data.clients.forEach(c => {
+                    const div = document.createElement('div');
+                    div.className = "glass-card p-4 flex justify-between items-center tap-effect";
+                    div.onclick = function () { showClientModal(c.name, c.plan, c.status, c.id); };
+                    const statusColor = c.status === 'At Risk' ? 'text-red-400' : 'text-green-400';
+                    div.innerHTML = `<div class="flex items-center"><div class="w-10 h-10 rounded-full bg-white/10 mr-3 overflow-hidden"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${c.name}" /></div><div><p class="font-bold text-sm text-white">${c.name}</p><p class="text-[10px] text-gray-400">${c.plan} • Seen ${c.last_seen}</p></div></div><span class="text-xs font-bold ${statusColor}">${c.status}</span>`;
+                    list.appendChild(div);
+                });
+            }
+
+            const vidLib = document.getElementById('video-library');
+            if (vidLib && data.video_library) {
+                data.video_library.forEach(v => {
+                    const div = document.createElement('div');
+                    div.className = "glass-card p-0 overflow-hidden relative group tap-effect";
+                    div.innerHTML = `<img src="${v.thumb}" class="w-full h-24 object-cover opacity-60 group-hover:opacity-100 transition"><div class="absolute bottom-0 w-full p-2 bg-gradient-to-t from-black to-transparent"><p class="text-[10px] font-bold text-white truncate">${v.title}</p><p class="text-[8px] text-gray-400 uppercase">${v.type}</p></div>`;
+                    vidLib.appendChild(div);
+                });
+            }
+
+            // Fetch and Render Exercise Library
+            if (document.getElementById('exercise-library')) {
+                fetchAndRenderExercises();
+
+                // Add trainer selector change listener
+                const trainerSelector = document.getElementById('trainer-selector');
+                if (trainerSelector) {
+                    trainerSelector.addEventListener('change', () => {
+                        fetchAndRenderExercises();
+                        showToast(`Switched to ${trainerSelector.options[trainerSelector.selectedIndex].text}`);
+                    });
+                }
+            }
+
+            // Fetch and Render Workouts
+            if (document.getElementById('workout-library')) {
+                fetchAndRenderWorkouts();
+                populateExerciseSelector();
+            }
+        }
+
+        if (role === 'owner') {
+            const ownerRes = await fetch(`${apiBase}/api/owner/data`);
+            const data = await ownerRes.json();
+            const setTxt = (id, val) => { if (document.getElementById(id)) document.getElementById(id).innerText = val; };
+            setTxt('revenue-display', data.revenue_today);
+            setTxt('active-members', data.active_members);
+            setTxt('staff-active', data.staff_active);
+
+            const feed = document.getElementById('activity-feed');
+            if (feed) {
+                data.recent_activity.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = "p-4 flex items-start";
+                    let icon = '🔹';
+                    if (item.type === 'money') icon = '💰';
+                    if (item.type === 'staff') icon = '👔';
+                    div.innerHTML = `<span class="mr-3 text-lg">${icon}</span><div><p class="text-sm font-medium text-gray-200">${item.text}</p><p class="text-[10px] text-gray-500">${item.time}</p></div>`;
+                    feed.appendChild(div);
                 });
             }
         }
 
-        // Calendar Mode Logic
-        const calendarGrid = document.getElementById('calendar-grid');
-        if (calendarGrid && user.calendar) {
-            let currentMonth = new Date().getMonth();
-            let currentYear = new Date().getFullYear();
-            const events = user.calendar.events;
+        // Leaderboard Mode
+        if (document.getElementById('leaderboard-list')) {
+            const leaderboardRes = await fetch(`${apiBase}/api/leaderboard/data`);
+            const leaderboard = await leaderboardRes.json();
 
-            // Initial render
-            window.renderCalendar(currentMonth, currentYear, events, 'calendar-grid', 'current-month-year', 'selected-date-title', 'day-events-list');
-
-            document.getElementById('prev-month').onclick = () => {
-                currentMonth--;
-                if (currentMonth < 0) { currentMonth = 11; currentYear--; }
-                window.renderCalendar(currentMonth, currentYear, events, 'calendar-grid', 'current-month-year', 'selected-date-title', 'day-events-list');
-            };
-
-            document.getElementById('next-month').onclick = () => {
-                currentMonth++;
-                if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-                window.renderCalendar(currentMonth, currentYear, events, 'calendar-grid', 'current-month-year', 'selected-date-title', 'day-events-list');
-            };
-
-            // Show today's details by default
-            const todayStr = new Date().toISOString().split('T')[0];
-            const todayEvents = events.filter(e => e.date === todayStr);
-            window.showDayDetails(todayStr, todayEvents, 'selected-date-title', 'day-events-list');
-        }
-    }
-
-    if (role === 'trainer') {
-        const trainerRes = await fetch('/api/trainer/data');
-        const data = await trainerRes.json();
-
-        const list = document.getElementById('client-list');
-        if (list) {
-            data.clients.forEach(c => {
-                const div = document.createElement('div');
-                div.className = "glass-card p-4 flex justify-between items-center tap-effect";
-                div.onclick = function () { showClientModal(c.name, c.plan, c.status, c.id); };
-                const statusColor = c.status === 'At Risk' ? 'text-red-400' : 'text-green-400';
-                div.innerHTML = `<div class="flex items-center"><div class="w-10 h-10 rounded-full bg-white/10 mr-3 overflow-hidden"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${c.name}" /></div><div><p class="font-bold text-sm text-white">${c.name}</p><p class="text-[10px] text-gray-400">${c.plan} • Seen ${c.last_seen}</p></div></div><span class="text-xs font-bold ${statusColor}">${c.status}</span>`;
-                list.appendChild(div);
-            });
-        }
-
-        const vidLib = document.getElementById('video-library');
-        if (vidLib && data.video_library) {
-            data.video_library.forEach(v => {
-                const div = document.createElement('div');
-                div.className = "glass-card p-0 overflow-hidden relative group tap-effect";
-                div.innerHTML = `<img src="${v.thumb}" class="w-full h-24 object-cover opacity-60 group-hover:opacity-100 transition"><div class="absolute bottom-0 w-full p-2 bg-gradient-to-t from-black to-transparent"><p class="text-[10px] font-bold text-white truncate">${v.title}</p><p class="text-[8px] text-gray-400 uppercase">${v.type}</p></div>`;
-                vidLib.appendChild(div);
-            });
-        }
-
-        // Fetch and Render Exercise Library
-        if (document.getElementById('exercise-library')) {
-            fetchAndRenderExercises();
-
-            // Add trainer selector change listener
-            const trainerSelector = document.getElementById('trainer-selector');
-            if (trainerSelector) {
-                trainerSelector.addEventListener('change', () => {
-                    fetchAndRenderExercises();
-                    showToast(`Switched to ${trainerSelector.options[trainerSelector.selectedIndex].text}`);
-                });
+            const setTxt = (id, val) => { if (document.getElementById(id)) document.getElementById(id).innerText = val; };
+            setTxt('challenge-title', leaderboard.weekly_challenge.title);
+            setTxt('challenge-desc', leaderboard.weekly_challenge.description);
+            setTxt('challenge-progress', leaderboard.weekly_challenge.progress);
+            setTxt('challenge-target', leaderboard.weekly_challenge.target);
+            setTxt('challenge-reward', leaderboard.weekly_challenge.reward_gems);
+            const challengePct = (leaderboard.weekly_challenge.progress / leaderboard.weekly_challenge.target) * 100;
+            if (document.getElementById('challenge-bar')) {
+                document.getElementById('challenge-bar').style.width = `${challengePct}%`;
             }
-        }
 
-        // Fetch and Render Workouts
-        if (document.getElementById('workout-library')) {
-            fetchAndRenderWorkouts();
-            populateExerciseSelector();
-        }
-    }
-
-    if (role === 'owner') {
-        const ownerRes = await fetch('/api/owner/data');
-        const data = await ownerRes.json();
-        const setTxt = (id, val) => { if (document.getElementById(id)) document.getElementById(id).innerText = val; };
-        setTxt('revenue-display', data.revenue_today);
-        setTxt('active-members', data.active_members);
-        setTxt('staff-active', data.staff_active);
-
-        const feed = document.getElementById('activity-feed');
-        if (feed) {
-            data.recent_activity.forEach(item => {
+            const leaderList = document.getElementById('leaderboard-list');
+            leaderboard.users.forEach((u, idx) => {
                 const div = document.createElement('div');
-                div.className = "p-4 flex items-start";
-                let icon = '🔹';
-                if (item.type === 'money') icon = '💰';
-                if (item.type === 'staff') icon = '👔';
-                div.innerHTML = `<span class="mr-3 text-lg">${icon}</span><div><p class="text-sm font-medium text-gray-200">${item.text}</p><p class="text-[10px] text-gray-500">${item.time}</p></div>`;
-                feed.appendChild(div);
-            });
-        }
-    }
+                const isUser = u.isCurrentUser || false;
+                div.className = `glass-card p-4 flex items-center justify-between tap-effect ${isUser ? 'border-2 border-primary bg-primary/10' : ''}`;
 
-    // Leaderboard Mode
-    if (document.getElementById('leaderboard-list')) {
-        const leaderboardRes = await fetch('/api/leaderboard/data');
-        const leaderboard = await leaderboardRes.json();
+                const getRankEmoji = (rank) => {
+                    if (rank === 1) return '🥇';
+                    if (rank === 2) return '🥈';
+                    if (rank === 3) return '🥉';
+                    return `#${rank}`;
+                };
 
-        const setTxt = (id, val) => { if (document.getElementById(id)) document.getElementById(id).innerText = val; };
-        setTxt('challenge-title', leaderboard.weekly_challenge.title);
-        setTxt('challenge-desc', leaderboard.weekly_challenge.description);
-        setTxt('challenge-progress', leaderboard.weekly_challenge.progress);
-        setTxt('challenge-target', leaderboard.weekly_challenge.target);
-        setTxt('challenge-reward', leaderboard.weekly_challenge.reward_gems);
-        const challengePct = (leaderboard.weekly_challenge.progress / leaderboard.weekly_challenge.target) * 100;
-        if (document.getElementById('challenge-bar')) {
-            document.getElementById('challenge-bar').style.width = `${challengePct}%`;
-        }
-
-        const leaderList = document.getElementById('leaderboard-list');
-        leaderboard.users.forEach((u, idx) => {
-            const div = document.createElement('div');
-            const isUser = u.isCurrentUser || false;
-            div.className = `glass-card p-4 flex items-center justify-between tap-effect ${isUser ? 'border-2 border-primary bg-primary/10' : ''}`;
-
-            const getRankEmoji = (rank) => {
-                if (rank === 1) return '🥇';
-                if (rank === 2) return '🥈';
-                if (rank === 3) return '🥉';
-                return `#${rank}`;
-            };
-
-            div.innerHTML = `
+                div.innerHTML = `
                     <div class="flex items-center space-x-3">
                         <span class="text-2xl font-black w-10">${getRankEmoji(u.rank)}</span>
                         <div class="w-10 h-10 rounded-full bg-white/10 overflow-hidden">
@@ -433,8 +492,11 @@ async function init() {
                         <p class="text-yellow-400 font-bold">💎 ${u.gems}</p>
                     </div>
                 `;
-            leaderList.appendChild(div);
-        });
+                leaderList.appendChild(div);
+            });
+        }
+    } catch (e) {
+        console.error("Init Error:", e);
     }
 }
 
@@ -506,6 +568,10 @@ function addWater() {
     const wave = document.getElementById('hydro-wave');
     if (el && wave) {
         let cur = parseInt(el.innerText);
+        if (cur + 250 > 10000) {
+            showToast('Daily limit reached! (10000ml) 🚫');
+            return;
+        }
         cur += 250;
         el.innerText = cur + 'ml';
         // Mock target 2500
@@ -594,66 +660,300 @@ function getCurrentTrainerId() {
 
 async function fetchAndRenderExercises() {
     const trainerId = getCurrentTrainerId();
-    const res = await fetch('/api/trainer/exercises', {
+    const res = await fetch(`${apiBase}/api/trainer/exercises`, {
         headers: { 'x-trainer-id': trainerId }
     });
     const exercises = await res.json();
     const container = document.getElementById('exercise-library');
     if (!container) return;
 
+    // Filter Logic
+    const searchVal = document.getElementById('ex-search').value.toLowerCase();
+    const muscleVal = document.getElementById('ex-filter-muscle').value;
+    const typeVal = document.getElementById('ex-filter-type').value;
+
+    const filtered = exercises.filter(ex => {
+        const matchesSearch = ex.name.toLowerCase().includes(searchVal);
+        const matchesMuscle = muscleVal ? ex.muscle === muscleVal : true;
+        const matchesType = typeVal ? ex.type === typeVal : true;
+        return matchesSearch && matchesMuscle && matchesType;
+    });
+
     container.innerHTML = '';
-    exercises.forEach(ex => {
+
+    const muscleIcons = {
+        'Chest': '🛡️', 'Back': '🦅', 'Legs': '🦵',
+        'Shoulders': '💪', 'Arms': '🦾', 'Abs': '🍫', 'Cardio': '🏃'
+    };
+
+    const typeColors = {
+        'Compound': 'bg-yellow-500/20 text-yellow-400',
+        'Isolation': 'bg-blue-500/20 text-blue-400',
+        'Bodyweight': 'bg-green-500/20 text-green-400',
+        'Cardio': 'bg-red-500/20 text-red-400'
+    };
+
+    filtered.forEach(ex => {
         const div = document.createElement('div');
-        div.className = "glass-card p-3 flex justify-between items-center";
+        div.className = "glass-card p-4 flex flex-col justify-between relative overflow-hidden group tap-effect slide-up min-h-[120px]";
+
+        const icon = muscleIcons[ex.muscle] || '🏋️';
+        const badgeClass = typeColors[ex.type] || 'bg-gray-500/20 text-gray-400';
+
+        let videoBackground = '';
+        if (ex.video_id) {
+            let src = ex.video_id;
+            if (!src.startsWith('http') && !src.startsWith('/')) {
+                src = `/static/videos/${src}.mp4`;
+            }
+            // Only show video preview if it's likely a direct file (not youtube)
+            // Simple check: if it contains 'youtube' or 'youtu.be', skip or handle differently.
+            // For now, assume if it's not youtube, it's playable in <video>
+            if (!src.includes('youtube') && !src.includes('youtu.be')) {
+                videoBackground = `
+                    <div class="absolute inset-0 z-0 opacity-0 group-hover:opacity-40 transition duration-500">
+                        <video src="${src}" muted loop playsinline class="w-full h-full object-cover"></video>
+                    </div>
+                 `;
+            }
+        }
+
         div.innerHTML = `
-            <div class="flex items-center">
-                <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center mr-3 text-xs font-bold text-gray-400">
-                    ${ex.muscle[0]}
+            ${videoBackground}
+            <div class="absolute -right-2 -top-2 opacity-10 group-hover:opacity-0 transition transform group-hover:scale-110 pointer-events-none">
+                <span class="text-8xl">${icon}</span>
+            </div>
+            <div class="relative z-10 w-full h-full flex flex-col justify-between pointer-events-none">
+                <div class="flex justify-between items-start mb-2 pointer-events-auto">
+                    <span class="text-[10px] font-bold px-2 py-1 rounded-full ${badgeClass} uppercase tracking-wider">${ex.type}</span>
+                    <button class="edit-btn w-8 h-8 flex items-center justify-center bg-white/10 rounded-full text-gray-300 hover:bg-white/20 hover:text-white transition tap-effect">
+                        ⚙️
+                    </button>
                 </div>
                 <div>
-                    <p class="font-bold text-sm text-white">${ex.name}</p>
-                    <p class="text-[10px] text-gray-400">${ex.muscle} • ${ex.type}</p>
+                    <h4 class="font-bold text-lg text-white mb-1 leading-tight drop-shadow-md">${ex.name}</h4>
+                    <div class="flex items-center text-xs text-gray-400 mt-1">
+                        <span class="mr-2">${icon}</span>
+                        <span>${ex.muscle}</span>
+                    </div>
                 </div>
             </div>
-            <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition">Edit</button>
         `;
+
+        // Video Hover Logic
+        if (videoBackground) {
+            const video = div.querySelector('video');
+            div.addEventListener('mouseenter', () => {
+                try { video.play(); } catch (e) { }
+            });
+            div.addEventListener('mouseleave', () => {
+                try { video.pause(); video.currentTime = 0; } catch (e) { }
+            });
+        }
+
+        // Attach click listener to the edit button
+        const editBtn = div.querySelector('.edit-btn');
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent card click if we add one later
+            openEditExerciseModal(ex);
+        });
+
         container.appendChild(div);
     });
+
+    // Attach listeners if not already attached (simple check)
+    if (!container.dataset.listenersAttached) {
+        document.getElementById('ex-search').addEventListener('input', fetchAndRenderExercises);
+        document.getElementById('ex-filter-muscle').addEventListener('change', fetchAndRenderExercises);
+        document.getElementById('ex-filter-type').addEventListener('change', fetchAndRenderExercises);
+
+        // File input listeners for preview and upload
+        ['new', 'edit'].forEach(prefix => {
+            const fileInput = document.getElementById(`${prefix}-ex-file`);
+            const videoInput = document.getElementById(`${prefix}-ex-video`);
+            const filenameDisplay = document.getElementById(`${prefix}-ex-filename`);
+
+            if (fileInput) {
+                fileInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        filenameDisplay.innerText = `Uploading: ${file.name}...`;
+
+                        const formData = new FormData();
+                        formData.append('file', file);
+
+                        try {
+                            const res = await fetch(`${apiBase}/api/upload`, {
+                                method: 'POST',
+                                body: formData
+                            });
+
+                            if (res.ok) {
+                                const data = await res.json();
+                                videoInput.value = data.url; // Use real server URL
+                                filenameDisplay.innerText = `Uploaded: ${file.name}`;
+                                showToast('Video uploaded! 🎥');
+
+                                // Update Preview
+                                const previewContainer = document.getElementById(`${prefix}-ex-preview-container`);
+                                const previewVideo = document.getElementById(`${prefix}-ex-preview`);
+                                if (previewContainer && previewVideo) {
+                                    previewVideo.src = data.url;
+                                    previewContainer.classList.remove('hidden');
+                                    previewVideo.load();
+                                }
+                            } else {
+                                filenameDisplay.innerText = `Upload failed`;
+                                showToast('Upload failed ❌');
+                            }
+                        } catch (err) {
+                            console.error(err);
+                            filenameDisplay.innerText = `Upload error`;
+                            showToast('Upload error ❌');
+                        }
+                    }
+                });
+            }
+
+            // URL Input Listener for Preview
+            if (videoInput) {
+                videoInput.addEventListener('input', (e) => {
+                    const url = e.target.value;
+                    const previewContainer = document.getElementById(`${prefix}-ex-preview-container`);
+                    const previewVideo = document.getElementById(`${prefix}-ex-preview`);
+
+                    if (previewContainer && previewVideo) {
+                        if (url) {
+                            previewVideo.src = url;
+                            previewContainer.classList.remove('hidden');
+                            previewVideo.load();
+                        } else {
+                            previewContainer.classList.add('hidden');
+                            previewVideo.pause();
+                            previewVideo.src = "";
+                        }
+                    }
+                });
+            }
+        });
+
+        container.dataset.listenersAttached = "true";
+    }
 }
 
-async function createExercise() {
-    const name = document.getElementById('new-ex-name').value;
-    const muscle = document.getElementById('new-ex-muscle').value;
-    const type = document.getElementById('new-ex-type').value;
+function openEditExerciseModal(ex) {
+    document.getElementById('edit-ex-id').value = ex.id;
+    document.getElementById('edit-ex-name').value = ex.name;
+    document.getElementById('edit-ex-muscle').value = ex.muscle;
+    document.getElementById('edit-ex-type').value = ex.type;
+    document.getElementById('edit-ex-video').value = ex.video_id || '';
+    document.getElementById('edit-ex-filename').innerText = ''; // Reset file label
+
+    // Set Preview
+    const previewContainer = document.getElementById('edit-ex-preview-container');
+    const previewVideo = document.getElementById('edit-ex-preview');
+    if (previewContainer && previewVideo) {
+        if (ex.video_id) {
+            // Check if it's a full URL or a local ID (assuming local IDs don't have http)
+            let src = ex.video_id;
+            if (!src.startsWith('http') && !src.startsWith('/')) {
+                src = `/static/videos/${src}.mp4`;
+            }
+            previewVideo.src = src;
+            previewContainer.classList.remove('hidden');
+            previewVideo.load();
+        } else {
+            previewContainer.classList.add('hidden');
+            previewVideo.pause();
+            previewVideo.src = "";
+        }
+    }
+
+    showModal('edit-exercise-modal');
+}
+
+async function updateExercise() {
+    const id = document.getElementById('edit-ex-id').value;
+    const name = document.getElementById('edit-ex-name').value;
+    const muscle = document.getElementById('edit-ex-muscle').value;
+    const type = document.getElementById('edit-ex-type').value;
+    const video = document.getElementById('edit-ex-video').value;
 
     if (!name) {
-        showToast('Please enter an exercise name');
+        showToast('Please enter an exercise name ⚠️');
         return;
     }
 
     const trainerId = getCurrentTrainerId();
-    const res = await fetch('/api/trainer/exercises', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-trainer-id': trainerId
-        },
-        body: JSON.stringify({ name, muscle, type })
-    });
+    const payload = { name, muscle, type, video_id: video };
 
-    if (res.ok) {
-        showToast('Exercise created successfully! 💪');
-        hideModal('create-exercise-modal');
-        document.getElementById('new-ex-name').value = '';
-        fetchAndRenderExercises();
-    } else {
-        showToast('Failed to create exercise');
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/exercises/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-trainer-id': trainerId
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast('Exercise updated! ✅');
+            hideModal('edit-exercise-modal');
+            fetchAndRenderExercises();
+        } else {
+            showToast('Failed to update exercise ❌');
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Error updating exercise ❌');
     }
 }
 
+window.createExercise = async function () {
+    const name = document.getElementById('new-ex-name').value;
+    const muscle = document.getElementById('new-ex-muscle').value;
+    const type = document.getElementById('new-ex-type').value;
+    const video = document.getElementById('new-ex-video').value;
+
+    if (!name) {
+        showToast('Please enter an exercise name ⚠️');
+        return;
+    }
+
+    const trainerId = getCurrentTrainerId();
+    const payload = { name, muscle, type, video_id: video };
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/exercises`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-trainer-id': trainerId
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast('Exercise created! 💪');
+            hideModal('create-exercise-modal');
+            // Clear inputs
+            document.getElementById('new-ex-name').value = '';
+            document.getElementById('new-ex-video').value = '';
+            document.getElementById('new-ex-filename').innerText = '';
+            fetchAndRenderExercises();
+        } else {
+            showToast('Failed to create exercise ❌');
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Error creating exercise ❌');
+    }
+};
+
 async function fetchAndRenderWorkouts() {
     const trainerId = getCurrentTrainerId();
-    const res = await fetch('/api/trainer/workouts', {
+    const res = await fetch(`${apiBase}/api/trainer/workouts`, {
         headers: { 'x-trainer-id': trainerId }
     });
     const workouts = await res.json();
@@ -677,7 +977,7 @@ async function fetchAndRenderWorkouts() {
 
 async function populateExerciseSelector() {
     const trainerId = getCurrentTrainerId();
-    const res = await fetch('/api/trainer/exercises', {
+    const res = await fetch(`${apiBase}/api/trainer/exercises`, {
         headers: { 'x-trainer-id': trainerId }
     });
     const exercises = await res.json();
@@ -703,7 +1003,7 @@ async function populateExerciseSelector() {
     });
 }
 
-async function createWorkout() {
+window.createWorkout = async function () {
     const title = document.getElementById('new-workout-title').value;
     const duration = document.getElementById('new-workout-duration').value;
     const difficulty = document.getElementById('new-workout-difficulty').value;
@@ -742,7 +1042,7 @@ async function createWorkout() {
     }
 
     const trainerId = getCurrentTrainerId();
-    const res = await fetch('/api/trainer/workouts', {
+    const res = await fetch(`${apiBase}/api/trainer/workouts`, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
@@ -762,7 +1062,7 @@ async function createWorkout() {
 }
 
 async function populateWorkoutSelector() {
-    const res = await fetch('/api/trainer/workouts');
+    const res = await fetch(`${apiBase}/api/trainer/workouts`);
     const workouts = await res.json();
     const select = document.getElementById('assign-workout-select');
     if (!select) return;
@@ -776,7 +1076,7 @@ async function populateWorkoutSelector() {
     });
 }
 
-async function assignWorkout() {
+window.assignWorkout = async function () {
     const clientId = document.getElementById('assign-client-id').value;
     const date = document.getElementById('assign-date').value;
     const workoutId = document.getElementById('assign-workout-select').value;
@@ -891,7 +1191,7 @@ function showRestTimer(seconds, callback) {
 // Initialize workout state when in workout mode
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('workout-screen')) {
-        fetch('/api/client/data')
+        fetch(`${apiBase}/api/client/data`)
             .then(res => res.json())
             .then(user => {
                 const workout = user.todays_workout;
