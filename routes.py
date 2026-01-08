@@ -77,6 +77,15 @@ async def create_workout(
 ):
     return service.create_workout(workout, trainer_id)
 
+@router.put("/api/trainer/workouts/{workout_id}")
+async def update_workout(
+    workout_id: str,
+    workout: dict,
+    service: UserService = Depends(get_user_service),
+    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+):
+    return service.update_workout(workout_id, workout, trainer_id)
+
 @router.post("/api/trainer/assign_workout")
 async def assign_workout(assignment: dict, service: UserService = Depends(get_user_service)):
     return service.assign_workout(assignment)

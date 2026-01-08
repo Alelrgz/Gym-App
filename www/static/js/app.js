@@ -23,6 +23,7 @@ if (role === 'client') {
 }
 
 let workoutState = null;
+let selectedExercisesList = []; // Global state for workout creation
 
 // --- WEBSOCKET CONNECTION ---
 const clientId = Date.now().toString();
@@ -212,7 +213,6 @@ window.openTrainerCalendar = async () => {
 // --- INITIALIZATION ---
 
 async function init() {
-    alert("Init started");
     try {
         const gymRes = await fetch(`${apiBase}/api/config/${gymId}`);
         const gymConfig = await gymRes.json();
@@ -221,12 +221,13 @@ async function init() {
         nameEls.forEach(el => el.innerText = gymConfig.logo_text);
 
         if (role === 'client') {
+            let user = null;
             try {
                 console.log("Fetching client data from:", `${apiBase}/api/client/data`);
                 const userRes = await fetch(`${apiBase}/api/client/data`);
                 if (!userRes.ok) throw new Error(`API Error: ${userRes.status}`);
 
-                const user = await userRes.json();
+                user = await userRes.json();
                 console.log("Client Data Received:", user);
 
                 const setTxt = (id, val) => {
@@ -344,11 +345,8 @@ async function init() {
 
             // Calendar Mode Logic
             const calendarGrid = document.getElementById('calendar-grid');
-            console.log("Checking calendar grid:", calendarGrid);
-            console.log("Checking user calendar data:", user.calendar);
 
             if (calendarGrid && user.calendar) {
-                console.log("Initializing Calendar...");
                 let currentMonth = new Date().getMonth();
                 let currentYear = new Date().getFullYear();
                 const events = user.calendar.events;
@@ -356,10 +354,8 @@ async function init() {
                 // Initial render
                 try {
                     window.renderCalendar(currentMonth, currentYear, events, 'calendar-grid', 'current-month-year', 'selected-date-title', 'day-events-list');
-                    console.log("Calendar rendered");
                 } catch (e) {
                     console.error("Error rendering calendar:", e);
-                    alert("Calendar Render Error: " + e.message);
                 }
 
                 document.getElementById('prev-month').onclick = () => {
@@ -427,7 +423,7 @@ async function init() {
             // Fetch and Render Workouts
             if (document.getElementById('workout-library')) {
                 fetchAndRenderWorkouts();
-                populateExerciseSelector();
+
             }
         }
 
@@ -502,7 +498,6 @@ async function init() {
         }
     } catch (e) {
         console.error("Init Error:", e);
-        alert("Init Error: " + e.message);
     }
 }
 
@@ -533,6 +528,8 @@ document.body.addEventListener('click', e => {
         uploadVideo();
     } else if (action === 'addWater') {
         addWater();
+    } else if (action === 'openCreateWorkout') {
+        openCreateWorkoutModal();
     }
 });
 
@@ -574,6 +571,10 @@ function addWater() {
     const wave = document.getElementById('hydro-wave');
     if (el && wave) {
         let cur = parseInt(el.innerText);
+        if (cur + 250 > 10000) {
+            showToast('Daily limit reached! (10000ml) 🚫');
+            return;
+        }
         cur += 250;
         el.innerText = cur + 'ml';
         // Mock target 2500
@@ -669,55 +670,292 @@ async function fetchAndRenderExercises() {
     const container = document.getElementById('exercise-library');
     if (!container) return;
 
+    // Filter Logic
+    const searchVal = document.getElementById('ex-search').value.toLowerCase();
+    const muscleVal = document.getElementById('ex-filter-muscle').value;
+    const typeVal = document.getElementById('ex-filter-type').value;
+
+    const filtered = exercises.filter(ex => {
+        const matchesSearch = ex.name.toLowerCase().includes(searchVal);
+        const matchesMuscle = muscleVal ? ex.muscle === muscleVal : true;
+        const matchesType = typeVal ? ex.type === typeVal : true;
+        return matchesSearch && matchesMuscle && matchesType;
+    });
+
     container.innerHTML = '';
-    exercises.forEach(ex => {
+
+    const muscleIcons = {
+        'Chest': '🛡️', 'Back': '🦅', 'Legs': '🦵',
+        'Shoulders': '💪', 'Arms': '🦾', 'Abs': '🍫', 'Cardio': '🏃'
+    };
+
+    const typeColors = {
+        'Compound': 'bg-yellow-500/20 text-yellow-400',
+        'Isolation': 'bg-blue-500/20 text-blue-400',
+        'Bodyweight': 'bg-green-500/20 text-green-400',
+        'Cardio': 'bg-red-500/20 text-red-400'
+    };
+
+    filtered.forEach(ex => {
         const div = document.createElement('div');
-        div.className = "glass-card p-3 flex justify-between items-center";
+        div.className = "glass-card p-4 flex flex-col justify-between relative overflow-hidden group tap-effect slide-up min-h-[120px]";
+
+        const icon = muscleIcons[ex.muscle] || '🏋️';
+        const badgeClass = typeColors[ex.type] || 'bg-gray-500/20 text-gray-400';
+
+        let videoBackground = '';
+        if (ex.video_id) {
+            let src = ex.video_id;
+            if (!src.startsWith('http') && !src.startsWith('/')) {
+                src = `/static/videos/${src}.mp4`;
+            }
+            if (!src.includes('youtube') && !src.includes('youtu.be')) {
+                videoBackground = `
+                    <div class="absolute inset-0 z-0 opacity-0 group-hover:opacity-40 transition duration-500">
+                        <video src="${src}" muted loop playsinline class="w-full h-full object-cover"></video>
+                    </div>
+                 `;
+            }
+        }
+
         div.innerHTML = `
-            <div class="flex items-center">
-                <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center mr-3 text-xs font-bold text-gray-400">
-                    ${ex.muscle[0]}
+            ${videoBackground}
+            
+            <div class="absolute -right-2 -top-2 opacity-10 group-hover:opacity-0 transition transform group-hover:scale-110 pointer-events-none">
+                <span class="text-8xl">${icon}</span>
+            </div>
+            <div class="relative z-10 w-full h-full flex flex-col justify-between pointer-events-none">
+                <div class="flex justify-between items-start mb-2 pointer-events-auto pl-1">
+                    <span class="text-[10px] font-bold px-2 py-1 rounded-full ${badgeClass} uppercase tracking-wider">${ex.type}</span>
+                    <button class="edit-btn w-8 h-8 flex items-center justify-center bg-white/10 rounded-full text-gray-300 hover:bg-white/20 hover:text-white transition tap-effect">
+                        ⚙️
+                    </button>
                 </div>
                 <div>
-                    <p class="font-bold text-sm text-white">${ex.name}</p>
-                    <p class="text-[10px] text-gray-400">${ex.muscle} • ${ex.type}</p>
+                    <h4 class="font-bold text-lg text-white mb-1 leading-tight drop-shadow-md">${ex.name}</h4>
+                    <div class="flex items-center text-xs text-gray-400 mt-1">
+                        <span class="mr-2">${icon}</span>
+                        <span>${ex.muscle}</span>
+                    </div>
                 </div>
             </div>
-            <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition">Edit</button>
         `;
+
+        // Video Hover Logic
+        if (videoBackground) {
+            const video = div.querySelector('video');
+            div.addEventListener('mouseenter', () => {
+                try { video.play(); } catch (e) { }
+            });
+            div.addEventListener('mouseleave', () => {
+                try { video.pause(); video.currentTime = 0; } catch (e) { }
+            });
+        }
+
+        // Attach click listener to the edit button
+        const editBtn = div.querySelector('.edit-btn');
+        editBtn.addEventListener('click', (e) => {
+            e.stopPropagation(); // Prevent card click if we add one later
+            openEditExerciseModal(ex);
+        });
+
+        // Click card to add to workout
+        div.addEventListener('click', (e) => {
+            addExerciseToWorkout(ex);
+        });
+
         container.appendChild(div);
     });
+
+    // Attach listeners if not already attached (simple check)
+    if (!container.dataset.listenersAttached) {
+        document.getElementById('ex-search').addEventListener('input', fetchAndRenderExercises);
+        document.getElementById('ex-filter-muscle').addEventListener('change', fetchAndRenderExercises);
+        document.getElementById('ex-filter-type').addEventListener('change', fetchAndRenderExercises);
+
+        // File input listeners for preview and upload
+        ['new', 'edit'].forEach(prefix => {
+            const fileInput = document.getElementById(`${prefix}-ex-file`);
+            const videoInput = document.getElementById(`${prefix}-ex-video`);
+            const filenameDisplay = document.getElementById(`${prefix}-ex-filename`);
+
+            if (fileInput) {
+                fileInput.addEventListener('change', async (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        filenameDisplay.innerText = `Uploading: ${file.name}...`;
+
+                        const formData = new FormData();
+                        formData.append('file', file);
+
+                        try {
+                            const res = await fetch(`${apiBase}/api/upload`, {
+                                method: 'POST',
+                                body: formData
+                            });
+
+                            if (res.ok) {
+                                const data = await res.json();
+                                videoInput.value = data.url; // Use real server URL
+                                filenameDisplay.innerText = `Uploaded: ${file.name}`;
+                                showToast('Video uploaded! 🎥');
+
+                                // Update Preview
+                                const previewContainer = document.getElementById(`${prefix}-ex-preview-container`);
+                                const previewVideo = document.getElementById(`${prefix}-ex-preview`);
+                                if (previewContainer && previewVideo) {
+                                    previewVideo.src = data.url;
+                                    previewContainer.classList.remove('hidden');
+                                    previewVideo.load();
+                                }
+                            } else {
+                                filenameDisplay.innerText = `Upload failed`;
+                                showToast('Upload failed ❌');
+                            }
+                        } catch (err) {
+                            console.error(err);
+                            filenameDisplay.innerText = `Upload error`;
+                            showToast('Upload error ❌');
+                        }
+                    }
+                });
+            }
+
+            // URL Input Listener for Preview
+            if (videoInput) {
+                videoInput.addEventListener('input', (e) => {
+                    const url = e.target.value;
+                    const previewContainer = document.getElementById(`${prefix}-ex-preview-container`);
+                    const previewVideo = document.getElementById(`${prefix}-ex-preview`);
+
+                    if (previewContainer && previewVideo) {
+                        if (url) {
+                            previewVideo.src = url;
+                            previewContainer.classList.remove('hidden');
+                            previewVideo.load();
+                        } else {
+                            previewContainer.classList.add('hidden');
+                            previewVideo.pause();
+                            previewVideo.src = "";
+                        }
+                    }
+                });
+            }
+        });
+
+        container.dataset.listenersAttached = "true";
+    }
+}
+
+function openEditExerciseModal(ex) {
+    document.getElementById('edit-ex-id').value = ex.id;
+    document.getElementById('edit-ex-name').value = ex.name;
+    document.getElementById('edit-ex-muscle').value = ex.muscle;
+    document.getElementById('edit-ex-type').value = ex.type;
+    document.getElementById('edit-ex-video').value = ex.video_id || '';
+    document.getElementById('edit-ex-filename').innerText = ''; // Reset file label
+
+    // Set Preview
+    const previewContainer = document.getElementById('edit-ex-preview-container');
+    const previewVideo = document.getElementById('edit-ex-preview');
+    if (previewContainer && previewVideo) {
+        if (ex.video_id) {
+            // Check if it's a full URL or a local ID (assuming local IDs don't have http)
+            let src = ex.video_id;
+            if (!src.startsWith('http') && !src.startsWith('/')) {
+                src = `/static/videos/${src}.mp4`;
+            }
+            previewVideo.src = src;
+            previewContainer.classList.remove('hidden');
+            previewVideo.load();
+        } else {
+            previewContainer.classList.add('hidden');
+            previewVideo.pause();
+            previewVideo.src = "";
+        }
+    }
+
+    showModal('edit-exercise-modal');
+}
+
+async function updateExercise() {
+    const id = document.getElementById('edit-ex-id').value;
+    const name = document.getElementById('edit-ex-name').value;
+    const muscle = document.getElementById('edit-ex-muscle').value;
+    const type = document.getElementById('edit-ex-type').value;
+    const video = document.getElementById('edit-ex-video').value;
+
+    if (!name) {
+        showToast('Please enter an exercise name ⚠️');
+        return;
+    }
+
+    const trainerId = getCurrentTrainerId();
+    const payload = { name, muscle, type, video_id: video };
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/exercises/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-trainer-id': trainerId
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast('Exercise updated! ✅');
+            hideModal('edit-exercise-modal');
+            fetchAndRenderExercises();
+        } else {
+            showToast('Failed to update exercise ❌');
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Error updating exercise ❌');
+    }
 }
 
 window.createExercise = async function () {
     const name = document.getElementById('new-ex-name').value;
     const muscle = document.getElementById('new-ex-muscle').value;
     const type = document.getElementById('new-ex-type').value;
+    const video = document.getElementById('new-ex-video').value;
 
     if (!name) {
-        showToast('Please enter an exercise name');
+        showToast('Please enter an exercise name ⚠️');
         return;
     }
 
     const trainerId = getCurrentTrainerId();
-    const res = await fetch(`${apiBase}/api/trainer/exercises`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-trainer-id': trainerId
-        },
-        body: JSON.stringify({ name, muscle, type })
-    });
+    const payload = { name, muscle, type, video_id: video };
 
-    if (res.ok) {
-        showToast('Exercise created successfully! 💪');
-        hideModal('create-exercise-modal');
-        document.getElementById('new-ex-name').value = '';
-        fetchAndRenderExercises();
-    } else {
-        showToast('Failed to create exercise');
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/exercises`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-trainer-id': trainerId
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast('Exercise created! 💪');
+            hideModal('create-exercise-modal');
+            // Clear inputs
+            document.getElementById('new-ex-name').value = '';
+            document.getElementById('new-ex-video').value = '';
+            document.getElementById('new-ex-filename').innerText = '';
+            fetchAndRenderExercises();
+        } else {
+            showToast('Failed to create exercise ❌');
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Error creating exercise ❌');
     }
-}
+};
 
 async function fetchAndRenderWorkouts() {
     const trainerId = getCurrentTrainerId();
@@ -737,41 +975,121 @@ async function fetchAndRenderWorkouts() {
                 <p class="font-bold text-sm text-white">${w.title}</p>
                 <p class="text-[10px] text-gray-400">${w.exercises.length} Exercises • ${w.duration} • ${w.difficulty}</p>
             </div>
-            <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition">Edit</button>
+            <button class="edit-workout-btn text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition">Edit</button>
         `;
+
+        div.querySelector('.edit-workout-btn').onclick = () => openEditWorkout(w);
+
         container.appendChild(div);
     });
 }
 
-async function populateExerciseSelector() {
-    const trainerId = getCurrentTrainerId();
-    const res = await fetch(`${apiBase}/api/trainer/exercises`, {
-        headers: { 'x-trainer-id': trainerId }
-    });
-    const exercises = await res.json();
-    const container = document.getElementById('modal-exercise-list');
+
+
+// --- SELECTED EXERCISES LOGIC ---
+
+window.renderSelectedExercises = function () {
+    const container = document.getElementById('selected-exercises-list');
     if (!container) return;
 
     container.innerHTML = '';
-    exercises.forEach(ex => {
+
+    if (selectedExercisesList.length === 0) {
+        container.innerHTML = '<p class="text-xs text-gray-500 text-center py-4 italic">No exercises selected.</p>';
+        return;
+    }
+
+    selectedExercisesList.forEach((ex, idx) => {
         const div = document.createElement('div');
-        div.className = "flex items-center justify-between p-2 bg-white/5 rounded-lg mb-1";
+        div.className = "grid grid-cols-12 gap-2 items-center bg-white/5 rounded-lg p-2 animate-fade-in";
+
         div.innerHTML = `
-            <div class="flex items-center">
-                <input type="checkbox" class="mr-3 w-4 h-4 rounded border-gray-600 text-primary focus:ring-primary bg-gray-700" value="${ex.id}" data-name="${ex.name}" data-video="${ex.video_id}">
-                <span class="text-sm text-white">${ex.name}</span>
+            <div class="col-span-5 text-left pl-2">
+                 <p class="text-xs font-bold text-white truncate">${ex.name}</p>
+                 <p class="text-[9px] text-gray-400 truncate">${ex.muscle}</p>
             </div>
-            <div class="flex space-x-2">
-                <input type="number" class="w-12 bg-black/30 border border-white/10 rounded px-1 text-xs text-white text-center" placeholder="Sets" value="3">
-                <input type="text" class="w-12 bg-black/30 border border-white/10 rounded px-1 text-xs text-white text-center" placeholder="Reps" value="10">
-                <input type="number" class="w-12 bg-black/30 border border-white/10 rounded px-1 text-xs text-white text-center" placeholder="Rest" value="60">
+            <div class="col-span-2">
+                <input type="number" value="${ex.sets}" onchange="updateExerciseDetails(${idx}, 'sets', this.value)" 
+                    class="w-full bg-black/30 border border-white/10 rounded text-center text-xs text-white py-1 focus:border-primary outline-none">
+            </div>
+            <div class="col-span-2">
+                 <input type="text" value="${ex.reps}" onchange="updateExerciseDetails(${idx}, 'reps', this.value)" 
+                    class="w-full bg-black/30 border border-white/10 rounded text-center text-xs text-white py-1 focus:border-primary outline-none">
+            </div>
+            <div class="col-span-2">
+                 <input type="number" value="${ex.rest}" onchange="updateExerciseDetails(${idx}, 'rest', this.value)" 
+                    class="w-full bg-black/30 border border-white/10 rounded text-center text-xs text-white py-1 focus:border-primary outline-none">
+            </div>
+            <div class="col-span-1 flex justify-center">
+                <button onclick="removeExerciseFromWorkout(${idx})" class="text-xs text-red-500 hover:text-red-400 font-bold">✕</button>
             </div>
         `;
         container.appendChild(div);
     });
 }
 
+window.addExerciseToWorkout = function (exercise) {
+    // Add new instance allowing duplicates (e.g. for supersets or multiple sets of same exercise)
+    selectedExercisesList.push({
+        id: exercise.id,
+        name: exercise.name,
+        muscle: exercise.muscle,
+        video_id: exercise.video_id,
+        sets: 3,
+        reps: "10",
+        rest: 60
+    });
+
+    renderSelectedExercises();
+    showToast(`Added ${exercise.name}`);
+}
+
+window.removeExerciseFromWorkout = function (idx) {
+    selectedExercisesList.splice(idx, 1);
+    renderSelectedExercises();
+}
+
+window.updateExerciseDetails = function (idx, field, value) {
+    if (selectedExercisesList[idx]) {
+        if (field === 'reps') selectedExercisesList[idx][field] = value; // Keep as string for ranges
+        else selectedExercisesList[idx][field] = parseInt(value);
+    }
+}
+
+// --- WORKOUT CREATION & EDITING ---
+
+window.openCreateWorkoutModal = function () {
+    document.getElementById('new-workout-id').value = '';
+    document.getElementById('modal-workout-title').innerText = 'New Workout';
+    document.getElementById('btn-save-workout').innerText = 'Create Workout';
+
+    document.getElementById('new-workout-title').value = '';
+    document.getElementById('new-workout-duration').value = '';
+    document.getElementById('new-workout-difficulty').value = 'Intermediate';
+
+    selectedExercisesList = [];
+    renderSelectedExercises();
+
+    showModal('create-workout-modal');
+}
+
+window.openEditWorkout = function (workout) {
+    document.getElementById('new-workout-id').value = workout.id;
+    document.getElementById('modal-workout-title').innerText = 'Edit Workout';
+    document.getElementById('btn-save-workout').innerText = 'Update Workout';
+
+    document.getElementById('new-workout-title').value = workout.title;
+    document.getElementById('new-workout-duration').value = workout.duration;
+    document.getElementById('new-workout-difficulty').value = workout.difficulty;
+
+    selectedExercisesList = JSON.parse(JSON.stringify(workout.exercises)); // Deep copy
+    renderSelectedExercises();
+
+    showModal('create-workout-modal');
+}
+
 window.createWorkout = async function () {
+    const id = document.getElementById('new-workout-id').value;
     const title = document.getElementById('new-workout-title').value;
     const duration = document.getElementById('new-workout-duration').value;
     const difficulty = document.getElementById('new-workout-difficulty').value;
@@ -781,51 +1099,52 @@ window.createWorkout = async function () {
         return;
     }
 
-    const selectedExercises = [];
-    const checkboxes = document.querySelectorAll('#modal-exercise-list input[type="checkbox"]:checked');
-
-    checkboxes.forEach(cb => {
-        const row = cb.closest('.flex.items-center.justify-between');
-        const inputs = row.querySelectorAll('input[type="text"], input[type="number"]');
-        // inputs[0] is checkbox, inputs[1] is sets (number), inputs[2] is reps (text), inputs[3] is rest (number)
-        // Wait, querySelectorAll returns in document order.
-        // The checkbox is an input.
-        // Let's select specifically.
-        const setsInput = row.querySelector('input[placeholder="Sets"]');
-        const repsInput = row.querySelector('input[placeholder="Reps"]');
-        const restInput = row.querySelector('input[placeholder="Rest"]');
-
-        selectedExercises.push({
-            name: cb.dataset.name,
-            sets: parseInt(setsInput.value) || 3,
-            reps: repsInput.value || "10",
-            rest: parseInt(restInput.value) || 60,
-            video_id: cb.dataset.video
-        });
-    });
-
-    if (selectedExercises.length === 0) {
+    if (selectedExercisesList.length === 0) {
         showToast('Please select at least one exercise');
         return;
     }
 
     const trainerId = getCurrentTrainerId();
-    const res = await fetch(`${apiBase}/api/trainer/workouts`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-trainer-id': trainerId
-        },
-        body: JSON.stringify({ title, duration, difficulty, exercises: selectedExercises })
-    });
+    const payload = { title, duration, difficulty, exercises: selectedExercisesList };
 
-    if (res.ok) {
-        showToast('Workout created successfully! 💪');
-        hideModal('create-workout-modal');
-        document.getElementById('new-workout-title').value = '';
-        fetchAndRenderWorkouts();
-    } else {
-        showToast('Failed to create workout');
+    let url = `${apiBase}/api/trainer/workouts`;
+    let method = 'POST';
+
+    if (id) {
+        url = `${apiBase}/api/trainer/workouts/${id}`;
+        method = 'PUT';
+    }
+
+    try {
+        const res = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'x-trainer-id': trainerId
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast(id ? 'Workout updated! 💪' : 'Workout created! 💪');
+            hideModal('create-workout-modal');
+
+            // Reset form
+            document.getElementById('new-workout-title').value = '';
+            document.getElementById('new-workout-id').value = '';
+            selectedExercisesList = [];
+            renderSelectedExercises();
+
+            fetchAndRenderWorkouts();
+        } else {
+            const errText = await res.text();
+            console.error(errText);
+            showToast('Failed: ' + errText); // Show actual error
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Error saving workout ❌');
+        // alert(e.message); // Debug
     }
 }
 

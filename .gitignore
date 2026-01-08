@@ -17,3 +17,5 @@ db/
 test_*.py
 debug_*.py
 repro_*.py
+reproduce*.py
+.vscode/

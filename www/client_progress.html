@@ -238,9 +238,102 @@
                 </div>
             </div>
 
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Video (URL or File)</label>
+                <div class="flex space-x-2">
+                    <input type="text" id="new-ex-video"
+                        class="flex-1 bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                        placeholder="https://youtube.com/...">
+                    <input type="file" id="new-ex-file" class="hidden" accept="video/*">
+                    <button onclick="document.getElementById('new-ex-file').click()"
+                        class="bg-white/10 hover:bg-white/20 text-white px-3 rounded-xl transition">
+                        📁
+                    </button>
+                </div>
+                <p id="new-ex-filename" class="text-[10px] text-gray-500 mt-1 ml-1 truncate"></p>
+                <div id="new-ex-preview-container" class="mt-2 hidden">
+                    <video id="new-ex-preview" controls
+                        class="w-full rounded-xl border border-white/10 bg-black max-h-40"></video>
+                </div>
+            </div>
+
             <button onclick="createExercise()"
                 class="w-full bg-primary text-black font-bold py-4 rounded-xl hover:bg-primary/90 transition mt-4">
                 Create Exercise
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Exercise Modal -->
+<div id="edit-exercise-modal"
+    class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm"
+    data-action="hideModal" data-target="edit-exercise-modal">
+    <div class="bg-[#1a1a1a] w-full max-w-md rounded-3xl p-6 border border-white/10 relative slide-up"
+        onclick="event.stopPropagation()">
+        <button onclick="hideModal('edit-exercise-modal')"
+            class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+
+        <h2 class="text-2xl font-bold mb-1 text-white">Edit Exercise</h2>
+        <p class="text-sm text-gray-400 mb-6">Update exercise details.</p>
+
+        <input type="hidden" id="edit-ex-id">
+
+        <div class="space-y-4">
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Exercise Name</label>
+                <input type="text" id="edit-ex-name"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Muscle Group</label>
+                    <select id="edit-ex-muscle"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+                        <option>Chest</option>
+                        <option>Back</option>
+                        <option>Legs</option>
+                        <option>Shoulders</option>
+                        <option>Arms</option>
+                        <option>Abs</option>
+                        <option>Cardio</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Type</label>
+                    <select id="edit-ex-type"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+                        <option>Compound</option>
+                        <option>Isolation</option>
+                        <option>Bodyweight</option>
+                        <option>Cardio</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Video (URL or File)</label>
+                <div class="flex space-x-2">
+                    <input type="text" id="edit-ex-video"
+                        class="flex-1 bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                        placeholder="https://youtube.com/...">
+                    <input type="file" id="edit-ex-file" class="hidden" accept="video/*">
+                    <button onclick="document.getElementById('edit-ex-file').click()"
+                        class="bg-white/10 hover:bg-white/20 text-white px-3 rounded-xl transition">
+                        📁
+                    </button>
+                </div>
+                <p id="edit-ex-filename" class="text-[10px] text-gray-500 mt-1 ml-1 truncate"></p>
+                <div id="edit-ex-preview-container" class="mt-2 hidden">
+                    <video id="edit-ex-preview" controls
+                        class="w-full rounded-xl border border-white/10 bg-black max-h-40"></video>
+                </div>
+            </div>
+
+            <button onclick="updateExercise()"
+                class="w-full bg-primary text-black font-bold py-4 rounded-xl hover:bg-primary/90 transition mt-4">
+                Update Exercise
             </button>
         </div>
     </div>
@@ -255,8 +348,10 @@
         <button onclick="hideModal('create-workout-modal')"
             class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
 
-        <h2 class="text-2xl font-bold mb-1 text-white">New Workout</h2>
+        <h2 id="modal-workout-title" class="text-2xl font-bold mb-1 text-white">New Workout</h2>
         <p class="text-sm text-gray-400 mb-6">Create a workout template.</p>
+
+        <input type="hidden" id="new-workout-id">
 
         <div class="space-y-4">
             <div>
@@ -285,14 +380,69 @@
                 </div>
             </div>
 
+            <!-- Exercise Selection UI -->
             <div>
-                <label class="text-xs text-gray-500 uppercase font-bold ml-1 mb-2 block">Select Exercises</label>
-                <div id="modal-exercise-list" class="space-y-2 max-h-60 overflow-y-auto pr-1">
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Selected Exercises</label>
+                    <button data-action="showModal" data-target="create-exercise-modal"
+                        class="text-xs bg-[#D32F2F] text-black font-bold px-3 py-1 rounded hover:bg-[#D32F2F]/80 transition">+
+                        New Exercise</button>
+                </div>
+
+                <!-- New List-Based Selection -->
+                <div class="bg-black/20 rounded-xl p-3 mb-4 border border-white/5">
+                    <!-- Headers -->
+                    <div
+                        class="grid grid-cols-12 gap-2 mb-2 text-[10px] text-gray-500 font-bold uppercase tracking-wider text-center">
+                        <div class="col-span-5 text-left pl-2">Exercise</div>
+                        <div class="col-span-2">Sets</div>
+                        <div class="col-span-2">Reps</div>
+                        <div class="col-span-2">Rest</div>
+                        <div class="col-span-1"></div>
+                    </div>
+
+                    <!-- List Container -->
+                    <div id="selected-exercises-list" class="space-y-2 min-h-[50px]">
+                        <p class="text-xs text-gray-500 text-center py-4 italic">No exercises selected.</p>
+                    </div>
+                </div>
+
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1 mb-2 block">Exercise Library</label>
+                <div class="glass-card p-2 mb-2 flex flex-col gap-2">
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+                        <input type="text" id="ex-search" placeholder="Search exercises..."
+                            class="w-full bg-black/20 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition placeholder-gray-500">
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="ex-filter-muscle"
+                            class="w-1/2 bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition appearance-none cursor-pointer hover:bg-white/5">
+                            <option value="">All Muscles</option>
+                            <option value="Chest">Chest</option>
+                            <option value="Back">Back</option>
+                            <option value="Legs">Legs</option>
+                            <option value="Shoulders">Shoulders</option>
+                            <option value="Arms">Arms</option>
+                            <option value="Abs">Abs</option>
+                            <option value="Cardio">Cardio</option>
+                        </select>
+                        <select id="ex-filter-type"
+                            class="w-1/2 bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition appearance-none cursor-pointer hover:bg-white/5">
+                            <option value="">All Types</option>
+                            <option value="Compound">Compound</option>
+                            <option value="Isolation">Isolation</option>
+                            <option value="Bodyweight">Bodyweight</option>
+                            <option value="Cardio">Cardio</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div id="exercise-library" class="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto pr-1">
                     <!-- Populated by JS -->
                 </div>
             </div>
 
-            <button onclick="createWorkout()"
+            <button onclick="createWorkout()" id="btn-save-workout"
                 class="w-full bg-primary text-black font-bold py-4 rounded-xl hover:bg-primary/90 transition mt-4">
                 Create Workout
             </button>
@@ -498,7 +648,7 @@
             apiBase: "http://192.168.1.55:9007"
         };
     </script>
-    <script src="/static/js/app.js?v=9133"></script>
+    <script src="/static/js/app.js?v=201"></script>
 </body>
 
 </html>

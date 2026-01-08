@@ -23,6 +23,7 @@ if (role === 'client') {
 }
 
 let workoutState = null;
+let selectedExercisesList = []; // Global state for workout creation
 
 // --- WEBSOCKET CONNECTION ---
 const clientId = Date.now().toString();
@@ -422,7 +423,7 @@ async function init() {
             // Fetch and Render Workouts
             if (document.getElementById('workout-library')) {
                 fetchAndRenderWorkouts();
-                populateExerciseSelector();
+
             }
         }
 
@@ -527,6 +528,8 @@ document.body.addEventListener('click', e => {
         uploadVideo();
     } else if (action === 'addWater') {
         addWater();
+    } else if (action === 'openCreateWorkout') {
+        openCreateWorkoutModal();
     }
 });
 
@@ -706,9 +709,6 @@ async function fetchAndRenderExercises() {
             if (!src.startsWith('http') && !src.startsWith('/')) {
                 src = `/static/videos/${src}.mp4`;
             }
-            // Only show video preview if it's likely a direct file (not youtube)
-            // Simple check: if it contains 'youtube' or 'youtu.be', skip or handle differently.
-            // For now, assume if it's not youtube, it's playable in <video>
             if (!src.includes('youtube') && !src.includes('youtu.be')) {
                 videoBackground = `
                     <div class="absolute inset-0 z-0 opacity-0 group-hover:opacity-40 transition duration-500">
@@ -720,11 +720,12 @@ async function fetchAndRenderExercises() {
 
         div.innerHTML = `
             ${videoBackground}
+            
             <div class="absolute -right-2 -top-2 opacity-10 group-hover:opacity-0 transition transform group-hover:scale-110 pointer-events-none">
                 <span class="text-8xl">${icon}</span>
             </div>
             <div class="relative z-10 w-full h-full flex flex-col justify-between pointer-events-none">
-                <div class="flex justify-between items-start mb-2 pointer-events-auto">
+                <div class="flex justify-between items-start mb-2 pointer-events-auto pl-1">
                     <span class="text-[10px] font-bold px-2 py-1 rounded-full ${badgeClass} uppercase tracking-wider">${ex.type}</span>
                     <button class="edit-btn w-8 h-8 flex items-center justify-center bg-white/10 rounded-full text-gray-300 hover:bg-white/20 hover:text-white transition tap-effect">
                         ⚙️
@@ -756,6 +757,11 @@ async function fetchAndRenderExercises() {
         editBtn.addEventListener('click', (e) => {
             e.stopPropagation(); // Prevent card click if we add one later
             openEditExerciseModal(ex);
+        });
+
+        // Click card to add to workout
+        div.addEventListener('click', (e) => {
+            addExerciseToWorkout(ex);
         });
 
         container.appendChild(div);
@@ -969,41 +975,121 @@ async function fetchAndRenderWorkouts() {
                 <p class="font-bold text-sm text-white">${w.title}</p>
                 <p class="text-[10px] text-gray-400">${w.exercises.length} Exercises • ${w.duration} • ${w.difficulty}</p>
             </div>
-            <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition">Edit</button>
+            <button class="edit-workout-btn text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition">Edit</button>
         `;
+
+        div.querySelector('.edit-workout-btn').onclick = () => openEditWorkout(w);
+
         container.appendChild(div);
     });
 }
 
-async function populateExerciseSelector() {
-    const trainerId = getCurrentTrainerId();
-    const res = await fetch(`${apiBase}/api/trainer/exercises`, {
-        headers: { 'x-trainer-id': trainerId }
-    });
-    const exercises = await res.json();
-    const container = document.getElementById('modal-exercise-list');
+
+
+// --- SELECTED EXERCISES LOGIC ---
+
+window.renderSelectedExercises = function () {
+    const container = document.getElementById('selected-exercises-list');
     if (!container) return;
 
     container.innerHTML = '';
-    exercises.forEach(ex => {
+
+    if (selectedExercisesList.length === 0) {
+        container.innerHTML = '<p class="text-xs text-gray-500 text-center py-4 italic">No exercises selected.</p>';
+        return;
+    }
+
+    selectedExercisesList.forEach((ex, idx) => {
         const div = document.createElement('div');
-        div.className = "flex items-center justify-between p-2 bg-white/5 rounded-lg mb-1";
+        div.className = "grid grid-cols-12 gap-2 items-center bg-white/5 rounded-lg p-2 animate-fade-in";
+
         div.innerHTML = `
-            <div class="flex items-center">
-                <input type="checkbox" class="mr-3 w-4 h-4 rounded border-gray-600 text-primary focus:ring-primary bg-gray-700" value="${ex.id}" data-name="${ex.name}" data-video="${ex.video_id}">
-                <span class="text-sm text-white">${ex.name}</span>
+            <div class="col-span-5 text-left pl-2">
+                 <p class="text-xs font-bold text-white truncate">${ex.name}</p>
+                 <p class="text-[9px] text-gray-400 truncate">${ex.muscle}</p>
             </div>
-            <div class="flex space-x-2">
-                <input type="number" class="w-12 bg-black/30 border border-white/10 rounded px-1 text-xs text-white text-center" placeholder="Sets" value="3">
-                <input type="text" class="w-12 bg-black/30 border border-white/10 rounded px-1 text-xs text-white text-center" placeholder="Reps" value="10">
-                <input type="number" class="w-12 bg-black/30 border border-white/10 rounded px-1 text-xs text-white text-center" placeholder="Rest" value="60">
+            <div class="col-span-2">
+                <input type="number" value="${ex.sets}" onchange="updateExerciseDetails(${idx}, 'sets', this.value)" 
+                    class="w-full bg-black/30 border border-white/10 rounded text-center text-xs text-white py-1 focus:border-primary outline-none">
+            </div>
+            <div class="col-span-2">
+                 <input type="text" value="${ex.reps}" onchange="updateExerciseDetails(${idx}, 'reps', this.value)" 
+                    class="w-full bg-black/30 border border-white/10 rounded text-center text-xs text-white py-1 focus:border-primary outline-none">
+            </div>
+            <div class="col-span-2">
+                 <input type="number" value="${ex.rest}" onchange="updateExerciseDetails(${idx}, 'rest', this.value)" 
+                    class="w-full bg-black/30 border border-white/10 rounded text-center text-xs text-white py-1 focus:border-primary outline-none">
+            </div>
+            <div class="col-span-1 flex justify-center">
+                <button onclick="removeExerciseFromWorkout(${idx})" class="text-xs text-red-500 hover:text-red-400 font-bold">✕</button>
             </div>
         `;
         container.appendChild(div);
     });
 }
 
+window.addExerciseToWorkout = function (exercise) {
+    // Add new instance allowing duplicates (e.g. for supersets or multiple sets of same exercise)
+    selectedExercisesList.push({
+        id: exercise.id,
+        name: exercise.name,
+        muscle: exercise.muscle,
+        video_id: exercise.video_id,
+        sets: 3,
+        reps: "10",
+        rest: 60
+    });
+
+    renderSelectedExercises();
+    showToast(`Added ${exercise.name}`);
+}
+
+window.removeExerciseFromWorkout = function (idx) {
+    selectedExercisesList.splice(idx, 1);
+    renderSelectedExercises();
+}
+
+window.updateExerciseDetails = function (idx, field, value) {
+    if (selectedExercisesList[idx]) {
+        if (field === 'reps') selectedExercisesList[idx][field] = value; // Keep as string for ranges
+        else selectedExercisesList[idx][field] = parseInt(value);
+    }
+}
+
+// --- WORKOUT CREATION & EDITING ---
+
+window.openCreateWorkoutModal = function () {
+    document.getElementById('new-workout-id').value = '';
+    document.getElementById('modal-workout-title').innerText = 'New Workout';
+    document.getElementById('btn-save-workout').innerText = 'Create Workout';
+
+    document.getElementById('new-workout-title').value = '';
+    document.getElementById('new-workout-duration').value = '';
+    document.getElementById('new-workout-difficulty').value = 'Intermediate';
+
+    selectedExercisesList = [];
+    renderSelectedExercises();
+
+    showModal('create-workout-modal');
+}
+
+window.openEditWorkout = function (workout) {
+    document.getElementById('new-workout-id').value = workout.id;
+    document.getElementById('modal-workout-title').innerText = 'Edit Workout';
+    document.getElementById('btn-save-workout').innerText = 'Update Workout';
+
+    document.getElementById('new-workout-title').value = workout.title;
+    document.getElementById('new-workout-duration').value = workout.duration;
+    document.getElementById('new-workout-difficulty').value = workout.difficulty;
+
+    selectedExercisesList = JSON.parse(JSON.stringify(workout.exercises)); // Deep copy
+    renderSelectedExercises();
+
+    showModal('create-workout-modal');
+}
+
 window.createWorkout = async function () {
+    const id = document.getElementById('new-workout-id').value;
     const title = document.getElementById('new-workout-title').value;
     const duration = document.getElementById('new-workout-duration').value;
     const difficulty = document.getElementById('new-workout-difficulty').value;
@@ -1013,51 +1099,52 @@ window.createWorkout = async function () {
         return;
     }
 
-    const selectedExercises = [];
-    const checkboxes = document.querySelectorAll('#modal-exercise-list input[type="checkbox"]:checked');
-
-    checkboxes.forEach(cb => {
-        const row = cb.closest('.flex.items-center.justify-between');
-        const inputs = row.querySelectorAll('input[type="text"], input[type="number"]');
-        // inputs[0] is checkbox, inputs[1] is sets (number), inputs[2] is reps (text), inputs[3] is rest (number)
-        // Wait, querySelectorAll returns in document order.
-        // The checkbox is an input.
-        // Let's select specifically.
-        const setsInput = row.querySelector('input[placeholder="Sets"]');
-        const repsInput = row.querySelector('input[placeholder="Reps"]');
-        const restInput = row.querySelector('input[placeholder="Rest"]');
-
-        selectedExercises.push({
-            name: cb.dataset.name,
-            sets: parseInt(setsInput.value) || 3,
-            reps: repsInput.value || "10",
-            rest: parseInt(restInput.value) || 60,
-            video_id: cb.dataset.video
-        });
-    });
-
-    if (selectedExercises.length === 0) {
+    if (selectedExercisesList.length === 0) {
         showToast('Please select at least one exercise');
         return;
     }
 
     const trainerId = getCurrentTrainerId();
-    const res = await fetch(`${apiBase}/api/trainer/workouts`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'x-trainer-id': trainerId
-        },
-        body: JSON.stringify({ title, duration, difficulty, exercises: selectedExercises })
-    });
+    const payload = { title, duration, difficulty, exercises: selectedExercisesList };
 
-    if (res.ok) {
-        showToast('Workout created successfully! 💪');
-        hideModal('create-workout-modal');
-        document.getElementById('new-workout-title').value = '';
-        fetchAndRenderWorkouts();
-    } else {
-        showToast('Failed to create workout');
+    let url = `${apiBase}/api/trainer/workouts`;
+    let method = 'POST';
+
+    if (id) {
+        url = `${apiBase}/api/trainer/workouts/${id}`;
+        method = 'PUT';
+    }
+
+    try {
+        const res = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'x-trainer-id': trainerId
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast(id ? 'Workout updated! 💪' : 'Workout created! 💪');
+            hideModal('create-workout-modal');
+
+            // Reset form
+            document.getElementById('new-workout-title').value = '';
+            document.getElementById('new-workout-id').value = '';
+            selectedExercisesList = [];
+            renderSelectedExercises();
+
+            fetchAndRenderWorkouts();
+        } else {
+            const errText = await res.text();
+            console.error(errText);
+            showToast('Failed: ' + errText); // Show actual error
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Error saving workout ❌');
+        // alert(e.message); // Debug
     }
 }
 

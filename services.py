@@ -189,23 +189,25 @@ class UserService:
             import json
             workouts = db.query(WorkoutORM).all()
             
-            # Convert to dict format with parsed exercises
-            result = []
+            # Map to store unique workouts by ID (Personal overrides Global)
+            workout_map = {}
             
-            # Add global workouts first
+            # 1. Add global workouts first
             from data import WORKOUTS_DB
             for w_id, w in WORKOUTS_DB.items():
-                result.append(w)
+                workout_map[w_id] = w
 
+            # 2. Add/Override with personal workouts
             for w in workouts:
-                result.append({
+                workout_map[w.id] = {
                     "id": w.id,
                     "title": w.title,
                     "duration": w.duration,
                     "difficulty": w.difficulty,
                     "exercises": json.loads(w.exercises_json)
-                })
-            return result
+                }
+            
+            return list(workout_map.values())
         finally:
             db.close()
 
@@ -239,6 +241,68 @@ class UserService:
         except Exception as e:
             db.rollback()
             raise HTTPException(status_code=500, detail=f"Failed to create workout: {str(e)}")
+        finally:
+            db.close()
+
+    def update_workout(self, workout_id: str, updates: dict, trainer_id: str) -> dict:
+        db = get_trainer_session(trainer_id)
+        try:
+            import json
+            workout = db.query(WorkoutORM).filter(WorkoutORM.id == workout_id).first()
+            
+            if not workout:
+                # Check if it is a global workout we want to Shadow
+                from data import WORKOUTS_DB
+                if workout_id in WORKOUTS_DB:
+                    # Create a SHADOW copy in personal DB
+                    global_w = WORKOUTS_DB[workout_id]
+                    
+                    # Merge global data with updates
+                    new_title = updates.get("title", global_w["title"])
+                    new_duration = updates.get("duration", global_w["duration"])
+                    new_difficulty = updates.get("difficulty", global_w["difficulty"])
+                    new_exercises = updates.get("exercises", global_w["exercises"])
+                    
+                    workout = WorkoutORM(
+                        id=workout_id, # Keep SAME ID to shadow it
+                        title=new_title,
+                        duration=new_duration,
+                        difficulty=new_difficulty,
+                        exercises_json=json.dumps(new_exercises),
+                        owner_id=trainer_id
+                    )
+                    db.add(workout)
+                    db.commit()
+                    db.refresh(workout)
+                    
+                    return {
+                        "id": workout.id,
+                        "title": workout.title,
+                        "duration": workout.duration,
+                        "difficulty": workout.difficulty,
+                        "exercises": json.loads(workout.exercises_json)
+                    }
+                else:
+                    raise HTTPException(status_code=404, detail="Workout not found")
+            
+            # Normal Update
+            if "title" in updates: workout.title = updates["title"]
+            if "duration" in updates: workout.duration = updates["duration"]
+            if "difficulty" in updates: workout.difficulty = updates["difficulty"]
+            if "exercises" in updates: workout.exercises_json = json.dumps(updates["exercises"])
+            
+            db.commit()
+            db.refresh(workout)
+            return {
+                "id": workout.id,
+                "title": workout.title,
+                "duration": workout.duration,
+                "difficulty": workout.difficulty,
+                "exercises": json.loads(workout.exercises_json)
+            }
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to update workout: {str(e)}")
         finally:
             db.close()
 
