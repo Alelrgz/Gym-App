@@ -2,7 +2,7 @@
 
 <!-- Create Exercise Modal -->
 <div id="create-exercise-modal"
-    class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm"
+    class="fixed inset-0 bg-black/90 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm"
     data-action="hideModal" data-target="create-exercise-modal">
     <div class="bg-[#1a1a1a] w-full max-w-md rounded-3xl p-6 border border-white/10 relative slide-up"
         onclick="event.stopPropagation()">
@@ -75,7 +75,7 @@
 
 <!-- Edit Exercise Modal -->
 <div id="edit-exercise-modal"
-    class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm"
+    class="fixed inset-0 bg-black/90 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm"
     data-action="hideModal" data-target="edit-exercise-modal">
     <div class="bg-[#1a1a1a] w-full max-w-md rounded-3xl p-6 border border-white/10 relative slide-up"
         onclick="event.stopPropagation()">
@@ -149,19 +149,23 @@
 
 <!-- Create Workout Modal -->
 <div id="create-workout-modal"
-    class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm"
+    class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-0 md:p-4 backdrop-blur-sm"
     data-action="hideModal" data-target="create-workout-modal">
-    <div class="bg-[#1a1a1a] w-full max-w-md rounded-3xl p-6 border border-white/10 relative slide-up max-h-[85vh] overflow-y-auto"
+    <div class="bg-[#1a1a1a] w-full md:max-w-md h-full md:h-auto md:max-h-[90vh] md:rounded-3xl border-0 md:border border-white/10 relative slide-up flex flex-col"
         onclick="event.stopPropagation()">
-        <button onclick="hideModal('create-workout-modal')"
-            class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
 
-        <h2 id="modal-workout-title" class="text-2xl font-bold mb-1 text-white">New Workout</h2>
-        <p class="text-sm text-gray-400 mb-6">Create a workout template.</p>
+        <!-- Header (Fixed) -->
+        <div class="p-6 pb-2 flex-none">
+            <button onclick="hideModal('create-workout-modal')"
+                class="absolute top-6 right-6 text-gray-400 hover:text-white">✕</button>
+            <h2 id="modal-workout-title" class="text-2xl font-bold mb-1 text-white">New Workout</h2>
+            <p class="text-sm text-gray-400">Create a workout template.</p>
+        </div>
 
-        <input type="hidden" id="new-workout-id">
+        <!-- Scrollable Content -->
+        <div class="flex-1 overflow-y-auto p-6 pt-2 space-y-6">
+            <input type="hidden" id="new-workout-id">
 
-        <div class="space-y-4">
             <div>
                 <label class="text-xs text-gray-500 uppercase font-bold ml-1">Workout Title</label>
                 <input type="text" id="new-workout-title"
@@ -197,33 +201,22 @@
                         New Exercise</button>
                 </div>
 
-                <!-- New List-Based Selection -->
-                <div class="bg-black/20 rounded-xl p-3 mb-4 border border-white/5">
-                    <!-- Headers -->
-                    <div
-                        class="grid grid-cols-12 gap-2 mb-2 text-[10px] text-gray-500 font-bold uppercase tracking-wider text-center">
-                        <div class="col-span-5 text-left pl-2">Exercise</div>
-                        <div class="col-span-2">Sets</div>
-                        <div class="col-span-2">Reps</div>
-                        <div class="col-span-2">Rest</div>
-                        <div class="col-span-1"></div>
-                    </div>
-
-                    <!-- List Container -->
-                    <div id="selected-exercises-list" class="space-y-2 min-h-[50px]">
-                        <p class="text-xs text-gray-500 text-center py-4 italic">No exercises selected.</p>
-                    </div>
+                <!-- List Container (No Headers, Card Layout) -->
+                <div id="selected-exercises-list" class="space-y-2 min-h-[50px]">
+                    <p class="text-xs text-gray-500 text-center py-4 italic">No exercises selected.</p>
                 </div>
+            </div>
 
+            <div>
                 <label class="text-xs text-gray-500 uppercase font-bold ml-1 mb-2 block">Exercise Library</label>
                 <div class="glass-card p-2 mb-2 flex flex-col gap-2">
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
-                        <input type="text" id="ex-search" placeholder="Search exercises..."
+                        <input type="text" id="modal-ex-search" placeholder="Search exercises..."
                             class="w-full bg-black/20 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition placeholder-gray-500">
                     </div>
                     <div class="flex gap-2">
-                        <select id="ex-filter-muscle"
+                        <select id="modal-ex-filter-muscle"
                             class="w-1/2 bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition appearance-none cursor-pointer hover:bg-white/5">
                             <option value="">All Muscles</option>
                             <option value="Chest">Chest</option>
@@ -234,7 +227,7 @@
                             <option value="Abs">Abs</option>
                             <option value="Cardio">Cardio</option>
                         </select>
-                        <select id="ex-filter-type"
+                        <select id="modal-ex-filter-type"
                             class="w-1/2 bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition appearance-none cursor-pointer hover:bg-white/5">
                             <option value="">All Types</option>
                             <option value="Compound">Compound</option>
@@ -245,13 +238,17 @@
                     </div>
                 </div>
 
-                <div id="exercise-library" class="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto pr-1">
+                <div id="modal-exercise-library" class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-1 pb-4"
+                    style="mask-image: linear-gradient(to bottom, black 85%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 85%, transparent 100%);">
                     <!-- Populated by JS -->
                 </div>
             </div>
+        </div>
 
+        <!-- Footer (Fixed) -->
+        <div class="p-4 border-t border-white/10 bg-[#1a1a1a] md:rounded-b-3xl">
             <button onclick="createWorkout()" id="btn-save-workout"
-                class="w-full bg-primary text-black font-bold py-4 rounded-xl hover:bg-primary/90 transition mt-4">
+                class="w-full bg-primary text-black font-bold py-4 rounded-xl hover:bg-primary/90 transition shadow-lg shadow-primary/20">
                 Create Workout
             </button>
         </div>
@@ -360,7 +357,8 @@
                 <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
             </div>
         </div>
-        <button class="w-full py-3 bg-red-500/20 text-red-400 font-bold rounded-xl mt-4">Log Out</button>
+        <button class="w-full py-3 bg-red-500/20 text-red-400 font-bold rounded-xl mt-4">Log
+            Out</button>
     </div>
     {% endcall %}
 </div>
@@ -386,12 +384,12 @@
         <button class="w-full py-3 bg-primary text-white font-bold rounded-xl">Message Client</button>
     </div>
     {% endcall %}
-
 </div>
 
 <div id="calendar-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
     data-action="hideModal" data-target="calendar-modal">
-    {% call card(classes="w-full max-w-md p-6 slide-up max-h-[80vh] overflow-y-auto", onclick="event.stopPropagation()")
+    {% call card(classes="w-full max-w-md p-6 slide-up max-h-[80vh] overflow-y-auto",
+    onclick="event.stopPropagation()")
     %}
     <div class="flex justify-between items-center mb-4">
         <h3 class="font-bold text-lg text-white">Client Schedule</h3>
@@ -421,7 +419,8 @@
 
     <!-- Selected Day Details -->
     <div id="trainer-day-details" class="space-y-3 mt-6">
-        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1" id="trainer-date-title">Select a day
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1" id="trainer-date-title">Select
+            a day
         </h3>
         <div id="trainer-events-list" class="space-y-2"></div>
         <button id="add-workout-btn" class="w-full py-3 bg-white/10 text-white font-bold rounded-xl mt-2 hidden">+ Add
