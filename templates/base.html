@@ -59,8 +59,10 @@
                 class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">🏆</span></a>
             <a href="{{ 'client_progress.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=progress' }}"
                 class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">📊</span></a>
-            <div class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">👤</span>
-            </div>
+            <a href="{{ 'client_dashboard.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=client_dashboard' }}"
+                class="flex flex-col items-center {{ 'text-white' if mode == 'client_dashboard' else 'text-gray-500' }} tap-effect"><span
+                    class="text-xl">👤</span>
+            </a>
         </div>
     </div>
     {% endif %}
