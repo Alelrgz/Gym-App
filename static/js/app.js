@@ -183,30 +183,59 @@ window.renderCalendar = (month, year, events, gridId, titleId, detailTitleId, de
 };
 
 window.openTrainerCalendar = async () => {
-    // Mock fetching client data for the calendar
-    // In a real app, we'd pass the client ID
-    const res = await fetch(`${apiBase}/api/client/data`);
-    const user = await res.json();
+    const clientId = document.getElementById('client-modal').dataset.clientId;
+    if (!clientId) {
+        console.error("No client ID found for calendar");
+        return;
+    }
 
-    if (user.calendar) {
-        showModal('calendar-modal');
-        let currentMonth = new Date().getMonth();
-        let currentYear = new Date().getFullYear();
-        const events = user.calendar.events;
+    try {
+        console.log("Fetching client data for calendar:", clientId);
+        const res = await fetch(`${apiBase}/api/trainer/client/${clientId}`);
+        if (!res.ok) throw new Error("Failed to fetch client data: " + res.status);
+        const user = await res.json();
+        console.log("Client data received:", user);
 
-        window.renderCalendar(currentMonth, currentYear, events, 'trainer-calendar-grid', 'trainer-month-year', 'trainer-date-title', 'trainer-events-list', true);
+        if (user.calendar) {
+            console.log("Opening calendar modal...");
+            showModal('calendar-modal');
+            let currentMonth = new Date().getMonth();
+            let currentYear = new Date().getFullYear();
+            const events = user.calendar.events;
+            console.log("Rendering calendar with events:", events);
 
-        document.getElementById('trainer-prev-month').onclick = () => {
-            currentMonth--;
-            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            if (!document.getElementById('trainer-calendar-grid')) console.error("CRITICAL: trainer-calendar-grid missing!");
+
             window.renderCalendar(currentMonth, currentYear, events, 'trainer-calendar-grid', 'trainer-month-year', 'trainer-date-title', 'trainer-events-list', true);
-        };
 
-        document.getElementById('trainer-next-month').onclick = () => {
-            currentMonth++;
-            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-            window.renderCalendar(currentMonth, currentYear, events, 'trainer-calendar-grid', 'trainer-month-year', 'trainer-date-title', 'trainer-events-list', true);
-        };
+            const prevBtn = document.getElementById('trainer-prev-month');
+            const nextBtn = document.getElementById('trainer-next-month');
+
+            if (prevBtn) {
+                prevBtn.onclick = () => {
+                    currentMonth--;
+                    if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+                    window.renderCalendar(currentMonth, currentYear, events, 'trainer-calendar-grid', 'trainer-month-year', 'trainer-date-title', 'trainer-events-list', true);
+                };
+            } else {
+                console.error("CRITICAL: trainer-prev-month missing!");
+            }
+
+            if (nextBtn) {
+                nextBtn.onclick = () => {
+                    currentMonth++;
+                    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+                    window.renderCalendar(currentMonth, currentYear, events, 'trainer-calendar-grid', 'trainer-month-year', 'trainer-date-title', 'trainer-events-list', true);
+                };
+            } else {
+                console.error("CRITICAL: trainer-next-month missing!");
+            }
+        } else {
+            console.warn("User has no calendar data");
+        }
+    } catch (e) {
+        console.error("Error opening trainer calendar:", e);
+        showToast("Error loading schedule: " + e.message);
     }
 };
 
@@ -387,9 +416,13 @@ async function init() {
             const list = document.getElementById('client-list');
             if (list) {
                 data.clients.forEach(c => {
+                    console.log("Rendering client:", c.name, "ID:", c.id);
                     const div = document.createElement('div');
                     div.className = "glass-card p-4 flex justify-between items-center tap-effect";
-                    div.onclick = function () { showClientModal(c.name, c.plan, c.status, c.id); };
+                    div.onclick = function () {
+                        console.log("Clicked client:", c.name, "ID:", c.id);
+                        showClientModal(c.name, c.plan, c.status, c.id);
+                    };
                     const statusColor = c.status === 'At Risk' ? 'text-red-400' : 'text-green-400';
                     div.innerHTML = `<div class="flex items-center"><div class="w-10 h-10 rounded-full bg-white/10 mr-3 overflow-hidden"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${c.name}" /></div><div><p class="font-bold text-sm text-white">${c.name}</p><p class="text-[10px] text-gray-400">${c.plan} • Seen ${c.last_seen}</p></div></div><span class="text-xs font-bold ${statusColor}">${c.status}</span>`;
                     list.appendChild(div);
@@ -429,6 +462,10 @@ async function init() {
                                 typeId: 'main-ex-filter-type',
                                 onClick: null
                             });
+                        }
+                        // Refresh Workouts
+                        if (document.getElementById('workout-library')) {
+                            fetchAndRenderWorkouts();
                         }
                         showToast(`Switched to ${trainerSelector.options[trainerSelector.selectedIndex].text}`);
                     });
@@ -614,6 +651,7 @@ function addWater() {
 }
 
 function showClientModal(name, plan, status, clientId) {
+    console.log("showClientModal called with ID:", clientId);
     document.getElementById('modal-client-name').innerText = name;
     document.getElementById('modal-client-plan').innerText = plan;
     document.getElementById('modal-client-status').innerText = status;
@@ -700,6 +738,10 @@ async function initializeExerciseList(config) {
         headers: { 'x-trainer-id': trainerId }
     });
     const exercises = await res.json();
+    console.log(`[DEBUG] Fetched ${exercises.length} exercises for ${trainerId}`);
+    if (exercises.length > 0) {
+        console.log("[DEBUG] First ex:", exercises[0].name, "Video:", exercises[0].video_id);
+    }
 
     // Render Function
     const render = () => {
@@ -790,28 +832,100 @@ async function initializeExerciseList(config) {
                 e.stopPropagation(); // Prevent card click
                 openEditExerciseModal(ex);
             });
-
-            // Click card action
-            div.addEventListener('click', (e) => {
-                if (onClick === 'addToWorkout') {
-                    addExerciseToWorkout(ex);
-                }
-            });
+            div.appendChild(editBtn); // Ensure it's appended
 
             container.appendChild(div);
         });
     };
 
-    // Attach listeners if not already attached
-    if (!container.dataset.listenersAttached) {
-        document.getElementById(searchId)?.addEventListener('input', render);
-        document.getElementById(muscleId)?.addEventListener('change', render);
-        document.getElementById(typeId)?.addEventListener('change', render);
-        container.dataset.listenersAttached = "true";
+    render();
+
+    // Attach listeners to filters
+    document.getElementById(searchId)?.addEventListener('input', render);
+    document.getElementById(muscleId)?.addEventListener('change', render);
+    document.getElementById(typeId)?.addEventListener('change', render);
+
+    populateVideoSuggestions(exercises);
+}
+
+// --- DIET ASSIGNMENT ---
+window.openAssignDietModal = async () => {
+    const clientId = document.getElementById('client-modal').dataset.clientId;
+    if (!clientId) {
+        showToast("Error: No client selected");
+        return;
     }
 
-    // Initial Render
-    render();
+    document.getElementById('diet-client-id').value = clientId;
+
+    // Ideally fetch current diet data to pre-fill
+    // For now, we'll just show the modal empty or with placeholders
+    // If we had an endpoint to get specific client details including diet, we'd call it here.
+    // The client-modal is populated from `showClientModal` which gets data from `TRAINER_DATA` (summary).
+    // We might need to fetch full client data.
+
+    showModal('assign-diet-modal');
+};
+
+window.saveDietPlan = async () => {
+    const clientId = document.getElementById('diet-client-id').value;
+    const calories = parseInt(document.getElementById('diet-calories').value) || 0;
+    const protein = parseInt(document.getElementById('diet-protein').value) || 0;
+    const carbs = parseInt(document.getElementById('diet-carbs').value) || 0;
+    const fat = parseInt(document.getElementById('diet-fat').value) || 0;
+    const hydration = parseInt(document.getElementById('diet-hydration').value) || 2500;
+    const consistency = parseInt(document.getElementById('diet-consistency').value) || 80;
+
+    const payload = {
+        client_id: clientId,
+        calories: calories,
+        protein: protein,
+        carbs: carbs,
+        fat: fat,
+        hydration_target: hydration,
+        consistency_target: consistency
+    };
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/assign_diet`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast("Diet plan assigned successfully! 🥗");
+            hideModal('assign-diet-modal');
+        } else {
+            const err = await res.json();
+            showToast(`Error: ${err.detail || 'Failed to assign diet'}`);
+        }
+    } catch (e) {
+        console.error(e);
+        showToast("Network error");
+    }
+};
+
+// Click card action
+
+function populateVideoSuggestions(exercises) {
+    const dataList = document.getElementById('video-suggestions');
+    if (!dataList) return;
+
+    dataList.innerHTML = ''; // Clear existing
+    const uniqueVideos = new Set();
+
+    exercises.forEach(ex => {
+        if (ex.video_id) {
+            uniqueVideos.add(ex.video_id);
+        }
+    });
+
+    uniqueVideos.forEach(vid => {
+        const option = document.createElement('option');
+        option.value = vid;
+        dataList.appendChild(option);
+    });
 }
 
 function setupExerciseModals() {
@@ -1182,6 +1296,15 @@ window.openEditWorkout = function (workout) {
     renderSelectedExercises();
 
     showModal('create-workout-modal');
+
+    // Initialize Exercise List for Modal
+    initializeExerciseList({
+        containerId: 'modal-exercise-library',
+        searchId: 'modal-ex-search',
+        muscleId: 'modal-ex-filter-muscle',
+        typeId: 'modal-ex-filter-type',
+        onClick: 'addToWorkout'
+    });
 }
 
 window.createWorkout = async function () {
@@ -1278,18 +1401,10 @@ window.assignWorkout = async function () {
     if (res.ok) {
         showToast('Workout assigned successfully! 📅');
         hideModal('assign-workout-modal');
-        // Refresh calendar
-        // We need to re-fetch client data or just reload the calendar.
-        // Simple way: close calendar and let user re-open, or trigger a refresh.
-        // Let's try to refresh the calendar view if possible.
-        // window.openTrainerCalendar() fetches data again.
-        // But we are inside the calendar.
-        // Let's just hide the assign modal and maybe update the UI manually or close/open calendar.
-        // For better UX, let's close the calendar modal too so they can re-open to see changes, or just show toast.
-        // Ideally we re-render the calendar.
-        // We can call openTrainerCalendar() again?
-        // But we need the client ID.
-        // Let's just show toast for now.
+        // Refresh calendar to show new assignment
+        if (window.openTrainerCalendar) {
+            window.openTrainerCalendar();
+        }
     } else {
         showToast('Failed to assign workout');
     }

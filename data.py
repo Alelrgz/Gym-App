@@ -22,7 +22,7 @@ WORKOUTS_DB = {
         "duration": "45 min",
         "difficulty": "Intermediate",
         "exercises": [
-            {"name": "Barbell Squat", "sets": 3, "reps": "10", "rest": 60, "video_id": "Squat"},
+            {"name": "Barbell Squat", "sets": 3, "reps": "10", "rest": 60, "video_id": "Squats"},
             {"name": "Push-Ups", "sets": 3, "reps": "15", "rest": 45, "video_id": "PushUps"},
             {"name": "Pull-Up", "sets": 3, "reps": "8", "rest": 60, "video_id": "PullUp"}
         ]
@@ -115,6 +115,29 @@ CLIENT_DATA = {
                 {"date": "2026-01-01", "title": "Recovery", "type": "rest", "completed": False, "details": "Stretching"}
             ]
         }
+    },
+    "user_456": {
+        "name": "Sarah",
+        "streak": 3,
+        "gems": 20,
+        "health_score": 72,
+        "todays_workout": None,
+        "daily_quests": [],
+        "progress": {
+            "photos": [],
+            "hydration": {"current": 500, "target": 2000},
+            "weekly_history": [1200, 1400, 1100, 1300, 1250, 1400, 1350],
+            "macros": {
+                "calories": {"current": 1200, "target": 1800},
+                "protein": {"current": 80, "target": 140},
+                "carbs": {"current": 120, "target": 180},
+                "fat": {"current": 40, "target": 60}
+            },
+            "diet_log": {}
+        },
+        "calendar": {
+            "events": []
+        }
     }
 }
 
@@ -194,12 +217,12 @@ EXERCISE_LIBRARY = [
     {"id": "ex_28", "name": "Cable Lateral Raise", "muscle": "Shoulders", "type": "Isolation", "video_id": "CableLateral"},
 
     # --- LEGS ---
-    {"id": "ex_29", "name": "Barbell Squat", "muscle": "Legs", "type": "Compound", "video_id": "Squat"},
+    {"id": "ex_29", "name": "Barbell Squat", "muscle": "Legs", "type": "Compound", "video_id": "Squats"},
     {"id": "ex_30", "name": "Leg Press", "muscle": "Legs", "type": "Compound", "video_id": "LegPress"},
     {"id": "ex_31", "name": "Romanian Deadlift", "muscle": "Legs", "type": "Compound", "video_id": "RDL"},
     {"id": "ex_32", "name": "Leg Extension", "muscle": "Legs", "type": "Isolation", "video_id": "LegExtension"},
-    {"id": "ex_33", "name": "Seated Leg Curl", "muscle": "Legs", "type": "Isolation", "video_id": "LegCurl"},
-    {"id": "ex_34", "name": "Walking Lunge", "muscle": "Legs", "type": "Compound", "video_id": "Lunge"},
+    {"id": "ex_33", "name": "Seated Leg Curl", "muscle": "Legs", "type": "Isolation", "video_id": "LegCurls"},
+    {"id": "ex_34", "name": "Walking Lunge", "muscle": "Legs", "type": "Compound", "video_id": "Lunges"},
     {"id": "ex_35", "name": "Bulgarian Split Squat", "muscle": "Legs", "type": "Compound", "video_id": "SplitSquat"},
     {"id": "ex_36", "name": "Calf Raise", "muscle": "Legs", "type": "Isolation", "video_id": "CalfRaise"},
     {"id": "ex_37", "name": "Hack Squat", "muscle": "Legs", "type": "Compound", "video_id": "HackSquat"},

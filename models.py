@@ -67,6 +67,7 @@ class Progress(BaseModel):
     weekly_history: List[int]
     macros: Macros
     diet_log: Dict[str, List[DietItem]]
+    consistency_target: Optional[int] = 80
 
 # --- CALENDAR ---
 class CalendarEvent(BaseModel):
@@ -85,13 +86,14 @@ class ClientData(BaseModel):
     streak: int
     gems: int
     health_score: int
-    todays_workout: Workout
+    todays_workout: Optional[Workout] = None
     daily_quests: List[DailyQuest]
-    progress: Progress
+    progress: Optional[Progress] = None
     calendar: CalendarData
 
 # --- TRAINER ---
 class ClientSummary(BaseModel):
+    id: str
     name: str
     status: str
     last_seen: str
@@ -137,6 +139,22 @@ class WorkoutAssignment(BaseModel):
     client_name: str
     workout_type: str
 
+class WeeklySplit(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = ""
+    days_per_week: int
+    schedule: Dict[str, Optional[str]] # Key: "Day 1", Value: workout_id or None (Rest)
+
 class LeaderboardData(BaseModel):
     users: List[LeaderboardUser]
     weekly_challenge: WeeklyChallenge
+
+class AssignDietRequest(BaseModel):
+    client_id: str
+    calories: int
+    protein: int
+    carbs: int
+    fat: int
+    hydration_target: int
+    consistency_target: int

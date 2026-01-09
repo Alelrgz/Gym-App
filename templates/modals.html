@@ -49,7 +49,7 @@
             <div>
                 <label class="text-xs text-gray-500 uppercase font-bold ml-1">Video (URL or File)</label>
                 <div class="flex space-x-2">
-                    <input type="text" id="new-ex-video"
+                    <input type="text" id="new-ex-video" list="video-suggestions"
                         class="flex-1 bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
                         placeholder="https://youtube.com/...">
                     <input type="file" id="new-ex-file" class="hidden" accept="video/*">
@@ -123,7 +123,7 @@
             <div>
                 <label class="text-xs text-gray-500 uppercase font-bold ml-1">Video (URL or File)</label>
                 <div class="flex space-x-2">
-                    <input type="text" id="edit-ex-video"
+                    <input type="text" id="edit-ex-video" list="video-suggestions"
                         class="flex-1 bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
                         placeholder="https://youtube.com/...">
                     <input type="file" id="edit-ex-file" class="hidden" accept="video/*">
@@ -257,7 +257,7 @@
 
 <!-- Assign Workout Modal -->
 <div id="assign-workout-modal"
-    class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm"
+    class="fixed inset-0 bg-black/90 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm"
     data-action="hideModal" data-target="assign-workout-modal">
     <div class="bg-[#1a1a1a] w-full max-w-sm rounded-3xl p-6 border border-white/10 relative slide-up"
         onclick="event.stopPropagation()">
@@ -287,144 +287,219 @@
     </div>
 </div>
 
-<div id="notification-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
-    data-action="hideModal" data-target="notification-modal">
-    {% call card(classes="w-full max-w-sm p-6 slide-up") %}
-    <div class="flex justify-between items-center mb-4">
-        <h3 class="font-bold text-lg text-white">Notifications</h3>
-        <button data-action="hideModal" data-target="notification-modal" class="text-gray-400">✕</button>
-    </div>
-    <div class="space-y-3">
-        <div class="flex items-start space-x-3 p-3 bg-white/5 rounded-xl">
-            <span class="text-xl">🔥</span>
-            <div>
-                <p class="text-sm font-bold text-white">Streak Saver Used</p>
-                <p class="text-xs text-gray-400">Yesterday</p>
+            <div id="notification-modal"
+                class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+                data-action="hideModal" data-target="notification-modal">
+                {% call card(classes="w-full max-w-sm p-6 slide-up") %}
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg text-white">Notifications</h3>
+                    <button data-action="hideModal" data-target="notification-modal" class="text-gray-400">✕</button>
+                </div>
+                <div class="space-y-3">
+                    <div class="flex items-start space-x-3 p-3 bg-white/5 rounded-xl">
+                        <span class="text-xl">🔥</span>
+                        <div>
+                            <p class="text-sm font-bold text-white">Streak Saver Used</p>
+                            <p class="text-xs text-gray-400">Yesterday</p>
+                        </div>
+                    </div>
+                    <div class="flex items-start space-x-3 p-3 bg-white/5 rounded-xl">
+                        <span class="text-xl">🏆</span>
+                        <div>
+                            <p class="text-sm font-bold text-white">Weekly Challenge</p>
+                            <p class="text-xs text-gray-400">You're in the top 10!</p>
+                        </div>
+                    </div>
+                </div>
+                {% endcall %}
             </div>
-        </div>
-        <div class="flex items-start space-x-3 p-3 bg-white/5 rounded-xl">
-            <span class="text-xl">🏆</span>
-            <div>
-                <p class="text-sm font-bold text-white">Weekly Challenge</p>
-                <p class="text-xs text-gray-400">You're in the top 10!</p>
+
+            <div id="shop-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+                data-action="hideModal" data-target="shop-modal">
+                {% call card(classes="w-full max-w-sm p-6 slide-up") %}
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg text-white">Gem Shop</h3>
+                    <button data-action="hideModal" data-target="shop-modal" class="text-gray-400">✕</button>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="bg-white/5 p-3 rounded-xl text-center tap-effect" data-action="showToast"
+                        data-message="Purchased! (Mock)">
+                        <div class="text-3xl mb-2">🥤</div>
+                        <p class="text-xs font-bold text-white">Protein Shake</p>
+                        <p class="text-xs text-yellow-400">50 💎</p>
+                    </div>
+                    <div class="bg-white/5 p-3 rounded-xl text-center tap-effect" data-action="showToast"
+                        data-message="Purchased! (Mock)">
+                        <div class="text-3xl mb-2">👕</div>
+                        <p class="text-xs font-bold text-white">Gym Tee</p>
+                        <p class="text-xs text-yellow-400">500 💎</p>
+                    </div>
+                </div>
+                {% endcall %}
             </div>
-        </div>
-    </div>
-    {% endcall %}
-</div>
 
-<div id="shop-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
-    data-action="hideModal" data-target="shop-modal">
-    {% call card(classes="w-full max-w-sm p-6 slide-up") %}
-    <div class="flex justify-between items-center mb-4">
-        <h3 class="font-bold text-lg text-white">Gem Shop</h3>
-        <button data-action="hideModal" data-target="shop-modal" class="text-gray-400">✕</button>
-    </div>
-    <div class="grid grid-cols-2 gap-3">
-        <div class="bg-white/5 p-3 rounded-xl text-center tap-effect" data-action="showToast"
-            data-message="Purchased! (Mock)">
-            <div class="text-3xl mb-2">🥤</div>
-            <p class="text-xs font-bold text-white">Protein Shake</p>
-            <p class="text-xs text-yellow-400">50 💎</p>
-        </div>
-        <div class="bg-white/5 p-3 rounded-xl text-center tap-effect" data-action="showToast"
-            data-message="Purchased! (Mock)">
-            <div class="text-3xl mb-2">👕</div>
-            <p class="text-xs font-bold text-white">Gym Tee</p>
-            <p class="text-xs text-yellow-400">500 💎</p>
-        </div>
-    </div>
-    {% endcall %}
-</div>
-
-<div id="profile-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
-    data-action="hideModal" data-target="profile-modal">
-    {% call card(classes="w-full max-w-sm p-6 slide-up") %}
-    <div class="flex justify-between items-center mb-4">
-        <h3 class="font-bold text-lg text-white">Settings</h3>
-        <button data-action="hideModal" data-target="profile-modal" class="text-gray-400">✕</button>
-    </div>
-    <div class="space-y-4">
-        <div class="flex justify-between items-center">
-            <span class="text-sm text-gray-300">Dark Mode</span>
-            <div class="w-10 h-6 bg-green-500 rounded-full relative">
-                <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+            <div id="profile-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+                data-action="hideModal" data-target="profile-modal">
+                {% call card(classes="w-full max-w-sm p-6 slide-up") %}
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg text-white">Settings</h3>
+                    <button data-action="hideModal" data-target="profile-modal" class="text-gray-400">✕</button>
+                </div>
+                <div class="space-y-4">
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-300">Dark Mode</span>
+                        <div class="w-10 h-6 bg-green-500 rounded-full relative">
+                            <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+                        </div>
+                    </div>
+                    <div class="flex justify-between items-center">
+                        <span class="text-sm text-gray-300">Notifications</span>
+                        <div class="w-10 h-6 bg-green-500 rounded-full relative">
+                            <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+                        </div>
+                    </div>
+                    <button class="w-full py-3 bg-red-500/20 text-red-400 font-bold rounded-xl mt-4">Log
+                        Out</button>
+                </div>
+                {% endcall %}
             </div>
-        </div>
-        <div class="flex justify-between items-center">
-            <span class="text-sm text-gray-300">Notifications</span>
-            <div class="w-10 h-6 bg-green-500 rounded-full relative">
-                <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+
+            <div id="client-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+                data-action="hideModal" data-target="client-modal">
+                {% call card(classes="w-full max-w-sm p-6 slide-up") %}
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg text-white" id="modal-client-name">Client Details</h3>
+                    <button data-action="hideModal" data-target="client-modal" class="text-gray-400">✕</button>
+                </div>
+                <div class="space-y-4">
+                    <div class="bg-white/5 p-4 rounded-xl">
+                        <p class="text-xs text-gray-400 uppercase">Status</p>
+                        <p class="text-lg font-bold text-white" id="modal-client-status">...</p>
+                        <p class="text-sm text-gray-400 hidden" id="modal-client-plan">...</p>
+                    </div>
+                    <button class="w-full py-3 bg-white/10 text-white font-bold rounded-xl mb-2"
+                        onclick="openTrainerCalendar()">View Schedule</button>
+                    <button class="w-full py-3 bg-white/10 text-white font-bold rounded-xl mb-2"
+                        onclick="openAssignDietModal()">Manage Diet</button>
+                    <button class="w-full py-3 bg-primary text-white font-bold rounded-xl">Message Client</button>
+                </div>
+                {% endcall %}
             </div>
-        </div>
-        <button class="w-full py-3 bg-red-500/20 text-red-400 font-bold rounded-xl mt-4">Log
-            Out</button>
-    </div>
-    {% endcall %}
-</div>
 
-<div id="client-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
-    data-action="hideModal" data-target="client-modal">
-    {% call card(classes="w-full max-w-sm p-6 slide-up") %}
-    <div class="flex justify-between items-center mb-4">
-        <h3 class="font-bold text-lg text-white" id="modal-client-name">Client Details</h3>
-        <button data-action="hideModal" data-target="client-modal" class="text-gray-400">✕</button>
-    </div>
-    <div class="space-y-4">
-        <div class="bg-white/5 p-4 rounded-xl">
-            <p class="text-xs text-gray-400 uppercase">Current Plan</p>
-            <p class="text-lg font-bold text-white" id="modal-client-plan">...</p>
-        </div>
-        <div class="bg-white/5 p-4 rounded-xl">
-            <p class="text-xs text-gray-400 uppercase">Status</p>
-            <p class="text-lg font-bold text-white" id="modal-client-status">...</p>
-        </div>
-        <button class="w-full py-3 bg-white/10 text-white font-bold rounded-xl mb-2"
-            onclick="openTrainerCalendar()">View Schedule</button>
-        <button class="w-full py-3 bg-primary text-white font-bold rounded-xl">Message Client</button>
-    </div>
-    {% endcall %}
-</div>
+            <div id="calendar-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+                data-action="hideModal" data-target="calendar-modal">
+                {% call card(classes="w-full max-w-md p-6 slide-up max-h-[80vh] overflow-y-auto",
+                onclick="event.stopPropagation()")
+                %}
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg text-white">Client Schedule</h3>
+                    <button onclick="hideModal('calendar-modal')" class="text-gray-400">✕</button>
+                </div>
 
-<div id="calendar-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
-    data-action="hideModal" data-target="calendar-modal">
-    {% call card(classes="w-full max-w-md p-6 slide-up max-h-[80vh] overflow-y-auto",
-    onclick="event.stopPropagation()")
-    %}
-    <div class="flex justify-between items-center mb-4">
-        <h3 class="font-bold text-lg text-white">Client Schedule</h3>
-        <button onclick="hideModal('calendar-modal')" class="text-gray-400">✕</button>
-    </div>
+                <!-- Calendar Header -->
+                <div class="flex justify-between items-center mb-4">
+                    <button id="trainer-prev-month" class="p-2 bg-white/10 rounded-full tap-effect">←</button>
+                    <h2 id="trainer-month-year" class="text-xl font-bold text-white">December 2025</h2>
+                    <button id="trainer-next-month" class="p-2 bg-white/10 rounded-full tap-effect">→</button>
+                </div>
 
-    <!-- Calendar Header -->
-    <div class="flex justify-between items-center mb-4">
-        <button id="trainer-prev-month" class="p-2 bg-white/10 rounded-full tap-effect">←</button>
-        <h2 id="trainer-month-year" class="text-xl font-bold text-white">December 2025</h2>
-        <button id="trainer-next-month" class="p-2 bg-white/10 rounded-full tap-effect">→</button>
-    </div>
+                <!-- Calendar Grid -->
+                <div class="grid grid-cols-7 gap-2 text-center mb-2">
+                    <div class="text-xs text-gray-500 font-bold">S</div>
+                    <div class="text-xs text-gray-500 font-bold">M</div>
+                    <div class="text-xs text-gray-500 font-bold">T</div>
+                    <div class="text-xs text-gray-500 font-bold">W</div>
+                    <div class="text-xs text-gray-500 font-bold">T</div>
+                    <div class="text-xs text-gray-500 font-bold">F</div>
+                    <div class="text-xs text-gray-500 font-bold">S</div>
+                </div>
+                <div id="trainer-calendar-grid" class="grid grid-cols-7 gap-y-2 gap-x-0">
+                    <!-- Days injected by JS -->
+                </div>
 
-    <!-- Calendar Grid -->
-    <div class="grid grid-cols-7 gap-2 text-center mb-2">
-        <div class="text-xs text-gray-500 font-bold">S</div>
-        <div class="text-xs text-gray-500 font-bold">M</div>
-        <div class="text-xs text-gray-500 font-bold">T</div>
-        <div class="text-xs text-gray-500 font-bold">W</div>
-        <div class="text-xs text-gray-500 font-bold">T</div>
-        <div class="text-xs text-gray-500 font-bold">F</div>
-        <div class="text-xs text-gray-500 font-bold">S</div>
-    </div>
-    <div id="trainer-calendar-grid" class="grid grid-cols-7 gap-y-2 gap-x-0">
-        <!-- Days injected by JS -->
-    </div>
+                <!-- Selected Day Details -->
+                <div id="trainer-day-details" class="space-y-3 mt-6">
+                    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1" id="trainer-date-title">
+                        Select
+                        a day
+                    </h3>
+                    <div id="trainer-events-list" class="space-y-2"></div>
+                    <button id="add-workout-btn"
+                        class="w-full py-3 bg-white/10 text-white font-bold rounded-xl mt-2 hidden">+ Add
+                        Workout</button>
+                </div>
+                {% endcall %}
+            </div>
 
-    <!-- Selected Day Details -->
-    <div id="trainer-day-details" class="space-y-3 mt-6">
-        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1" id="trainer-date-title">Select
-            a day
-        </h3>
-        <div id="trainer-events-list" class="space-y-2"></div>
-        <button id="add-workout-btn" class="w-full py-3 bg-white/10 text-white font-bold rounded-xl mt-2 hidden">+ Add
-            Workout</button>
-    </div>
-    {% endcall %}
-</div>
+            <!-- Assign Diet Modal -->
+            <div id="assign-diet-modal"
+                class="fixed inset-0 bg-black/90 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm"
+                data-action="hideModal" data-target="assign-diet-modal">
+                <div class="bg-[#1a1a1a] w-full max-w-sm rounded-3xl p-6 border border-white/10 relative slide-up"
+                    onclick="event.stopPropagation()">
+                    <button onclick="hideModal('assign-diet-modal')"
+                        class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+
+                    <h2 class="text-xl font-bold mb-1 text-white">Diet Plan</h2>
+                    <p class="text-sm text-gray-400 mb-6">Set nutrition & hydration targets.</p>
+
+                    <input type="hidden" id="diet-client-id">
+
+                    <div class="space-y-4 h-[60vh] overflow-y-auto pr-2">
+                        <!-- Macros -->
+                        <div>
+                            <label class="text-xs text-gray-500 uppercase font-bold ml-1">Daily Calories</label>
+                            <input type="number" id="diet-calories"
+                                class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                                placeholder="e.g. 2500">
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2">
+                            <div>
+                                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Protein (g)</label>
+                                <input type="number" id="diet-protein"
+                                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                                    placeholder="180">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Carbs (g)</label>
+                                <input type="number" id="diet-carbs"
+                                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                                    placeholder="250">
+                            </div>
+                            <div>
+                                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Fat (g)</label>
+                                <input type="number" id="diet-fat"
+                                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                                    placeholder="70">
+                            </div>
+                        </div>
+
+                        <!-- Hydration -->
+                        <div>
+                            <label class="text-xs text-gray-500 uppercase font-bold ml-1">Hydration Target (ml)</label>
+                            <input type="number" id="diet-hydration"
+                                class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                                placeholder="e.g. 3000">
+                        </div>
+
+                        <!-- Consistency -->
+                        <div>
+                            <label class="text-xs text-gray-500 uppercase font-bold ml-1">Consistency Target (%)</label>
+                            <input type="number" id="diet-consistency"
+                                class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                                placeholder="e.g. 80">
+                        </div>
+
+                        <button onclick="saveDietPlan()"
+                            class="w-full bg-primary text-black font-bold py-4 rounded-xl hover:bg-primary/90 transition mt-2">
+                            Save Diet Plan
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Video Suggestions Datalist -->
+            <datalist id="video-suggestions">
+                <!-- Populated by JS -->
+            </datalist>

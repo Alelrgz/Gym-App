@@ -21,3 +21,12 @@ class WorkoutORM(Base):
     exercises_json = Column(String) # Store exercises as JSON string
     owner_id = Column(String, index=True, nullable=True) # NULL = Global, Value = Personal
 
+class WeeklySplitORM(Base):
+    __tablename__ = "weekly_splits"
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String)
+    description = Column(String)
+    days_per_week = Column(Integer)
+    schedule_json = Column(String) # Store schedule as JSON
+    owner_id = Column(String, index=True)
+

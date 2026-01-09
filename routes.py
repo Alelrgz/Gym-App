@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Header
-from models import GymConfig, ClientData, TrainerData, OwnerData, LeaderboardData, WorkoutAssignment, ExerciseTemplate
+from models import GymConfig, ClientData, TrainerData, OwnerData, LeaderboardData, WorkoutAssignment, ExerciseTemplate, AssignDietRequest
 from services import GymService, UserService, LeaderboardService
 
 router = APIRouter()
@@ -26,6 +26,10 @@ async def get_client_data(service: UserService = Depends(get_user_service)):
 @router.get("/api/trainer/data", response_model=TrainerData)
 async def get_trainer_data(service: UserService = Depends(get_user_service)):
     return service.get_trainer()
+
+@router.get("/api/trainer/client/{client_id}", response_model=ClientData)
+async def get_client_for_trainer(client_id: str, service: UserService = Depends(get_user_service)):
+    return service.get_client(client_id)
 
 @router.get("/api/owner/data", response_model=OwnerData)
 async def get_owner_data(service: UserService = Depends(get_user_service)):
@@ -89,6 +93,19 @@ async def update_workout(
 @router.post("/api/trainer/assign_workout")
 async def assign_workout(assignment: dict, service: UserService = Depends(get_user_service)):
     return service.assign_workout(assignment)
+
+@router.post("/api/trainer/diet")
+async def update_diet(diet_data: dict, service: UserService = Depends(get_user_service)):
+    # Expects { "client_id": "...", "macros": {...}, "hydration_target": 2500, "consistency_target": 80 }
+    client_id = diet_data.get("client_id")
+    if not client_id:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=400, detail="Missing client_id")
+    return service.update_client_diet(client_id, diet_data)
+
+@router.post("/api/trainer/assign_diet")
+async def assign_diet(diet_req: AssignDietRequest, service: UserService = Depends(get_user_service)):
+    return service.assign_diet(diet_req)
 
 from fastapi import File, UploadFile
 import shutil
