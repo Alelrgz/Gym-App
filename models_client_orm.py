@@ -21,6 +21,7 @@ class ClientScheduleORM(Base):
     title = Column(String)
     type = Column(String) # workout, rest, etc.
     completed = Column(Boolean, default=False)
+    workout_id = Column(String, nullable=True)
     details = Column(String, nullable=True)
 
 class ClientDietSettingsORM(Base):

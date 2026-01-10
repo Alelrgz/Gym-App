@@ -15,6 +15,24 @@ GYMS_DB = {
     }
 }
 
+SPLITS_DB = {
+    "split_1": {
+        "id": "split_1",
+        "name": "PPL (Push Pull Legs)",
+        "description": "Classic 6-day split for hypertrophy",
+        "days_per_week": 7,
+        "schedule": {
+            "Monday": "cbum_push",
+            "Tuesday": "w1", # Placeholder for Pull
+            "Wednesday": "w1", # Placeholder for Legs
+            "Thursday": "cbum_push",
+            "Friday": "w1",
+            "Saturday": "w1",
+            "Sunday": None # Rest
+        }
+    }
+}
+
 WORKOUTS_DB = {
     "w1": {
         "id": "w1",

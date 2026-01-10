@@ -23,6 +23,21 @@ async def get_gym_config(gym_id: str, service: GymService = Depends(get_gym_serv
 async def get_client_data(service: UserService = Depends(get_user_service)):
     return service.get_client()
 
+@router.get("/api/client/schedule")
+async def get_client_schedule(
+    date: str = None, 
+    service: UserService = Depends(get_user_service)
+):
+    return service.get_client_schedule(date)
+
+@router.post("/api/client/schedule/complete")
+async def complete_schedule_item(
+    payload: dict,
+    service: UserService = Depends(get_user_service)
+):
+    # payload: { "date": "YYYY-MM-DD", "item_id": "..." }
+    return service.complete_schedule_item(payload)
+
 @router.get("/api/trainer/data", response_model=TrainerData)
 async def get_trainer_data(service: UserService = Depends(get_user_service)):
     return service.get_trainer()
@@ -106,6 +121,47 @@ async def update_diet(diet_data: dict, service: UserService = Depends(get_user_s
 @router.post("/api/trainer/assign_diet")
 async def assign_diet(diet_req: AssignDietRequest, service: UserService = Depends(get_user_service)):
     return service.assign_diet(diet_req)
+
+@router.get("/api/trainer/splits")
+async def get_splits(
+    service: UserService = Depends(get_user_service),
+    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+):
+    return service.get_splits(trainer_id)
+
+@router.post("/api/trainer/splits")
+async def create_split(
+    split_data: dict,
+    service: UserService = Depends(get_user_service),
+    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+):
+    return service.create_split(split_data, trainer_id)
+
+@router.post("/api/trainer/assign_split")
+async def assign_split(
+    assignment: dict,
+    service: UserService = Depends(get_user_service),
+    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+):
+    return service.assign_split(assignment, trainer_id)
+
+@router.put("/api/trainer/splits/{split_id}")
+async def update_split(
+    split_id: str,
+    split_data: dict,
+    service: UserService = Depends(get_user_service),
+    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+):
+    return service.update_split(split_id, split_data, trainer_id)
+
+@router.delete("/api/trainer/splits/{split_id}")
+async def delete_split(
+    split_id: str,
+    service: UserService = Depends(get_user_service),
+    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+):
+    return service.delete_split(split_id, trainer_id)
+
 
 from fastapi import File, UploadFile
 import shutil

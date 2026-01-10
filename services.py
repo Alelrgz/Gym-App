@@ -75,6 +75,7 @@ class UserService:
                             title=event["title"],
                             type=event["type"],
                             completed=event.get("completed", False),
+                            workout_id=event.get("workout_id"),
                             details=event.get("details", "")
                         )
                         db.add(db_event)
@@ -110,10 +111,10 @@ class UserService:
             calendar_data = {
                 "events": [
                     {
-                        "date": e.date,
                         "title": e.title,
                         "type": e.type,
                         "completed": e.completed,
+                        "workout_id": e.workout_id,
                         "details": e.details
                     } for e in events
                 ]
@@ -172,6 +173,99 @@ class UserService:
             )
         finally:
             db.close()
+
+    def get_client_schedule(self, date_str: str = None) -> dict:
+        from database import get_client_session
+        from models_client_orm import ClientScheduleORM
+        from datetime import date
+        
+        if not date_str:
+            date_str = date.today().isoformat()
+            
+        # Default client for now
+        client_id = "user_123" 
+        
+        db = get_client_session(client_id)
+        try:
+            events = db.query(ClientScheduleORM).filter(ClientScheduleORM.date == date_str).all()
+            
+            return {
+                "date": date_str,
+                "events": [
+                    {
+                        "id": e.id,
+                        "title": e.title,
+                        "type": e.type,
+                        "completed": e.completed,
+                        "workout_id": e.workout_id,
+                        "details": e.details
+                    } for e in events
+                ]
+            }
+        finally:
+            db.close()
+
+    def complete_schedule_item(self, payload: dict) -> dict:
+        from database import get_client_session
+        from models_client_orm import ClientScheduleORM
+        
+        # Default client for now
+        client_id = "user_123"
+        date_str = payload.get("date")
+        item_id = payload.get("item_id") # Optional if we use date+type unique constraint logic
+        
+        db = get_client_session(client_id)
+        try:
+            # If we have ID, use it
+            if item_id:
+                item = db.query(ClientScheduleORM).filter(ClientScheduleORM.id == item_id).first()
+            else:
+                # Fallback: Find workout for date
+                item = db.query(ClientScheduleORM).filter(
+                    ClientScheduleORM.date == date_str, 
+                    ClientScheduleORM.type == "workout"
+                ).first()
+                
+            if not item:
+                raise HTTPException(status_code=404, detail="Schedule item not found")
+                
+            item.completed = True
+            db.commit()
+            
+            return {"status": "success", "message": "Workout completed!"}
+        finally:
+            db.close()
+
+    def get_workout_details(self, workout_id: str) -> dict:
+        from data import WORKOUTS_DB
+        from models_orm import WorkoutORM
+        
+        # 1. Try Global DB
+        if workout_id in WORKOUTS_DB:
+            return WORKOUTS_DB[workout_id]
+            
+        # 2. Try Trainer DBs (fallback)
+        # We don't know which trainer owns it, so we might need to search or assume default
+        # For now, let's search known trainers
+        trainers = ["trainer_default", "trainer_A", "trainer_B", "trainer_C"]
+        
+        for t_id in trainers:
+            db = get_trainer_session(t_id)
+            try:
+                w_orm = db.query(WorkoutORM).filter(WorkoutORM.id == workout_id).first()
+                if w_orm:
+                    import json
+                    return {
+                        "id": w_orm.id,
+                        "title": w_orm.title,
+                        "duration": w_orm.duration,
+                        "difficulty": w_orm.difficulty,
+                        "exercises": json.loads(w_orm.exercises_json)
+                    }
+            finally:
+                db.close()
+                
+        raise HTTPException(status_code=404, detail="Workout not found")
 
     def get_trainer(self) -> TrainerData:
         return TrainerData(**TRAINER_DATA)
@@ -441,6 +535,7 @@ class UserService:
         client_id = assignment.get("client_id")
         workout_id = assignment.get("workout_id")
         date_str = assignment.get("date")
+        print(f"[DEBUG] assign_workout called for client={client_id}, workout={workout_id}, date={date_str}")
 
         # In a real app, validate IDs
         # if client_id not in CLIENT_DATA:
@@ -469,6 +564,7 @@ class UserService:
                  pass
 
         if not workout:
+            print(f"[DEBUG] Workout {workout_id} NOT FOUND in global or trainer DB")
             return {"error": "Workout not found"}
 
         # Use Client DB
@@ -486,6 +582,7 @@ class UserService:
                 title=workout["title"],
                 type="workout",
                 completed=False,
+                workout_id=workout_id,
                 details=workout["difficulty"]
             )
             client_db.add(new_event)
@@ -499,6 +596,7 @@ class UserService:
                     "title": new_event.title,
                     "type": new_event.type,
                     "completed": new_event.completed,
+                    "workout_id": new_event.workout_id,
                     "details": new_event.details
                 }
             }
@@ -605,16 +703,241 @@ class UserService:
         db = get_trainer_session(trainer_id)
         try:
             import json
-            splits = db.query(WeeklySplitORM).all()
-            return [
-                {
+            from data import SPLITS_DB
+            
+            splits_map = {}
+            
+            # 1. Add global/mock splits
+            for s_id, s in SPLITS_DB.items():
+                splits_map[s_id] = s
+            
+            # 2. Add personal splits from DB
+            db_splits = db.query(WeeklySplitORM).all()
+            for s in db_splits:
+                splits_map[s.id] = {
                     "id": s.id,
                     "name": s.name,
                     "description": s.description,
                     "days_per_week": s.days_per_week,
                     "schedule": json.loads(s.schedule_json)
-                } for s in splits
-            ]
+                }
+                
+            return list(splits_map.values())
+        finally:
+            db.close()
+
+    def update_split(self, split_id: str, updates: dict, trainer_id: str) -> dict:
+        import json
+        import logging
+        logger = logging.getLogger("gym_app")
+        
+        logger.info(f"[update_split] ===== START =====")
+        logger.info(f"[update_split] Trainer: {trainer_id}, Split: {split_id}")
+        logger.info(f"[update_split] Updates: {updates}")
+        
+        # FIRST: Check if it's a global split (accessible to all trainers)
+        from data import SPLITS_DB
+        is_in_global = split_id in SPLITS_DB
+        logger.info(f"[update_split] Is in SPLITS_DB: {is_in_global}")
+        
+        if is_in_global:
+            logger.info(f"[update_split] Found split {split_id} in global SPLITS_DB")
+            # Create/update shadow copy in trainer's personal DB
+            db = get_trainer_session(trainer_id)
+            try:
+                # Check if trainer already has a shadow copy
+                split = db.query(WeeklySplitORM).filter(WeeklySplitORM.id == split_id).first()
+                
+                if split:
+                    # Update existing shadow copy
+                    logger.info(f"[update_split] Updating existing shadow copy for trainer {trainer_id}")
+                    if "name" in updates: split.name = updates["name"]
+                    if "description" in updates: split.description = updates["description"]
+                    if "days_per_week" in updates: split.days_per_week = updates["days_per_week"]
+                    if "schedule" in updates: split.schedule_json = json.dumps(updates["schedule"])
+                else:
+                    # Create new shadow copy
+                    logger.info(f"[update_split] Creating shadow copy of global split for trainer {trainer_id}")
+                    global_s = SPLITS_DB[split_id]
+                    
+                    split = WeeklySplitORM(
+                        id=split_id,  # Keep same ID to shadow global split
+                        name=updates.get("name", global_s["name"]),
+                        description=updates.get("description", global_s.get("description", "")),
+                        days_per_week=updates.get("days_per_week", global_s["days_per_week"]),
+                        schedule_json=json.dumps(updates.get("schedule", global_s["schedule"])),
+                        owner_id=trainer_id
+                    )
+                    db.add(split)
+                
+                db.commit()
+                db.refresh(split)
+                
+                logger.info(f"[update_split] Successfully updated/created shadow split")
+                return {
+                    "id": split.id,
+                    "name": split.name,
+                    "description": split.description,
+                    "days_per_week": split.days_per_week,
+                    "schedule": json.loads(split.schedule_json)
+                }
+            except Exception as e:
+                logger.error(f"[update_split] Error updating global split shadow: {type(e).__name__}: {str(e)}")
+                db.rollback()
+                raise HTTPException(status_code=500, detail=f"Failed to update split: {str(e)}")
+            finally:
+                db.close()
+        
+        # SECOND: Check trainer's personal database
+        logger.info(f"[update_split] Not in SPLITS_DB, checking trainer's personal database")
+        db = get_trainer_session(trainer_id)
+        try:
+            split = db.query(WeeklySplitORM).filter(WeeklySplitORM.id == split_id).first()
+            
+            if not split:
+                # THIRD: Check ALL other trainer databases for cross-trainer access
+                logger.warning(f"[update_split] Split {split_id} not found in {trainer_id} database")
+                logger.info(f"[update_split] Searching other trainer databases for cross-trainer access...")
+                
+                other_trainers = ["trainer_A", "trainer_B", "trainer_C", "trainer_default"]
+                if trainer_id in other_trainers:
+                    other_trainers.remove(trainer_id)
+                
+                found_split = None
+                source_db = None
+                
+                for other_trainer in other_trainers:
+                    logger.info(f"[update_split] Checking {other_trainer} database...")
+                    other_db = get_trainer_session(other_trainer)
+                    try:
+                        other_split = other_db.query(WeeklySplitORM).filter(WeeklySplitORM.id == split_id).first()
+                        if other_split:
+                            logger.info(f"[update_split] Found split in {other_trainer} database!")
+                            found_split = {
+                                "id": other_split.id,
+                                "name": other_split.name,
+                                "description": other_split.description,
+                                "days_per_week": other_split.days_per_week,
+                                "schedule": json.loads(other_split.schedule_json),
+                                "owner_id": other_split.owner_id
+                            }
+                            source_db = other_db
+                            break
+                    finally:
+                        if not source_db:
+                            other_db.close()
+                
+                if not found_split:
+                    logger.error(f"[update_split] Split {split_id} not found in any database")
+                    # Import locally to ensure we have the right class
+                    from fastapi import HTTPException
+                    raise HTTPException(status_code=404, detail=f"Split not found. Split ID: {split_id}")
+                
+                # Create a copy of the split in current trainer's database
+                logger.info(f"[update_split] Creating cross-trainer copy in {trainer_id} database")
+                split = WeeklySplitORM(
+                    id=found_split["id"],
+                    name=updates.get("name", found_split["name"]),
+                    description=updates.get("description", found_split["description"]),
+                    days_per_week=updates.get("days_per_week", found_split["days_per_week"]),
+                    schedule_json=json.dumps(updates.get("schedule", found_split["schedule"])),
+                    owner_id=trainer_id  # Current trainer becomes owner of this copy
+                )
+                db.add(split)
+                db.commit()
+                db.refresh(split)
+                
+                # Close source database
+                if source_db:
+                    source_db.close()
+                
+                logger.info(f"[update_split] Successfully created cross-trainer copy")
+                return {
+                    "id": split.id,
+                    "name": split.name,
+                    "description": split.description,
+                    "days_per_week": split.days_per_week,
+                    "schedule": json.loads(split.schedule_json)
+                }
+            
+            # Update existing personal split
+            logger.info(f"[update_split] Found split in personal DB, updating...")
+            logger.info(f"[update_split] Current owner_id: {split.owner_id}")
+            if "name" in updates: split.name = updates["name"]
+            if "description" in updates: split.description = updates["description"]
+            if "days_per_week" in updates: split.days_per_week = updates["days_per_week"]
+            if "schedule" in updates: split.schedule_json = json.dumps(updates["schedule"])
+            
+            db.commit()
+            db.refresh(split)
+            
+            logger.info(f"[update_split] Successfully updated personal split")
+            return {
+                "id": split.id,
+                "name": split.name,
+                "description": split.description,
+                "days_per_week": split.days_per_week,
+                "schedule": json.loads(split.schedule_json)
+            }
+        except HTTPException:
+            # Re-raise HTTPExceptions so they bubble up with correct status code
+            db.rollback()
+            raise
+        except Exception as e:
+            logger.error(f"[update_split] Unexpected error: {type(e).__name__}: {str(e)}")
+            import traceback
+            logger.error(f"[update_split] Traceback: {traceback.format_exc()}")
+            db.rollback()
+            from fastapi import HTTPException
+            raise HTTPException(status_code=500, detail=f"Failed to update split: {str(e)}")
+        finally:
+            db.close()
+
+    def delete_split(self, split_id: str, trainer_id: str) -> dict:
+        import logging
+        logger = logging.getLogger("gym_app")
+        
+        logger.info(f"[delete_split] Trainer: {trainer_id}, Split: {split_id}")
+        
+        # Check if it's a global split
+        from data import SPLITS_DB
+        is_global = split_id in SPLITS_DB
+        
+        db = get_trainer_session(trainer_id)
+        try:
+            split = db.query(WeeklySplitORM).filter(WeeklySplitORM.id == split_id).first()
+            
+            if not split:
+                if is_global:
+                    # Split exists in global DB but not in trainer's DB
+                    logger.warning(f"[delete_split] Attempted to delete global split {split_id} that isn't shadowed")
+                    raise HTTPException(
+                        status_code=403, 
+                        detail="Cannot delete global split. This split is shared across all trainers."
+                    )
+                else:
+                    logger.warning(f"[delete_split] Split {split_id} not found for trainer {trainer_id}")
+                    raise HTTPException(status_code=404, detail="Split not found")
+            
+            # Split exists in trainer's DB - delete it
+            # (This could be either a personal split or a shadow copy of a global split)
+            if is_global:
+                logger.info(f"[delete_split] Deleting shadow copy of global split {split_id}")
+            else:
+                logger.info(f"[delete_split] Deleting personal split {split_id}")
+            
+            db.delete(split)
+            db.commit()
+            
+            logger.info(f"[delete_split] Successfully deleted split")
+            return {"status": "success", "message": "Split deleted"}
+        except HTTPException:
+            db.rollback()
+            raise
+        except Exception as e:
+            logger.error(f"[delete_split] Unexpected error: {type(e).__name__}: {str(e)}")
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to delete split: {str(e)}")
         finally:
             db.close()
 
@@ -639,45 +962,42 @@ class UserService:
             
             split_schedule = json.loads(split_orm.schedule_json)
             days_per_week = split_orm.days_per_week
+            print(f"[DEBUG] assign_split: Found split {split_id}, schedule: {split_schedule}")
         finally:
             trainer_db.close()
+
+        logs = []
+        logs.append(f"Found split {split_id}, schedule: {split_schedule}")
 
         # Assign for 4 weeks
         start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
         
-        # We need to map "Day 1" to the start date, "Day 2" to start date + 1, etc.
-        # But usually splits are cyclical. 
-        # If it's a 3 day split, does it repeat every 3 days? Or is it 3 days a week?
-        # "Weekly Split" implies it fits into a week. 
-        # Let's assume the schedule keys are "Day 1", "Day 2", ... "Day 7" (max).
-        # And we map them to Monday=Day 1, Tuesday=Day 2, etc.
-        # OR we just map them sequentially from the start date.
-        # Let's go with Sequential for flexibility: Day 1 is Start Date, Day 2 is Start Date + 1.
-        # And it repeats every 7 days? Or every `days_per_week`?
-        # User asked for "3-4-5-6 day split". Usually means a weekly cycle.
-        # So we will map Day 1..N to the first N days of the week starting from `start_date`.
+        # Map weekday number (0=Monday, 6=Sunday) to our schedule keys
+        weekday_map = {
+            0: "Monday", 1: "Tuesday", 2: "Wednesday", 3: "Thursday",
+            4: "Friday", 5: "Saturday", 6: "Sunday"
+        }
         
-        for week in range(4): # 4 Weeks
-            current_week_start = start_date + timedelta(weeks=week)
+        for day_offset in range(28): # 4 Weeks = 28 Days
+            current_date = start_date + timedelta(days=day_offset)
+            day_name = weekday_map[current_date.weekday()]
             
-            for day_num in range(1, days_per_week + 1):
-                day_key = f"Day {day_num}"
-                workout_id = split_schedule.get(day_key)
-                
-                if workout_id:
-                    # Calculate date for this day
-                    # Day 1 = current_week_start
-                    # Day 2 = current_week_start + 1 day
-                    target_date = current_week_start + timedelta(days=day_num - 1)
-                    
-                    # Assign the workout
-                    self.assign_workout({
+            workout_id = split_schedule.get(day_name)
+            
+            if workout_id and workout_id != "rest":
+                # Assign the workout
+                logs.append(f"Assigning workout {workout_id} for {day_name} ({current_date})")
+                try:
+                    res = self.assign_workout({
                         "client_id": client_id,
                         "workout_id": workout_id,
-                        "date": target_date.isoformat()
+                        "date": current_date.isoformat()
                     })
+                    logs.append(f"Result: {res}")
+                except Exception as e:
+                    logs.append(f"Error: {str(e)}")
                     
-        return {"status": "success", "message": "Split assigned for 4 weeks"}
+        return {"status": "success", "message": "Split assigned for 4 weeks", "logs": logs}
 
 class LeaderboardService:
     def get_leaderboard(self) -> LeaderboardData:

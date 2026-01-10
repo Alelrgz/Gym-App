@@ -78,8 +78,10 @@
                 class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">🏆</span></a>
             <a href="client_progress.html"
                 class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">📊</span></a>
-            <div class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">👤</span>
-            </div>
+            <a href="client_dashboard.html"
+                class="flex flex-col items-center text-gray-500 tap-effect"><span
+                    class="text-xl">👤</span>
+            </a>
         </div>
     </div>
     
@@ -88,7 +90,7 @@
 
 <!-- Create Exercise Modal -->
 <div id="create-exercise-modal"
-    class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm"
+    class="fixed inset-0 bg-black/90 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm"
     data-action="hideModal" data-target="create-exercise-modal">
     <div class="bg-[#1a1a1a] w-full max-w-md rounded-3xl p-6 border border-white/10 relative slide-up"
         onclick="event.stopPropagation()">
@@ -135,7 +137,7 @@
             <div>
                 <label class="text-xs text-gray-500 uppercase font-bold ml-1">Video (URL or File)</label>
                 <div class="flex space-x-2">
-                    <input type="text" id="new-ex-video"
+                    <input type="text" id="new-ex-video" list="video-suggestions"
                         class="flex-1 bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
                         placeholder="https://youtube.com/...">
                     <input type="file" id="new-ex-file" class="hidden" accept="video/*">
@@ -161,7 +163,7 @@
 
 <!-- Edit Exercise Modal -->
 <div id="edit-exercise-modal"
-    class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm"
+    class="fixed inset-0 bg-black/90 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm"
     data-action="hideModal" data-target="edit-exercise-modal">
     <div class="bg-[#1a1a1a] w-full max-w-md rounded-3xl p-6 border border-white/10 relative slide-up"
         onclick="event.stopPropagation()">
@@ -209,7 +211,7 @@
             <div>
                 <label class="text-xs text-gray-500 uppercase font-bold ml-1">Video (URL or File)</label>
                 <div class="flex space-x-2">
-                    <input type="text" id="edit-ex-video"
+                    <input type="text" id="edit-ex-video" list="video-suggestions"
                         class="flex-1 bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
                         placeholder="https://youtube.com/...">
                     <input type="file" id="edit-ex-file" class="hidden" accept="video/*">
@@ -235,19 +237,23 @@
 
 <!-- Create Workout Modal -->
 <div id="create-workout-modal"
-    class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm"
+    class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-0 md:p-4 backdrop-blur-sm"
     data-action="hideModal" data-target="create-workout-modal">
-    <div class="bg-[#1a1a1a] w-full max-w-md rounded-3xl p-6 border border-white/10 relative slide-up max-h-[85vh] overflow-y-auto"
+    <div class="bg-[#1a1a1a] w-full md:max-w-md h-full md:h-auto md:max-h-[90vh] md:rounded-3xl border-0 md:border border-white/10 relative slide-up flex flex-col"
         onclick="event.stopPropagation()">
-        <button onclick="hideModal('create-workout-modal')"
-            class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
 
-        <h2 id="modal-workout-title" class="text-2xl font-bold mb-1 text-white">New Workout</h2>
-        <p class="text-sm text-gray-400 mb-6">Create a workout template.</p>
+        <!-- Header (Fixed) -->
+        <div class="p-6 pb-2 flex-none">
+            <button onclick="hideModal('create-workout-modal')"
+                class="absolute top-6 right-6 text-gray-400 hover:text-white">✕</button>
+            <h2 id="modal-workout-title" class="text-2xl font-bold mb-1 text-white">New Workout</h2>
+            <p class="text-sm text-gray-400">Create a workout template.</p>
+        </div>
 
-        <input type="hidden" id="new-workout-id">
+        <!-- Scrollable Content -->
+        <div class="flex-1 overflow-y-auto p-6 pt-2 space-y-6">
+            <input type="hidden" id="new-workout-id">
 
-        <div class="space-y-4">
             <div>
                 <label class="text-xs text-gray-500 uppercase font-bold ml-1">Workout Title</label>
                 <input type="text" id="new-workout-title"
@@ -283,33 +289,22 @@
                         New Exercise</button>
                 </div>
 
-                <!-- New List-Based Selection -->
-                <div class="bg-black/20 rounded-xl p-3 mb-4 border border-white/5">
-                    <!-- Headers -->
-                    <div
-                        class="grid grid-cols-12 gap-2 mb-2 text-[10px] text-gray-500 font-bold uppercase tracking-wider text-center">
-                        <div class="col-span-5 text-left pl-2">Exercise</div>
-                        <div class="col-span-2">Sets</div>
-                        <div class="col-span-2">Reps</div>
-                        <div class="col-span-2">Rest</div>
-                        <div class="col-span-1"></div>
-                    </div>
-
-                    <!-- List Container -->
-                    <div id="selected-exercises-list" class="space-y-2 min-h-[50px]">
-                        <p class="text-xs text-gray-500 text-center py-4 italic">No exercises selected.</p>
-                    </div>
+                <!-- List Container (No Headers, Card Layout) -->
+                <div id="selected-exercises-list" class="space-y-2 min-h-[50px]">
+                    <p class="text-xs text-gray-500 text-center py-4 italic">No exercises selected.</p>
                 </div>
+            </div>
 
+            <div>
                 <label class="text-xs text-gray-500 uppercase font-bold ml-1 mb-2 block">Exercise Library</label>
                 <div class="glass-card p-2 mb-2 flex flex-col gap-2">
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
-                        <input type="text" id="ex-search" placeholder="Search exercises..."
+                        <input type="text" id="modal-ex-search" placeholder="Search exercises..."
                             class="w-full bg-black/20 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition placeholder-gray-500">
                     </div>
                     <div class="flex gap-2">
-                        <select id="ex-filter-muscle"
+                        <select id="modal-ex-filter-muscle"
                             class="w-1/2 bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition appearance-none cursor-pointer hover:bg-white/5">
                             <option value="">All Muscles</option>
                             <option value="Chest">Chest</option>
@@ -320,7 +315,7 @@
                             <option value="Abs">Abs</option>
                             <option value="Cardio">Cardio</option>
                         </select>
-                        <select id="ex-filter-type"
+                        <select id="modal-ex-filter-type"
                             class="w-1/2 bg-black/20 border border-white/10 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition appearance-none cursor-pointer hover:bg-white/5">
                             <option value="">All Types</option>
                             <option value="Compound">Compound</option>
@@ -331,13 +326,17 @@
                     </div>
                 </div>
 
-                <div id="exercise-library" class="grid grid-cols-1 gap-2 max-h-60 overflow-y-auto pr-1">
+                <div id="modal-exercise-library" class="grid grid-cols-1 gap-2 max-h-48 overflow-y-auto pr-1 pb-4"
+                    style="mask-image: linear-gradient(to bottom, black 85%, transparent 100%); -webkit-mask-image: linear-gradient(to bottom, black 85%, transparent 100%);">
                     <!-- Populated by JS -->
                 </div>
             </div>
+        </div>
 
+        <!-- Footer (Fixed) -->
+        <div class="p-4 border-t border-white/10 bg-[#1a1a1a] md:rounded-b-3xl">
             <button onclick="createWorkout()" id="btn-save-workout"
-                class="w-full bg-primary text-black font-bold py-4 rounded-xl hover:bg-primary/90 transition mt-4">
+                class="w-full bg-primary text-black font-bold py-4 rounded-xl hover:bg-primary/90 transition shadow-lg shadow-primary/20">
                 Create Workout
             </button>
         </div>
@@ -346,7 +345,7 @@
 
 <!-- Assign Workout Modal -->
 <div id="assign-workout-modal"
-    class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm"
+    class="fixed inset-0 bg-black/90 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm"
     data-action="hideModal" data-target="assign-workout-modal">
     <div class="bg-[#1a1a1a] w-full max-w-sm rounded-3xl p-6 border border-white/10 relative slide-up"
         onclick="event.stopPropagation()">
@@ -456,7 +455,8 @@
                 <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
             </div>
         </div>
-        <button class="w-full py-3 bg-red-500/20 text-red-400 font-bold rounded-xl mt-4">Log Out</button>
+        <button class="w-full py-3 bg-red-500/20 text-red-400 font-bold rounded-xl mt-4">Log
+            Out</button>
     </div>
     
 </div>
@@ -474,20 +474,20 @@
     </div>
     <div class="space-y-4">
         <div class="bg-white/5 p-4 rounded-xl">
-            <p class="text-xs text-gray-400 uppercase">Current Plan</p>
-            <p class="text-lg font-bold text-white" id="modal-client-plan">...</p>
-        </div>
-        <div class="bg-white/5 p-4 rounded-xl">
             <p class="text-xs text-gray-400 uppercase">Status</p>
             <p class="text-lg font-bold text-white" id="modal-client-status">...</p>
+            <p class="text-sm text-gray-400 hidden" id="modal-client-plan">...</p>
         </div>
         <button class="w-full py-3 bg-white/10 text-white font-bold rounded-xl mb-2"
             onclick="openTrainerCalendar()">View Schedule</button>
+        <button class="w-full py-3 bg-white/10 text-white font-bold rounded-xl mb-2"
+            onclick="openAssignDietModal()">Manage Diet</button>
+        <button class="w-full py-3 bg-white/10 text-white font-bold rounded-xl mb-2"
+            onclick="openAssignSplitModal()">Assign Weekly Split</button>
         <button class="w-full py-3 bg-primary text-white font-bold rounded-xl">Message Client</button>
     </div>
     
 </div>
-
 
 </div>
 
@@ -524,7 +524,9 @@
 
     <!-- Selected Day Details -->
     <div id="trainer-day-details" class="space-y-3 mt-6">
-        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1" id="trainer-date-title">Select a day
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1" id="trainer-date-title">
+            Select
+            a day
         </h3>
         <div id="trainer-events-list" class="space-y-2"></div>
         <button id="add-workout-btn" class="w-full py-3 bg-white/10 text-white font-bold rounded-xl mt-2 hidden">+ Add
@@ -535,14 +537,225 @@
 
 </div>
 
+<!-- Assign Diet Modal -->
+<div id="assign-diet-modal"
+    class="fixed inset-0 bg-black/90 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm"
+    data-action="hideModal" data-target="assign-diet-modal">
+    <div class="bg-[#1a1a1a] w-full max-w-sm rounded-3xl p-6 border border-white/10 relative slide-up"
+        onclick="event.stopPropagation()">
+        <button onclick="hideModal('assign-diet-modal')"
+            class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+
+        <h2 class="text-xl font-bold mb-1 text-white">Diet Plan</h2>
+        <p class="text-sm text-gray-400 mb-6">Set nutrition & hydration targets.</p>
+
+        <input type="hidden" id="diet-client-id">
+
+        <div class="space-y-4 h-[60vh] overflow-y-auto pr-2">
+            <!-- Macros -->
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Daily Calories</label>
+                <input type="number" id="diet-calories"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                    placeholder="e.g. 2500">
+            </div>
+
+            <div class="grid grid-cols-3 gap-2">
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Protein (g)</label>
+                    <input type="number" id="diet-protein"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                        placeholder="180">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Carbs (g)</label>
+                    <input type="number" id="diet-carbs"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                        placeholder="250">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Fat (g)</label>
+                    <input type="number" id="diet-fat"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                        placeholder="70">
+                </div>
+            </div>
+
+            <!-- Hydration -->
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Hydration Target (ml)</label>
+                <input type="number" id="diet-hydration"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                    placeholder="e.g. 3000">
+            </div>
+
+            <!-- Consistency -->
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Consistency Target (%)</label>
+                <input type="number" id="diet-consistency"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                    placeholder="e.g. 80">
+            </div>
+
+            <button onclick="saveDietPlan()"
+                class="w-full bg-primary text-black font-bold py-4 rounded-xl hover:bg-primary/90 transition mt-2">
+                Save Diet Plan
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Video Suggestions Datalist -->
+<datalist id="video-suggestions">
+    <!-- Populated by JS -->
+</datalist><!-- Create Split Modal -->
+<div id="create-split-modal"
+    class="fixed inset-0 bg-black/90 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm"
+    data-action="hideModal" data-target="create-split-modal">
+    <div class="bg-[#1a1a1a] w-full max-w-2xl rounded-3xl p-6 border border-white/10 relative slide-up max-h-[90vh] overflow-y-auto"
+        onclick="event.stopPropagation()">
+        <button onclick="hideModal('create-split-modal')"
+            class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+
+        <h2 class="text-2xl font-bold mb-1 text-white">Create Weekly Split</h2>
+        <p class="text-sm text-gray-400 mb-6">Design a 7-day workout schedule.</p>
+
+        <div class="space-y-4">
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Split Name</label>
+                <input type="text" id="new-split-name"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                    placeholder="e.g. PPL (Push Pull Legs)">
+            </div>
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Description</label>
+                <input type="text" id="new-split-desc"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                    placeholder="e.g. 6 days a week, high intensity">
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Weekly Schedule</label>
+                <div id="split-schedule-builder" class="space-y-2">
+                    <!-- Rows for Mon-Sun injected by JS -->
+                </div>
+            </div>
+
+            <button onclick="createSplit()"
+                class="w-full bg-primary text-black font-bold py-4 rounded-xl hover:bg-primary/90 transition mt-4">
+                Save Split
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Assign Split Modal -->
+<div id="assign-split-modal"
+    class="fixed inset-0 bg-black/90 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm"
+    data-action="hideModal" data-target="assign-split-modal">
+    <div class="bg-[#1a1a1a] w-full max-w-sm rounded-3xl p-6 border border-white/10 relative slide-up"
+        onclick="event.stopPropagation()">
+        <button onclick="hideModal('assign-split-modal')"
+            class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+
+        <h2 class="text-xl font-bold mb-1 text-white">Assign Split</h2>
+        <p class="text-sm text-gray-400 mb-6">Assign a weekly routine to client.</p>
+
+        <input type="hidden" id="assign-split-client-id">
+
+        <div class="space-y-4">
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Select Split</label>
+                <select id="assign-split-select"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+                    <!-- Populated by JS -->
+                </select>
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Start Date (Monday)</label>
+                <div class="relative">
+
+                <input type="date" id="assign-split-date"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+                    <button onclick="openSchedulePicker()" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-2" title="View Schedule">
+                        📅
+                    </button>
+                </div>
+            </div>
+
+            <div id="assign-split-client-selector-container" class="hidden">
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Select Client</label>
+                <select id="assign-split-client-selector"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+                    <!-- Populated by JS -->
+                </select>
+            </div>
+
+            <button onclick="assignSplit()"
+                class="w-full bg-primary text-black font-bold py-4 rounded-xl hover:bg-primary/90 transition mt-2">
+                Assign Plan
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Split Modal -->
+<div id="edit-split-modal"
+    class="fixed inset-0 bg-black/90 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm"
+    data-action="hideModal" data-target="edit-split-modal">
+    <div class="bg-[#1a1a1a] w-full max-w-2xl rounded-3xl p-6 border border-white/10 relative slide-up max-h-[90vh] overflow-y-auto"
+        onclick="event.stopPropagation()">
+        <button onclick="hideModal('edit-split-modal')"
+            class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+
+        <h2 class="text-2xl font-bold mb-1 text-white">Edit Weekly Split</h2>
+        <p class="text-sm text-gray-400 mb-6">Modify your 7-day workout schedule.</p>
+
+        <input type="hidden" id="edit-split-id">
+
+        <div class="space-y-4">
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Split Name</label>
+                <input type="text" id="edit-split-name"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+            </div>
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Description</label>
+                <input type="text" id="edit-split-desc"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Weekly Schedule</label>
+                <div id="edit-split-schedule-builder" class="space-y-2">
+                    <!-- Rows for Mon-Sun injected by JS -->
+                </div>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="updateSplit()"
+                    class="flex-1 bg-primary text-black font-bold py-4 rounded-xl hover:bg-primary/90 transition">
+                    Save Changes
+                </button>
+                <button onclick="deleteSplit()"
+                    class="bg-red-500/20 text-red-400 font-bold px-6 py-4 rounded-xl hover:bg-red-500/30 transition">
+                    Delete
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
     <script>
         window.APP_CONFIG = {
             gymId: "iron_gym",
             role: "owner",
-            apiBase: "http://192.168.1.55:9007"
+            apiBase: "http://192.168.1.55:9007",
+            isStatic: true
         };
     </script>
-    <script src="/static/js/app.js?v=7880"></script>
+    <script src="/static/js/app.js?v=8045"></script>
 </body>
 
 </html>

@@ -183,30 +183,59 @@ window.renderCalendar = (month, year, events, gridId, titleId, detailTitleId, de
 };
 
 window.openTrainerCalendar = async () => {
-    // Mock fetching client data for the calendar
-    // In a real app, we'd pass the client ID
-    const res = await fetch(`${apiBase}/api/client/data`);
-    const user = await res.json();
+    const clientId = document.getElementById('client-modal').dataset.clientId;
+    if (!clientId) {
+        console.error("No client ID found for calendar");
+        return;
+    }
 
-    if (user.calendar) {
-        showModal('calendar-modal');
-        let currentMonth = new Date().getMonth();
-        let currentYear = new Date().getFullYear();
-        const events = user.calendar.events;
+    try {
+        console.log("Fetching client data for calendar:", clientId);
+        const res = await fetch(`${apiBase}/api/trainer/client/${clientId}`);
+        if (!res.ok) throw new Error("Failed to fetch client data: " + res.status);
+        const user = await res.json();
+        console.log("Client data received:", user);
 
-        window.renderCalendar(currentMonth, currentYear, events, 'trainer-calendar-grid', 'trainer-month-year', 'trainer-date-title', 'trainer-events-list', true);
+        if (user.calendar) {
+            console.log("Opening calendar modal...");
+            showModal('calendar-modal');
+            let currentMonth = new Date().getMonth();
+            let currentYear = new Date().getFullYear();
+            const events = user.calendar.events;
+            console.log("Rendering calendar with events:", events);
 
-        document.getElementById('trainer-prev-month').onclick = () => {
-            currentMonth--;
-            if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+            if (!document.getElementById('trainer-calendar-grid')) console.error("CRITICAL: trainer-calendar-grid missing!");
+
             window.renderCalendar(currentMonth, currentYear, events, 'trainer-calendar-grid', 'trainer-month-year', 'trainer-date-title', 'trainer-events-list', true);
-        };
 
-        document.getElementById('trainer-next-month').onclick = () => {
-            currentMonth++;
-            if (currentMonth > 11) { currentMonth = 0; currentYear++; }
-            window.renderCalendar(currentMonth, currentYear, events, 'trainer-calendar-grid', 'trainer-month-year', 'trainer-date-title', 'trainer-events-list', true);
-        };
+            const prevBtn = document.getElementById('trainer-prev-month');
+            const nextBtn = document.getElementById('trainer-next-month');
+
+            if (prevBtn) {
+                prevBtn.onclick = () => {
+                    currentMonth--;
+                    if (currentMonth < 0) { currentMonth = 11; currentYear--; }
+                    window.renderCalendar(currentMonth, currentYear, events, 'trainer-calendar-grid', 'trainer-month-year', 'trainer-date-title', 'trainer-events-list', true);
+                };
+            } else {
+                console.error("CRITICAL: trainer-prev-month missing!");
+            }
+
+            if (nextBtn) {
+                nextBtn.onclick = () => {
+                    currentMonth++;
+                    if (currentMonth > 11) { currentMonth = 0; currentYear++; }
+                    window.renderCalendar(currentMonth, currentYear, events, 'trainer-calendar-grid', 'trainer-month-year', 'trainer-date-title', 'trainer-events-list', true);
+                };
+            } else {
+                console.error("CRITICAL: trainer-next-month missing!");
+            }
+        } else {
+            console.warn("User has no calendar data");
+        }
+    } catch (e) {
+        console.error("Error opening trainer calendar:", e);
+        showToast("Error loading schedule: " + e.message);
     }
 };
 
@@ -387,9 +416,13 @@ async function init() {
             const list = document.getElementById('client-list');
             if (list) {
                 data.clients.forEach(c => {
+                    console.log("Rendering client:", c.name, "ID:", c.id);
                     const div = document.createElement('div');
                     div.className = "glass-card p-4 flex justify-between items-center tap-effect";
-                    div.onclick = function () { showClientModal(c.name, c.plan, c.status, c.id); };
+                    div.onclick = function () {
+                        console.log("Clicked client:", c.name, "ID:", c.id);
+                        showClientModal(c.name, c.plan, c.status, c.id);
+                    };
                     const statusColor = c.status === 'At Risk' ? 'text-red-400' : 'text-green-400';
                     div.innerHTML = `<div class="flex items-center"><div class="w-10 h-10 rounded-full bg-white/10 mr-3 overflow-hidden"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${c.name}" /></div><div><p class="font-bold text-sm text-white">${c.name}</p><p class="text-[10px] text-gray-400">${c.plan} • Seen ${c.last_seen}</p></div></div><span class="text-xs font-bold ${statusColor}">${c.status}</span>`;
                     list.appendChild(div);
@@ -406,18 +439,51 @@ async function init() {
                 });
             }
 
-            // Fetch and Render Exercise Library
-            if (document.getElementById('exercise-library')) {
-                fetchAndRenderExercises();
+            // Fetch and Render Exercise Library (Main View)
+            if (document.getElementById('main-exercise-library')) {
+                initializeExerciseList({
+                    containerId: 'main-exercise-library',
+                    searchId: 'main-ex-search',
+                    muscleId: 'main-ex-filter-muscle',
+                    typeId: 'main-ex-filter-type',
+                    onClick: null // Default behavior (just view/edit)
+                });
 
                 // Add trainer selector change listener
                 const trainerSelector = document.getElementById('trainer-selector');
                 if (trainerSelector) {
                     trainerSelector.addEventListener('change', () => {
-                        fetchAndRenderExercises();
+                        // Re-initialize/Render both lists if they exist
+                        if (document.getElementById('main-exercise-library')) {
+                            initializeExerciseList({
+                                containerId: 'main-exercise-library',
+                                searchId: 'main-ex-search',
+                                muscleId: 'main-ex-filter-muscle',
+                                typeId: 'main-ex-filter-type',
+                                onClick: null
+                            });
+                        }
+                        // Refresh Workouts
+                        if (document.getElementById('workout-library')) {
+                            fetchAndRenderWorkouts();
+                        }
                         showToast(`Switched to ${trainerSelector.options[trainerSelector.selectedIndex].text}`);
                     });
                 }
+            }
+
+            // Setup Global Exercise Modals (Create/Edit)
+            setupExerciseModals();
+
+            // Toggle Exercise List Visibility
+            const toggleBtn = document.getElementById('toggle-exercises-btn');
+            const exercisesSection = document.getElementById('exercises-section');
+            if (toggleBtn && exercisesSection) {
+                toggleBtn.addEventListener('click', () => {
+                    exercisesSection.classList.toggle('hidden');
+                    const isHidden = exercisesSection.classList.contains('hidden');
+                    toggleBtn.textContent = isHidden ? 'Edit Exercises' : 'Hide Exercises';
+                });
             }
 
             // Fetch and Render Workouts
@@ -585,6 +651,7 @@ function addWater() {
 }
 
 function showClientModal(name, plan, status, clientId) {
+    console.log("showClientModal called with ID:", clientId);
     document.getElementById('modal-client-name').innerText = name;
     document.getElementById('modal-client-plan').innerText = plan;
     document.getElementById('modal-client-status').innerText = status;
@@ -661,190 +728,278 @@ function getCurrentTrainerId() {
     return selector ? selector.value : 'trainer_default';
 }
 
-async function fetchAndRenderExercises() {
+async function initializeExerciseList(config) {
+    const { containerId, searchId, muscleId, typeId, onClick } = config;
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
     const trainerId = getCurrentTrainerId();
     const res = await fetch(`${apiBase}/api/trainer/exercises`, {
         headers: { 'x-trainer-id': trainerId }
     });
     const exercises = await res.json();
-    const container = document.getElementById('exercise-library');
-    if (!container) return;
-
-    // Filter Logic
-    const searchVal = document.getElementById('ex-search').value.toLowerCase();
-    const muscleVal = document.getElementById('ex-filter-muscle').value;
-    const typeVal = document.getElementById('ex-filter-type').value;
-
-    const filtered = exercises.filter(ex => {
-        const matchesSearch = ex.name.toLowerCase().includes(searchVal);
-        const matchesMuscle = muscleVal ? ex.muscle === muscleVal : true;
-        const matchesType = typeVal ? ex.type === typeVal : true;
-        return matchesSearch && matchesMuscle && matchesType;
-    });
-
-    container.innerHTML = '';
-
-    const muscleIcons = {
-        'Chest': '🛡️', 'Back': '🦅', 'Legs': '🦵',
-        'Shoulders': '💪', 'Arms': '🦾', 'Abs': '🍫', 'Cardio': '🏃'
-    };
-
-    const typeColors = {
-        'Compound': 'bg-yellow-500/20 text-yellow-400',
-        'Isolation': 'bg-blue-500/20 text-blue-400',
-        'Bodyweight': 'bg-green-500/20 text-green-400',
-        'Cardio': 'bg-red-500/20 text-red-400'
-    };
-
-    filtered.forEach(ex => {
-        const div = document.createElement('div');
-        div.className = "glass-card p-4 flex flex-col justify-between relative overflow-hidden group tap-effect slide-up min-h-[120px]";
-
-        const icon = muscleIcons[ex.muscle] || '🏋️';
-        const badgeClass = typeColors[ex.type] || 'bg-gray-500/20 text-gray-400';
-
-        let videoBackground = '';
-        if (ex.video_id) {
-            let src = ex.video_id;
-            if (!src.startsWith('http') && !src.startsWith('/')) {
-                src = `/static/videos/${src}.mp4`;
-            }
-            if (!src.includes('youtube') && !src.includes('youtu.be')) {
-                videoBackground = `
-                    <div class="absolute inset-0 z-0 opacity-0 group-hover:opacity-40 transition duration-500">
-                        <video src="${src}" muted loop playsinline class="w-full h-full object-cover"></video>
-                    </div>
-                 `;
-            }
-        }
-
-        div.innerHTML = `
-            ${videoBackground}
-            
-            <div class="absolute -right-2 -top-2 opacity-10 group-hover:opacity-0 transition transform group-hover:scale-110 pointer-events-none">
-                <span class="text-8xl">${icon}</span>
-            </div>
-            <div class="relative z-10 w-full h-full flex flex-col justify-between pointer-events-none">
-                <div class="flex justify-between items-start mb-2 pointer-events-auto pl-1">
-                    <span class="text-[10px] font-bold px-2 py-1 rounded-full ${badgeClass} uppercase tracking-wider">${ex.type}</span>
-                    <button class="edit-btn w-8 h-8 flex items-center justify-center bg-white/10 rounded-full text-gray-300 hover:bg-white/20 hover:text-white transition tap-effect">
-                        ⚙️
-                    </button>
-                </div>
-                <div>
-                    <h4 class="font-bold text-lg text-white mb-1 leading-tight drop-shadow-md">${ex.name}</h4>
-                    <div class="flex items-center text-xs text-gray-400 mt-1">
-                        <span class="mr-2">${icon}</span>
-                        <span>${ex.muscle}</span>
-                    </div>
-                </div>
-            </div>
-        `;
-
-        // Video Hover Logic
-        if (videoBackground) {
-            const video = div.querySelector('video');
-            div.addEventListener('mouseenter', () => {
-                try { video.play(); } catch (e) { }
-            });
-            div.addEventListener('mouseleave', () => {
-                try { video.pause(); video.currentTime = 0; } catch (e) { }
-            });
-        }
-
-        // Attach click listener to the edit button
-        const editBtn = div.querySelector('.edit-btn');
-        editBtn.addEventListener('click', (e) => {
-            e.stopPropagation(); // Prevent card click if we add one later
-            openEditExerciseModal(ex);
-        });
-
-        // Click card to add to workout
-        div.addEventListener('click', (e) => {
-            addExerciseToWorkout(ex);
-        });
-
-        container.appendChild(div);
-    });
-
-    // Attach listeners if not already attached (simple check)
-    if (!container.dataset.listenersAttached) {
-        document.getElementById('ex-search').addEventListener('input', fetchAndRenderExercises);
-        document.getElementById('ex-filter-muscle').addEventListener('change', fetchAndRenderExercises);
-        document.getElementById('ex-filter-type').addEventListener('change', fetchAndRenderExercises);
-
-        // File input listeners for preview and upload
-        ['new', 'edit'].forEach(prefix => {
-            const fileInput = document.getElementById(`${prefix}-ex-file`);
-            const videoInput = document.getElementById(`${prefix}-ex-video`);
-            const filenameDisplay = document.getElementById(`${prefix}-ex-filename`);
-
-            if (fileInput) {
-                fileInput.addEventListener('change', async (e) => {
-                    const file = e.target.files[0];
-                    if (file) {
-                        filenameDisplay.innerText = `Uploading: ${file.name}...`;
-
-                        const formData = new FormData();
-                        formData.append('file', file);
-
-                        try {
-                            const res = await fetch(`${apiBase}/api/upload`, {
-                                method: 'POST',
-                                body: formData
-                            });
-
-                            if (res.ok) {
-                                const data = await res.json();
-                                videoInput.value = data.url; // Use real server URL
-                                filenameDisplay.innerText = `Uploaded: ${file.name}`;
-                                showToast('Video uploaded! 🎥');
-
-                                // Update Preview
-                                const previewContainer = document.getElementById(`${prefix}-ex-preview-container`);
-                                const previewVideo = document.getElementById(`${prefix}-ex-preview`);
-                                if (previewContainer && previewVideo) {
-                                    previewVideo.src = data.url;
-                                    previewContainer.classList.remove('hidden');
-                                    previewVideo.load();
-                                }
-                            } else {
-                                filenameDisplay.innerText = `Upload failed`;
-                                showToast('Upload failed ❌');
-                            }
-                        } catch (err) {
-                            console.error(err);
-                            filenameDisplay.innerText = `Upload error`;
-                            showToast('Upload error ❌');
-                        }
-                    }
-                });
-            }
-
-            // URL Input Listener for Preview
-            if (videoInput) {
-                videoInput.addEventListener('input', (e) => {
-                    const url = e.target.value;
-                    const previewContainer = document.getElementById(`${prefix}-ex-preview-container`);
-                    const previewVideo = document.getElementById(`${prefix}-ex-preview`);
-
-                    if (previewContainer && previewVideo) {
-                        if (url) {
-                            previewVideo.src = url;
-                            previewContainer.classList.remove('hidden');
-                            previewVideo.load();
-                        } else {
-                            previewContainer.classList.add('hidden');
-                            previewVideo.pause();
-                            previewVideo.src = "";
-                        }
-                    }
-                });
-            }
-        });
-
-        container.dataset.listenersAttached = "true";
+    console.log(`[DEBUG] Fetched ${exercises.length} exercises for ${trainerId}`);
+    if (exercises.length > 0) {
+        console.log("[DEBUG] First ex:", exercises[0].name, "Video:", exercises[0].video_id);
     }
+
+    // Render Function
+    const render = () => {
+        const searchVal = document.getElementById(searchId)?.value.toLowerCase() || '';
+        const muscleVal = document.getElementById(muscleId)?.value || '';
+        const typeVal = document.getElementById(typeId)?.value || '';
+
+        const filtered = exercises.filter(ex => {
+            const matchesSearch = ex.name.toLowerCase().includes(searchVal);
+            const matchesMuscle = muscleVal ? ex.muscle === muscleVal : true;
+            const matchesType = typeVal ? ex.type === typeVal : true;
+            return matchesSearch && matchesMuscle && matchesType;
+        });
+
+        container.innerHTML = '';
+
+        const muscleIcons = {
+            'Chest': '🛡️', 'Back': '🦅', 'Legs': '🦵',
+            'Shoulders': '💪', 'Arms': '🦾', 'Abs': '🍫', 'Cardio': '🏃'
+        };
+
+        const typeColors = {
+            'Compound': 'bg-yellow-500/20 text-yellow-400',
+            'Isolation': 'bg-blue-500/20 text-blue-400',
+            'Bodyweight': 'bg-green-500/20 text-green-400',
+            'Cardio': 'bg-red-500/20 text-red-400'
+        };
+
+        filtered.forEach(ex => {
+            const div = document.createElement('div');
+            div.className = "glass-card p-4 flex flex-col justify-between relative overflow-hidden group tap-effect slide-up min-h-[120px]";
+
+            const icon = muscleIcons[ex.muscle] || '🏋️';
+            const badgeClass = typeColors[ex.type] || 'bg-gray-500/20 text-gray-400';
+
+            let videoBackground = '';
+            if (ex.video_id) {
+                let src = ex.video_id;
+                if (!src.startsWith('http') && !src.startsWith('/')) {
+                    src = `/static/videos/${src}.mp4`;
+                }
+                if (!src.includes('youtube') && !src.includes('youtu.be')) {
+                    videoBackground = `
+                        <div class="absolute inset-0 z-0 opacity-0 group-hover:opacity-40 transition duration-500">
+                            <video src="${src}" muted loop playsinline class="w-full h-full object-cover"></video>
+                        </div>
+                     `;
+                }
+            }
+
+            div.innerHTML = `
+                ${videoBackground}
+                
+                <div class="absolute -right-2 -top-2 opacity-10 group-hover:opacity-0 transition transform group-hover:scale-110 pointer-events-none">
+                    <span class="text-8xl">${icon}</span>
+                </div>
+                <div class="relative z-10 w-full h-full flex flex-col justify-between pointer-events-none">
+                    <div class="flex justify-between items-start mb-2 pointer-events-auto pl-1">
+                        <span class="text-[10px] font-bold px-2 py-1 rounded-full ${badgeClass} uppercase tracking-wider">${ex.type}</span>
+                        <button class="edit-btn w-8 h-8 flex items-center justify-center bg-white/10 rounded-full text-gray-300 hover:bg-white/20 hover:text-white transition tap-effect">
+                            ⚙️
+                        </button>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-lg text-white mb-1 leading-tight drop-shadow-md">${ex.name}</h4>
+                        <div class="flex items-center text-xs text-gray-400 mt-1">
+                            <span class="mr-2">${icon}</span>
+                            <span>${ex.muscle}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            // Video Hover Logic
+            if (videoBackground) {
+                const video = div.querySelector('video');
+                div.addEventListener('mouseenter', () => {
+                    try { video.play(); } catch (e) { }
+                });
+                div.addEventListener('mouseleave', () => {
+                    try { video.pause(); video.currentTime = 0; } catch (e) { }
+                });
+            }
+
+            // Attach click listener to the edit button
+            const editBtn = div.querySelector('.edit-btn');
+            editBtn.addEventListener('click', (e) => {
+                e.stopPropagation(); // Prevent card click
+                openEditExerciseModal(ex);
+            });
+            div.appendChild(editBtn); // Ensure it's appended
+
+            container.appendChild(div);
+        });
+    };
+
+    render();
+
+    // Attach listeners to filters
+    document.getElementById(searchId)?.addEventListener('input', render);
+    document.getElementById(muscleId)?.addEventListener('change', render);
+    document.getElementById(typeId)?.addEventListener('change', render);
+
+    populateVideoSuggestions(exercises);
+}
+
+// --- DIET ASSIGNMENT ---
+window.openAssignDietModal = async () => {
+    const clientId = document.getElementById('client-modal').dataset.clientId;
+    if (!clientId) {
+        showToast("Error: No client selected");
+        return;
+    }
+
+    document.getElementById('diet-client-id').value = clientId;
+
+    // Ideally fetch current diet data to pre-fill
+    // For now, we'll just show the modal empty or with placeholders
+    // If we had an endpoint to get specific client details including diet, we'd call it here.
+    // The client-modal is populated from `showClientModal` which gets data from `TRAINER_DATA` (summary).
+    // We might need to fetch full client data.
+
+    showModal('assign-diet-modal');
+};
+
+window.saveDietPlan = async () => {
+    const clientId = document.getElementById('diet-client-id').value;
+    const calories = parseInt(document.getElementById('diet-calories').value) || 0;
+    const protein = parseInt(document.getElementById('diet-protein').value) || 0;
+    const carbs = parseInt(document.getElementById('diet-carbs').value) || 0;
+    const fat = parseInt(document.getElementById('diet-fat').value) || 0;
+    const hydration = parseInt(document.getElementById('diet-hydration').value) || 2500;
+    const consistency = parseInt(document.getElementById('diet-consistency').value) || 80;
+
+    const payload = {
+        client_id: clientId,
+        calories: calories,
+        protein: protein,
+        carbs: carbs,
+        fat: fat,
+        hydration_target: hydration,
+        consistency_target: consistency
+    };
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/assign_diet`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast("Diet plan assigned successfully! 🥗");
+            hideModal('assign-diet-modal');
+        } else {
+            const err = await res.json();
+            showToast(`Error: ${err.detail || 'Failed to assign diet'}`);
+        }
+    } catch (e) {
+        console.error(e);
+        showToast("Network error");
+    }
+};
+
+// Click card action
+
+function populateVideoSuggestions(exercises) {
+    const dataList = document.getElementById('video-suggestions');
+    if (!dataList) return;
+
+    dataList.innerHTML = ''; // Clear existing
+    const uniqueVideos = new Set();
+
+    exercises.forEach(ex => {
+        if (ex.video_id) {
+            uniqueVideos.add(ex.video_id);
+        }
+    });
+
+    uniqueVideos.forEach(vid => {
+        const option = document.createElement('option');
+        option.value = vid;
+        dataList.appendChild(option);
+    });
+}
+
+function setupExerciseModals() {
+    // File input listeners for preview and upload
+    ['new', 'edit'].forEach(prefix => {
+        const fileInput = document.getElementById(`${prefix}-ex-file`);
+        const videoInput = document.getElementById(`${prefix}-ex-video`);
+        const filenameDisplay = document.getElementById(`${prefix}-ex-filename`);
+
+        if (fileInput && !fileInput.dataset.listenerAttached) {
+            fileInput.addEventListener('change', async (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    filenameDisplay.innerText = `Uploading: ${file.name}...`;
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    try {
+                        const res = await fetch(`${apiBase}/api/upload`, {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        if (res.ok) {
+                            const data = await res.json();
+                            videoInput.value = data.url; // Use real server URL
+                            filenameDisplay.innerText = `Uploaded: ${file.name}`;
+                            showToast('Video uploaded! 🎥');
+
+                            // Update Preview
+                            const previewContainer = document.getElementById(`${prefix}-ex-preview-container`);
+                            const previewVideo = document.getElementById(`${prefix}-ex-preview`);
+                            if (previewContainer && previewVideo) {
+                                previewVideo.src = data.url;
+                                previewContainer.classList.remove('hidden');
+                                previewVideo.load();
+                            }
+                        } else {
+                            filenameDisplay.innerText = `Upload failed`;
+                            showToast('Upload failed ❌');
+                        }
+                    } catch (err) {
+                        console.error(err);
+                        filenameDisplay.innerText = `Upload error`;
+                        showToast('Upload error ❌');
+                    }
+                }
+            });
+            fileInput.dataset.listenerAttached = "true";
+        }
+
+        // URL Input Listener for Preview
+        if (videoInput && !videoInput.dataset.listenerAttached) {
+            videoInput.addEventListener('input', (e) => {
+                const url = e.target.value;
+                const previewContainer = document.getElementById(`${prefix}-ex-preview-container`);
+                const previewVideo = document.getElementById(`${prefix}-ex-preview`);
+
+                if (previewContainer && previewVideo) {
+                    if (url) {
+                        previewVideo.src = url;
+                        previewContainer.classList.remove('hidden');
+                        previewVideo.load();
+                    } else {
+                        previewContainer.classList.add('hidden');
+                        previewVideo.pause();
+                        previewVideo.src = "";
+                    }
+                }
+            });
+            videoInput.dataset.listenerAttached = "true";
+        }
+    });
 }
 
 function openEditExerciseModal(ex) {
@@ -906,7 +1061,27 @@ async function updateExercise() {
         if (res.ok) {
             showToast('Exercise updated! ✅');
             hideModal('edit-exercise-modal');
-            fetchAndRenderExercises();
+            hideModal('edit-exercise-modal');
+            // Refresh main list if it exists
+            if (document.getElementById('main-exercise-library')) {
+                initializeExerciseList({
+                    containerId: 'main-exercise-library',
+                    searchId: 'main-ex-search',
+                    muscleId: 'main-ex-filter-muscle',
+                    typeId: 'main-ex-filter-type',
+                    onClick: null
+                });
+            }
+            // Refresh modal list if open
+            if (document.getElementById('modal-exercise-library')) {
+                initializeExerciseList({
+                    containerId: 'modal-exercise-library',
+                    searchId: 'modal-ex-search',
+                    muscleId: 'modal-ex-filter-muscle',
+                    typeId: 'modal-ex-filter-type',
+                    onClick: 'addToWorkout'
+                });
+            }
         } else {
             showToast('Failed to update exercise ❌');
         }
@@ -947,7 +1122,28 @@ window.createExercise = async function () {
             document.getElementById('new-ex-name').value = '';
             document.getElementById('new-ex-video').value = '';
             document.getElementById('new-ex-filename').innerText = '';
-            fetchAndRenderExercises();
+            document.getElementById('new-ex-filename').innerText = '';
+
+            // Refresh main list if it exists
+            if (document.getElementById('main-exercise-library')) {
+                initializeExerciseList({
+                    containerId: 'main-exercise-library',
+                    searchId: 'main-ex-search',
+                    muscleId: 'main-ex-filter-muscle',
+                    typeId: 'main-ex-filter-type',
+                    onClick: null
+                });
+            }
+            // Refresh modal list if open
+            if (document.getElementById('modal-exercise-library')) {
+                initializeExerciseList({
+                    containerId: 'modal-exercise-library',
+                    searchId: 'modal-ex-search',
+                    muscleId: 'modal-ex-filter-muscle',
+                    typeId: 'modal-ex-filter-type',
+                    onClick: 'addToWorkout'
+                });
+            }
         } else {
             showToast('Failed to create exercise ❌');
         }
@@ -1001,27 +1197,32 @@ window.renderSelectedExercises = function () {
 
     selectedExercisesList.forEach((ex, idx) => {
         const div = document.createElement('div');
-        div.className = "grid grid-cols-12 gap-2 items-center bg-white/5 rounded-lg p-2 animate-fade-in";
+        div.className = "bg-white/5 rounded-xl p-3 relative animate-fade-in border border-white/5";
 
         div.innerHTML = `
-            <div class="col-span-5 text-left pl-2">
-                 <p class="text-xs font-bold text-white truncate">${ex.name}</p>
-                 <p class="text-[9px] text-gray-400 truncate">${ex.muscle}</p>
+            <button onclick="removeExerciseFromWorkout(${idx})" class="absolute top-2 right-2 text-gray-500 hover:text-red-500 transition p-1">✕</button>
+            
+            <div class="pr-8 mb-3">
+                <p class="text-sm font-bold text-white truncate">${ex.name}</p>
+                <p class="text-[10px] text-gray-400 uppercase tracking-wider">${ex.muscle} • ${ex.type}</p>
             </div>
-            <div class="col-span-2">
-                <input type="number" value="${ex.sets}" onchange="updateExerciseDetails(${idx}, 'sets', this.value)" 
-                    class="w-full bg-black/30 border border-white/10 rounded text-center text-xs text-white py-1 focus:border-primary outline-none">
-            </div>
-            <div class="col-span-2">
-                 <input type="text" value="${ex.reps}" onchange="updateExerciseDetails(${idx}, 'reps', this.value)" 
-                    class="w-full bg-black/30 border border-white/10 rounded text-center text-xs text-white py-1 focus:border-primary outline-none">
-            </div>
-            <div class="col-span-2">
-                 <input type="number" value="${ex.rest}" onchange="updateExerciseDetails(${idx}, 'rest', this.value)" 
-                    class="w-full bg-black/30 border border-white/10 rounded text-center text-xs text-white py-1 focus:border-primary outline-none">
-            </div>
-            <div class="col-span-1 flex justify-center">
-                <button onclick="removeExerciseFromWorkout(${idx})" class="text-xs text-red-500 hover:text-red-400 font-bold">✕</button>
+
+            <div class="grid grid-cols-3 gap-3">
+                <div>
+                    <label class="text-[9px] text-gray-500 uppercase font-bold block mb-1 text-center">Sets</label>
+                    <input type="number" value="${ex.sets}" onchange="updateExerciseDetails(${idx}, 'sets', this.value)" 
+                        class="w-full bg-black/30 border border-white/10 rounded-lg text-center text-sm text-white py-2 focus:border-primary outline-none transition">
+                </div>
+                <div>
+                    <label class="text-[9px] text-gray-500 uppercase font-bold block mb-1 text-center">Reps</label>
+                    <input type="text" value="${ex.reps}" onchange="updateExerciseDetails(${idx}, 'reps', this.value)" 
+                        class="w-full bg-black/30 border border-white/10 rounded-lg text-center text-sm text-white py-2 focus:border-primary outline-none transition">
+                </div>
+                <div>
+                    <label class="text-[9px] text-gray-500 uppercase font-bold block mb-1 text-center">Rest (s)</label>
+                    <input type="number" value="${ex.rest}" onchange="updateExerciseDetails(${idx}, 'rest', this.value)" 
+                        class="w-full bg-black/30 border border-white/10 rounded-lg text-center text-sm text-white py-2 focus:border-primary outline-none transition">
+                </div>
             </div>
         `;
         container.appendChild(div);
@@ -1071,6 +1272,15 @@ window.openCreateWorkoutModal = function () {
     renderSelectedExercises();
 
     showModal('create-workout-modal');
+
+    // Initialize Exercise List for Modal
+    initializeExerciseList({
+        containerId: 'modal-exercise-library',
+        searchId: 'modal-ex-search',
+        muscleId: 'modal-ex-filter-muscle',
+        typeId: 'modal-ex-filter-type',
+        onClick: 'addToWorkout'
+    });
 }
 
 window.openEditWorkout = function (workout) {
@@ -1086,6 +1296,15 @@ window.openEditWorkout = function (workout) {
     renderSelectedExercises();
 
     showModal('create-workout-modal');
+
+    // Initialize Exercise List for Modal
+    initializeExerciseList({
+        containerId: 'modal-exercise-library',
+        searchId: 'modal-ex-search',
+        muscleId: 'modal-ex-filter-muscle',
+        typeId: 'modal-ex-filter-type',
+        onClick: 'addToWorkout'
+    });
 }
 
 window.createWorkout = async function () {
@@ -1182,18 +1401,10 @@ window.assignWorkout = async function () {
     if (res.ok) {
         showToast('Workout assigned successfully! 📅');
         hideModal('assign-workout-modal');
-        // Refresh calendar
-        // We need to re-fetch client data or just reload the calendar.
-        // Simple way: close calendar and let user re-open, or trigger a refresh.
-        // Let's try to refresh the calendar view if possible.
-        // window.openTrainerCalendar() fetches data again.
-        // But we are inside the calendar.
-        // Let's just hide the assign modal and maybe update the UI manually or close/open calendar.
-        // For better UX, let's close the calendar modal too so they can re-open to see changes, or just show toast.
-        // Ideally we re-render the calendar.
-        // We can call openTrainerCalendar() again?
-        // But we need the client ID.
-        // Let's just show toast for now.
+        // Refresh calendar to show new assignment
+        if (window.openTrainerCalendar) {
+            window.openTrainerCalendar();
+        }
     } else {
         showToast('Failed to assign workout');
     }

@@ -73,7 +73,8 @@
         window.APP_CONFIG = {
             gymId: "{{ gym_id }}",
             role: "{{ role }}",
-            apiBase: "{{ 'http://192.168.1.55:9007' if static_build else '' }}"
+            apiBase: "{{ 'http://192.168.1.55:9007' if static_build else '' }}",
+            isStatic: {{ 'true' if static_build else 'false' }}
         };
     </script>
     <script src="/static/js/app.js?v={{ range(1, 10000) | random }}"></script>

@@ -144,7 +144,7 @@ class WeeklySplit(BaseModel):
     name: str
     description: Optional[str] = ""
     days_per_week: int
-    schedule: Dict[str, Optional[str]] # Key: "Day 1", Value: workout_id or None (Rest)
+    schedule: Dict[str, Optional[str]] # Key: "Monday", "Tuesday", etc. Value: workout_id or None (Rest)
 
 class LeaderboardData(BaseModel):
     users: List[LeaderboardUser]
