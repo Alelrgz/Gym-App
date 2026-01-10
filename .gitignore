@@ -10,8 +10,8 @@ node_modules/
 .DS_Store
 
 # Database files
-*.db
-db/
+# *.db
+# db/
 
 # Test and debug files
 test_*.py
