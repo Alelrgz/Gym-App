@@ -74,6 +74,7 @@ window.showDayDetails = (dateStr, dayEvents, titleId, listId, isTrainer) => {
                 document.getElementById('assign-client-id').value = clientId;
 
                 populateWorkoutSelector();
+                hideModal('calendar-modal'); // Close schedule to show assignment
                 showModal('assign-workout-modal');
             };
         }
@@ -1639,9 +1640,14 @@ document.addEventListener('DOMContentLoaded', () => {
                     return;
                 }
 
+                // Store global user ID for cache keys
+                window.currentUserId = user.id;
+
                 workoutState = {
+                    workoutId: workout.id, // Needed for cache key
                     exercises: workout.exercises.map(ex => ({
                         ...ex,
+                        collapsed: false, // Init collapsed state
                         performance: Array(ex.sets).fill().map(() => ({ reps: '', weight: '', completed: false }))
                     })),
                     currentExerciseIdx: 0,
@@ -1649,6 +1655,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     currentReps: parseInt(String(workout.exercises[0].reps).split('-')[1] || workout.exercises[0].reps),
                     isCompletedView: isCompletedView // Store in state
                 };
+
+                // Restore from cache if available
+                loadProgress();
 
                 // Populate Routine List
                 // Initial empty populate, real render happens in updateWorkoutUI
@@ -1661,6 +1670,7 @@ document.addEventListener('DOMContentLoaded', () => {
 window.updatePerformance = function (exIdx, setIdx, field, val) {
     if (workoutState && workoutState.exercises[exIdx]) {
         workoutState.exercises[exIdx].performance[setIdx][field] = val;
+        saveProgress(); // Auto-save
     }
 }
 
@@ -1672,8 +1682,7 @@ window.toggleSetComplete = function (exIdx, setIdx, event) {
     const currentState = workoutState.exercises[exIdx].performance[setIdx].completed;
     workoutState.exercises[exIdx].performance[setIdx].completed = !currentState;
 
-    // Future: Add sound or haptic feedback here
-
+    saveProgress(); // Auto-save
     updateWorkoutUI();
 };
 
@@ -1694,6 +1703,124 @@ window.switchExercise = function (idx) {
     updateWorkoutUI();
 }
 
+window.toggleCollapse = function (idx, event) {
+    if (event) event.stopPropagation();
+    if (!workoutState || !workoutState.exercises[idx]) return;
+
+    workoutState.exercises[idx].collapsed = !workoutState.exercises[idx].collapsed;
+    saveProgress(); // Auto-save
+    updateWorkoutUI();
+}
+
+// --- PERSISTENCE HELPERS ---
+
+function getCacheKey() {
+    // We need clientId and workoutId
+    // clientId is available globally via socket or APP_CONFIG? No, but we have 'user.id' in the init scope.
+    // Let's store userId globally when fetched.
+    if (!window.currentUserId || !workoutState || !workoutState.workoutId) return null;
+    return `gym_cache_${window.currentUserId}_workout_${workoutState.workoutId}`;
+}
+
+function saveProgress() {
+    const key = getCacheKey();
+    if (!key) return;
+
+    // We only need to save the performance data, but saving the whole state is easier
+    // to preserve 'collapsed' state too.
+    const dataToSave = {
+        exercises: workoutState.exercises.map(ex => ({
+            id: ex.id,
+            performance: ex.performance,
+            collapsed: ex.collapsed
+        })),
+        timestamp: Date.now()
+    };
+
+    localStorage.setItem(key, JSON.stringify(dataToSave));
+}
+
+function loadProgress() {
+    const key = getCacheKey();
+    if (!key) return;
+
+    const cached = localStorage.getItem(key);
+    if (!cached) return;
+
+    try {
+        const data = JSON.parse(cached);
+        // Check staleness (e.g., if older than 24h, discard?)
+        // For now, assume if ID matches, it's valid.
+
+        // Merge data
+        data.exercises.forEach((savedEx, idx) => {
+            if (workoutState.exercises[idx] && workoutState.exercises[idx].id === savedEx.id) {
+                // RESTORE ONLY WEIGHT (and collapsed state) as requested
+                // We iterate through saved performance and only copy 'weight'
+                if (savedEx.performance) {
+                    savedEx.performance.forEach((p, setIdx) => {
+                        if (workoutState.exercises[idx].performance[setIdx]) {
+                            workoutState.exercises[idx].performance[setIdx].weight = p.weight;
+                            // We do NOT restore reps.
+                        }
+                    });
+                }
+                workoutState.exercises[idx].collapsed = savedEx.collapsed || false;
+            }
+        });
+        console.log("Progress restored from cache (Weight & Collapsed state only)");
+    } catch (e) {
+        console.error("Failed to load progress", e);
+    }
+}
+
+function completeSet() {
+    if (!workoutState) return;
+
+    const exId = workoutState.currentExerciseIdx;
+    const setId = workoutState.currentSet - 1; // 0-indexed
+
+    // AUTO-FILL REPS from Main Counter
+    if (workoutState.exercises[exId] && workoutState.exercises[exId].performance[setId]) {
+        workoutState.exercises[exId].performance[setId].reps = workoutState.currentReps;
+        workoutState.exercises[exId].performance[setId].completed = true; // Mark as done
+        saveProgress(); // Save the new data
+    }
+
+    const ex = workoutState.exercises[workoutState.currentExerciseIdx];
+
+    // Show Rest Timer
+    showRestTimer(ex.rest || 60, () => {
+        // Move to next set
+        if (workoutState.currentSet < ex.sets) {
+            workoutState.currentSet++;
+            // Parse reps if it's a range like "8-10"
+            let targetReps = ex.reps;
+            if (typeof ex.reps === 'string' && ex.reps.includes('-')) {
+                targetReps = ex.reps.split('-')[1]; // Take upper bound
+            }
+            workoutState.currentReps = parseInt(targetReps);
+            updateWorkoutUI();
+        } else {
+            // Move to next exercise
+            if (workoutState.currentExerciseIdx < workoutState.exercises.length - 1) {
+                workoutState.currentExerciseIdx++;
+                workoutState.currentSet = 1;
+                const nextEx = workoutState.exercises[workoutState.currentExerciseIdx];
+                let nextReps = nextEx.reps;
+                if (typeof nextEx.reps === 'string' && nextEx.reps.includes('-')) {
+                    nextReps = nextEx.reps.split('-')[1];
+                }
+                workoutState.currentReps = parseInt(nextReps);
+                updateWorkoutUI();
+            } else {
+                // Workout complete!
+                finishWorkout();
+            }
+        }
+    });
+}
+
 function updateWorkoutUI() {
     if (!workoutState) return;
 
@@ -1701,7 +1828,7 @@ function updateWorkoutUI() {
 
     // Update Header & Counters
     document.getElementById('exercise-name').innerText = ex.name;
-    document.getElementById('exercise-target').innerText = `Set ${workoutState.currentSet} of ${ex.sets} • Target: ${ex.reps} Reps`;
+    document.getElementById('exercise-target').innerText = `Set ${workoutState.currentSet}/${ex.sets} • Target: ${ex.reps} Reps`;
     document.getElementById('rep-counter').innerText = workoutState.currentReps;
 
     // Update Video
@@ -1792,8 +1919,12 @@ function updateWorkoutUI() {
                      `;
                 }
 
+                const isCollapsed = item.collapsed || false;
+                const chevronRotate = isCollapsed ? '-rotate-90' : 'rotate-0';
+
                 div.innerHTML += `
-                    <div class="flex items-center justify-between mb-6 pb-4 border-b border-white/10 relative z-10">
+                    <div class="flex items-center justify-between mb-6 pb-4 border-b border-white/10 relative z-10 cursor-pointer group"
+                        onclick="window.toggleCollapse(${idx}, event)">
                         <div class="flex items-center space-x-4">
                             <div class="w-12 h-12 rounded-full bg-primary text-black flex items-center justify-center font-black animate-pulse text-xl shadow-lg shadow-primary/50">▶</div>
                             <div>
@@ -1801,12 +1932,17 @@ function updateWorkoutUI() {
                                 <p class="text-xs text-primary font-bold tracking-widest uppercase opacity-90">${item.sets} Sets • ${item.reps} Target</p>
                             </div>
                         </div>
-                        <span class="text-[10px] font-black text-white bg-red-500 px-3 py-1 rounded-full shadow-lg shadow-red-500/40 tracking-widest uppercase items-center flex gap-1">
-                            <span class="w-2 h-2 bg-white rounded-full animate-ping"></span> Active
-                        </span>
+                        <div class="flex items-center gap-3">
+                             <span class="text-[10px] font-black text-white bg-red-500 px-3 py-1 rounded-full shadow-lg shadow-red-500/40 tracking-widest uppercase items-center flex gap-1">
+                                <span class="w-2 h-2 bg-white rounded-full animate-ping"></span> Active
+                            </span>
+                            <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center transition-transform duration-300 ${chevronRotate} group-hover:bg-white/20">
+                                ▼
+                            </div>
+                        </div>
                     </div>
                     
-                    <div class="space-y-2 relative z-10">
+                    <div class="space-y-2 relative z-10 transition-all duration-300 overflow-hidden ${isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[1000px] opacity-100'}">
                         ${setsHtml}
                     </div>
                 `;
