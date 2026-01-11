@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 import uuid
 from data import GYMS_DB, CLIENT_DATA, TRAINER_DATA, OWNER_DATA, LEADERBOARD_DATA, EXERCISE_LIBRARY
-from models import GymConfig, ClientData, TrainerData, OwnerData, LeaderboardData, WorkoutAssignment, AssignDietRequest
+from models import GymConfig, ClientData, TrainerData, OwnerData, LeaderboardData, WorkoutAssignment, AssignDietRequest, ClientProfileUpdate
 from database import global_engine, GlobalSessionLocal, get_trainer_session, Base
 from models_orm import ExerciseORM, WorkoutORM, WeeklySplitORM
 

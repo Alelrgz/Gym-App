@@ -837,6 +837,16 @@ async function initializeExerciseList(config) {
             const div = document.createElement('div');
             div.className = "glass-card p-4 flex flex-col justify-between relative overflow-hidden group tap-effect slide-up min-h-[120px]";
 
+            // CLICK TO ADD TO WORKOUT
+            if (onClick === 'addToWorkout') {
+                div.style.cursor = 'pointer';
+                div.addEventListener('click', () => {
+                    if (typeof window.addExerciseToWorkout === 'function') {
+                        window.addExerciseToWorkout(ex);
+                    }
+                });
+            }
+
             const icon = muscleIcons[ex.muscle] || '🏋️';
             const badgeClass = typeColors[ex.type] || 'bg-gray-500/20 text-gray-400';
 
@@ -1630,7 +1640,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
 
                 workoutState = {
-                    exercises: workout.exercises,
+                    exercises: workout.exercises.map(ex => ({
+                        ...ex,
+                        performance: Array(ex.sets).fill().map(() => ({ reps: '', weight: '', completed: false }))
+                    })),
                     currentExerciseIdx: 0,
                     currentSet: 1,
                     currentReps: parseInt(String(workout.exercises[0].reps).split('-')[1] || workout.exercises[0].reps),
@@ -1638,36 +1651,31 @@ document.addEventListener('DOMContentLoaded', () => {
                 };
 
                 // Populate Routine List
-                const list = document.getElementById('workout-routine-list');
-                if (list) {
-                    list.innerHTML = '';
-                    workout.exercises.forEach((ex, idx) => {
-                        const div = document.createElement('div');
-                        div.id = `exercise-${idx}`;
-                        div.className = "glass-card p-4 flex justify-between items-center transition duration-300 tap-effect cursor-pointer";
-                        div.onclick = () => window.switchExercise(idx);
-                        div.innerHTML = `
-                            <div class="flex items-center space-x-4">
-                                <div class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-xl font-bold text-gray-400 status-icon">
-                                    ${idx + 1}
-                                </div>
-                                <div>
-                                    <h4 class="font-bold text-white text-sm">${ex.name}</h4>
-                                    <p class="text-[10px] text-gray-400">${ex.sets} Sets • ${ex.reps} Reps</p>
-                                </div>
-                            </div>
-                            <div class="w-6 h-6 rounded-full border border-white/20 flex items-center justify-center">
-                                <div class="w-3 h-3 bg-green-400 rounded-full opacity-0 status-dot"></div>
-                            </div>
-                        `;
-                        list.appendChild(div);
-                    });
-                }
-
+                // Initial empty populate, real render happens in updateWorkoutUI
                 updateWorkoutUI();
             });
     }
 });
+
+// Helper to update performance data
+window.updatePerformance = function (exIdx, setIdx, field, val) {
+    if (workoutState && workoutState.exercises[exIdx]) {
+        workoutState.exercises[exIdx].performance[setIdx][field] = val;
+    }
+}
+
+window.toggleSetComplete = function (exIdx, setIdx, event) {
+    if (event) event.stopPropagation();
+    if (!workoutState || !workoutState.exercises[exIdx]) return;
+
+    // Toggle state
+    const currentState = workoutState.exercises[exIdx].performance[setIdx].completed;
+    workoutState.exercises[exIdx].performance[setIdx].completed = !currentState;
+
+    // Future: Add sound or haptic feedback here
+
+    updateWorkoutUI();
+};
 
 window.switchExercise = function (idx) {
     if (!workoutState) return;
@@ -1701,12 +1709,12 @@ function updateWorkoutUI() {
     const repVideoEl = document.getElementById('rep-counter-video');
 
     let src = ex.video_id;
-    if (!src.startsWith('http') && !src.startsWith('/')) {
+    if (src && !src.startsWith('http') && !src.startsWith('/')) {
         src = `/static/videos/${src}.mp4`;
     }
-    const newSrc = `${src}?v=3`;
+    const newSrc = src ? `${src}?v=3` : '';
 
-    if (!videoEl.src.includes(newSrc)) {
+    if (newSrc && videoEl.src && !videoEl.src.includes(newSrc)) {
         // Update Main Video
         videoEl.src = newSrc;
         videoEl.load();
@@ -1739,24 +1747,91 @@ function updateWorkoutUI() {
             div.dataset.action = 'switchExercise';
             div.dataset.idx = idx;
 
-            div.className = `p-3 rounded-xl flex items-center mb-2 cursor-pointer transition-all ${isCurrent ? 'bg-white/10 border border-primary/50' : 'hover:bg-white/5 border border-transparent'}`;
-            // Add onclick for direct interaction if delegation fails or for legacy support
-            div.onclick = () => window.switchExercise(idx);
+            if (isCurrent) {
+                // EXPANDED ACTIVE CARD
+                // Use glass-card class + glow for distinct active state
+                div.className = `glass-card p-5 mb-6 relative overflow-visible transition-all duration-500 transform scale-[1.02] border-2 border-primary/50 shadow-2xl shadow-primary/20`;
+                div.onclick = null; // Disable collapse on click
 
-            let icon = `<div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center mr-3 text-xs text-gray-400">${idx + 1}</div>`;
-            if (isCurrent) icon = '<div class="w-8 h-8 rounded-full bg-primary text-black flex items-center justify-center mr-3 font-bold animate-pulse">▶</div>';
-            if (idx < workoutState.currentExerciseIdx || workoutState.isCompletedView) icon = '<div class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center mr-3 font-bold">✓</div>';
+                // Active Indicator (Background Glow)
+                const glow = document.createElement('div');
+                glow.className = "absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-[50px] rounded-full pointer-events-none -mr-10 -mt-10";
+                div.appendChild(glow);
 
-            div.innerHTML = `
-                <div class="flex items-center space-x-4 pointer-events-none">
-                    ${icon}
-                    <div class="flex-1">
-                        <h4 class="font-bold text-white ${isCurrent ? 'text-lg' : 'text-sm'}">${item.name}</h4>
-                        <p class="text-xs text-gray-400">${item.sets} Sets • ${item.reps} Reps</p>
+                // Generate Sets Rows
+                // Add disable logic
+                const isDisabled = workoutState.isCompletedView ? 'disabled' : '';
+                // Adjusted input styling
+                const baseInputClass = "w-full bg-transparent border-none text-white text-right font-black outline-none text-xl font-mono placeholder-white/20";
+                const inputClass = isDisabled ? `${baseInputClass} opacity-50 cursor-not-allowed` : baseInputClass;
+
+                let setsHtml = '';
+                for (let i = 0; i < item.sets; i++) {
+                    const perf = item.performance[i];
+
+                    setsHtml += `
+                        <div class="grid grid-cols-[1.5fr,1fr,1fr] gap-4 mb-3 items-center relative z-10">
+                            <span class="text-sm font-bold text-gray-400 tracking-widest pl-2 font-mono uppercase">Set ${i + 1}</span>
+                            <div class="flex items-center bg-black/40 border border-white/10 rounded-xl px-3 py-3 focus-within:border-primary/80 focus-within:bg-black/60 transition duration-300 shadow-inner">
+                                <input type="number" value="${perf.reps}" 
+                                    onchange="window.updatePerformance(${idx}, ${i}, 'reps', this.value)"
+                                    onclick="event.stopPropagation()"
+                                    ${isDisabled}
+                                    class="${inputClass}" placeholder="${item.reps}">
+                                <span class="text-[10px] text-gray-500 font-bold ml-2 mt-1 tracking-wider">REPS</span>
+                            </div>
+                            <div class="flex items-center bg-black/40 border border-white/10 rounded-xl px-3 py-3 focus-within:border-primary/80 focus-within:bg-black/60 transition duration-300 shadow-inner">
+                                <input type="number" value="${perf.weight}" 
+                                    onchange="window.updatePerformance(${idx}, ${i}, 'weight', this.value)"
+                                    onclick="event.stopPropagation()"
+                                    ${isDisabled}
+                                    class="${inputClass}" placeholder="-">
+                                <span class="text-[10px] text-gray-500 font-bold ml-2 mt-1 tracking-wider">KG</span>
+                            </div>
+                        </div>
+                     `;
+                }
+
+                div.innerHTML += `
+                    <div class="flex items-center justify-between mb-6 pb-4 border-b border-white/10 relative z-10">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-full bg-primary text-black flex items-center justify-center font-black animate-pulse text-xl shadow-lg shadow-primary/50">▶</div>
+                            <div>
+                                <h4 class="font-black text-white text-2xl tracking-tight leading-none mb-1 drop-shadow-md">${item.name}</h4>
+                                <p class="text-xs text-primary font-bold tracking-widest uppercase opacity-90">${item.sets} Sets • ${item.reps} Target</p>
+                            </div>
+                        </div>
+                        <span class="text-[10px] font-black text-white bg-red-500 px-3 py-1 rounded-full shadow-lg shadow-red-500/40 tracking-widest uppercase items-center flex gap-1">
+                            <span class="w-2 h-2 bg-white rounded-full animate-ping"></span> Active
+                        </span>
                     </div>
-                    ${isCurrent ? '<span class="text-xs font-bold text-primary uppercase tracking-wider">Active</span>' : ''}
-                </div>
-            `;
+                    
+                    <div class="space-y-2 relative z-10">
+                        ${setsHtml}
+                    </div>
+                `;
+
+            } else {
+                // COMPACT CARD (Inactive)
+                div.className = `p-3 rounded-xl flex items-center mb-2 cursor-pointer transition-all hover:bg-white/5 border border-transparent opacity-60 hover:opacity-100`;
+                div.onclick = () => window.switchExercise(idx);
+
+                let icon = `<div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center mr-3 text-xs text-gray-400 font-bold">${idx + 1}</div>`;
+                if (idx < workoutState.currentExerciseIdx || workoutState.isCompletedView) {
+                    icon = '<div class="w-8 h-8 rounded-full bg-green-500 text-black flex items-center justify-center mr-3 font-bold">✓</div>';
+                }
+
+                div.innerHTML = `
+                    <div class="flex items-center space-x-4 pointer-events-none w-full">
+                        ${icon}
+                        <div class="flex-1">
+                            <h4 class="font-bold text-white text-sm">${item.name}</h4>
+                            <p class="text-xs text-gray-400">${item.sets} Sets • ${item.reps} Reps</p>
+                        </div>
+                        ${idx < workoutState.currentExerciseIdx ? '<span class="text-xs text-green-400 font-bold">Done</span>' : ''}
+                    </div>
+                `;
+            }
 
             // Scroll to active item
             if (isCurrent) {
