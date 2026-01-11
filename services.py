@@ -105,24 +105,12 @@ class UserService:
                 
                 db.commit()
                 db.refresh(profile)
+
+            # --- FETCH DATA (For both new and existing users) ---
             
-            # 2. Fetch Schedule
-            events = db.query(ClientScheduleORM).all()
-            calendar_data = {
-                "events": [
-                    {
-                        "title": e.title,
-                        "type": e.type,
-                        "completed": e.completed,
-                        "workout_id": e.workout_id,
-                        "details": e.details
-                    } for e in events
-                ]
-            }
-            
-            # 3. Fetch Diet
+            # 2. Get Diet / Progress
             diet_settings = db.query(ClientDietSettingsORM).filter(ClientDietSettingsORM.id == client_id).first()
-            progress_data = {}
+            progress_data = None
             if diet_settings:
                 progress_data = {
                     "photos": [
@@ -137,13 +125,32 @@ class UserService:
                     },
                     "hydration": {"current": diet_settings.hydration_current, "target": diet_settings.hydration_target},
                     "consistency_target": diet_settings.consistency_target,
-                    # Mock history and logs for now as they are complex to migrate fully in one go
+                    # Mock history and logs for now
                     "weekly_history": [1800, 2100, 1950, 2200, 2000, 1850, 1450], 
                     "diet_log": {
                         "Breakfast": [{"meal": "Oatmeal", "cals": 350, "time": "08:00"}],
                         "Lunch": [{"meal": "Chicken Salad", "cals": 450, "time": "12:30"}]
                     }
                 }
+
+            # 3. Get Calendar / Schedule
+            events_orm = db.query(ClientScheduleORM).all()
+            events = []
+            for e in events_orm:
+                events.append({
+                    "id": e.id,
+                    "date": e.date,
+                    "title": e.title,
+                    "type": e.type,
+                    "completed": e.completed,
+                    "workout_id": e.workout_id,
+                    "details": e.details
+                })
+            
+            calendar_data = {
+                "current_month": "October 2023", # Dynamic in real app
+                "events": events
+            }
 
             # Construct ClientData
             # We need to reconstruct the todays_workout if applicable
@@ -152,13 +159,12 @@ class UserService:
             today_str = date.today().isoformat()
             
             # Check if there is a workout event today
-            today_event = next((e for e in events if e.date == today_str and e.type == "workout"), None)
+            # events is a list of dicts now, so access by key
+            today_event = next((e for e in events if e["date"] == today_str and e["type"] == "workout"), None)
+            
             if today_event:
                 # In a real app we would fetch the full workout details. 
                 # For now, we'll just mock it or try to find it if we had the ID.
-                # Since we only stored title/details in schedule, we might miss full exercise list.
-                # This is a limitation of the current migration. 
-                # We will leave it as None or basic info for now.
                 pass
 
             return ClientData(

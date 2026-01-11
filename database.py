@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 import os
 
 # Global database (exercises only)
-GLOBAL_DB_PATH = "sqlite:///./db/global.db"
+GLOBAL_DB_PATH = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'db', 'global.db')}"
 global_engine = create_engine(GLOBAL_DB_PATH, connect_args={"check_same_thread": False})
 GlobalSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=global_engine)
 
@@ -16,7 +16,7 @@ def get_trainer_db_path(trainer_id: str):
     """Get the database path for a specific trainer"""
     db_folder = os.path.join(os.path.dirname(__file__), "db")
     os.makedirs(db_folder, exist_ok=True)
-    return f"sqlite:///{db_folder}/trainer_{trainer_id}.db"
+    return f"sqlite:///{os.path.join(db_folder, f'trainer_{trainer_id}.db')}"
 
 def get_trainer_session(trainer_id: str):
     """Get a database session for a specific trainer"""
@@ -41,7 +41,7 @@ def get_client_db_path(client_id: str):
     """Get the database path for a specific client"""
     db_folder = os.path.join(os.path.dirname(__file__), "db")
     os.makedirs(db_folder, exist_ok=True)
-    return f"sqlite:///{db_folder}/client_{client_id}.db"
+    return f"sqlite:///{os.path.join(db_folder, f'client_{client_id}.db')}"
 
 def get_client_session(client_id: str):
     """Get a database session for a specific client"""
