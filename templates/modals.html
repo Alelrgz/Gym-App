@@ -387,7 +387,7 @@
     {% endcall %}
 </div>
 
-<div id="calendar-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+<div id="calendar-modal" class="fixed inset-0 bg-black/80 z-[70] hidden flex items-center justify-center p-4"
     data-action="hideModal" data-target="calendar-modal">
     {% call card(classes="w-full max-w-md p-6 slide-up max-h-[80vh] overflow-y-auto",
     onclick="event.stopPropagation()")
@@ -570,9 +570,11 @@
                 <label class="text-xs text-gray-500 uppercase font-bold ml-1">Start Date (Monday)</label>
                 <div class="relative">
 
-                <input type="date" id="assign-split-date"
-                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
-                    <button onclick="openSchedulePicker()" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-2" title="View Schedule">
+                    <input type="date" id="assign-split-date"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+                    <button onclick="openSchedulePicker()"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-2"
+                        title="View Schedule">
                         📅
                     </button>
                 </div>

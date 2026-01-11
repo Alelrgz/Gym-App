@@ -6,6 +6,8 @@ class ClientProfileORM(Base):
 
     id = Column(String, primary_key=True, index=True) # client_id
     name = Column(String)
+    email = Column(String, nullable=True) # Added
+    password = Column(String, nullable=True) # Added (Plain text for prototype)
     streak = Column(Integer, default=0)
     gems = Column(Integer, default=0)
     health_score = Column(Integer, default=0)

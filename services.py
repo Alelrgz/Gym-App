@@ -140,11 +140,11 @@ class UserService:
                 events.append({
                     "id": e.id,
                     "date": e.date,
-                    "title": e.title,
-                    "type": e.type,
+                    "title": e.title or "Untitled",
+                    "type": e.type or "event",
                     "completed": e.completed,
                     "workout_id": e.workout_id,
-                    "details": e.details
+                    "details": e.details or ""
                 })
             
             calendar_data = {
@@ -162,17 +162,25 @@ class UserService:
             # events is a list of dicts now, so access by key
             today_event = next((e for e in events if e["date"] == today_str and e["type"] == "workout"), None)
             
-            if today_event:
-                # In a real app we would fetch the full workout details. 
-                # For now, we'll just mock it or try to find it if we had the ID.
-                pass
+            if today_event and today_event.get("workout_id"):
+                try:
+                    todays_workout = self.get_workout_details(today_event["workout_id"])
+                    # Inject completion status
+                    todays_workout["completed"] = today_event.get("completed", False)
+                except Exception as e:
+                    print(f"Warning: Could not fetch details for workout {today_event['workout_id']}: {e}")
+
+            # Fallback removed: If not found in schedule, it remains None (Rest Day)
+            # if not todays_workout:
+            #     todays_workout = CLIENT_DATA.get(client_id, {}).get("todays_workout")
 
             return ClientData(
-                name=profile.name,
+                name=profile.name or "Unknown User",
+                email=profile.email, # Added
                 streak=profile.streak,
                 gems=profile.gems,
                 health_score=profile.health_score,
-                todays_workout=CLIENT_DATA.get(client_id, {}).get("todays_workout"), # Fallback to memory for complex object for now
+                todays_workout=todays_workout,
                 daily_quests=CLIENT_DATA.get(client_id, {}).get("daily_quests", []), # Fallback
                 progress=progress_data if progress_data else None,
                 calendar=calendar_data
@@ -239,6 +247,32 @@ class UserService:
             db.commit()
             
             return {"status": "success", "message": "Workout completed!"}
+        finally:
+            db.close()
+
+    def update_client_profile(self, profile_update: ClientProfileUpdate) -> dict:
+        from database import get_client_session
+        from models_client_orm import ClientProfileORM
+        
+        client_id = "user_123" # Default for now
+        db = get_client_session(client_id)
+        try:
+            profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
+            if not profile:
+                raise HTTPException(status_code=404, detail="Client not found")
+                
+            if profile_update.name is not None:
+                profile.name = profile_update.name
+            if profile_update.email is not None:
+                profile.email = profile_update.email
+            if profile_update.password is not None:
+                profile.password = profile_update.password
+                
+            db.commit()
+            return {"status": "success", "message": "Profile updated"}
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to update profile: {str(e)}")
         finally:
             db.close()
 
@@ -947,28 +981,61 @@ class UserService:
         finally:
             db.close()
 
-    def assign_split(self, assignment: dict) -> dict:
+    def assign_split(self, assignment: dict, trainer_id: str) -> dict:
         # assignment: { client_id, split_id, start_date }
         from datetime import date, timedelta, datetime
+        import logging
+        logger = logging.getLogger("gym_app")
         
         client_id = assignment.get("client_id")
         split_id = assignment.get("split_id")
         start_date_str = assignment.get("start_date")
         
+        logger.info(f"[assign_split] Called with client={client_id}, split={split_id}, start={start_date_str}, trainer={trainer_id}")
+        
+        split_schedule = None
+        days_per_week = None
+        
         # Fetch Split
-        # For simplicity, we assume the split is in the default trainer DB for now, 
-        # or we need to know which trainer owns it. 
-        # In this prototype, we'll check the default trainer DB.
-        trainer_db = get_trainer_session("trainer_default")
+        # Use the provided trainer_id to find the split
+        trainer_db = get_trainer_session(trainer_id)
         try:
             import json
             split_orm = trainer_db.query(WeeklySplitORM).filter(WeeklySplitORM.id == split_id).first()
-            if not split_orm:
-                raise HTTPException(status_code=404, detail="Split not found")
             
-            split_schedule = json.loads(split_orm.schedule_json)
-            days_per_week = split_orm.days_per_week
-            print(f"[DEBUG] assign_split: Found split {split_id}, schedule: {split_schedule}")
+            if not split_orm:
+                 # Try default trainer as fallback (e.g. for global splits that aren't shadowed yet but should be?)
+                 # Actually, if it's global, it should be in SPLITS_DB or shadowed.
+                 # Let's check SPLITS_DB if not found in DB
+                 from data import SPLITS_DB
+                 if split_id in SPLITS_DB:
+                     split_data = SPLITS_DB[split_id]
+                     split_schedule = split_data["schedule"]
+                     days_per_week = split_data["days_per_week"]
+                 else:
+                     # Check if it is in default trainer DB (fallback for legacy/shared)
+                     # Close current db and check default
+                     trainer_db.close()
+                     trainer_db = get_trainer_session("trainer_default")
+                     split_orm = trainer_db.query(WeeklySplitORM).filter(WeeklySplitORM.id == split_id).first()
+                     if split_orm:
+                         split_schedule = json.loads(split_orm.schedule_json)
+                         days_per_week = split_orm.days_per_week
+                     else:
+                         logger.error(f"[assign_split] Split {split_id} not found in any DB")
+                         raise HTTPException(status_code=404, detail="Split not found")
+            else:
+                split_schedule = json.loads(split_orm.schedule_json)
+                days_per_week = split_orm.days_per_week
+                
+            logger.info(f"[assign_split] Found split {split_id}, schedule: {split_schedule}")
+        except HTTPException:
+            raise
+        except Exception as e:
+            logger.error(f"[assign_split] Error fetching split: {type(e).__name__}: {str(e)}")
+            import traceback
+            logger.error(f"[assign_split] Traceback: {traceback.format_exc()}")
+            raise HTTPException(status_code=500, detail=f"Error fetching split: {str(e)}")
         finally:
             trainer_db.close()
 
@@ -976,7 +1043,13 @@ class UserService:
         logs.append(f"Found split {split_id}, schedule: {split_schedule}")
 
         # Assign for 4 weeks
-        start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+        if not start_date_str:
+            raise HTTPException(status_code=400, detail="Start date is required")
+            
+        try:
+            start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid date format. Use YYYY-MM-DD")
         
         # Map weekday number (0=Monday, 6=Sunday) to our schedule keys
         weekday_map = {
@@ -1001,6 +1074,7 @@ class UserService:
                     })
                     logs.append(f"Result: {res}")
                 except Exception as e:
+                    logger.error(f"[assign_split] Error assigning workout {workout_id}: {str(e)}")
                     logs.append(f"Error: {str(e)}")
                     
         return {"status": "success", "message": "Split assigned for 4 weeks", "logs": logs}

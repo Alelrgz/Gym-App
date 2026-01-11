@@ -28,6 +28,7 @@ class Workout(BaseModel):
     duration: str
     difficulty: str
     exercises: List[Exercise]
+    completed: Optional[bool] = False
 
 class WorkoutTemplate(BaseModel):
     id: Optional[str] = None
@@ -83,6 +84,7 @@ class CalendarData(BaseModel):
 # --- CLIENT ---
 class ClientData(BaseModel):
     name: str
+    email: Optional[str] = None # Added
     streak: int
     gems: int
     health_score: int
@@ -90,6 +92,11 @@ class ClientData(BaseModel):
     daily_quests: List[DailyQuest]
     progress: Optional[Progress] = None
     calendar: CalendarData
+
+class ClientProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
 
 # --- TRAINER ---
 class ClientSummary(BaseModel):

@@ -130,7 +130,82 @@ CLIENT_DATA = {
                 # Future
                 {"date": "2025-12-28", "title": "Leg Day", "type": "workout", "completed": False, "details": "Squats & Lunges"},
                 {"date": "2025-12-31", "title": "New Year's Eve Pump", "type": "workout", "completed": False, "details": "Arms & Abs"},
-                {"date": "2026-01-01", "title": "Recovery", "type": "rest", "completed": False, "details": "Stretching"}
+                {"date": "2026-01-01", "title": "Recovery", "type": "rest", "completed": False, "details": "Stretching"},
+                {"date": "2026-01-11", "title": "Cbum's Push Day", "type": "workout", "completed": False, "details": "Chest & Shoulders", "workout_id": "cbum_push"}
+            ]
+        }
+    },
+    "user_123_v2": {
+        "name": "Alex V2",
+        "streak": 12,
+        "gems": 69,
+        "health_score": 88, # New Metric
+        "todays_workout": {
+            "title": "Cbum's Push Day",
+            "duration": "75 min",
+            "difficulty": "Elite",
+            "exercises": [
+                {"name": "Incline DB Press", "sets": 4, "reps": "8-10", "rest": 90, "video_id": "InclineDBPress"},
+                {"name": "Seated Shoulder Press", "sets": 4, "reps": "8-10", "rest": 90, "video_id": "SeatedShoulderPress"},
+                {"name": "Machine Chest Fly", "sets": 3, "reps": "10-12", "rest": 60, "video_id": "MachineFly"},
+                {"name": "DB Lateral Raise", "sets": 4, "reps": "10-12", "rest": 60, "video_id": "LateralRaise"},
+                {"name": "Tricep Rope Pushdown", "sets": 4, "reps": "10-12", "rest": 60, "video_id": "TricepPushdown"}
+            ]
+        },
+        "daily_quests": [
+            {"text": "Complete 'Leg Day Destruction'", "xp": 100, "completed": False},
+            {"text": "Drink 2L Water", "xp": 20, "completed": True},
+        ],
+        "progress": {
+            "photos": [
+                "https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=150&h=200&fit=crop",
+                "https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=150&h=200&fit=crop"
+            ],
+            "hydration": {"current": 1250, "target": 2500}, # ml
+            "weekly_history": [1800, 2100, 1950, 2200, 2000, 1850, 1450], # Last 7 days cals
+            "macros": {
+                "calories": {"current": 1450, "target": 2200},
+                "protein": {"current": 110, "target": 180},
+                "carbs": {"current": 150, "target": 250},
+                "fat": {"current": 45, "target": 70}
+            },
+            "diet_log": {
+                "Breakfast": [
+                    {"meal": "Oatmeal & Berries", "cals": 350, "time": "08:00 AM"},
+                    {"meal": "Black Coffee", "cals": 5, "time": "08:15 AM"},
+                ],
+                "Lunch": [
+                    {"meal": "Grilled Chicken Salad", "cals": 450, "time": "12:30 PM"},
+                ],
+                "Snacks": [
+                    {"meal": "Protein Shake", "cals": 180, "time": "03:00 PM"},
+                ],
+                "Dinner": [
+                    {"meal": "Steak & Asparagus", "cals": 470, "time": "07:00 PM"},
+                ]
+            }
+        },
+        "calendar": {
+            "events": [
+                # 12-Day Streak (Dec 15 - Dec 26)
+                {"date": "2025-12-15", "title": "Streak Day 1", "type": "workout", "completed": True, "details": "Start of streak"},
+                {"date": "2025-12-16", "title": "Streak Day 2", "type": "workout", "completed": True, "details": "Cardio"},
+                {"date": "2025-12-17", "title": "Streak Day 3", "type": "workout", "completed": True, "details": "Upper Body"},
+                {"date": "2025-12-18", "title": "Streak Day 4", "type": "workout", "completed": True, "details": "Legs"},
+                {"date": "2025-12-19", "title": "Streak Day 5", "type": "workout", "completed": True, "details": "Abs"},
+                {"date": "2025-12-20", "title": "Streak Day 6", "type": "workout", "completed": True, "details": "Yoga"},
+                {"date": "2025-12-21", "title": "Streak Day 7", "type": "workout", "completed": True, "details": "HIIT"},
+                {"date": "2025-12-22", "title": "Streak Day 8", "type": "workout", "completed": True, "details": "Push Day"},
+                {"date": "2025-12-23", "title": "Streak Day 9", "type": "workout", "completed": True, "details": "Pull Day"},
+                {"date": "2025-12-24", "title": "Christmas Eve Pump", "type": "workout", "completed": True, "details": "Full Body"},
+                {"date": "2025-12-25", "title": "Christmas Cardio", "type": "workout", "completed": True, "details": "Morning Run"},
+                {"date": "2025-12-26", "title": "Cbum's Push Day", "type": "workout", "completed": True, "details": "Chest & Shoulders"},
+                
+                # Future
+                {"date": "2025-12-28", "title": "Leg Day", "type": "workout", "completed": False, "details": "Squats & Lunges"},
+                {"date": "2025-12-31", "title": "New Year's Eve Pump", "type": "workout", "completed": False, "details": "Arms & Abs"},
+                {"date": "2026-01-01", "title": "Recovery", "type": "rest", "completed": False, "details": "Stretching"},
+                {"date": "2026-01-11", "title": "Verification Workout", "type": "workout", "completed": False, "details": "Testing Completion", "workout_id": "w1"}
             ]
         }
     },

@@ -177,13 +177,19 @@ window.renderCalendar = (month, year, events, gridId, titleId, detailTitleId, de
             div.appendChild(check);
         }
 
-        div.onclick = () => window.showDayDetails(dateStr, dayEvents, detailTitleId, detailListId, isTrainer);
+        div.onclick = () => {
+            if (window.datePickerMode && window.onDatePicked) {
+                window.onDatePicked(dateStr);
+            } else {
+                window.showDayDetails(dateStr, dayEvents, detailTitleId, detailListId, isTrainer);
+            }
+        };
         calendarGrid.appendChild(div);
     }
 };
 
-window.openTrainerCalendar = async () => {
-    const clientId = document.getElementById('client-modal').dataset.clientId;
+window.openTrainerCalendar = async (explicitClientId) => {
+    const clientId = explicitClientId || document.getElementById('client-modal').dataset.clientId;
     if (!clientId) {
         console.error("No client ID found for calendar");
         return;
@@ -277,6 +283,20 @@ async function init() {
                     setTxt('workout-title', user.todays_workout.title);
                     setTxt('workout-duration', user.todays_workout.duration);
                     setTxt('workout-difficulty', user.todays_workout.difficulty);
+
+                    if (user.todays_workout.completed) {
+                        const startBtn = document.querySelector('a[href*="mode=workout"]');
+                        if (startBtn) {
+                            startBtn.innerText = "COMPLETED ✓";
+                            startBtn.className = "block w-full py-3 bg-green-500 text-white text-center font-bold rounded-xl hover:bg-green-600 transition";
+                            // Append view=completed to existing href
+                            if (startBtn.href.includes('?')) {
+                                startBtn.href += "&view=completed";
+                            } else {
+                                startBtn.href += "?view=completed";
+                            }
+                        }
+                    }
                 } else {
                     console.warn("No todays_workout found in user data");
                     setTxt('workout-title', "Rest Day");
@@ -286,6 +306,14 @@ async function init() {
             } catch (e) {
                 console.error("Error fetching client data:", e);
                 alert("Client Data Error: " + e.message);
+            }
+
+            // Pre-fill Profile Data (if on settings page)
+            if (user) {
+                const pName = document.getElementById('profile-name');
+                const pEmail = document.getElementById('profile-email');
+                if (pName) pName.value = user.name;
+                if (pEmail) pEmail.value = user.email || "";
             }
 
             const questList = document.getElementById('quest-list');
@@ -707,6 +735,41 @@ function showToast(msg) {
         toast.classList.add('opacity-0', 'translate-y-10');
     }, 3000);
 }
+
+
+window.saveProfile = async () => {
+    const name = document.getElementById('profile-name').value;
+    const email = document.getElementById('profile-email').value;
+    const password = document.getElementById('profile-password').value;
+
+    if (!name || !email) {
+        showToast("Name and Email are required! ⚠️");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${apiBase}/api/client/profile`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name,
+                email,
+                password: password ? password : undefined
+            })
+        });
+
+        if (!res.ok) throw new Error("Failed to update");
+
+        showToast("Profile updated successfully! ✅");
+
+        // Clear password field
+        document.getElementById('profile-password').value = '';
+
+    } catch (e) {
+        console.error(e);
+        showToast("Error updating profile ❌");
+    }
+};
 
 
 // --- TRAINER INTERACTIVITY ---
@@ -1447,11 +1510,47 @@ function completeSet() {
                 updateWorkoutUI();
             } else {
                 // Workout complete!
-                document.getElementById('celebration-overlay').classList.remove('hidden');
-                startConfetti();
+                finishWorkout();
             }
         }
     });
+}
+
+async function finishWorkout() {
+    document.getElementById('celebration-overlay').classList.remove('hidden');
+    startConfetti();
+
+    // Call API to mark as complete
+    try {
+        const todayStr = new Date().toISOString().split('T')[0];
+        // We need to know which schedule item this was. 
+        // For now, the backend complete_schedule_item logic handles finding the workout for the date if item_id is missing.
+        // Ideally we should have the schedule item ID.
+        // Let's rely on the date + type="workout" logic in backend for now as fallback.
+
+        const res = await fetch(`${apiBase}/api/client/schedule/complete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date: todayStr })
+        });
+
+        if (res.ok) {
+            console.log("Workout marked as complete on server");
+            // Update UI to show completed state permanently?
+            // For now, the celebration overlay is enough, and reload/nav will show updated state.
+
+            // Optional: Update the "Start Workout" button on home screen if we go back
+            const startBtn = document.querySelector('a[href*="mode=workout"]');
+            if (startBtn) {
+                startBtn.innerText = "COMPLETED ✓";
+                startBtn.className = "block w-full py-3 bg-green-500 text-white text-center font-bold rounded-xl hover:bg-green-600 transition";
+            }
+        } else {
+            console.error("Failed to mark workout complete");
+        }
+    } catch (e) {
+        console.error("Error finishing workout:", e);
+    }
 }
 
 function showRestTimer(seconds, callback) {
@@ -1489,15 +1588,53 @@ function showRestTimer(seconds, callback) {
 // Initialize workout state when in workout mode
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('workout-screen')) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const isCompletedView = urlParams.get('view') === 'completed';
+
+        if (isCompletedView) {
+            // Hide controls
+            const completeBtn = document.getElementById('complete-btn');
+            if (completeBtn) completeBtn.style.display = 'none';
+
+            const repBtns = document.querySelectorAll('[data-action="adjustReps"]');
+            repBtns.forEach(btn => btn.style.display = 'none');
+
+            // Show banner
+            const header = document.querySelector('#workout-screen .absolute.top-0.left-0');
+            if (header) {
+                const banner = document.createElement('div');
+                banner.className = "absolute top-20 left-1/2 transform -translate-x-1/2 bg-green-500/90 text-white px-4 py-1 rounded-full text-xs font-bold backdrop-blur-md z-50";
+                banner.innerText = "COMPLETED VIEW";
+                header.appendChild(banner);
+            }
+        }
+
         fetch(`${apiBase}/api/client/data`)
             .then(res => res.json())
             .then(user => {
                 const workout = user.todays_workout;
+
+                if (!workout) {
+                    // Rest Day Logic
+                    document.getElementById('exercise-name').innerText = "Rest Day";
+                    document.getElementById('exercise-target').innerText = "Take it easy and recover! 🧘";
+                    document.getElementById('workout-screen').innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-screen bg-gray-900 text-white p-8 text-center">
+                            <div class="text-6xl mb-4">🧘</div>
+                            <h1 class="text-4xl font-black mb-2">Rest Day</h1>
+                            <p class="text-gray-400 mb-8">No workout scheduled for today. Enjoy your recovery!</p>
+                            <a href="/?gym_id=${gymId}&role=client" class="px-8 py-3 bg-white/10 rounded-xl font-bold hover:bg-white/20 transition">Back to Dashboard</a>
+                        </div>
+                    `;
+                    return;
+                }
+
                 workoutState = {
                     exercises: workout.exercises,
                     currentExerciseIdx: 0,
                     currentSet: 1,
-                    currentReps: parseInt(String(workout.exercises[0].reps).split('-')[1] || workout.exercises[0].reps)
+                    currentReps: parseInt(String(workout.exercises[0].reps).split('-')[1] || workout.exercises[0].reps),
+                    isCompletedView: isCompletedView // Store in state
                 };
 
                 // Populate Routine List
@@ -1562,7 +1699,12 @@ function updateWorkoutUI() {
     // Update Video
     const videoEl = document.getElementById('exercise-video');
     const repVideoEl = document.getElementById('rep-counter-video');
-    const newSrc = `/static/videos/${ex.video_id}.mp4?v=3`;
+
+    let src = ex.video_id;
+    if (!src.startsWith('http') && !src.startsWith('/')) {
+        src = `/static/videos/${src}.mp4`;
+    }
+    const newSrc = `${src}?v=3`;
 
     if (!videoEl.src.includes(newSrc)) {
         // Update Main Video
@@ -1603,7 +1745,7 @@ function updateWorkoutUI() {
 
             let icon = `<div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center mr-3 text-xs text-gray-400">${idx + 1}</div>`;
             if (isCurrent) icon = '<div class="w-8 h-8 rounded-full bg-primary text-black flex items-center justify-center mr-3 font-bold animate-pulse">▶</div>';
-            if (idx < workoutState.currentExerciseIdx) icon = '<div class="w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center mr-3 font-bold animate-pulse">✓</div>';
+            if (idx < workoutState.currentExerciseIdx || workoutState.isCompletedView) icon = '<div class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center mr-3 font-bold">✓</div>';
 
             div.innerHTML = `
                 <div class="flex items-center space-x-4 pointer-events-none">
@@ -1657,5 +1799,276 @@ function startConfetti() {
         conf.style.animationDuration = (Math.random() * 3 + 2) + 's';
         conf.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
         container.appendChild(conf);
+    }
+}
+
+// --- SPLIT ASSIGNMENT LOGIC ---
+
+window.openAssignSplitModal = async function () {
+    const clientId = document.getElementById('client-modal').dataset.clientId;
+    if (!clientId) {
+        showToast('Error: No client selected');
+        return;
+    }
+
+    document.getElementById('assign-split-client-id').value = clientId;
+
+    // Fetch splits
+    try {
+        const trainerId = getCurrentTrainerId();
+        const res = await fetch(`${apiBase}/api/trainer/splits`, {
+            headers: { 'x-trainer-id': trainerId }
+        });
+        const splits = await res.json();
+
+        const select = document.getElementById('assign-split-select');
+        select.innerHTML = '';
+
+        if (splits.length === 0) {
+            const option = document.createElement('option');
+            option.text = "No splits available";
+            select.appendChild(option);
+        } else {
+            splits.forEach(s => {
+                const option = document.createElement('option');
+                option.value = s.id;
+                option.text = s.name;
+                select.appendChild(option);
+            });
+        }
+
+        // Set default date to next Monday
+        const today = new Date();
+        const nextMonday = new Date(today);
+        nextMonday.setDate(today.getDate() + (1 + 7 - today.getDay()) % 7 || 7);
+        document.getElementById('assign-split-date').value = nextMonday.toISOString().split('T')[0];
+
+        showModal('assign-split-modal');
+    } catch (e) {
+        console.error("Error fetching splits:", e);
+        showToast('Failed to load splits');
+    }
+}
+
+window.assignSplit = async function () {
+    const clientId = document.getElementById('assign-split-client-id').value;
+    const splitId = document.getElementById('assign-split-select').value;
+    const startDate = document.getElementById('assign-split-date').value;
+
+    if (!clientId || !splitId || !startDate) {
+        showToast('Please fill in all fields');
+        return;
+    }
+
+    try {
+        const trainerId = getCurrentTrainerId();
+        const res = await fetch(`${apiBase}/api/trainer/assign_split`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-trainer-id': trainerId
+            },
+            body: JSON.stringify({
+                client_id: clientId,
+                split_id: splitId,
+                start_date: startDate
+            })
+        });
+
+        if (res.ok) {
+            showToast('Split assigned successfully! 📅');
+            hideModal('assign-split-modal');
+        } else {
+            const err = await res.text();
+            showToast('Failed: ' + err);
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Error assigning split');
+    }
+}
+
+window.openSchedulePicker = function () {
+    const clientId = document.getElementById('assign-split-client-id').value;
+    if (clientId) {
+        // Enable Date Picker Mode
+        window.datePickerMode = true;
+        window.onDatePicked = (dateStr) => {
+            document.getElementById('assign-split-date').value = dateStr;
+            hideModal('calendar-modal');
+            window.datePickerMode = false; // Reset
+            window.onDatePicked = null;
+        };
+
+        openTrainerCalendar(clientId);
+
+        // Add a listener to reset mode if modal is closed without picking
+        const modal = document.getElementById('calendar-modal');
+        const resetMode = () => {
+            window.datePickerMode = false;
+            window.onDatePicked = null;
+            modal.removeEventListener('click', checkClose);
+        };
+
+        const checkClose = (e) => {
+            if (e.target === modal || e.target.dataset.action === 'hideModal') {
+                resetMode();
+            }
+        };
+
+        // We need to attach this safely, maybe just relying on the hideModal global function is enough if we hook into it,
+        // but for now, let's just ensure if they click X it resets.
+        // Actually, renderCalendar is called every time, so the mode state is what matters.
+        // If we close the modal, the next time we open it for normal viewing, we want mode to be false.
+        // So we should ensure it's false by default or reset it when opening normally.
+    } else {
+        showToast('No client selected');
+    }
+}
+
+// Ensure normal calendar open resets the mode
+const originalOpenTrainerCalendar = window.openTrainerCalendar;
+window.openTrainerCalendar = async (explicitClientId) => {
+    if (!window.datePickerMode) {
+        window.datePickerMode = false;
+        window.onDatePicked = null;
+    }
+    await originalOpenTrainerCalendar(explicitClientId);
+};
+
+// --- SPLIT CREATION LOGIC ---
+
+let splitScheduleState = {
+    Monday: null,
+    Tuesday: null,
+    Wednesday: null,
+    Thursday: null,
+    Friday: null,
+    Saturday: null,
+    Sunday: null
+};
+
+window.openCreateSplitModal = function () {
+    document.getElementById('new-split-name').value = '';
+    document.getElementById('new-split-desc').value = '';
+
+    // Reset State
+    splitScheduleState = {
+        Monday: null,
+        Tuesday: null,
+        Wednesday: null,
+        Thursday: null,
+        Friday: null,
+        Saturday: null,
+        Sunday: null
+    };
+
+    renderSplitScheduleBuilder();
+    showModal('create-split-modal');
+}
+
+function renderSplitScheduleBuilder() {
+    const container = document.getElementById('split-schedule-builder');
+    if (!container) return;
+
+    container.innerHTML = '';
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+    days.forEach(day => {
+        const div = document.createElement('div');
+        div.className = "flex items-center justify-between bg-white/5 p-3 rounded-xl";
+
+        const workoutId = splitScheduleState[day];
+        let content = `<span class="text-gray-500 italic text-xs">Rest Day</span>`;
+
+        if (workoutId) {
+            content = `<span class="text-primary font-bold text-xs">Workout Assigned</span>`;
+        }
+
+        div.innerHTML = `
+            <span class="text-sm font-bold text-white w-24">${day}</span>
+            <div class="flex-1 mx-4 text-center">${content}</div>
+            <button onclick="openSplitWorkoutSelector('${day}')" class="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition">
+                ${workoutId ? 'Change' : '+ Add Workout'}
+            </button>
+        `;
+        container.appendChild(div);
+    });
+}
+
+window.openSplitWorkoutSelector = async function (day) {
+    const trainerId = getCurrentTrainerId();
+    const res = await fetch(`${apiBase}/api/trainer/workouts`, {
+        headers: { 'x-trainer-id': trainerId }
+    });
+    const workouts = await res.json();
+
+    const overlay = document.createElement('div');
+    overlay.className = "fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4 backdrop-blur-sm";
+
+    let options = `<option value="">Rest Day</option>`;
+    workouts.forEach(w => {
+        options += `<option value="${w.id}">${w.title}</option>`;
+    });
+
+    overlay.innerHTML = `
+        <div class="bg-[#1a1a1a] w-full max-w-sm rounded-3xl p-6 border border-white/10 relative slide-up">
+            <h2 class="text-xl font-bold mb-4 text-white">Select Workout for ${day}</h2>
+            <select id="temp-split-selector" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition mb-4">
+                ${options}
+            </select>
+            <div class="flex gap-2">
+                <button id="btn-cancel-split-sel" class="flex-1 py-3 bg-white/10 text-white font-bold rounded-xl">Cancel</button>
+                <button id="btn-confirm-split-sel" class="flex-1 py-3 bg-primary text-black font-bold rounded-xl">Confirm</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    document.getElementById('btn-cancel-split-sel').onclick = () => overlay.remove();
+    document.getElementById('btn-confirm-split-sel').onclick = () => {
+        const val = document.getElementById('temp-split-selector').value;
+        splitScheduleState[day] = val || null;
+        renderSplitScheduleBuilder();
+        overlay.remove();
+    };
+}
+
+window.createSplit = async function () {
+    const name = document.getElementById('new-split-name').value;
+    const desc = document.getElementById('new-split-desc').value;
+
+    if (!name) {
+        showToast('Please enter a split name');
+        return;
+    }
+
+    const payload = {
+        name: name,
+        description: desc,
+        schedule: splitScheduleState
+    };
+
+    try {
+        const trainerId = getCurrentTrainerId();
+        const res = await fetch(`${apiBase}/api/trainer/splits`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-trainer-id': trainerId
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast('Split created successfully! 🎉');
+            hideModal('create-split-modal');
+        } else {
+            showToast('Failed to create split');
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Error creating split');
     }
 }
