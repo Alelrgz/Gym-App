@@ -906,7 +906,12 @@ async function initializeExerciseList(config) {
                 e.stopPropagation(); // Prevent card click
                 openEditExerciseModal(ex);
             });
-            div.appendChild(editBtn); // Ensure it's appended
+            // div.appendChild(editBtn); // REMOVED: This breaks the layout by moving the button out of the header
+
+            // If no specific onClick action (Main List), do nothing (only edit button works)
+            if (!onClick) {
+                div.style.cursor = 'default';
+            }
 
             container.appendChild(div);
         });
@@ -1835,20 +1840,36 @@ function updateWorkoutUI() {
     const videoEl = document.getElementById('exercise-video');
     const repVideoEl = document.getElementById('rep-counter-video');
 
-    let src = ex.video_id;
+    let src = ex.video_id ? ex.video_id.trim() : '';
+
     if (src && !src.startsWith('http') && !src.startsWith('/')) {
         src = `/static/videos/${src}.mp4`;
     }
+
     const newSrc = src ? `${src}?v=${Date.now()}` : '';
 
-    if (newSrc && videoEl.src && !videoEl.src.includes(newSrc)) {
+    // Force update to ensure we aren't stuck on old video
+    if (newSrc) {
+        // Reset error state
+        videoEl.style.border = "none";
+
+        // Add error listener to catch broken paths
+        videoEl.onerror = (e) => {
+            console.error("Video failed to load:", newSrc, e);
+            videoEl.style.border = "5px solid red"; // Visual indicator
+            showToast("Video failed to load: " + newSrc.split('/').pop());
+        };
+
         // Update Main Video
         videoEl.src = newSrc;
         videoEl.load();
+        videoEl.muted = true; // Force muted for autoplay policy
+
         const playPromise = videoEl.play();
         if (playPromise !== undefined) {
             playPromise.catch(error => {
                 console.log("Autoplay prevented:", error);
+                // Try again muted (already muted but just in case)
                 videoEl.muted = true;
                 videoEl.play();
             });

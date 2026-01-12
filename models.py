@@ -24,6 +24,7 @@ class ExerciseTemplate(BaseModel):
     video_id: Optional[str] = None
 
 class Workout(BaseModel):
+    id: Optional[str] = None
     title: str
     duration: str
     difficulty: str
