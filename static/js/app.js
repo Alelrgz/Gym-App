@@ -1839,7 +1839,7 @@ function updateWorkoutUI() {
     if (src && !src.startsWith('http') && !src.startsWith('/')) {
         src = `/static/videos/${src}.mp4`;
     }
-    const newSrc = src ? `${src}?v=3` : '';
+    const newSrc = src ? `${src}?v=${Date.now()}` : '';
 
     if (newSrc && videoEl.src && !videoEl.src.includes(newSrc)) {
         // Update Main Video
