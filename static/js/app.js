@@ -1785,10 +1785,28 @@ function completeSet() {
     const exId = workoutState.currentExerciseIdx;
     const setId = workoutState.currentSet - 1; // 0-indexed
 
-    // AUTO-FILL REPS from Main Counter
+    // VALIDATION: Check if weight is entered
     if (workoutState.exercises[exId] && workoutState.exercises[exId].performance[setId]) {
-        workoutState.exercises[exId].performance[setId].reps = workoutState.currentReps;
-        workoutState.exercises[exId].performance[setId].completed = true; // Mark as done
+        const currentPerf = workoutState.exercises[exId].performance[setId];
+
+        if (!currentPerf.weight && currentPerf.weight !== 0) {
+            showToast("Please enter weight for this set! ⚖️");
+            return;
+        }
+
+        // AUTO-FILL REPS from Main Counter
+        currentPerf.reps = workoutState.currentReps;
+        currentPerf.completed = true; // Mark as done
+
+        // AUTO-FILL NEXT SET WEIGHT
+        const nextSetPerf = workoutState.exercises[exId].performance[setId + 1];
+        if (nextSetPerf) {
+            // Only auto-fill if next set has no weight yet
+            if (!nextSetPerf.weight && nextSetPerf.weight !== 0) {
+                nextSetPerf.weight = currentPerf.weight;
+            }
+        }
+
         saveProgress(); // Save the new data
     }
 
@@ -1917,23 +1935,46 @@ function updateWorkoutUI() {
                 for (let i = 0; i < item.sets; i++) {
                     const perf = item.performance[i];
 
+                    const isSetCompleted = perf.completed;
+                    const isSetActive = (i === (workoutState.currentSet - 1));
+
+                    // Dynamic styles
+                    let rowClass = "grid grid-cols-[1.5fr,1fr,1fr] gap-4 mb-3 items-center relative z-10 transition-all duration-300 rounded-xl p-2";
+                    let currentInputClass = inputClass; // Create a copy of const inputClass
+                    let statusIcon = "";
+
+                    if (isSetCompleted) {
+                        rowClass += " bg-green-500/10 border border-green-500/20 opacity-60"; // Completed look
+                        statusIcon = `<div class="absolute -left-2 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-black font-bold text-xs shadow-lg shadow-green-500/50 z-20">✓</div>`;
+                        currentInputClass += " opacity-50 cursor-not-allowed text-green-400";
+                    } else if (isSetActive) {
+                        rowClass += " bg-primary/10 border border-primary/40 ring-1 ring-primary/20"; // Active look
+                        statusIcon = `<div class="absolute -left-2 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-black font-bold text-xs shadow-lg shadow-primary/50 z-20 animate-pulse">▶</div>`;
+                    } else {
+                        rowClass += " border border-transparent"; // Pending
+                    }
+
+                    // Disable inputs if completed
+                    const isInputDisabled = isDisabled || isSetCompleted ? 'disabled' : '';
+
                     setsHtml += `
-                        <div class="grid grid-cols-[1.5fr,1fr,1fr] gap-4 mb-3 items-center relative z-10">
-                            <span class="text-sm font-bold text-gray-400 tracking-widest pl-2 font-mono uppercase">Set ${i + 1}</span>
+                        <div class="${rowClass}">
+                            ${statusIcon}
+                            <span class="text-sm font-bold text-gray-400 tracking-widest pl-2 font-mono uppercase ${isSetActive ? 'text-primary' : ''}">Set ${i + 1}</span>
                             <div class="flex items-center bg-black/40 border border-white/10 rounded-xl px-3 py-3 focus-within:border-primary/80 focus-within:bg-black/60 transition duration-300 shadow-inner">
                                 <input type="number" value="${perf.reps}" 
                                     onchange="window.updatePerformance(${idx}, ${i}, 'reps', this.value)"
                                     onclick="event.stopPropagation()"
-                                    ${isDisabled}
-                                    class="${inputClass}" placeholder="${item.reps}">
+                                    ${isInputDisabled}
+                                    class="${currentInputClass}" placeholder="${item.reps}">
                                 <span class="text-[10px] text-gray-500 font-bold ml-2 mt-1 tracking-wider">REPS</span>
                             </div>
                             <div class="flex items-center bg-black/40 border border-white/10 rounded-xl px-3 py-3 focus-within:border-primary/80 focus-within:bg-black/60 transition duration-300 shadow-inner">
                                 <input type="number" value="${perf.weight}" 
                                     onchange="window.updatePerformance(${idx}, ${i}, 'weight', this.value)"
                                     onclick="event.stopPropagation()"
-                                    ${isDisabled}
-                                    class="${inputClass}" placeholder="-">
+                                    ${isInputDisabled}
+                                    class="${currentInputClass}" placeholder="-">
                                 <span class="text-[10px] text-gray-500 font-bold ml-2 mt-1 tracking-wider">KG</span>
                             </div>
                         </div>
