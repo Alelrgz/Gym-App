@@ -30,6 +30,15 @@ async def get_client_schedule(
 ):
     return service.get_client_schedule(date)
 
+@router.get("/api/client/{client_id}/history")
+async def get_client_history(client_id: str, exercise_name: str = None):
+    try:
+        user_service = UserService()
+        # Ensure trainer has access to this client (skip auth for prototype)
+        return user_service.get_client_exercise_history(client_id, exercise_name)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 @router.post("/api/client/schedule/complete")
 async def complete_schedule_item(
     payload: dict,

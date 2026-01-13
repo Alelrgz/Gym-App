@@ -53,3 +53,16 @@ class ClientDietLogORM(Base):
     meal_name = Column(String)
     calories = Column(Integer)
     time = Column(String)
+
+class ClientExerciseLogORM(Base):
+    __tablename__ = "client_exercise_log"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    date = Column(String, index=True) # ISO format YYYY-MM-DD
+    workout_id = Column(String, nullable=True)
+    exercise_name = Column(String, index=True)
+    set_number = Column(Integer)
+    reps = Column(Integer)
+    weight = Column(Float)
+    metric_type = Column(String, default="weight_reps") # weight_reps, distance_time
+

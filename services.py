@@ -297,8 +297,71 @@ class UserService:
                     todays_workout = self.get_workout_details(today_event["workout_id"], context_trainer_id=context_trainer)
                     # Inject completion status
                     todays_workout["completed"] = today_event.get("completed", False)
+                    
+                    # --- INJECT PERFORMANCE LOGS ---
+                    today_str = date.today().isoformat()
+                    logs = db.query(ClientExerciseLogORM).filter(
+                        ClientExerciseLogORM.date == today_str,
+                        ClientExerciseLogORM.workout_id == today_event["workout_id"]
+                    ).all()
+                    
+                    if logs:
+                        # Group by exercise
+                        logs_by_ex = {}
+                        for log in logs:
+                            if log.exercise_name not in logs_by_ex:
+                                logs_by_ex[log.exercise_name] = {}
+                            logs_by_ex[log.exercise_name][log.set_number] = log
+                            
+                        # Populate exercises
+                        for ex in todays_workout["exercises"]:
+                            ex_name = ex.get("name")
+                            if ex_name in logs_by_ex:
+                                ex_logs = logs_by_ex[ex_name]
+                                # Pre-fill performance array
+                                # Note: frontend expects a list of {reps, weight, completed}
+                                # We need to ensure we mach the 'sets' count from the template
+                                num_sets = ex.get("sets", 3)
+                                performance = []
+                                for i in range(1, num_sets + 1):
+                                    if i in ex_logs:
+                                        log = ex_logs[i]
+                                        performance.append({
+                                            "reps": log.reps,
+                                            "weight": log.weight,
+                                            "completed": True
+                                        })
+                                    else:
+                                        performance.append({
+                                            "reps": "",
+                                            "weight": "",
+                                            "completed": False
+                                        })
+                                ex["performance"] = performance
                 except Exception as e:
                     print(f"Warning: Could not fetch details for workout {today_event['workout_id']}: {e}")
+
+            # PRIORITIZE SNAPSHOT FROM DB IF COMPLETED
+            # If the workout is completed and we have a saved snapshot in 'details', ALWAYS use that.
+            # This ensures we show exactly what the user entered (reps, weights) rather than a blank template.
+            if today_event.get("completed") and today_event.get("details"):
+                 try:
+                    import json
+                    # 'details' might contain simple string "Intermediate" (old) or JSON list (new)
+                    details_content = today_event["details"]
+                    if details_content.startswith("["): # It's likely our JSON snapshot
+                        saved_exercises = json.loads(details_content)
+                        
+                        # We need to map this back to the expected structure if needed, 
+                        # but our snapshot is already the flattened 'exercises' list from frontend state.
+                        
+                        # Merge this into todays_workout (so we keep title, duration etc from the template, but OVERRIDE exercises)
+                        # Actually, better to just trust the snapshot for exercises.
+                        if todays_workout:
+                            todays_workout["exercises"] = saved_exercises
+                            print("Using saved workout snapshot from DB details")
+                 except Exception as e:
+                     print(f"Error loading saved workout snapshot: {e}")
 
             # Fallback removed: If not found in schedule, it remains None (Rest Day)
             # if not todays_workout:
@@ -374,9 +437,74 @@ class UserService:
                 raise HTTPException(status_code=404, detail="Schedule item not found")
                 
             item.completed = True
+            
+            # Save Exercise Logs
+            exercises = payload.get("exercises", [])
+            if exercises:
+                from models_client_orm import ClientExerciseLogORM
+                today_iso = date_str
+                
+                # We expect exercises to be in the format sent by frontend state
+                # Flatten structure: Exercise -> Sets -> Log
+                for ex in exercises:
+                    ex_name = ex.get("name")
+                    perf_list = ex.get("performance", [])
+                    
+                    for i, perf in enumerate(perf_list):
+                        if perf.get("completed"):
+                            log = ClientExerciseLogORM(
+                                date=today_iso,
+                                workout_id=item.workout_id,
+                                exercise_name=ex_name,
+                                set_number=i + 1,
+                                reps=int(perf.get("reps", 0) or 0),
+                                weight=float(perf.get("weight", 0) or 0),
+                                metric_type="weight_reps"
+                            )
+                            db.add(log)
+            
+            # Save detailed snapshot to 'details' column for easy restoration
+            import json
+            item.details = json.dumps(exercises)
+            
             db.commit()
             
             return {"status": "success", "message": "Workout completed!"}
+        finally:
+            db.close()
+
+    def get_client_exercise_history(self, client_id: str, exercise_name: str = None) -> list:
+        from database import get_client_session
+        from models_client_orm import ClientExerciseLogORM
+        from sqlalchemy import func, desc
+        
+        db = get_client_session(client_id)
+        try:
+            query = db.query(
+                ClientExerciseLogORM.date,
+                func.max(ClientExerciseLogORM.weight).label('max_weight'),
+                func.sum(ClientExerciseLogORM.reps).label('total_reps'),
+                func.count(ClientExerciseLogORM.id).label('sets')
+            )
+            
+            if exercise_name:
+                query = query.filter(ClientExerciseLogORM.exercise_name == exercise_name)
+                
+            # Group by date
+            query = query.group_by(ClientExerciseLogORM.date).order_by(ClientExerciseLogORM.date.asc())
+            
+            results = query.all()
+            
+            history = []
+            for r in results:
+                history.append({
+                    "date": r.date,
+                    "max_weight": r.max_weight,
+                    "total_reps": r.total_reps,
+                    "sets": r.sets
+                })
+                
+            return history
         finally:
             db.close()
 

@@ -807,6 +807,14 @@ async function initializeExerciseList(config) {
         console.log("[DEBUG] First ex:", exercises[0].name, "Video:", exercises[0].video_id);
     }
 
+    // Store exercises globally for other components (like Metrics) 
+    if (!window.APP_STATE) window.APP_STATE = {};
+    window.APP_STATE.exercises = exercises;
+
+    // Store exercises globally for other components (like Metrics)
+    if (!window.APP_STATE) window.APP_STATE = {};
+    window.APP_STATE.exercises = exercises;
+
     // Render Function
     const render = () => {
         const searchVal = document.getElementById(searchId)?.value.toLowerCase() || '';
@@ -926,6 +934,7 @@ async function initializeExerciseList(config) {
 
     populateVideoSuggestions(exercises);
 }
+
 
 // --- DIET ASSIGNMENT ---
 window.openAssignDietModal = async () => {
@@ -1533,40 +1542,235 @@ function completeSet() {
 }
 
 async function finishWorkout() {
-    document.getElementById('celebration-overlay').classList.remove('hidden');
-    startConfetti();
-
     // Call API to mark as complete
     try {
-        const todayStr = new Date().toISOString().split('T')[0];
-        // We need to know which schedule item this was. 
-        // For now, the backend complete_schedule_item logic handles finding the workout for the date if item_id is missing.
-        // Ideally we should have the schedule item ID.
-        // Let's rely on the date + type="workout" logic in backend for now as fallback.
+        const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local time
+
+        // Disable button specific logic if needed, or show loading state
 
         const res = await fetch(`${apiBase}/api/client/schedule/complete`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ date: todayStr })
+            body: JSON.stringify({
+                date: todayStr,
+                exercises: workoutState.exercises // Send performance data
+            })
         });
 
         if (res.ok) {
             console.log("Workout marked as complete on server");
-            // Update UI to show completed state permanently?
-            // For now, the celebration overlay is enough, and reload/nav will show updated state.
 
-            // Optional: Update the "Start Workout" button on home screen if we go back
+            // Show Success UI ONLY after server confirms
+            document.getElementById('celebration-overlay').classList.remove('hidden');
+            startConfetti();
+
+            // Update UI to show completed state
             const startBtn = document.querySelector('a[href*="mode=workout"]');
             if (startBtn) {
                 startBtn.innerText = "COMPLETED ✓";
                 startBtn.className = "block w-full py-3 bg-green-500 text-white text-center font-bold rounded-xl hover:bg-green-600 transition";
+                // Append view=completed to existing href
+                if (!startBtn.href.includes('view=completed')) {
+                    if (startBtn.href.includes('?')) {
+                        startBtn.href += "&view=completed";
+                    } else {
+                        startBtn.href += "?view=completed";
+                    }
+                }
             }
         } else {
             console.error("Failed to mark workout complete");
+            const errText = await res.text();
+            showToast("Failed to save workout: " + errText); // Show error to user
         }
     } catch (e) {
         console.error("Error finishing workout:", e);
+        showToast("Error finishing workout. Please try again.");
     }
+}
+
+// --- METRICS MODAL LOGIC ---
+
+let metricsChartInstance = null;
+
+function openMetricsModal(clientId = null) {
+    if (!clientId) {
+        // Try to get from client details modal dataset (most reliable source when opened from client card)
+        const clientModal = document.getElementById('client-modal');
+        if (clientModal && clientModal.dataset.clientId) {
+            clientId = clientModal.dataset.clientId;
+        } else {
+            // Fallback to checking other potential sources if client modal isn't the source
+            clientId = document.getElementById('diet-client-id')?.value ||
+                document.getElementById('assign-client-id')?.value;
+        }
+    }
+
+    if (!clientId) {
+        showToast("Error: No client selected.");
+        return;
+    }
+
+    document.getElementById('metrics-client-id').value = clientId;
+
+    // Set Client Name if available
+    const clientName = document.getElementById('modal-client-name').innerText;
+    document.getElementById('metrics-client-name').innerText = `Performance Analytics for ${clientName}`;
+
+    showModal('metrics-modal');
+
+    // Reset Chart
+    if (metricsChartInstance) {
+        metricsChartInstance.destroy();
+        metricsChartInstance = null;
+    }
+
+    // Clear search and show empty state
+    document.getElementById('metrics-exercise-search').value = "";
+    document.getElementById('metrics-search-suggestions').classList.add('hidden');
+
+    // Maybe render empty chart or auto-fetch a common exercise?
+    // Let's try to fetch "Bench Press" as a default to show something cool immediately
+    // fetchExerciseMetrics(clientId, "Bench Press (Barbell)"); 
+}
+
+const metricsSearchInput = document.getElementById('metrics-exercise-search');
+const metricsSuggestions = document.getElementById('metrics-search-suggestions');
+let metricsDebounceTimer;
+
+if (metricsSearchInput) {
+    metricsSearchInput.addEventListener('input', (e) => {
+        const query = e.target.value;
+        clearTimeout(metricsDebounceTimer);
+
+        if (query.length < 2) {
+            metricsSuggestions.classList.add('hidden');
+            return;
+        }
+
+        metricsDebounceTimer = setTimeout(() => {
+            // Use global exercises list if available
+            let options = [];
+            if (window.APP_STATE && window.APP_STATE.exercises) {
+                options = window.APP_STATE.exercises.map(ex => ex.name);
+            } else {
+                // Fallback to video suggestions if APP_STATE not ready (unlikely in trainer mode)
+                const datalist = document.getElementById('video-suggestions');
+                if (datalist) {
+                    options = Array.from(datalist.options).map(o => o.value);
+                }
+            }
+
+            // Deduplicate and Filter
+            const uniqueOptions = [...new Set(options)];
+            const matches = uniqueOptions.filter(name => name.toLowerCase().includes(query.toLowerCase())).slice(0, 10);
+
+            renderMetricsSuggestions(matches);
+        }, 300);
+    });
+}
+
+function renderMetricsSuggestions(matches) {
+    metricsSuggestions.innerHTML = '';
+    if (matches.length === 0) {
+        metricsSuggestions.classList.add('hidden');
+        return;
+    }
+
+    matches.forEach(name => {
+        const li = document.createElement('li');
+        li.className = "px-4 py-2 hover:bg-white/10 cursor-pointer text-sm text-gray-300";
+        li.innerText = name;
+        li.onclick = () => {
+            document.getElementById('metrics-exercise-search').value = name;
+            metricsSuggestions.classList.add('hidden');
+            const clientId = document.getElementById('metrics-client-id').value;
+            fetchExerciseMetrics(clientId, name);
+        };
+        metricsSuggestions.appendChild(li);
+    });
+    metricsSuggestions.classList.remove('hidden');
+}
+
+async function fetchExerciseMetrics(clientId, exerciseName) {
+    if (!exerciseName) return;
+
+    try {
+        const response = await fetch(`${APP_CONFIG.apiBase}/api/client/${clientId}/history?exercise_name=${encodeURIComponent(exerciseName)}`);
+        if (!response.ok) throw new Error("Failed to fetch history");
+
+        const history = await response.json();
+        renderExerciseChart(history, exerciseName);
+
+    } catch (e) {
+        console.error(e);
+        showToast("Error loading metrics.");
+    }
+}
+
+function renderExerciseChart(history, exerciseName) {
+    const ctx = document.getElementById('exerciseProgressChart');
+    if (!ctx) return;
+
+    if (metricsChartInstance) {
+        metricsChartInstance.destroy();
+    }
+
+    if (!history || history.length === 0) {
+        // Show "No Data" message on canvas?
+        // Or just an empty chart
+        showToast(`No history found for ${exerciseName}`);
+        return;
+    }
+
+    // Format Data
+    const labels = history.map(h => new Date(h.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+    const weights = history.map(h => h.max_weight);
+    // const reps = history.map(h => h.total_reps);
+
+    metricsChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Max Weight (kg)',
+                data: weights,
+                borderColor: '#4CAF50', // Green
+                backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                borderWidth: 2,
+                tension: 0.4, // Smooth curves
+                pointBackgroundColor: '#fff',
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: { color: '#fff' }
+                },
+                title: {
+                    display: true,
+                    text: `${exerciseName} Progress`,
+                    color: '#fff',
+                    font: { size: 16 }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    ticks: { color: '#aaa' }
+                },
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    ticks: { color: '#aaa' }
+                }
+            }
+        }
+    });
 }
 
 function showRestTimer(seconds, callback) {
@@ -1653,7 +1857,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     exercises: workout.exercises.map(ex => ({
                         ...ex,
                         collapsed: false, // Init collapsed state
-                        performance: Array(ex.sets).fill().map(() => ({ reps: '', weight: '', completed: false }))
+                        performance: ex.performance || Array(ex.sets).fill().map(() => ({ reps: '', weight: '', completed: false }))
                     })),
                     currentExerciseIdx: 0,
                     currentSet: 1,
@@ -1720,19 +1924,16 @@ window.toggleCollapse = function (idx, event) {
 // --- PERSISTENCE HELPERS ---
 
 function getCacheKey() {
-    // We need clientId and workoutId
-    // clientId is available globally via socket or APP_CONFIG? No, but we have 'user.id' in the init scope.
-    // Let's store userId globally when fetched.
+    // Include DATE in key to separate workouts across days
     if (!window.currentUserId || !workoutState || !workoutState.workoutId) return null;
-    return `gym_cache_${window.currentUserId}_workout_${workoutState.workoutId}`;
+    const dateStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
+    return `gym_cache_${window.currentUserId}_workout_${workoutState.workoutId}_${dateStr}`;
 }
 
 function saveProgress() {
     const key = getCacheKey();
     if (!key) return;
 
-    // We only need to save the performance data, but saving the whole state is easier
-    // to preserve 'collapsed' state too.
     const dataToSave = {
         exercises: workoutState.exercises.map(ex => ({
             id: ex.id,
@@ -1754,26 +1955,24 @@ function loadProgress() {
 
     try {
         const data = JSON.parse(cached);
-        // Check staleness (e.g., if older than 24h, discard?)
-        // For now, assume if ID matches, it's valid.
 
         // Merge data
         data.exercises.forEach((savedEx, idx) => {
             if (workoutState.exercises[idx] && workoutState.exercises[idx].id === savedEx.id) {
-                // RESTORE ONLY WEIGHT (and collapsed state) as requested
-                // We iterate through saved performance and only copy 'weight'
+                // RESTORE ALL FIELDS (Weight, Reps, Completed)
                 if (savedEx.performance) {
                     savedEx.performance.forEach((p, setIdx) => {
                         if (workoutState.exercises[idx].performance[setIdx]) {
                             workoutState.exercises[idx].performance[setIdx].weight = p.weight;
-                            // We do NOT restore reps.
+                            workoutState.exercises[idx].performance[setIdx].reps = p.reps;
+                            workoutState.exercises[idx].performance[setIdx].completed = p.completed;
                         }
                     });
                 }
                 workoutState.exercises[idx].collapsed = savedEx.collapsed || false;
             }
         });
-        console.log("Progress restored from cache (Weight & Collapsed state only)");
+        console.log("Progress fully restored from daily cache");
     } catch (e) {
         console.error("Failed to load progress", e);
     }
@@ -1944,9 +2143,9 @@ function updateWorkoutUI() {
                     let statusIcon = "";
 
                     if (isSetCompleted) {
-                        rowClass += " bg-green-500/10 border border-green-500/20 opacity-60"; // Completed look
+                        rowClass += " bg-green-500/10 border border-green-500/20"; // Removed opacity-60
                         statusIcon = `<div class="absolute -left-2 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-black font-bold text-xs shadow-lg shadow-green-500/50 z-20">✓</div>`;
-                        currentInputClass += " opacity-50 cursor-not-allowed text-green-400";
+                        currentInputClass += " cursor-not-allowed text-white opacity-80"; // Changed to text-white for visibility
                     } else if (isSetActive) {
                         rowClass += " bg-primary/10 border border-primary/40 ring-1 ring-primary/20"; // Active look
                         statusIcon = `<div class="absolute -left-2 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-black font-bold text-xs shadow-lg shadow-primary/50 z-20 animate-pulse">▶</div>`;
@@ -1963,7 +2162,7 @@ function updateWorkoutUI() {
                             <span class="text-sm font-bold text-gray-400 tracking-widest pl-2 font-mono uppercase ${isSetActive ? 'text-primary' : ''}">Set ${i + 1}</span>
                             <div class="flex items-center bg-black/40 border border-white/10 rounded-xl px-3 py-3 focus-within:border-primary/80 focus-within:bg-black/60 transition duration-300 shadow-inner">
                                 <input type="number" value="${perf.reps}" 
-                                    onchange="window.updatePerformance(${idx}, ${i}, 'reps', this.value)"
+                                    oninput="window.updatePerformance(${idx}, ${i}, 'reps', this.value)"
                                     onclick="event.stopPropagation()"
                                     ${isInputDisabled}
                                     class="${currentInputClass}" placeholder="${item.reps}">
@@ -1971,11 +2170,11 @@ function updateWorkoutUI() {
                             </div>
                             <div class="flex items-center bg-black/40 border border-white/10 rounded-xl px-3 py-3 focus-within:border-primary/80 focus-within:bg-black/60 transition duration-300 shadow-inner">
                                 <input type="number" value="${perf.weight}" 
-                                    onchange="window.updatePerformance(${idx}, ${i}, 'weight', this.value)"
+                                    oninput="window.updatePerformance(${idx}, ${i}, 'weight', this.value)"
                                     onclick="event.stopPropagation()"
                                     ${isInputDisabled}
                                     class="${currentInputClass}" placeholder="-">
-                                <span class="text-[10px] text-gray-500 font-bold ml-2 mt-1 tracking-wider">KG</span>
+                                <span class="text-[10px] text-gray-500 font-bold ml-2 mt-1 tracking-wider text-white">KG</span>
                             </div>
                         </div>
                      `;
@@ -1983,6 +2182,21 @@ function updateWorkoutUI() {
 
                 const isCollapsed = item.collapsed || false;
                 const chevronRotate = isCollapsed ? '-rotate-90' : 'rotate-0';
+
+                // Badge Logic
+                const isAllDetailedCompleted = item.performance.every(p => p.completed);
+                let badgeHtml = '';
+                if (isAllDetailedCompleted) {
+                    badgeHtml = `
+                    <span class="text-[10px] font-black text-white bg-green-500 px-3 py-1 rounded-full shadow-lg shadow-green-500/40 tracking-widest uppercase items-center flex gap-1">
+                        <span class="w-2 h-2 bg-white rounded-full"></span> Done
+                    </span>`;
+                } else {
+                    badgeHtml = `
+                    <span class="text-[10px] font-black text-white bg-red-500 px-3 py-1 rounded-full shadow-lg shadow-red-500/40 tracking-widest uppercase items-center flex gap-1">
+                        <span class="w-2 h-2 bg-white rounded-full animate-ping"></span> Active
+                    </span>`;
+                }
 
                 div.innerHTML += `
                     <div class="flex items-center justify-between mb-6 pb-4 border-b border-white/10 relative z-10 cursor-pointer group"
@@ -1995,9 +2209,7 @@ function updateWorkoutUI() {
                             </div>
                         </div>
                         <div class="flex items-center gap-3">
-                             <span class="text-[10px] font-black text-white bg-red-500 px-3 py-1 rounded-full shadow-lg shadow-red-500/40 tracking-widest uppercase items-center flex gap-1">
-                                <span class="w-2 h-2 bg-white rounded-full animate-ping"></span> Active
-                            </span>
+                             ${badgeHtml}
                             <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center transition-transform duration-300 ${chevronRotate} group-hover:bg-white/20">
                                 ▼
                             </div>
