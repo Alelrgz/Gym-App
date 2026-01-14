@@ -18,4 +18,10 @@ test_*.py
 debug_*.py
 repro_*.py
 reproduce*.py
+crash_*.py
+static/test_trigger.txt
 .vscode/
+
+# SQLite temp files
+*.db-shm
+*.db-wal

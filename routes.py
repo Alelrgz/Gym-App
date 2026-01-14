@@ -47,6 +47,13 @@ async def complete_schedule_item(
     # payload: { "date": "YYYY-MM-DD", "item_id": "..." }
     return service.complete_schedule_item(payload)
 
+@router.put("/api/client/schedule/complete")
+async def update_completed_workout(
+    payload: dict,
+    service: UserService = Depends(get_user_service)
+):
+    return service.update_completed_workout(payload)
+
 from models import ClientProfileUpdate
 @router.put("/api/client/profile")
 async def update_client_profile(
