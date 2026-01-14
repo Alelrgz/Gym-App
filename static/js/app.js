@@ -1559,6 +1559,44 @@ async function finishWorkout() {
     }
 }
 
+window.updateSetData = async function (exIdx, setIdx, reps, weight) {
+    if (!workoutState) return;
+
+    const ex = workoutState.exercises[exIdx];
+    const setNum = setIdx + 1;
+    const dateStr = new Date().toLocaleDateString('en-CA');
+
+    const payload = {
+        date: dateStr,
+        workout_id: workoutState.workoutId,
+        exercise_name: ex.name,
+        set_number: setNum,
+        reps: reps,
+        weight: weight
+    };
+
+    try {
+        const res = await fetch(`${apiBase}/api/client/schedule/update_set`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast("Set updated! 💾");
+            // Update local state to reflect changes
+            workoutState.exercises[exIdx].performance[setIdx].reps = reps;
+            workoutState.exercises[exIdx].performance[setIdx].weight = weight;
+        } else {
+            const err = await res.text();
+            showToast("Failed to update: " + err);
+        }
+    } catch (e) {
+        console.error(e);
+        showToast("Error updating set");
+    }
+};
+
 // --- METRICS MODAL LOGIC ---
 
 let metricsChartInstance = null;
@@ -2130,6 +2168,33 @@ function updateWorkoutUI() {
                     // Disable inputs if completed
                     const isInputDisabled = isDisabled || isSetCompleted ? 'disabled' : '';
 
+                    // EDIT MODE LOGIC
+                    let editBtnHtml = '';
+                    if (workoutState.isCompletedView) {
+                        // Check if this specific set is in edit mode
+                        const isEditing = perf.isEditing || false;
+
+                        if (isEditing) {
+                            // Enable inputs
+                            currentInputClass = baseInputClass + " border-b border-primary";
+                            // Save Button
+                            editBtnHtml = `
+                                <button onclick="event.stopPropagation(); window.updateSetData(${idx}, ${i}, this.closest('.grid').querySelector('input[placeholder=\\'${item.reps}\\']').value, this.closest('.grid').querySelector('input[placeholder=\\'-\\' ]').value); workoutState.exercises[${idx}].performance[${i}].isEditing = false; updateWorkoutUI();" 
+                                    class="absolute -right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-black shadow-lg z-30 hover:scale-110 transition">
+                                    💾
+                                </button>
+                            `;
+                        } else {
+                            // Edit Button
+                            editBtnHtml = `
+                                <button onclick="event.stopPropagation(); workoutState.exercises[${idx}].performance[${i}].isEditing = true; updateWorkoutUI();" 
+                                    class="absolute -right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-white/10 rounded-full flex items-center justify-center text-gray-300 shadow-lg z-30 hover:bg-white/20 hover:text-white transition">
+                                    ✏️
+                                </button>
+                            `;
+                        }
+                    }
+
                     setsHtml += `
                         <div class="${rowClass}">
                             ${statusIcon}
@@ -2138,7 +2203,7 @@ function updateWorkoutUI() {
                                 <input type="number" value="${perf.reps}" 
                                     oninput="window.updatePerformance(${idx}, ${i}, 'reps', this.value)"
                                     onclick="event.stopPropagation()"
-                                    ${isInputDisabled}
+                                    ${workoutState.isCompletedView && !perf.isEditing ? 'disabled' : (isInputDisabled && !perf.isEditing ? 'disabled' : '')}
                                     class="${currentInputClass}" placeholder="${item.reps}">
                                 <span class="text-[10px] text-gray-500 font-bold ml-2 mt-1 tracking-wider">REPS</span>
                             </div>
@@ -2146,10 +2211,11 @@ function updateWorkoutUI() {
                                 <input type="number" value="${perf.weight}" 
                                     oninput="window.updatePerformance(${idx}, ${i}, 'weight', this.value)"
                                     onclick="event.stopPropagation()"
-                                    ${isInputDisabled}
+                                    ${workoutState.isCompletedView && !perf.isEditing ? 'disabled' : (isInputDisabled && !perf.isEditing ? 'disabled' : '')}
                                     class="${currentInputClass}" placeholder="-">
                                 <span class="text-[10px] text-gray-500 font-bold ml-2 mt-1 tracking-wider text-white">KG</span>
                             </div>
+                            ${editBtnHtml}
                         </div>
                      `;
                 }

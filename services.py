@@ -481,6 +481,85 @@ class UserService:
         finally:
             db.close()
 
+    def update_completed_workout(self, payload: dict) -> dict:
+        from database import get_client_session
+        from models_client_orm import ClientScheduleORM, ClientExerciseLogORM
+        import json
+        
+        # Default client for now
+        client_id = "user_123"
+        date_str = payload.get("date")
+        workout_id = payload.get("workout_id")
+        
+        # Payload details
+        exercise_name = payload.get("exercise_name")
+        set_number = int(payload.get("set_number"))
+        reps = payload.get("reps") # Keep as string/int depending on usage
+        weight = payload.get("weight")
+        
+        db = get_client_session(client_id)
+        try:
+            # 1. Update Log (for analytics)
+            log = db.query(ClientExerciseLogORM).filter(
+                ClientExerciseLogORM.date == date_str,
+                ClientExerciseLogORM.workout_id == workout_id,
+                ClientExerciseLogORM.exercise_name == exercise_name,
+                ClientExerciseLogORM.set_number == set_number
+            ).first()
+            
+            if log:
+                log.reps = int(reps) if reps else 0
+                log.weight = float(weight) if weight else 0.0
+            else:
+                # Create if missing (e.g. if user added a set post-completion? or if log failed)
+                log = ClientExerciseLogORM(
+                    date=date_str,
+                    workout_id=workout_id,
+                    exercise_name=exercise_name,
+                    set_number=set_number,
+                    reps=int(reps) if reps else 0,
+                    weight=float(weight) if weight else 0.0,
+                    metric_type="weight_reps"
+                )
+                db.add(log)
+                
+            # 2. Update Snapshot in Schedule Item (for UI consistency)
+            item = db.query(ClientScheduleORM).filter(
+                ClientScheduleORM.date == date_str,
+                ClientScheduleORM.workout_id == workout_id,
+                ClientScheduleORM.type == "workout"
+            ).first()
+            
+            if item and item.details:
+                try:
+                    exercises = json.loads(item.details)
+                    # Find exercise
+                    for ex in exercises:
+                        if ex.get("name") == exercise_name:
+                            # Find set
+                            perf_list = ex.get("performance", [])
+                            # Ensure list is long enough
+                            while len(perf_list) < set_number:
+                                perf_list.append({"reps": "", "weight": "", "completed": False})
+                                
+                            # Update (0-indexed)
+                            perf_list[set_number - 1]["reps"] = reps
+                            perf_list[set_number - 1]["weight"] = weight
+                            perf_list[set_number - 1]["completed"] = True
+                            break
+                    
+                    item.details = json.dumps(exercises)
+                except Exception as e:
+                    print(f"Error updating snapshot: {e}")
+            
+            db.commit()
+            return {"status": "success"}
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to update set: {str(e)}")
+        finally:
+            db.close()
+
     def get_client_exercise_history(self, client_id: str, exercise_name: str = None) -> list:
         from database import get_client_session
         from models_client_orm import ClientExerciseLogORM

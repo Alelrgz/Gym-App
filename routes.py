@@ -3,6 +3,7 @@ from models import GymConfig, ClientData, TrainerData, OwnerData, LeaderboardDat
 from services import GymService, UserService, LeaderboardService
 
 router = APIRouter()
+# Trigger reload v2
 
 # --- DEPENDENCIES ---
 def get_gym_service() -> GymService:
@@ -15,6 +16,10 @@ def get_leaderboard_service() -> LeaderboardService:
     return LeaderboardService()
 
 # --- ROUTES ---
+@router.get("/api/ping")
+async def ping():
+    return {"pong": True}
+
 @router.get("/api/config/{gym_id}", response_model=GymConfig)
 async def get_gym_config(gym_id: str, service: GymService = Depends(get_gym_service)):
     return service.get_gym(gym_id)
@@ -47,7 +52,7 @@ async def complete_schedule_item(
     # payload: { "date": "YYYY-MM-DD", "item_id": "..." }
     return service.complete_schedule_item(payload)
 
-@router.put("/api/client/schedule/complete")
+@router.put("/api/client/schedule/update_set")
 async def update_completed_workout(
     payload: dict,
     service: UserService = Depends(get_user_service)
@@ -206,3 +211,5 @@ async def upload_file(file: UploadFile = File(...)):
         shutil.copyfileobj(file.file, buffer)
         
     return {"url": f"/static/uploads/{unique_filename}", "filename": unique_filename}
+
+# Force reload: v2
