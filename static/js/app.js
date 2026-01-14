@@ -96,7 +96,9 @@ window.showDayDetails = (dateStr, dayEvents, titleId, listId, isTrainer) => {
                 <span class="text-xl mr-3">${icon}</span>
                 <div>
                     <p class="text-sm font-bold text-white">${e.title}</p>
-                    <p class="text-[10px] text-gray-400">${e.details}</p>
+                    <p class="text-[10px] text-gray-400">
+                        ${(e.details && (e.details.startsWith('[') || e.details.startsWith('{'))) ? 'Workout Data Saved' : e.details}
+                    </p>
                 </div>
             </div>
             <span class="text-xs font-bold ${statusColor}">${e.completed ? 'COMPLETED' : 'SCHEDULED'}</span>
@@ -2116,11 +2118,11 @@ function updateWorkoutUI() {
 
                     if (isSetCompleted) {
                         rowClass += " bg-green-500/10 border border-green-500/20"; // Removed opacity-60
-                        statusIcon = `<div class="absolute -left-2 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-black font-bold text-xs shadow-lg shadow-green-500/50 z-20">✓</div>`;
+                        statusIcon = `<div class="absolute left-2 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-black font-bold text-xs shadow-lg shadow-green-500/50 z-20">✓</div>`;
                         currentInputClass += " cursor-not-allowed text-white opacity-80"; // Changed to text-white for visibility
                     } else if (isSetActive) {
                         rowClass += " bg-primary/10 border border-primary/40 ring-1 ring-primary/20"; // Active look
-                        statusIcon = `<div class="absolute -left-2 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-black font-bold text-xs shadow-lg shadow-primary/50 z-20 animate-pulse">▶</div>`;
+                        statusIcon = `<div class="absolute left-2 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-black font-bold text-xs shadow-lg shadow-primary/50 z-20 animate-pulse">▶</div>`;
                     } else {
                         rowClass += " border border-transparent"; // Pending
                     }
@@ -2131,7 +2133,7 @@ function updateWorkoutUI() {
                     setsHtml += `
                         <div class="${rowClass}">
                             ${statusIcon}
-                            <span class="text-sm font-bold text-gray-400 tracking-widest pl-2 font-mono uppercase ${isSetActive ? 'text-primary' : ''}">Set ${i + 1}</span>
+                            <span class="text-sm font-bold text-gray-400 tracking-widest pl-10 font-mono uppercase ${isSetActive ? 'text-primary' : ''}">Set ${i + 1}</span>
                             <div class="flex items-center bg-black/40 border border-white/10 rounded-xl px-3 py-3 focus-within:border-primary/80 focus-within:bg-black/60 transition duration-300 shadow-inner">
                                 <input type="number" value="${perf.reps}" 
                                     oninput="window.updatePerformance(${idx}, ${i}, 'reps', this.value)"
