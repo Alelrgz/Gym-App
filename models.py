@@ -15,6 +15,7 @@ class Exercise(BaseModel):
     reps: Union[str, int]
     rest: int
     video_id: str
+    performance: Optional[List[Dict]] = None
 
 class ExerciseTemplate(BaseModel):
     id: Optional[str] = None

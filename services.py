@@ -332,9 +332,17 @@ class UserService:
                                             "completed": True
                                         })
                                     else:
+                                        # Pre-fill with last known weight for this exercise/set
+                                        last_log = db.query(ClientExerciseLogORM).filter(
+                                            ClientExerciseLogORM.exercise_name == ex_name,
+                                            ClientExerciseLogORM.set_number == i + 1
+                                        ).order_by(ClientExerciseLogORM.date.desc(), ClientExerciseLogORM.id.desc()).first()
+                                        
+                                        last_weight = last_log.weight if last_log else ""
+
                                         performance.append({
                                             "reps": "",
-                                            "weight": "",
+                                            "weight": last_weight,
                                             "completed": False
                                         })
                                 ex["performance"] = performance

@@ -1504,42 +1504,7 @@ function adjustReps(delta) {
     document.getElementById('rep-counter').innerText = workoutState.currentReps;
 }
 
-function completeSet() {
-    if (!workoutState) return;
-
-    const ex = workoutState.exercises[workoutState.currentExerciseIdx];
-
-    // Show Rest Timer
-    showRestTimer(ex.rest || 60, () => {
-        // Move to next set
-        if (workoutState.currentSet < ex.sets) {
-            workoutState.currentSet++;
-            // Parse reps if it's a range like "8-10"
-            let targetReps = ex.reps;
-            if (typeof ex.reps === 'string' && ex.reps.includes('-')) {
-                targetReps = ex.reps.split('-')[1]; // Take upper bound
-            }
-            workoutState.currentReps = parseInt(targetReps);
-            updateWorkoutUI();
-        } else {
-            // Move to next exercise
-            if (workoutState.currentExerciseIdx < workoutState.exercises.length - 1) {
-                workoutState.currentExerciseIdx++;
-                workoutState.currentSet = 1;
-                const nextEx = workoutState.exercises[workoutState.currentExerciseIdx];
-                let nextReps = nextEx.reps;
-                if (typeof nextEx.reps === 'string' && nextEx.reps.includes('-')) {
-                    nextReps = nextEx.reps.split('-')[1];
-                }
-                workoutState.currentReps = parseInt(nextReps);
-                updateWorkoutUI();
-            } else {
-                // Workout complete!
-                finishWorkout();
-            }
-        }
-    });
-}
+// function completeSet() removed (duplicate)
 
 async function finishWorkout() {
     // Call API to mark as complete
@@ -1559,6 +1524,9 @@ async function finishWorkout() {
 
         if (res.ok) {
             console.log("Workout marked as complete on server");
+
+            // Clear Cache to prevent stale data on reload
+            localStorage.removeItem(getCacheKey());
 
             // Show Success UI ONLY after server confirms
             document.getElementById('celebration-overlay').classList.remove('hidden');
@@ -1865,8 +1833,12 @@ document.addEventListener('DOMContentLoaded', () => {
                     isCompletedView: isCompletedView // Store in state
                 };
 
-                // Restore from cache if available
-                loadProgress();
+                // Restore from cache if available, but only if NOT completed
+                if (!workout.completed) {
+                    loadProgress();
+                } else {
+                    console.log("Workout already completed. Using DB snapshot.");
+                }
 
                 // Populate Routine List
                 // Initial empty populate, real render happens in updateWorkoutUI
@@ -2256,7 +2228,12 @@ function updateWorkoutUI() {
 
     // Update Progress Text
     const totalExercises = workoutState.exercises.length;
-    const completedExercises = workoutState.currentExerciseIdx;
+    let completedExercises = workoutState.currentExerciseIdx;
+
+    if (workoutState.isCompletedView) {
+        completedExercises = totalExercises;
+    }
+
     const progressPct = Math.round((completedExercises / totalExercises) * 100);
     const progressEl = document.getElementById('routine-progress');
     if (progressEl) progressEl.innerText = `${progressPct}% Complete`;
@@ -2264,10 +2241,16 @@ function updateWorkoutUI() {
     // Update Progress Bar
     const totalSets = workoutState.exercises.reduce((acc, curr) => acc + curr.sets, 0);
     let completedSets = 0;
-    for (let i = 0; i < workoutState.currentExerciseIdx; i++) {
-        completedSets += workoutState.exercises[i].sets;
+
+    if (workoutState.isCompletedView) {
+        completedSets = totalSets;
+    } else {
+        for (let i = 0; i < workoutState.currentExerciseIdx; i++) {
+            completedSets += workoutState.exercises[i].sets;
+        }
+        completedSets += (workoutState.currentSet - 1);
     }
-    completedSets += (workoutState.currentSet - 1);
+
     const barPct = (completedSets / totalSets) * 100;
     const barEl = document.getElementById('workout-progress-bar');
     if (barEl) barEl.style.width = `${barPct}%`;
