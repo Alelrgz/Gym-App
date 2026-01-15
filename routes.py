@@ -1,6 +1,9 @@
-from fastapi import APIRouter, Depends, Header
+from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi.security import OAuth2PasswordRequestForm
 from models import GymConfig, ClientData, TrainerData, OwnerData, LeaderboardData, WorkoutAssignment, ExerciseTemplate, AssignDietRequest
 from services import GymService, UserService, LeaderboardService
+from auth import create_access_token, get_current_user
+from models_orm import UserORM
 
 router = APIRouter()
 # Trigger reload v2
@@ -20,20 +23,43 @@ def get_leaderboard_service() -> LeaderboardService:
 async def ping():
     return {"pong": True}
 
+@router.post("/api/auth/login")
+async def login(form_data: OAuth2PasswordRequestForm = Depends(), service: UserService = Depends(get_user_service)):
+    user = service.authenticate_user(form_data.username, form_data.password)
+    if not user:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Incorrect username or password",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    access_token = create_access_token(data={"sub": user.username, "role": user.role})
+    return {"access_token": access_token, "token_type": "bearer", "role": user.role}
+
+@router.post("/api/auth/register")
+async def register(
+    user_data: dict, 
+    service: UserService = Depends(get_user_service)
+):
+    return service.register_user(user_data)
+
 @router.get("/api/config/{gym_id}", response_model=GymConfig)
 async def get_gym_config(gym_id: str, service: GymService = Depends(get_gym_service)):
     return service.get_gym(gym_id)
 
 @router.get("/api/client/data", response_model=ClientData)
-async def get_client_data(service: UserService = Depends(get_user_service)):
-    return service.get_client()
+async def get_client_data(
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    return service.get_client(current_user.id)
 
 @router.get("/api/client/schedule")
 async def get_client_schedule(
     date: str = None, 
-    service: UserService = Depends(get_user_service)
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
 ):
-    return service.get_client_schedule(date)
+    return service.get_client_schedule(current_user.id, date)
 
 @router.get("/api/client/{client_id}/history")
 async def get_client_history(client_id: str, exercise_name: str = None):
@@ -47,40 +73,56 @@ async def get_client_history(client_id: str, exercise_name: str = None):
 @router.post("/api/client/schedule/complete")
 async def complete_schedule_item(
     payload: dict,
-    service: UserService = Depends(get_user_service)
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
 ):
     # payload: { "date": "YYYY-MM-DD", "item_id": "..." }
-    return service.complete_schedule_item(payload)
+    return service.complete_schedule_item(payload, current_user.id)
 
 @router.put("/api/client/schedule/update_set")
 async def update_completed_workout(
     payload: dict,
-    service: UserService = Depends(get_user_service)
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
 ):
-    return service.update_completed_workout(payload)
+    return service.update_completed_workout(payload, current_user.id)
 
 from models import ClientProfileUpdate
 @router.put("/api/client/profile")
 async def update_client_profile(
     profile_update: ClientProfileUpdate,
-    service: UserService = Depends(get_user_service)
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
 ):
-    return service.update_client_profile(profile_update)
+    return service.update_client_profile(profile_update, current_user.id)
 
 @router.get("/api/trainer/data", response_model=TrainerData)
-async def get_trainer_data(service: UserService = Depends(get_user_service)):
-    return service.get_trainer()
+async def get_trainer_data(
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    return service.get_trainer(current_user.id)
 
 @router.get("/api/trainer/client/{client_id}", response_model=ClientData)
-async def get_client_for_trainer(client_id: str, service: UserService = Depends(get_user_service)):
+async def get_client_for_trainer(
+    client_id: str, 
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
     return service.get_client(client_id)
 
 @router.get("/api/owner/data", response_model=OwnerData)
-async def get_owner_data(service: UserService = Depends(get_user_service)):
+async def get_owner_data(
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
     return service.get_owner()
 
 @router.get("/api/leaderboard/data", response_model=LeaderboardData)
-async def get_leaderboard_data(service: LeaderboardService = Depends(get_leaderboard_service)):
+async def get_leaderboard_data(
+    service: LeaderboardService = Depends(get_leaderboard_service),
+    current_user: UserORM = Depends(get_current_user)
+):
     return service.get_leaderboard()
 
 
@@ -88,58 +130,66 @@ async def get_leaderboard_data(service: LeaderboardService = Depends(get_leaderb
 @router.get("/api/trainer/exercises")
 async def get_exercises(
     service: UserService = Depends(get_user_service),
-    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+    current_user: UserORM = Depends(get_current_user)
 ):
-    return service.get_exercises(trainer_id)
+    return service.get_exercises(current_user.id)
 
 @router.post("/api/trainer/exercises")
 async def create_exercise(
     exercise: ExerciseTemplate, 
     service: UserService = Depends(get_user_service),
-    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+    current_user: UserORM = Depends(get_current_user)
 ):
     # Convert Pydantic model to dict for service layer
-    return service.create_exercise(exercise.model_dump(), trainer_id)
+    return service.create_exercise(exercise.model_dump(), current_user.id)
 
 @router.put("/api/trainer/exercises/{exercise_id}")
 async def update_exercise(
     exercise_id: str,
     exercise: ExerciseTemplate,
     service: UserService = Depends(get_user_service),
-    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+    current_user: UserORM = Depends(get_current_user)
 ):
-    return service.update_exercise(exercise_id, exercise.model_dump(exclude_unset=True), trainer_id)
+    return service.update_exercise(exercise_id, exercise.model_dump(exclude_unset=True), current_user.id)
 
 @router.get("/api/trainer/workouts")
 async def get_workouts(
     service: UserService = Depends(get_user_service),
-    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+    current_user: UserORM = Depends(get_current_user)
 ):
-    return service.get_workouts(trainer_id)
+    return service.get_workouts(current_user.id)
 
 @router.post("/api/trainer/workouts")
 async def create_workout(
     workout: dict, 
     service: UserService = Depends(get_user_service),
-    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+    current_user: UserORM = Depends(get_current_user)
 ):
-    return service.create_workout(workout, trainer_id)
+    return service.create_workout(workout, current_user.id)
 
 @router.put("/api/trainer/workouts/{workout_id}")
 async def update_workout(
     workout_id: str,
     workout: dict,
     service: UserService = Depends(get_user_service),
-    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+    current_user: UserORM = Depends(get_current_user)
 ):
-    return service.update_workout(workout_id, workout, trainer_id)
+    return service.update_workout(workout_id, workout, current_user.id)
 
 @router.post("/api/trainer/assign_workout")
-async def assign_workout(assignment: dict, service: UserService = Depends(get_user_service)):
+async def assign_workout(
+    assignment: dict, 
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
     return service.assign_workout(assignment)
 
 @router.post("/api/trainer/diet")
-async def update_diet(diet_data: dict, service: UserService = Depends(get_user_service)):
+async def update_diet(
+    diet_data: dict, 
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
     # Expects { "client_id": "...", "macros": {...}, "hydration_target": 2500, "consistency_target": 80 }
     client_id = diet_data.get("client_id")
     if not client_id:
@@ -148,48 +198,52 @@ async def update_diet(diet_data: dict, service: UserService = Depends(get_user_s
     return service.update_client_diet(client_id, diet_data)
 
 @router.post("/api/trainer/assign_diet")
-async def assign_diet(diet_req: AssignDietRequest, service: UserService = Depends(get_user_service)):
+async def assign_diet(
+    diet_req: AssignDietRequest, 
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
     return service.assign_diet(diet_req)
 
 @router.get("/api/trainer/splits")
 async def get_splits(
     service: UserService = Depends(get_user_service),
-    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+    current_user: UserORM = Depends(get_current_user)
 ):
-    return service.get_splits(trainer_id)
+    return service.get_splits(current_user.id)
 
 @router.post("/api/trainer/splits")
 async def create_split(
     split_data: dict,
     service: UserService = Depends(get_user_service),
-    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+    current_user: UserORM = Depends(get_current_user)
 ):
-    return service.create_split(split_data, trainer_id)
+    return service.create_split(split_data, current_user.id)
 
 @router.post("/api/trainer/assign_split")
 async def assign_split(
     assignment: dict,
     service: UserService = Depends(get_user_service),
-    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+    current_user: UserORM = Depends(get_current_user)
 ):
-    return service.assign_split(assignment, trainer_id)
+    return service.assign_split(assignment, current_user.id)
 
 @router.put("/api/trainer/splits/{split_id}")
 async def update_split(
     split_id: str,
     split_data: dict,
     service: UserService = Depends(get_user_service),
-    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+    current_user: UserORM = Depends(get_current_user)
 ):
-    return service.update_split(split_id, split_data, trainer_id)
+    return service.update_split(split_id, split_data, current_user.id)
 
 @router.delete("/api/trainer/splits/{split_id}")
 async def delete_split(
     split_id: str,
     service: UserService = Depends(get_user_service),
-    trainer_id: str = Header("trainer_default", alias="x-trainer-id")
+    current_user: UserORM = Depends(get_current_user)
 ):
-    return service.delete_split(split_id, trainer_id)
+    return service.delete_split(split_id, current_user.id)
 
 
 from fastapi import File, UploadFile

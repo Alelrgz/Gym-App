@@ -14,6 +14,7 @@ class ClientProfileORM(Base):
     plan = Column(String, nullable=True)
     status = Column(String, nullable=True)
     last_seen = Column(String, nullable=True)
+    trainer_id = Column(String, index=True, nullable=True) # Added for trainer assignment
 
 class ClientScheduleORM(Base):
     __tablename__ = "client_schedule"

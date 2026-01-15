@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, Boolean
 from database import Base
+from datetime import datetime
 
 class ExerciseORM(Base):
     __tablename__ = "exercises"
@@ -29,4 +30,15 @@ class WeeklySplitORM(Base):
     days_per_week = Column(Integer)
     schedule_json = Column(String) # Store schedule as JSON
     owner_id = Column(String, index=True)
+
+class UserORM(Base):
+    __tablename__ = "users"
+
+    id = Column(String, primary_key=True, index=True)
+    username = Column(String, unique=True, index=True)
+    email = Column(String, unique=True, index=True, nullable=True)
+    hashed_password = Column(String)
+    role = Column(String) # client, trainer, owner
+    is_active = Column(Boolean, default=True)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
 

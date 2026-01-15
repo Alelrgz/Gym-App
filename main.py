@@ -43,6 +43,12 @@ templates = Jinja2Templates(directory="templates")
 
 app.include_router(router)
 
+@app.on_event("startup")
+async def startup_event():
+    logger.info("Registered Routes:")
+    for route in app.routes:
+        logger.info(f"{route.path} [{route.name}]")
+
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
     await manager.connect(websocket)
@@ -57,6 +63,14 @@ async def add_no_cache_header(request, call_next):
     response = await call_next(request)
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0, private"
     return response
+
+@app.get("/login", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+@app.get("/register", response_class=HTMLResponse)
+async def register_page(request: Request):
+    return templates.TemplateResponse("register.html", {"request": request})
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "client", mode: str = "dashboard"):
@@ -91,4 +105,4 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Failed to start uvicorn: {e}")
 
-# Force reload: v5
+# Force reload: v7

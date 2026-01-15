@@ -2,6 +2,59 @@ const { gymId, role, apiBase } = window.APP_CONFIG;
 alert("App.js loaded! apiBase: " + apiBase);
 console.log("App.js loaded (Restored Monolithic) v" + Math.random());
 
+// --- AUTHENTICATION ---
+if (!localStorage.getItem('token') && window.location.pathname !== '/login') {
+    window.location.href = '/login';
+}
+
+const originalFetch = window.fetch;
+window.fetch = async function (url, options = {}) {
+    const token = localStorage.getItem('token');
+    if (token) {
+        options.headers = options.headers || {};
+        if (!options.headers['Authorization']) {
+            options.headers['Authorization'] = `Bearer ${token}`;
+        }
+    }
+
+    try {
+        const response = await originalFetch(url, options);
+        if (response.status === 401 && window.location.pathname !== '/login') {
+            localStorage.removeItem('token');
+            window.location.href = '/login';
+        }
+        return response;
+    } catch (e) {
+        throw e;
+    }
+};
+
+function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    window.location.href = '/login';
+}
+window.logout = logout;
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.location.pathname !== '/login') {
+        const logoutBtn = document.createElement('button');
+        logoutBtn.innerText = 'Logout';
+        logoutBtn.style.position = 'fixed';
+        logoutBtn.style.top = '10px';
+        logoutBtn.style.right = '10px';
+        logoutBtn.style.zIndex = '9999';
+        logoutBtn.style.padding = '5px 10px';
+        logoutBtn.style.background = '#e94560';
+        logoutBtn.style.color = 'white';
+        logoutBtn.style.border = 'none';
+        logoutBtn.style.borderRadius = '5px';
+        logoutBtn.style.cursor = 'pointer';
+        logoutBtn.onclick = logout;
+        document.body.appendChild(logoutBtn);
+    }
+});
+
 // --- ACCESS CONTROL ---
 if (role === 'client') {
     const isDesktop = window.innerWidth > 1024; // Simple check for now
