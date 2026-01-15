@@ -763,6 +763,52 @@ class UserService:
         finally:
             db.close()
 
+    def get_workout_details(self, workout_id: str, context_trainer_id: str = None) -> dict:
+        from data import WORKOUTS_DB
+        import json
+        
+        # 1. Try global DB
+        workout = WORKOUTS_DB.get(workout_id)
+        
+        # 2. If not found, search all trainer databases
+        if not workout:
+            from database import get_all_trainer_ids
+            all_trainers = get_all_trainer_ids()
+            for t_id in all_trainers:
+                db = get_trainer_session(t_id)
+                try:
+                    w_orm = db.query(WorkoutORM).filter(WorkoutORM.id == workout_id).first()
+                    if w_orm:
+                        workout = {
+                            "id": w_orm.id,
+                            "title": w_orm.title,
+                            "duration": w_orm.duration,
+                            "difficulty": w_orm.difficulty,
+                            "exercises": json.loads(w_orm.exercises_json)
+                        }
+                        break
+                finally:
+                    db.close()
+        
+        if not workout:
+            return None
+            
+        # 3. Sync video IDs based on trainer context
+        # If a trainer has a personal version of an exercise, use its video_id
+        if context_trainer_id:
+            trainer_exercises = self.get_exercises(context_trainer_id)
+            ex_map = {ex.name: ex.video_id for ex in trainer_exercises}
+            
+            # Create a copy to avoid mutating the original (if it's from WORKOUTS_DB)
+            workout = workout.copy()
+            workout["exercises"] = [ex.copy() for ex in workout["exercises"]]
+            
+            for ex in workout["exercises"]:
+                if ex.get("name") in ex_map:
+                    ex["video_id"] = ex_map[ex["name"]]
+                    
+        return workout
+
     def create_workout(self, workout: dict, trainer_id: str) -> dict:
         # Save to trainer's personal database
         db = get_trainer_session(trainer_id)
