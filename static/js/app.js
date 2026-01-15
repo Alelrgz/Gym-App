@@ -312,6 +312,13 @@ async function init() {
         nameEls.forEach(el => el.innerText = gymConfig.logo_text);
 
         if (role === 'client') {
+            // Display client username from localStorage
+            const username = localStorage.getItem('username') || 'Guest';
+            const displayNameEl = document.getElementById('client-display-name');
+            const welcomeNameEl = document.getElementById('client-welcome-name');
+            if (displayNameEl) displayNameEl.textContent = username;
+            if (welcomeNameEl) welcomeNameEl.textContent = username;
+
             let user = null;
             try {
                 console.log("Fetching client data from:", `${apiBase}/api/client/data`);
@@ -494,6 +501,11 @@ async function init() {
         }
 
         if (role === 'trainer') {
+            // Display trainer username from localStorage
+            const username = localStorage.getItem('username') || 'Trainer';
+            const usernameEl = document.getElementById('trainer-username');
+            if (usernameEl) usernameEl.textContent = username;
+
             const trainerRes = await fetch(`${apiBase}/api/trainer/data`);
             const data = await trainerRes.json();
 

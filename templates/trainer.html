@@ -6,9 +6,9 @@
     <div class="flex justify-between items-start mb-6">
         <div class="flex-1">
             <p class="text-xs text-white/60 uppercase tracking-wider">Trainer Dashboard</p>
-            <h2 class="text-2xl font-bold" id="trainer-name">Coach Mike</h2>
-            <!-- Trainer Selector for Testing Multi-Tenancy -->
-            <select id="trainer-selector"
+            <h2 class="text-2xl font-bold" id="trainer-name">Coach <span id="trainer-username">Loading...</span></h2>
+            <!-- Trainer ID is now determined by JWT auth -->
+            <select id="trainer-selector" class="hidden"
                 class="mt-2 bg-white/10 text-white text-xs px-3 py-2 rounded border border-white/20 focus:border-white/40 outline-none">
                 <option value="trainer_default">Default Trainer</option>
                 <option value="trainer_A">Trainer A</option>

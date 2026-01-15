@@ -60,3 +60,14 @@ def get_client_session(client_id: str):
     Base.metadata.create_all(bind=client_engine)
     ClientSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=client_engine)
     return ClientSessionLocal()
+
+def get_all_trainer_ids() -> list:
+    """Get all registered trainer user IDs from the global database."""
+    from models_orm import UserORM
+    db = GlobalSessionLocal()
+    try:
+        trainers = db.query(UserORM).filter(UserORM.role == "trainer").all()
+        return [t.id for t in trainers]
+    finally:
+        db.close()
+

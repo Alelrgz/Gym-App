@@ -99,6 +99,7 @@
                     const data = await response.json();
                     localStorage.setItem('token', data.access_token);
                     localStorage.setItem('role', data.role);
+                    localStorage.setItem('username', data.username);
 
                     // Redirect based on role
                     if (data.role === 'trainer') {
