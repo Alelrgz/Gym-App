@@ -306,7 +306,7 @@ class UserService:
             # PRIORITIZE SNAPSHOT FROM DB IF COMPLETED
             # If the workout is completed and we have a saved snapshot in 'details', ALWAYS use that.
             # This ensures we show exactly what the user entered (reps, weights) rather than a blank template.
-            if today_event.get("completed") and today_event.get("details"):
+            if today_event and today_event.get("completed") and today_event.get("details"):
                  try:
                     import json
                     # 'details' might contain simple string "Intermediate" (old) or JSON list (new)
