@@ -3,7 +3,8 @@ import uuid
 from data import GYMS_DB, CLIENT_DATA, TRAINER_DATA, OWNER_DATA, LEADERBOARD_DATA, EXERCISE_LIBRARY
 from models import GymConfig, ClientData, TrainerData, OwnerData, LeaderboardData, WorkoutAssignment, AssignDietRequest, ClientProfileUpdate
 from database import global_engine, GlobalSessionLocal, get_trainer_session, Base
-from models_orm import ExerciseORM, WorkoutORM, WeeklySplitORM
+from models_orm import ExerciseORM, WorkoutORM, WeeklySplitORM, UserORM
+from auth import verify_password
 
 # Create tables
 Base.metadata.create_all(bind=global_engine)
@@ -38,9 +39,69 @@ class GymService:
         return GymConfig(**gym)
 
 class UserService:
-    def get_client(self, client_id: str = "user_123") -> ClientData:
+    def authenticate_user(self, username, password):
+        db = GlobalSessionLocal()
+        try:
+            user = db.query(UserORM).filter(UserORM.username == username).first()
+            if not user:
+                return False
+            if not verify_password(password, user.hashed_password):
+                return False
+            return user
+        finally:
+            db.close()
+
+    def register_user(self, user_data: dict):
+        db = GlobalSessionLocal()
+        try:
+            # Handle empty email as None
+            email = user_data.get("email")
+            if email == "":
+                email = None
+            
+            # Check if user exists
+            query = db.query(UserORM).filter(UserORM.username == user_data["username"])
+            if email:
+                query = db.query(UserORM).filter(
+                    (UserORM.username == user_data["username"]) | 
+                    (UserORM.email == email)
+                )
+            
+            existing_user = query.first()
+            
+            if existing_user:
+                raise HTTPException(status_code=400, detail="Username or email already registered")
+            
+            from auth import get_password_hash
+            hashed_pw = get_password_hash(user_data["password"])
+            
+            new_user = UserORM(
+                id=str(uuid.uuid4()),
+                username=user_data["username"],
+                email=email,
+                hashed_password=hashed_pw,
+                role=user_data.get("role", "client"),
+                is_active=True
+            )
+            
+            db.add(new_user)
+            db.commit()
+            db.refresh(new_user)
+            
+            return {"status": "success", "message": "User registered successfully", "user_id": new_user.id}
+        except HTTPException as he:
+            print(f"DEBUG: Caught HTTPException: {he.detail}")
+            raise he
+        except Exception as e:
+            print(f"DEBUG: Caught generic Exception: {type(e)} - {e}")
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+        finally:
+            db.close()
+
+    def get_client(self, client_id: str) -> ClientData:
         from database import get_client_session
-        from models_client_orm import ClientProfileORM, ClientScheduleORM, ClientDietSettingsORM, ClientDietLogORM
+        from models_client_orm import ClientProfileORM, ClientScheduleORM, ClientDietSettingsORM, ClientExerciseLogORM
         
         db = get_client_session(client_id)
         try:
@@ -389,7 +450,7 @@ class UserService:
         finally:
             db.close()
 
-    def get_client_schedule(self, date_str: str = None) -> dict:
+    def get_client_schedule(self, client_id: str, date_str: str = None) -> dict:
         from database import get_client_session
         from models_client_orm import ClientScheduleORM
         from datetime import date
@@ -397,8 +458,7 @@ class UserService:
         if not date_str:
             date_str = date.today().isoformat()
             
-        # Default client for now
-        client_id = "user_123" 
+        # client_id passed in 
         
         db = get_client_session(client_id)
         try:
@@ -420,12 +480,11 @@ class UserService:
         finally:
             db.close()
 
-    def complete_schedule_item(self, payload: dict) -> dict:
+    def complete_schedule_item(self, payload: dict, client_id: str) -> dict:
         from database import get_client_session
         from models_client_orm import ClientScheduleORM
         
-        # Default client for now
-        client_id = "user_123"
+        # client_id passed in
         date_str = payload.get("date")
         item_id = payload.get("item_id") # Optional if we use date+type unique constraint logic
         
@@ -481,13 +540,12 @@ class UserService:
         finally:
             db.close()
 
-    def update_completed_workout(self, payload: dict) -> dict:
+    def update_completed_workout(self, payload: dict, client_id: str) -> dict:
         from database import get_client_session
         from models_client_orm import ClientScheduleORM, ClientExerciseLogORM
         import json
         
-        # Default client for now
-        client_id = "user_123"
+        # client_id passed in
         date_str = payload.get("date")
         workout_id = payload.get("workout_id")
         
@@ -595,11 +653,11 @@ class UserService:
         finally:
             db.close()
 
-    def update_client_profile(self, profile_update: ClientProfileUpdate) -> dict:
+    def update_client_profile(self, profile_update: ClientProfileUpdate, client_id: str) -> dict:
         from database import get_client_session
         from models_client_orm import ClientProfileORM
         
-        client_id = "user_123" # Default for now
+        # client_id passed in
         db = get_client_session(client_id)
         try:
             profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
@@ -683,8 +741,33 @@ class UserService:
                 
         raise HTTPException(status_code=404, detail="Workout not found")
 
-    def get_trainer(self) -> TrainerData:
-        return TrainerData(**TRAINER_DATA)
+    def get_trainer(self, trainer_id: str) -> TrainerData:
+        from database import get_trainer_session
+        from models_trainer_orm import TrainerClientLinkORM
+        from data import TRAINER_DATA
+        
+        db = get_trainer_session(trainer_id)
+        try:
+            # Fetch clients from Trainer's DB
+            clients_orm = db.query(TrainerClientLinkORM).all()
+            
+            clients = []
+            for c in clients_orm:
+                clients.append({
+                    "id": c.id,
+                    "name": c.name,
+                    "status": c.status,
+                    "last_seen": c.last_seen,
+                    "plan": c.plan
+                })
+                
+            # For video library, we can still use the hardcoded one or fetch from DB if we had a table.
+            # For now, let's keep the hardcoded video library to ensure the UI looks good.
+            video_library = TRAINER_DATA["video_library"]
+            
+            return TrainerData(clients=clients, video_library=video_library)
+        finally:
+            db.close()
 
     def get_owner(self) -> OwnerData:
         return OwnerData(**OWNER_DATA)

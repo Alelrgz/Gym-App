@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Iron Gym</title>
+    <link rel="stylesheet" href="/static/css/index.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #121212;
+            color: white;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .login-container {
+            background: #1e1e1e;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 1.5rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background: #2c2c2c;
+            color: white;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #e94560;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        button:hover {
+            background: #ff5e78;
+        }
+
+        .error {
+            color: #ff5e78;
+            margin-bottom: 1rem;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <h1>Iron Gym Login</h1>
+        <div id="error-msg" class="error"></div>
+        <form id="login-form">
+            <input type="text" id="username" name="username" placeholder="Username" required>
+            <input type="password" id="password" name="password" placeholder="Password" required>
+            <button type="submit">Login</button>
+        </form>
+    </div>
+    <div style="text-align: center; margin-top: 1rem;">
+        <a href="/register" style="color: #aaa; text-decoration: none; font-size: 0.9rem;">Don't have an account?
+            Register</a>
+    </div>
+    <script>
+        document.getElementById('login-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const errorMsg = document.getElementById('error-msg');
+
+            try {
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded'
+                    },
+                    body: new URLSearchParams(formData)
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    localStorage.setItem('token', data.access_token);
+                    localStorage.setItem('role', data.role);
+
+                    // Redirect based on role
+                    if (data.role === 'trainer') {
+                        window.location.href = '/?role=trainer';
+                    } else if (data.role === 'owner') {
+                        window.location.href = '/?role=owner';
+                    } else {
+                        window.location.href = '/?role=client';
+                    }
+                } else {
+                    const err = await response.json();
+                    errorMsg.textContent = err.detail || 'Login failed';
+                    errorMsg.style.display = 'block';
+                }
+            } catch (err) {
+                errorMsg.textContent = 'Network error';
+                errorMsg.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+
+</html>

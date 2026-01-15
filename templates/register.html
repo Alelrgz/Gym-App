@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - Iron Gym</title>
+    <link rel="stylesheet" href="/static/css/index.css">
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #121212;
+            color: white;
+            font-family: 'Inter', sans-serif;
+        }
+
+        .login-container {
+            background: #1e1e1e;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+            width: 100%;
+            max-width: 400px;
+            text-align: center;
+        }
+
+        h1 {
+            margin-bottom: 1.5rem;
+        }
+
+        input,
+        select {
+            width: 100%;
+            padding: 12px;
+            margin-bottom: 1rem;
+            border-radius: 8px;
+            border: 1px solid #333;
+            background: #2c2c2c;
+            color: white;
+            box-sizing: border-box;
+        }
+
+        button {
+            width: 100%;
+            padding: 12px;
+            background: #e94560;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 1rem;
+        }
+
+        button:hover {
+            background: #ff5e78;
+        }
+
+        .error {
+            color: #ff5e78;
+            margin-bottom: 1rem;
+            display: none;
+        }
+
+        .login-link {
+            margin-top: 1rem;
+            display: block;
+            color: #aaa;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .login-link:hover {
+            color: white;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+        <h1>Join Iron Gym</h1>
+        <div id="error-msg" class="error"></div>
+        <form id="register-form">
+            <input type="text" id="username" name="username" placeholder="Username" required>
+            <input type="email" id="email" name="email" placeholder="Email (Optional)">
+            <input type="password" id="password" name="password" placeholder="Password" required>
+            <select id="role" name="role">
+                <option value="client">Client</option>
+                <option value="trainer">Trainer</option>
+                <option value="owner">Owner</option>
+            </select>
+            <button type="submit">Register</button>
+        </form>
+        <a href="/login" class="login-link">Already have an account? Login</a>
+    </div>
+    <script>
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const data = Object.fromEntries(formData.entries());
+            const errorMsg = document.getElementById('error-msg');
+
+            try {
+                const response = await fetch('/api/auth/register', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(data)
+                });
+
+                if (response.ok) {
+                    alert("Registration successful! Redirecting to login...");
+                    // Auto login or redirect to login
+                    window.location.href = '/login';
+                } else {
+                    const contentType = response.headers.get("content-type");
+                    if (contentType && contentType.indexOf("application/json") !== -1) {
+                        const err = await response.json();
+                        errorMsg.textContent = err.detail || 'Registration failed';
+                    } else {
+                        const text = await response.text();
+                        console.error("Registration error (non-JSON):", text);
+                        errorMsg.textContent = `Registration failed: ${response.status} ${response.statusText}`;
+                    }
+                    errorMsg.style.display = 'block';
+                }
+            } catch (err) {
+                console.error("Network/Fetch error:", err);
+                errorMsg.textContent = 'Network error: ' + err.message;
+                errorMsg.style.display = 'block';
+            }
+        });
+    </script>
+</body>
+
+</html>
