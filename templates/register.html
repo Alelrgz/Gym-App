@@ -82,8 +82,10 @@
 <body>
     <div class="login-container">
         <h1>Join Iron Gym</h1>
-        <div id="error-msg" class="error"></div>
-        <form id="register-form">
+        <div id="error-msg" class="error" {% if error %}style="display: block;" {% endif %}>
+            {{ error }}
+        </div>
+        <form id="register-form" action="/auth/register" method="POST">
             <input type="text" id="username" name="username" placeholder="Username" required>
             <input type="email" id="email" name="email" placeholder="Email (Optional)">
             <input type="password" id="password" name="password" placeholder="Password" required>
@@ -92,46 +94,27 @@
                 <option value="trainer">Trainer</option>
                 <option value="owner">Owner</option>
             </select>
+            <!-- Hidden input for Secret Key if Owner is selected (managed via JS or just simple display for now) -->
+            <input type="password" id="secret_key" name="secret_key" placeholder="Owner Secret Key (if Owner)"
+                style="display: none;">
+
             <button type="submit">Register</button>
         </form>
-        <a href="/login" class="login-link">Already have an account? Login</a>
+        <a href="/auth/login" class="login-link">Already have an account? Login</a>
     </div>
     <script>
-        document.getElementById('register-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData.entries());
-            const errorMsg = document.getElementById('error-msg');
+        // Simple script to show/hide secret key input based on role
+        const roleSelect = document.getElementById('role');
+        const secretInput = document.getElementById('secret_key');
 
-            try {
-                const response = await fetch('/api/auth/register', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(data)
-                });
-
-                if (response.ok) {
-                    alert("Registration successful! Redirecting to login...");
-                    // Auto login or redirect to login
-                    window.location.href = '/login';
-                } else {
-                    const contentType = response.headers.get("content-type");
-                    if (contentType && contentType.indexOf("application/json") !== -1) {
-                        const err = await response.json();
-                        errorMsg.textContent = err.detail || 'Registration failed';
-                    } else {
-                        const text = await response.text();
-                        console.error("Registration error (non-JSON):", text);
-                        errorMsg.textContent = `Registration failed: ${response.status} ${response.statusText}`;
-                    }
-                    errorMsg.style.display = 'block';
-                }
-            } catch (err) {
-                console.error("Network/Fetch error:", err);
-                errorMsg.textContent = 'Network error: ' + err.message;
-                errorMsg.style.display = 'block';
+        roleSelect.addEventListener('change', () => {
+            if (roleSelect.value === 'owner') {
+                secretInput.style.display = 'block';
+                secretInput.required = true;
+            } else {
+                secretInput.style.display = 'none';
+                secretInput.required = false;
+                secretInput.value = '';
             }
         });
     </script>

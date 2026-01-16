@@ -10,8 +10,14 @@ node_modules/
 .DS_Store
 
 # Database files
-# *.db
-# db/
+*.db
+db/*.db
+!db/global.db
+
+# Logs and Backups
+*.log
+*.bak
+*.local
 
 # Test and debug files
 test_*.py

@@ -3,71 +3,44 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
 
-# Global database (exercises only)
-GLOBAL_DB_PATH = f"sqlite:///{os.path.join(os.path.dirname(__file__), 'db', 'global.db')}"
-global_engine = create_engine(GLOBAL_DB_PATH, connect_args={"check_same_thread": False})
-GlobalSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=global_engine)
+# --- CONFIGURATION ---
+# Use environment variable for DB URL (Render provides this)
+# Default to local unified SQLite file for development
+DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{os.path.join(os.path.dirname(__file__), 'db', 'gym_app.db')}")
 
-# Base for ORM models
+# Adjust connection args for SQLite (not needed for Postgres)
+connect_args = {}
+if DATABASE_URL.startswith("sqlite"):
+    connect_args = {"check_same_thread": False}
+
+# --- ENGINE & SESSION ---
+# Optimize connection pooling for Scale (1000+ users)
+engine = create_engine(
+    DATABASE_URL, 
+    connect_args=connect_args,
+    pool_size=20,          # Keep 20 connections open
+    max_overflow=10,       # Allow 10 more during spikes
+    pool_timeout=30,       # Wait 30s before giving up
+    pool_recycle=1800      # Recycle connections every 30 mins
+)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
 Base = declarative_base()
 
-# Function to get trainer-specific database
-def get_trainer_db_path(trainer_id: str):
-    """Get the database path for a specific trainer"""
-    db_folder = os.path.join(os.path.dirname(__file__), "db")
-    os.makedirs(db_folder, exist_ok=True)
-    return f"sqlite:///{os.path.join(db_folder, f'trainer_{trainer_id}.db')}"
-
-def get_trainer_session(trainer_id: str):
-    """Get a database session for a specific trainer"""
-    db_path = get_trainer_db_path(trainer_id)
-    trainer_engine = create_engine(db_path, connect_args={"check_same_thread": False})
-    # Create tables if they don't exist
-    Base.metadata.create_all(bind=trainer_engine)
-    TrainerSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=trainer_engine)
-    return TrainerSessionLocal()
-
-# Dependency for FastAPI
+# --- DEPENDENCY ---
 def get_db():
-    """Legacy function - now returns global DB for exercises"""
-    db = GlobalSessionLocal()
+    """
+    Dependency for FastAPI Routes.
+    Yields a database session and closes it after the request.
+    """
+    db = SessionLocal()
     try:
         yield db
     finally:
         db.close()
 
-# Function to get client-specific database
-def get_client_db_path(client_id: str):
-    """Get the database path for a specific client"""
-    db_folder = os.path.join(os.path.dirname(__file__), "db")
-    os.makedirs(db_folder, exist_ok=True)
-    return f"sqlite:///{os.path.join(db_folder, f'client_{client_id}.db')}"
-
-def get_client_session(client_id: str):
-    """Get a database session for a specific client"""
-    db_path = get_client_db_path(client_id)
-    client_engine = create_engine(db_path, connect_args={"check_same_thread": False})
-    # Create tables if they don't exist
-    # Note: We need to import the client models before calling create_all
-    # to ensure they are registered with Base. Or we can pass the specific tables.
-    # For now, we'll assume Base contains all models, but we might want to separate Bases later.
-    # To avoid issues, we will import models inside the function or ensure they are imported at top level of app.
-    # A better approach for separate DBs is to have separate Bases, but sharing Base is okay for simple cases
-    # as long as we don't mind empty tables being created if we used create_all(engine).
-    # However, since we are using the SAME Base for all, create_all will try to create ALL tables.
-    # This is fine for SQLite as separate files mean separate schemas.
-    
-    Base.metadata.create_all(bind=client_engine)
-    ClientSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=client_engine)
-    return ClientSessionLocal()
-
-def get_all_trainer_ids() -> list:
-    """Get all registered trainer user IDs from the global database."""
-    from models_orm import UserORM
-    db = GlobalSessionLocal()
-    try:
-        trainers = db.query(UserORM).filter(UserORM.role == "trainer").all()
-        return [t.id for t in trainers]
-    finally:
-        db.close()
+# --- UTILS ---
+# Helper to get raw session (for background tasks/scripts)
+def get_db_session():
+    return SessionLocal()
 

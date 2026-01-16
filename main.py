@@ -14,7 +14,7 @@ if not os.path.exists("db"):
 
 try:
     from fastapi import FastAPI, Request
-    from fastapi.responses import HTMLResponse
+    from fastapi.responses import HTMLResponse, RedirectResponse
     from fastapi.staticfiles import StaticFiles
     from fastapi.templating import Jinja2Templates
     from fastapi import WebSocket, WebSocketDisconnect
@@ -22,6 +22,10 @@ try:
     from fastapi.middleware.cors import CORSMiddleware
     from routes import router
     from sockets import manager, start_file_watcher
+    from simple_auth import simple_auth_router, SECRET_KEY, ALGORITHM
+    from jose import jwt, JWTError
+    from database import engine, Base
+    import models_orm # Register models
 except ImportError as e:
     logger.error(f"Missing dependency: {e}")
     logger.info("Please run: pip install fastapi uvicorn sqlalchemy jinja2 python-multipart")
@@ -42,9 +46,26 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
 app.include_router(router)
+app.include_router(simple_auth_router, prefix="/auth")
+
 
 @app.on_event("startup")
 async def startup_event():
+    logger.info("Initializing Database...")
+    try:
+        # Create tables if they don't exist
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables verified/created.")
+        
+        # Log DB info (safe to log dialect)
+        db_url = str(engine.url)
+        if "sqlite" in db_url:
+            logger.info("Using SQLite Database (Development)")
+        elif "postgresql" in db_url:
+            logger.info("Using PostgreSQL Database (Production)")
+    except Exception as e:
+        logger.error(f"Database initialization failed: {e}")
+
     logger.info("Registered Routes:")
     for route in app.routes:
         logger.info(f"{route.path} [{route.name}]")
@@ -59,36 +80,54 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
         manager.disconnect(websocket)
 
 @app.middleware("http")
-async def add_no_cache_header(request, call_next):
+async def log_requests(request: Request, call_next):
+    with open("server_debug.log", "a") as f:
+        f.write(f"MIDDLEWARE: {request.method} {request.url.path} at {time.time()}\n")
     response = await call_next(request)
     response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0, private"
     return response
 
-@app.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
-
-@app.get("/register", response_class=HTMLResponse)
-async def register_page(request: Request):
-    return templates.TemplateResponse("register.html", {"request": request})
+# Removed conflicting login/register routes (now handled by simple_auth with /auth prefix)
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "client", mode: str = "dashboard"):
-    context = {"request": request, "gym_id": gym_id, "role": role, "mode": mode}
+    print("DEBUG: Root hit! Checking tokens...")
+    token = request.cookies.get("access_token")
+    if not token:
+        print("DEBUG: No token found, redirecting...")
+        return RedirectResponse(url="/auth/login", status_code=302)
     
-    template_map = {
-        "workout": "workout.html",
-        "client": "client.html",
-        "trainer": "trainer.html",
-        "owner": "owner.html"
-    }
-    template_name = template_map.get(mode if mode == "workout" else role, "client.html")
-
     try:
-        return templates.TemplateResponse(template_name, context)
+        jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        print("DEBUG: Token valid.")
+    except JWTError as e:
+        print(f"DEBUG: Token invalid: {e}")
+        return RedirectResponse(url="/auth/login", status_code=302)
+
+    # Determine which template to render based on role
+    # If role is default (client) but token says otherwise, trust token
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        token_role = payload.get("role")
+        if token_role and role == "client": # Only override if default
+            role = token_role
+            print(f"DEBUG: Overriding role from token: {role}")
     except Exception as e:
-        logger.error(f"Template error: {e}")
-        return HTMLResponse(content=f"Error loading template: {e}", status_code=500)
+        print(f"DEBUG: Could not extract role from token: {e}")
+
+    template_name = "client.html"
+    if role == "trainer":
+        template_name = "trainer.html"
+    elif role == "owner":
+        template_name = "owner.html"
+    
+    return templates.TemplateResponse(template_name, {
+        "request": request,
+        "gym_id": gym_id,
+        "role": role,
+        "mode": mode,
+        "token": token
+    })
 
 if __name__ == "__main__":
     # Start the file watcher
@@ -105,4 +144,4 @@ if __name__ == "__main__":
     except Exception as e:
         logger.error(f"Failed to start uvicorn: {e}")
 
-# Force reload: v7
+# Force reload: v8

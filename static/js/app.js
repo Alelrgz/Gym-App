@@ -3,8 +3,17 @@ alert("App.js loaded! apiBase: " + apiBase);
 console.log("App.js loaded (Restored Monolithic) v" + Math.random());
 
 // --- AUTHENTICATION ---
-if (!localStorage.getItem('token') && window.location.pathname !== '/login') {
-    window.location.href = '/login';
+// Bootstrap from Server if valid token present in config
+if (window.APP_CONFIG.token && window.APP_CONFIG.token !== "None") {
+    console.log("Bootstrapping auth from server...");
+    localStorage.setItem('token', window.APP_CONFIG.token);
+    localStorage.setItem('role', window.APP_CONFIG.role);
+}
+
+if (!localStorage.getItem('token') && window.location.pathname !== '/auth/login' && window.location.pathname !== '/auth/register') {
+    // Check if we are on a public page or not
+    // Simple check: if not login/register page specific
+    window.location.href = '/auth/login';
 }
 
 const originalFetch = window.fetch;
@@ -19,9 +28,9 @@ window.fetch = async function (url, options = {}) {
 
     try {
         const response = await originalFetch(url, options);
-        if (response.status === 401 && window.location.pathname !== '/login') {
+        if (response.status === 401 && window.location.pathname !== '/auth/login') {
             localStorage.removeItem('token');
-            window.location.href = '/login';
+            window.location.href = '/auth/login';
         }
         return response;
     } catch (e) {
@@ -32,7 +41,7 @@ window.fetch = async function (url, options = {}) {
 function logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
-    window.location.href = '/login';
+    window.location.href = '/auth/login';
 }
 window.logout = logout;
 

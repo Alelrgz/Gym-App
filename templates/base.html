@@ -76,7 +76,8 @@
             gymId: "{{ gym_id }}",
             role: "{{ role }}",
             apiBase: "{{ 'http://192.168.1.55:9007' if static_build else '' }}",
-            isStatic: {{ 'true' if static_build else 'false' }}
+            isStatic: {{ 'true' if static_build else 'false' }},
+        token: "{{ token }}"
         };
     </script>
     <script src="/static/js/app.js?v=FORCE_UPDATE_2"></script>

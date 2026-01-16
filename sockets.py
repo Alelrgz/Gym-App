@@ -5,25 +5,50 @@ import asyncio
 from typing import List
 from fastapi import WebSocket
 
+from broadcaster import Broadcast
+import json
+import asyncio
+
+# Redis URL for production (fallback to memory for local dev)
+BROADCAST_URL = os.getenv("REDIS_URL", "memory://")
+broadcast = Broadcast(BROADCAST_URL)
+
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
+        self.listening = False
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
         self.active_connections.append(websocket)
+        # Verify listener is running (lazy start)
+        if not self.listening:
+            asyncio.create_task(self.listen_to_channel())
+            self.listening = True
 
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
 
     async def broadcast(self, message: dict):
-        # Iterate over a copy to avoid modification issues during iteration
-        for connection in self.active_connections[:]:
-            try:
-                await connection.send_json(message)
-            except Exception:
-                self.disconnect(connection)
+        # Publish to Redic (or memory)
+        # This sends to ALL instances subscribed to the channel
+        await broadcast.publish(channel="gym_global", message=json.dumps(message))
+
+    async def listen_to_channel(self):
+        """
+        Background task: Listens for Redis messages and pushes them to local clients.
+        """
+        await broadcast.connect()
+        async with broadcast.subscribe(channel="gym_global") as subscriber:
+            async for event in subscriber:
+                message = json.loads(event.message)
+                # Send to all locally connected clients
+                for connection in self.active_connections[:]:
+                    try:
+                        await connection.send_json(message)
+                    except Exception:
+                        self.disconnect(connection)
 
 # Global instance
 manager = ConnectionManager()

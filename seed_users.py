@@ -1,11 +1,11 @@
-from database import global_engine, GlobalSessionLocal, Base
+from database import engine, SessionLocal, Base
 from models_orm import UserORM
 from auth import get_password_hash
 import uuid
 
 def seed_users():
-    Base.metadata.create_all(bind=global_engine)
-    db = GlobalSessionLocal()
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
     
     users = [
         {"username": "client", "password": "password", "role": "client", "email": "client@example.com"},

@@ -9,5 +9,10 @@ python-multipart
 sqlalchemy
 websockets
 watchdog
-passlib[argon2]
+passlib[bcrypt]
+bcrypt
 python-jose[cryptography]
+psycopg2-binary
+python-dotenv
+redis
+broadcaster

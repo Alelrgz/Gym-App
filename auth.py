@@ -9,11 +9,13 @@ from database import get_db
 from models_orm import UserORM
 
 # SECRET_KEY should be in env, but for prototype we hardcode
-SECRET_KEY = "supersecretkey"
+import os
+SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret_key_123")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+
+pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 def verify_password(plain_password, hashed_password):
     return pwd_context.verify(plain_password, hashed_password)

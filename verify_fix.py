@@ -1,26 +1,29 @@
-import urllib.request
-import json
-import urllib.error
+import requests
 
-def register(username, password, email):
-    url = "http://127.0.0.1:9007/api/auth/register"
-    payload = {
-        "username": username,
-        "password": password,
-        "email": email,
-        "role": "trainer"
-    }
-    data = json.dumps(payload).encode('utf-8')
-    req = urllib.request.Request(url, data=data, headers={'Content-Type': 'application/json'})
+def verify_login():
+    url = "http://127.0.0.1:9007/auth/login"
     
+    # 1. Check GET (should return HTML)
     try:
-        with urllib.request.urlopen(req) as response:
-            print(f"Success: {response.status}")
-            print(response.read().decode('utf-8'))
-    except urllib.error.HTTPError as e:
-        print(f"Error {e.code}: {e.reason}")
-        print(e.read().decode('utf-8'))
+        r = requests.get(url)
+        print(f"GET {url}: {r.status_code}")
+        if "Login - Iron Gym" in r.text:
+            print("SUCCESS: Login page loaded.")
+        else:
+            print("FAILURE: Login page content mismatch.")
     except Exception as e:
-        print(f"Exception: {e}")
+        print(f"FAILURE: Could not connect to {url}: {e}")
+        return
 
-register("user_urllib_1", "pass", "")
+    # 2. Check POST (should fail with invalid credentials but return HTML, or redirect on success)
+    # We don't valid credentials handy maybe, checking invalid first
+    data = {"username": "wrong_user", "password": "wrong_password"}
+    r = requests.post(url, data=data)
+    print(f"POST {url} (Invalid): {r.status_code}")
+    if "Invalid username or password" in r.text:
+        print("SUCCESS: correctly rejected invalid credentials.")
+    else:
+        print("FAILURE: Did not see error message.")
+
+if __name__ == "__main__":
+    verify_login()
