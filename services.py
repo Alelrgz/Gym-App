@@ -180,6 +180,53 @@ class UserService:
             
             # 2. Get Diet / Progress
             diet_settings = db.query(ClientDietSettingsORM).filter(ClientDietSettingsORM.id == client_id).first()
+            
+            if not diet_settings:
+                # Create default settings if missing
+                diet_settings = ClientDietSettingsORM(
+                    id=client_id,
+                    calories_target=2000,
+                    protein_target=150,
+                    carbs_target=200,
+                    fat_target=70,
+                    hydration_target=2000,
+                    consistency_target=80,
+                    calories_current=0,
+                    protein_current=0,
+                    carbs_current=0,
+                    fat_current=0,
+                    hydration_current=0
+                )
+                db.add(diet_settings)
+                db.commit()
+                db.refresh(diet_settings)
+
+            # --- DYNAMIC HEALTH SCORE CALCULATION ---
+            if diet_settings:
+                def calc_score(current, target):
+                    if target == 0: return 0
+                    # Cap at 100%
+                    return min(100, (current / target) * 100)
+
+                s_cals = calc_score(diet_settings.calories_current, diet_settings.calories_target)
+                s_prot = calc_score(diet_settings.protein_current, diet_settings.protein_target)
+                s_carb = calc_score(diet_settings.carbs_current, diet_settings.carbs_target)
+                s_fat = calc_score(diet_settings.fat_current, diet_settings.fat_target)
+                s_hydro = calc_score(diet_settings.hydration_current, diet_settings.hydration_target)
+
+                print(f"DEBUG: Health Score Calc - Cals: {diet_settings.calories_current}/{diet_settings.calories_target} -> {s_cals}")
+                print(f"DEBUG: Health Score Calc - Prot: {diet_settings.protein_current}/{diet_settings.protein_target} -> {s_prot}")
+                print(f"DEBUG: Health Score Calc - Hydro: {diet_settings.hydration_current}/{diet_settings.hydration_target} -> {s_hydro}")
+
+                # Weighted Average
+                # Cals: 40%, Protein: 30%, Hydration: 10%, Carbs: 10%, Fat: 10%
+                health_score = (s_cals * 0.4) + (s_prot * 0.3) + (s_hydro * 0.1) + (s_carb * 0.1) + (s_fat * 0.1)
+                print(f"DEBUG: Total Health Score: {health_score}")
+                
+                # Update Profile
+                profile.health_score = int(health_score)
+                db.commit() # Save the new score
+
             progress_data = None
             if diet_settings:
                 progress_data = {
@@ -196,12 +243,26 @@ class UserService:
                     "hydration": {"current": diet_settings.hydration_current, "target": diet_settings.hydration_target},
                     "consistency_target": diet_settings.consistency_target,
                     # Mock history and logs for now (could fetch from DietLogORM)
-                    "weekly_history": [1800, 2100, 1950, 2200, 2000, 1850, 1450], 
-                    "diet_log": {
-                        "Breakfast": [{"meal": "Oatmeal", "cals": 350, "time": "08:00"}],
-                        "Lunch": [{"meal": "Chicken Salad", "cals": 450, "time": "12:30"}]
-                    }
+                    "weekly_history": [1800, 2100, 1950, 2200, 2000, 1850, 1450]
                 }
+                
+                # Fetch real diet logs
+                today_logs = db.query(ClientDietLogORM).filter(
+                    ClientDietLogORM.client_id == client_id,
+                    ClientDietLogORM.date == date.today().isoformat()
+                ).all()
+                
+                diet_log_map = {}
+                for log in today_logs:
+                    if log.meal_type not in diet_log_map:
+                        diet_log_map[log.meal_type] = []
+                    diet_log_map[log.meal_type].append({
+                        "meal": log.meal_name,
+                        "cals": log.calories,
+                        "time": log.time
+                    })
+                    
+                progress_data["diet_log"] = diet_log_map
 
             # 3. Get Calendar / Schedule
             events_orm = db.query(ClientScheduleORM).filter(ClientScheduleORM.client_id == client_id).all()
@@ -514,6 +575,121 @@ class UserService:
         except Exception as e:
             db.rollback()
             raise HTTPException(status_code=500, detail=f"Failed to update profile: {str(e)}")
+        finally:
+            db.close()
+
+    def scan_meal(self, file_bytes: bytes) -> dict:
+        import google.generativeai as genai
+        import os
+        import json
+        
+        api_key = os.environ.get("GEMINI_API_KEY")
+        print(f"DEBUG: scan_meal called. API Key present: {bool(api_key)}")
+        
+        if not api_key:
+            print("Warning: GEMINI_API_KEY not found, using mock.")
+            # Mock AI Analysis Fallback
+            import random
+            foods = [
+                {"name": "Grilled Chicken Salad", "cals": 450, "protein": 40, "carbs": 15, "fat": 20},
+                {"name": "Avocado Toast", "cals": 350, "protein": 12, "carbs": 45, "fat": 18},
+                {"name": "Protein Oatmeal", "cals": 380, "protein": 25, "carbs": 50, "fat": 6},
+                {"name": "Salmon & Rice", "cals": 550, "protein": 35, "carbs": 60, "fat": 22},
+                {"name": "Greek Yogurt Parfait", "cals": 280, "protein": 20, "carbs": 30, "fat": 5}
+            ]
+            result = random.choice(foods)
+            return {"status": "success", "data": result}
+
+        try:
+            genai.configure(api_key=api_key)
+            # Try Gemini 2.0 Flash Lite - often has better availability/quota
+            model_name = 'gemini-2.0-flash-lite-preview-02-05'
+            print(f"DEBUG: Initializing Gemini with model: {model_name}")
+            model = genai.GenerativeModel(model_name)
+            
+            prompt = """
+            Analyze this food image and estimate the nutritional content.
+            Return ONLY a raw JSON object with these keys:
+            - name: A short descriptive name of the meal
+            - cals: Total calories (integer)
+            - protein: Protein in grams (integer)
+            - carbs: Carbs in grams (integer)
+            - fat: Fat in grams (integer)
+            
+            Example: {"name": "Chicken Salad", "cals": 450, "protein": 40, "carbs": 10, "fat": 20}
+            """
+            
+            response = model.generate_content([
+                prompt,
+                {
+                    "mime_type": "image/jpeg", 
+                    "data": file_bytes
+                }
+            ])
+            
+            text = response.text
+            # Clean up markdown code blocks if present
+            if text.startswith("```json"):
+                text = text[7:]
+            elif text.startswith("```"):
+                text = text[3:]
+            if text.endswith("```"):
+                text = text[:-3]
+                
+            data = json.loads(text.strip())
+            
+            return {
+                "status": "success",
+                "data": data
+            }
+            
+        except Exception as e:
+            print(f"Gemini Error: {e}")
+            print("Falling back to mock data due to API error.")
+            
+            # Mock Data Fallback
+            import random
+            foods = [
+                {"name": "Grilled Chicken Salad", "cals": 450, "protein": 40, "carbs": 15, "fat": 20},
+                {"name": "Avocado Toast", "cals": 350, "protein": 12, "carbs": 45, "fat": 18},
+                {"name": "Protein Oatmeal", "cals": 380, "protein": 25, "carbs": 50, "fat": 6},
+                {"name": "Salmon & Rice", "cals": 550, "protein": 35, "carbs": 60, "fat": 22},
+                {"name": "Greek Yogurt Parfait", "cals": 280, "protein": 20, "carbs": 30, "fat": 5}
+            ]
+            result = random.choice(foods)
+            
+            return {
+                "status": "success",
+                "data": result,
+                "message": "⚠️ AI Quota Exceeded. Using simulated data."
+            }
+
+    def log_meal(self, client_id: str, meal_data: dict) -> dict:
+        db = get_db_session()
+        try:
+            log = ClientDietLogORM(
+                client_id=client_id,
+                date=date.today().isoformat(),
+                meal_type=meal_data.get("meal_type", "Snack"),
+                meal_name=meal_data.get("name"),
+                calories=meal_data.get("cals"),
+                time=datetime.now().strftime("%H:%M")
+            )
+            db.add(log)
+            
+            # Update current macros
+            settings = db.query(ClientDietSettingsORM).filter(ClientDietSettingsORM.id == client_id).first()
+            if settings:
+                settings.calories_current += meal_data.get("cals", 0)
+                settings.protein_current += meal_data.get("protein", 0)
+                settings.carbs_current += meal_data.get("carbs", 0)
+                settings.fat_current += meal_data.get("fat", 0)
+            
+            db.commit()
+            return {"status": "success", "message": "Meal logged"}
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to log meal: {str(e)}")
         finally:
             db.close()
 

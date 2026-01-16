@@ -350,6 +350,14 @@ async function init() {
                 setTxt('gem-count', user.gems);
                 setTxt('health-score', user.health_score);
 
+                // Animate Health Score Ring
+                const healthRing = document.querySelector('circle[stroke="#4ADE80"]');
+                if (healthRing) {
+                    // Circumference is ~251.2 (r=40)
+                    const offset = 251.2 - (251.2 * (user.health_score / 100));
+                    healthRing.style.strokeDashoffset = offset;
+                }
+
                 if (user.todays_workout) {
                     console.log("Rendering workout:", user.todays_workout);
                     setTxt('workout-title', user.todays_workout.title);
@@ -444,6 +452,7 @@ async function init() {
                 // Grouped Diet Log
                 const dietContainer = document.getElementById('diet-log-container');
                 if (dietContainer && user.progress.diet_log) {
+                    dietContainer.innerHTML = ''; // Clear existing content
                     for (const [group, items] of Object.entries(user.progress.diet_log)) {
                         const groupDiv = document.createElement('div');
                         groupDiv.innerHTML = `<h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">${group}</h3>`;
@@ -771,9 +780,58 @@ function quickAction(action) {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
-        input.onchange = e => {
+        input.onchange = async e => {
+            if (!e.target.files[0]) return;
+
+            const file = e.target.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
             showToast('Analyzing meal... 🍎');
-            setTimeout(() => showToast('Logged: Avocado Toast (350 kcal)'), 1500);
+
+            try {
+                const res = await fetch(`${apiBase}/api/client/diet/scan`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: formData
+                });
+
+                if (!res.ok) throw new Error("Scan failed");
+                const result = await res.json();
+
+                if (result.status === 'success') {
+                    if (result.message) {
+                        showToast(result.message);
+                    }
+                    const food = result.data;
+                    if (confirm(`Found: ${food.name}\n${food.cals} kcal | P: ${food.protein}g | C: ${food.carbs}g | F: ${food.fat}g\n\nLog this meal?`)) {
+                        // Log it
+                        const logRes = await fetch(`${apiBase}/api/client/diet/log`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(food)
+                        });
+
+                        if (logRes.ok) {
+                            showToast('Meal logged successfully! ✅');
+                            // Refresh data to update macros
+                            init();
+                        } else {
+                            showToast('Failed to log meal ❌');
+                        }
+                    }
+                } else {
+                    alert("Scan Error: " + (result.message || "Unknown error"));
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Error analyzing meal ⚠️');
+            }
         };
         input.click();
     } else if (action === 'search') {

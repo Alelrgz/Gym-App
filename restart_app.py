@@ -44,7 +44,9 @@ def check_port_9007():
 def start_app():
     """Start the app"""
     print("Starting app...")
-    os.chdir(r"c:\Users\RICCARDO\GymApp")
+    # os.chdir(r"c:\Users\RICCARDO\GymApp") # Fixed path
+    cwd = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(cwd)
     subprocess.Popen([sys.executable, "main.py"])
     print("App started. Waiting for it to initialize...")
     time.sleep(5)

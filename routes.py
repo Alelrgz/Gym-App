@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, status
+from fastapi import APIRouter, Depends, Header, HTTPException, status, File, UploadFile
 from fastapi.security import OAuth2PasswordRequestForm
 from models import GymConfig, ClientData, TrainerData, OwnerData, LeaderboardData, WorkoutAssignment, ExerciseTemplate, AssignDietRequest
 from services import GymService, UserService, LeaderboardService
@@ -95,6 +95,24 @@ async def update_client_profile(
     current_user: UserORM = Depends(get_current_user)
 ):
     return service.update_client_profile(profile_update, current_user.id)
+
+@router.post("/api/client/diet/scan")
+async def scan_meal(
+    file: UploadFile = File(...),
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    # Read file bytes
+    content = await file.read()
+    return service.scan_meal(content)
+
+@router.post("/api/client/diet/log")
+async def log_meal(
+    meal_data: dict,
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    return service.log_meal(current_user.id, meal_data)
 
 @router.get("/api/trainer/data", response_model=TrainerData)
 async def get_trainer_data(
@@ -246,7 +264,7 @@ async def delete_split(
     return service.delete_split(split_id, current_user.id)
 
 
-from fastapi import File, UploadFile
+
 import shutil
 import os
 import uuid
