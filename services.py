@@ -1071,6 +1071,7 @@ class UserService:
             db.close()
 
     def create_split(self, split_data: dict, trainer_id: str) -> dict:
+        print(f"DEBUG: create_split called with: {split_data}")
         db = get_db_session()
         try:
             new_id = str(uuid.uuid4())
@@ -1078,7 +1079,7 @@ class UserService:
                 id=new_id,
                 name=split_data["name"],
                 description=split_data.get("description", ""),
-                days_per_week=split_data["days_per_week"],
+                days_per_week=split_data.get("days_per_week", 7),
                 schedule_json=json.dumps(split_data["schedule"]),
                 owner_id=trainer_id
             )
@@ -1092,6 +1093,12 @@ class UserService:
                 "days_per_week": db_split.days_per_week,
                 "schedule": json.loads(db_split.schedule_json)
             }
+        except Exception as e:
+            print(f"ERROR in create_split: {e}")
+            import traceback
+            traceback.print_exc()
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to create split: {str(e)}")
         finally:
             db.close()
 

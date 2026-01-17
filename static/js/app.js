@@ -710,6 +710,8 @@ document.body.addEventListener('click', e => {
         addWater();
     } else if (action === 'openCreateWorkout') {
         openCreateWorkoutModal();
+    } else if (action === 'openCreateSplit') {
+        openCreateSplitModal();
     }
 });
 
@@ -2604,6 +2606,80 @@ window.openTrainerCalendar = async (explicitClientId) => {
     await originalOpenTrainerCalendar(explicitClientId);
 };
 
+
+
+window.fetchAndRenderSplits = async function () {
+    const trainerId = getCurrentTrainerId();
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/splits`, {
+            headers: { 'x-trainer-id': trainerId }
+        });
+
+        if (!res.ok) throw new Error("Failed to fetch splits");
+
+        const splits = await res.json();
+        const container = document.getElementById('split-library');
+        if (!container) return;
+
+        container.innerHTML = '';
+        if (splits.length === 0) {
+            container.innerHTML = '<p class="text-xs text-gray-500 italic text-center py-2">No splits created yet.</p>';
+            return;
+        }
+
+        splits.forEach(s => {
+            const div = document.createElement('div');
+            div.className = "glass-card p-3 flex justify-between items-center mb-2";
+            div.innerHTML = `
+                <div>
+                    <p class="font-bold text-sm text-white">${s.name}</p>
+                    <p class="text-[10px] text-gray-400">${s.description || 'No description'}</p>
+                    <p class="text-[10px] text-primary mt-1">${s.days_per_week} Days</p>
+                </div>
+                <div class="flex gap-2">
+                    <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition" onclick="openAssignSplitModal('${s.id}')">Assign</button>
+                    <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition" onclick="deleteSplit('${s.id}')">🗑️</button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    } catch (e) {
+        console.error("Error loading splits:", e);
+    }
+}
+
+// Initialize splits on load if trainer
+document.addEventListener('DOMContentLoaded', () => {
+    if (APP_CONFIG.role === 'trainer') {
+        // Small delay to ensure auth is ready
+        setTimeout(() => {
+            if (window.fetchAndRenderSplits) window.fetchAndRenderSplits();
+        }, 500);
+    }
+});
+
+window.deleteSplit = async function (splitId) {
+    if (!confirm("Are you sure you want to delete this split?")) return;
+
+    const trainerId = getCurrentTrainerId();
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/splits/${splitId}`, {
+            method: 'DELETE',
+            headers: { 'x-trainer-id': trainerId }
+        });
+
+        if (res.ok) {
+            showToast("Split deleted");
+            fetchAndRenderSplits();
+        } else {
+            showToast("Failed to delete split");
+        }
+    } catch (e) {
+        console.error(e);
+        showToast("Error deleting split");
+    }
+};
+
 // --- SPLIT CREATION LOGIC ---
 
 let splitScheduleState = {
@@ -2646,18 +2722,18 @@ function renderSplitScheduleBuilder() {
         const div = document.createElement('div');
         div.className = "flex items-center justify-between bg-white/5 p-3 rounded-xl";
 
-        const workoutId = splitScheduleState[day];
+        const workout = splitScheduleState[day];
         let content = `<span class="text-gray-500 italic text-xs">Rest Day</span>`;
 
-        if (workoutId) {
-            content = `<span class="text-primary font-bold text-xs">Workout Assigned</span>`;
+        if (workout && workout.id) {
+            content = `<span class="text-primary font-bold text-xs">${workout.title}</span>`;
         }
 
         div.innerHTML = `
             <span class="text-sm font-bold text-white w-24">${day}</span>
-            <div class="flex-1 mx-4 text-center">${content}</div>
+            <div class="flex-1 mx-4 text-center truncate">${content}</div>
             <button onclick="openSplitWorkoutSelector('${day}')" class="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition">
-                ${workoutId ? 'Change' : '+ Add Workout'}
+                ${workout ? 'Change' : '+ Add Workout'}
             </button>
         `;
         container.appendChild(div);
@@ -2696,8 +2772,11 @@ window.openSplitWorkoutSelector = async function (day) {
 
     document.getElementById('btn-cancel-split-sel').onclick = () => overlay.remove();
     document.getElementById('btn-confirm-split-sel').onclick = () => {
-        const val = document.getElementById('temp-split-selector').value;
-        splitScheduleState[day] = val || null;
+        const select = document.getElementById('temp-split-selector');
+        const val = select.value;
+        const title = select.options[select.selectedIndex].text;
+
+        splitScheduleState[day] = val ? { id: val, title: title } : null;
         renderSplitScheduleBuilder();
         overlay.remove();
     };
@@ -2715,6 +2794,7 @@ window.createSplit = async function () {
     const payload = {
         name: name,
         description: desc,
+        days_per_week: 7,
         schedule: splitScheduleState
     };
 
@@ -2732,11 +2812,124 @@ window.createSplit = async function () {
         if (res.ok) {
             showToast('Split created successfully! 🎉');
             hideModal('create-split-modal');
+            if (window.fetchAndRenderSplits) {
+                window.fetchAndRenderSplits();
+            }
         } else {
-            showToast('Failed to create split');
+            const err = await res.text();
+            console.error("Create Split Error:", err);
+            showToast('Failed to create split: ' + err);
         }
     } catch (e) {
         console.error(e);
         showToast('Error creating split');
     }
 }
+window.openAssignSplitModal = async function (splitId) {
+    const trainerId = getCurrentTrainerId();
+    const clientSelect = document.getElementById('assign-split-client-selector');
+    const container = document.getElementById('assign-split-client-selector-container');
+
+    if (!container || !clientSelect) {
+        console.error("Critical Error: Client selector UI elements missing!");
+        showToast("Error: UI element missing");
+        return;
+    }
+
+    try {
+        // 1. Fetch Clients
+        console.log("Fetching clients for trainer:", trainerId);
+        const res = await fetch(`${apiBase}/api/trainer/clients`, {
+            headers: { 'x-trainer-id': trainerId }
+        });
+
+        if (!res.ok) {
+            const err = await res.text();
+            console.error("Fetch clients failed:", res.status, err);
+            showToast("Error fetching clients: " + res.status);
+        } else {
+            const clients = await res.json();
+            console.log("Clients received:", clients);
+
+            if (!Array.isArray(clients)) {
+                console.error("Clients is not an array:", clients);
+                showToast("Invalid client data received");
+            } else {
+                clientSelect.innerHTML = '<option value="">Select a Client</option>';
+                if (clients.length === 0) {
+                    const opt = document.createElement('option');
+                    opt.innerText = "No clients found";
+                    opt.disabled = true;
+                    clientSelect.appendChild(opt);
+                }
+                clients.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.innerText = c.name || c.username || "Unknown";
+                    clientSelect.appendChild(opt);
+                });
+                container.classList.remove('hidden');
+            }
+        }
+
+        // 2. Fetch Splits to populate selector (and select current)
+        const splitSelect = document.getElementById('assign-split-select');
+        const resSplits = await fetch(`${apiBase}/api/trainer/splits`, {
+            headers: { 'x-trainer-id': trainerId }
+        });
+        const splits = await resSplits.json();
+
+        splitSelect.innerHTML = '';
+        splits.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.innerText = s.name;
+            if (s.id === splitId) opt.selected = true;
+            splitSelect.appendChild(opt);
+        });
+
+        showModal('assign-split-modal');
+
+    } catch (e) {
+        console.error("Error in openAssignSplitModal:", e);
+        showToast("Error loading assignment data");
+    }
+};
+
+window.assignSplit = async function () {
+    const splitId = document.getElementById('assign-split-select').value;
+    const clientId = document.getElementById('assign-split-client-selector').value;
+    const startDate = document.getElementById('assign-split-date').value;
+
+    if (!splitId || !clientId || !startDate) {
+        showToast("Please fill in all fields");
+        return;
+    }
+
+    try {
+        const trainerId = getCurrentTrainerId();
+        const res = await fetch(`${apiBase}/api/trainer/assign_split`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-trainer-id': trainerId
+            },
+            body: JSON.stringify({
+                split_id: splitId,
+                client_id: clientId,
+                start_date: startDate
+            })
+        });
+
+        if (res.ok) {
+            showToast("Split assigned successfully! 📅");
+            hideModal('assign-split-modal');
+        } else {
+            const err = await res.text();
+            showToast("Failed to assign: " + err);
+        }
+    } catch (e) {
+        console.error(e);
+        showToast("Error assigning split");
+    }
+};

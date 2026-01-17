@@ -1,24 +1,29 @@
 {% extends "base.html" %}
-{% from 'macros.html' import card %}
 
 {% block content %}
-<div class="p-6 pt-10 bg-primary pb-8 rounded-b-[40px] shadow-2xl z-10 relative">
+<!-- Top Section Container -->
+<div class="p-6 pb-0">
+    <!-- Header Row -->
     <div class="flex justify-between items-start mb-6">
-        <div class="flex-1">
+        <div>
             <p class="text-xs text-white/60 uppercase tracking-wider">Trainer Dashboard</p>
             <h2 class="text-2xl font-bold" id="trainer-name">Coach <span id="trainer-username">Loading...</span></h2>
             <!-- Trainer ID is now determined by JWT auth -->
-            <select id="trainer-selector" class="hidden"
-                class="mt-2 bg-white/10 text-white text-xs px-3 py-2 rounded border border-white/20 focus:border-white/40 outline-none">
+            <select id="trainer-selector"
+                class="hidden mt-2 bg-white/10 text-white text-xs px-3 py-2 rounded border border-white/20 focus:border-white/40 outline-none">
                 <option value="trainer_default">Default Trainer</option>
                 <option value="trainer_A">Trainer A</option>
                 <option value="trainer_B">Trainer B</option>
                 <option value="trainer_C">Trainer C</option>
             </select>
         </div>
+        <!-- Notification Bell -->
         <div data-action="showModal" data-target="notification-modal"
-            class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect">🔔</div>
+            class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect cursor-pointer">🔔
+        </div>
     </div>
+
+    <!-- Stats Row -->
     <div class="flex space-x-4">
         <div class="flex-1 bg-black/20 p-3 rounded-2xl backdrop-blur-sm">
             <p class="text-2xl font-bold">24</p>
@@ -31,7 +36,8 @@
     </div>
 </div>
 
-<div class="flex-1 p-4 space-y-6 pt-8">
+<!-- Main Content -->
+<div class="flex-1 p-4 space-y-6 pt-6">
     <!-- Client Roster Section -->
     <div>
         <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1 mb-3">Client Roster</h3>
@@ -43,7 +49,8 @@
         <div class="flex justify-between items-center mb-3">
             <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1">Workouts</h3>
             <button data-action="openCreateWorkout"
-                class="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition">+ Create Workout</button>
+                class="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition">+ Create
+                Workout</button>
         </div>
         <div id="workout-library" class="space-y-2"></div>
     </div>
@@ -52,8 +59,9 @@
     <div>
         <div class="flex justify-between items-center mb-3">
             <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1">Weekly Splits</h3>
-            <button data-action="showModal" data-target="create-split-modal"
-                class="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition">+ Create Split</button>
+            <button data-action="openCreateSplit"
+                class="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition">+ Create
+                Split</button>
         </div>
         <div id="split-library" class="space-y-2"></div>
     </div>
@@ -67,9 +75,11 @@
 
         <div id="exercises-section" class="hidden transition-all duration-300 ease-in-out">
             <div class="flex justify-between items-center mb-3">
-                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1">Exercises List</h3>
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1">Exercises List
+                </h3>
                 <button data-action="showModal" data-target="create-exercise-modal"
-                    class="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition">+ New Exercise</button>
+                    class="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition">+ New
+                    Exercise</button>
             </div>
 
             <!-- Search and Filters -->

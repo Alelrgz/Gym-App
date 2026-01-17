@@ -129,6 +129,14 @@ async def get_client_for_trainer(
 ):
     return service.get_client(client_id)
 
+@router.get("/api/trainer/clients")
+async def get_trainer_clients(
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    data = service.get_trainer(current_user.id)
+    return data.clients
+
 @router.get("/api/owner/data", response_model=OwnerData)
 async def get_owner_data(
     service: UserService = Depends(get_user_service),
