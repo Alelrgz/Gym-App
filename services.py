@@ -699,17 +699,65 @@ class UserService:
             clients_orm = db.query(UserORM).filter(UserORM.role == "client").all()
             
             clients = []
+            active_count = 0
+            at_risk_count = 0
+            today = date.today()
+
             for c in clients_orm:
+                # Fetch profile
+                profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == c.id).first()
+                
+                # Check Last Workout Date
+                last_workout = db.query(ClientScheduleORM).filter(
+                    ClientScheduleORM.client_id == c.id,
+                    ClientScheduleORM.type == "workout",
+                    ClientScheduleORM.completed == True
+                ).order_by(ClientScheduleORM.date.desc()).first()
+                
+                last_active_date = None
+                days_inactive = 0
+                
+                if last_workout:
+                    try:
+                        last_active_date = datetime.strptime(last_workout.date, "%Y-%m-%d").date()
+                        days_inactive = (today - last_active_date).days
+                    except:
+                        days_inactive = 99 # Error parsing date
+                else:
+                    days_inactive = 99 # No workouts ever
+                
+                # Determine Status
+                status = "Active"
+                if days_inactive > 5:
+                    status = "At Risk"
+                
+                # Override if manually set to something specific? 
+                # For now, let's trust the calculated status as primary, 
+                # unless profile says "Injured" or something else we haven't implemented.
+                # Let's write back to profile for persistence? 
+                # It's better to calculate distinct status on read to be always up to date.
+                
+                # Update counters
+                if status == "At Risk":
+                    at_risk_count += 1
+                else:
+                    active_count += 1
+
                 clients.append({
                     "id": c.id,
-                    "name": c.username,
-                    "status": "Active",
-                    "last_seen": "Today",
-                    "plan": "Standard"
+                    "name": profile.name if profile and profile.name else c.username,
+                    "status": status,
+                    "last_seen": f"{days_inactive} days ago" if days_inactive < 99 else "Never",
+                    "plan": profile.plan if profile else "Standard"
                 })
             
             video_library = TRAINER_DATA["video_library"]
-            return TrainerData(clients=clients, video_library=video_library)
+            return TrainerData(
+                clients=clients, 
+                video_library=video_library,
+                active_clients=active_count,
+                at_risk_clients=at_risk_count
+            )
         finally:
             db.close()
 

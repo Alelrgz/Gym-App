@@ -117,6 +117,8 @@ class Video(BaseModel):
 class TrainerData(BaseModel):
     clients: List[ClientSummary]
     video_library: List[Video]
+    active_clients: int
+    at_risk_clients: int
 
 # --- OWNER ---
 class Activity(BaseModel):

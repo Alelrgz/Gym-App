@@ -2,7 +2,7 @@
 
 {% block content %}
 <!-- Top Section Container -->
-<div class="p-6 pb-0">
+<div class="p-4 pb-0">
     <!-- Header Row -->
     <div class="flex justify-between items-start mb-6">
         <div>
@@ -18,19 +18,26 @@
             </select>
         </div>
         <!-- Notification Bell -->
-        <div data-action="showModal" data-target="notification-modal"
-            class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect cursor-pointer">🔔
+        <div class="flex space-x-2">
+            <div data-action="showModal" data-target="notification-modal"
+                class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect cursor-pointer">
+                🔔
+            </div>
+            <div data-action="showModal" data-target="profile-modal"
+                class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect cursor-pointer">
+                ⚙️
+            </div>
         </div>
     </div>
 
     <!-- Stats Row -->
     <div class="flex space-x-4">
         <div class="flex-1 bg-black/20 p-3 rounded-2xl backdrop-blur-sm">
-            <p class="text-2xl font-bold">24</p>
+            <p class="text-2xl font-bold" id="active-clients-count">24</p>
             <p class="text-[10px] text-white/60 uppercase">Active</p>
         </div>
         <div class="flex-1 bg-red-500/20 p-3 rounded-2xl backdrop-blur-sm border border-red-500/20">
-            <p class="text-2xl font-bold text-red-400">3</p>
+            <p class="text-2xl font-bold text-red-400" id="at-risk-clients-count">3</p>
             <p class="text-[10px] text-red-300/60 uppercase">At Risk</p>
         </div>
     </div>

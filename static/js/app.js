@@ -45,24 +45,12 @@ function logout() {
 }
 window.logout = logout;
 
+// Debug logout button removed (moved to Settings modal)
+/*
 document.addEventListener('DOMContentLoaded', () => {
-    if (window.location.pathname !== '/login') {
-        const logoutBtn = document.createElement('button');
-        logoutBtn.innerText = 'Logout';
-        logoutBtn.style.position = 'fixed';
-        logoutBtn.style.top = '10px';
-        logoutBtn.style.right = '10px';
-        logoutBtn.style.zIndex = '9999';
-        logoutBtn.style.padding = '5px 10px';
-        logoutBtn.style.background = '#e94560';
-        logoutBtn.style.color = 'white';
-        logoutBtn.style.border = 'none';
-        logoutBtn.style.borderRadius = '5px';
-        logoutBtn.style.cursor = 'pointer';
-        logoutBtn.onclick = logout;
-        document.body.appendChild(logoutBtn);
-    }
+   // ... removed ...
 });
+*/
 
 // --- ACCESS CONTROL ---
 if (role === 'client') {
@@ -526,6 +514,14 @@ async function init() {
 
             const trainerRes = await fetch(`${apiBase}/api/trainer/data`);
             const data = await trainerRes.json();
+
+            // Update Stats
+            if (document.getElementById('active-clients-count')) {
+                document.getElementById('active-clients-count').innerText = data.active_clients;
+            }
+            if (document.getElementById('at-risk-clients-count')) {
+                document.getElementById('at-risk-clients-count').innerText = data.at_risk_clients;
+            }
 
             const list = document.getElementById('client-list');
             if (list) {
