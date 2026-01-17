@@ -2,6 +2,68 @@ const { gymId, role, apiBase } = window.APP_CONFIG;
 alert("App.js loaded! apiBase: " + apiBase);
 console.log("App.js loaded (Restored Monolithic) v" + Math.random());
 
+// --- AUTHENTICATION ---
+// Bootstrap from Server if valid token present in config
+if (window.APP_CONFIG.token && window.APP_CONFIG.token !== "None") {
+    console.log("Bootstrapping auth from server...");
+    localStorage.setItem('token', window.APP_CONFIG.token);
+    localStorage.setItem('role', window.APP_CONFIG.role);
+}
+
+if (!localStorage.getItem('token') && window.location.pathname !== '/auth/login' && window.location.pathname !== '/auth/register') {
+    // Check if we are on a public page or not
+    // Simple check: if not login/register page specific
+    window.location.href = '/auth/login';
+}
+
+const originalFetch = window.fetch;
+window.fetch = async function (url, options = {}) {
+    const token = localStorage.getItem('token');
+    if (token) {
+        options.headers = options.headers || {};
+        if (!options.headers['Authorization']) {
+            options.headers['Authorization'] = `Bearer ${token}`;
+        }
+    }
+
+    try {
+        const response = await originalFetch(url, options);
+        if (response.status === 401 && window.location.pathname !== '/auth/login') {
+            localStorage.removeItem('token');
+            window.location.href = '/auth/login';
+        }
+        return response;
+    } catch (e) {
+        throw e;
+    }
+};
+
+function logout() {
+    localStorage.removeItem('token');
+    localStorage.removeItem('role');
+    window.location.href = '/auth/login';
+}
+window.logout = logout;
+
+document.addEventListener('DOMContentLoaded', () => {
+    if (window.location.pathname !== '/login') {
+        const logoutBtn = document.createElement('button');
+        logoutBtn.innerText = 'Logout';
+        logoutBtn.style.position = 'fixed';
+        logoutBtn.style.top = '10px';
+        logoutBtn.style.right = '10px';
+        logoutBtn.style.zIndex = '9999';
+        logoutBtn.style.padding = '5px 10px';
+        logoutBtn.style.background = '#e94560';
+        logoutBtn.style.color = 'white';
+        logoutBtn.style.border = 'none';
+        logoutBtn.style.borderRadius = '5px';
+        logoutBtn.style.cursor = 'pointer';
+        logoutBtn.onclick = logout;
+        document.body.appendChild(logoutBtn);
+    }
+});
+
 // --- ACCESS CONTROL ---
 if (role === 'client') {
     const isDesktop = window.innerWidth > 1024; // Simple check for now
@@ -74,6 +136,7 @@ window.showDayDetails = (dateStr, dayEvents, titleId, listId, isTrainer) => {
                 document.getElementById('assign-client-id').value = clientId;
 
                 populateWorkoutSelector();
+                hideModal('calendar-modal'); // Close schedule to show assignment
                 showModal('assign-workout-modal');
             };
         }
@@ -95,7 +158,9 @@ window.showDayDetails = (dateStr, dayEvents, titleId, listId, isTrainer) => {
                 <span class="text-xl mr-3">${icon}</span>
                 <div>
                     <p class="text-sm font-bold text-white">${e.title}</p>
-                    <p class="text-[10px] text-gray-400">${e.details}</p>
+                    <p class="text-[10px] text-gray-400">
+                        ${(e.details && (e.details.startsWith('[') || e.details.startsWith('{'))) ? 'Workout Data Saved' : e.details}
+                    </p>
                 </div>
             </div>
             <span class="text-xs font-bold ${statusColor}">${e.completed ? 'COMPLETED' : 'SCHEDULED'}</span>
@@ -177,13 +242,19 @@ window.renderCalendar = (month, year, events, gridId, titleId, detailTitleId, de
             div.appendChild(check);
         }
 
-        div.onclick = () => window.showDayDetails(dateStr, dayEvents, detailTitleId, detailListId, isTrainer);
+        div.onclick = () => {
+            if (window.datePickerMode && window.onDatePicked) {
+                window.onDatePicked(dateStr);
+            } else {
+                window.showDayDetails(dateStr, dayEvents, detailTitleId, detailListId, isTrainer);
+            }
+        };
         calendarGrid.appendChild(div);
     }
 };
 
-window.openTrainerCalendar = async () => {
-    const clientId = document.getElementById('client-modal').dataset.clientId;
+window.openTrainerCalendar = async (explicitClientId) => {
+    const clientId = explicitClientId || document.getElementById('client-modal').dataset.clientId;
     if (!clientId) {
         console.error("No client ID found for calendar");
         return;
@@ -250,6 +321,13 @@ async function init() {
         nameEls.forEach(el => el.innerText = gymConfig.logo_text);
 
         if (role === 'client') {
+            // Display client username from localStorage
+            const username = localStorage.getItem('username') || 'Guest';
+            const displayNameEl = document.getElementById('client-display-name');
+            const welcomeNameEl = document.getElementById('client-welcome-name');
+            if (displayNameEl) displayNameEl.textContent = username;
+            if (welcomeNameEl) welcomeNameEl.textContent = username;
+
             let user = null;
             try {
                 console.log("Fetching client data from:", `${apiBase}/api/client/data`);
@@ -272,11 +350,33 @@ async function init() {
                 setTxt('gem-count', user.gems);
                 setTxt('health-score', user.health_score);
 
+                // Animate Health Score Ring
+                const healthRing = document.querySelector('circle[stroke="#4ADE80"]');
+                if (healthRing) {
+                    // Circumference is ~251.2 (r=40)
+                    const offset = 251.2 - (251.2 * (user.health_score / 100));
+                    healthRing.style.strokeDashoffset = offset;
+                }
+
                 if (user.todays_workout) {
                     console.log("Rendering workout:", user.todays_workout);
                     setTxt('workout-title', user.todays_workout.title);
                     setTxt('workout-duration', user.todays_workout.duration);
                     setTxt('workout-difficulty', user.todays_workout.difficulty);
+
+                    if (user.todays_workout.completed) {
+                        const startBtn = document.querySelector('a[href*="mode=workout"]');
+                        if (startBtn) {
+                            startBtn.innerText = "COMPLETED ✓";
+                            startBtn.className = "block w-full py-3 bg-green-500 text-white text-center font-bold rounded-xl hover:bg-green-600 transition";
+                            // Append view=completed to existing href
+                            if (startBtn.href.includes('?')) {
+                                startBtn.href += "&view=completed";
+                            } else {
+                                startBtn.href += "?view=completed";
+                            }
+                        }
+                    }
                 } else {
                     console.warn("No todays_workout found in user data");
                     setTxt('workout-title', "Rest Day");
@@ -286,6 +386,14 @@ async function init() {
             } catch (e) {
                 console.error("Error fetching client data:", e);
                 alert("Client Data Error: " + e.message);
+            }
+
+            // Pre-fill Profile Data (if on settings page)
+            if (user) {
+                const pName = document.getElementById('profile-name');
+                const pEmail = document.getElementById('profile-email');
+                if (pName) pName.value = user.name;
+                if (pEmail) pEmail.value = user.email || "";
             }
 
             const questList = document.getElementById('quest-list');
@@ -344,6 +452,7 @@ async function init() {
                 // Grouped Diet Log
                 const dietContainer = document.getElementById('diet-log-container');
                 if (dietContainer && user.progress.diet_log) {
+                    dietContainer.innerHTML = ''; // Clear existing content
                     for (const [group, items] of Object.entries(user.progress.diet_log)) {
                         const groupDiv = document.createElement('div');
                         groupDiv.innerHTML = `<h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 ml-1">${group}</h3>`;
@@ -410,6 +519,11 @@ async function init() {
         }
 
         if (role === 'trainer') {
+            // Display trainer username from localStorage
+            const username = localStorage.getItem('username') || 'Trainer';
+            const usernameEl = document.getElementById('trainer-username');
+            if (usernameEl) usernameEl.textContent = username;
+
             const trainerRes = await fetch(`${apiBase}/api/trainer/data`);
             const data = await trainerRes.json();
 
@@ -596,6 +710,8 @@ document.body.addEventListener('click', e => {
         addWater();
     } else if (action === 'openCreateWorkout') {
         openCreateWorkoutModal();
+    } else if (action === 'openCreateSplit') {
+        openCreateSplitModal();
     }
 });
 
@@ -666,9 +782,58 @@ function quickAction(action) {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
-        input.onchange = e => {
+        input.onchange = async e => {
+            if (!e.target.files[0]) return;
+
+            const file = e.target.files[0];
+            const formData = new FormData();
+            formData.append('file', file);
+
             showToast('Analyzing meal... 🍎');
-            setTimeout(() => showToast('Logged: Avocado Toast (350 kcal)'), 1500);
+
+            try {
+                const res = await fetch(`${apiBase}/api/client/diet/scan`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    },
+                    body: formData
+                });
+
+                if (!res.ok) throw new Error("Scan failed");
+                const result = await res.json();
+
+                if (result.status === 'success') {
+                    if (result.message) {
+                        showToast(result.message);
+                    }
+                    const food = result.data;
+                    if (confirm(`Found: ${food.name}\n${food.cals} kcal | P: ${food.protein}g | C: ${food.carbs}g | F: ${food.fat}g\n\nLog this meal?`)) {
+                        // Log it
+                        const logRes = await fetch(`${apiBase}/api/client/diet/log`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify(food)
+                        });
+
+                        if (logRes.ok) {
+                            showToast('Meal logged successfully! ✅');
+                            // Refresh data to update macros
+                            init();
+                        } else {
+                            showToast('Failed to log meal ❌');
+                        }
+                    }
+                } else {
+                    alert("Scan Error: " + (result.message || "Unknown error"));
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Error analyzing meal ⚠️');
+            }
         };
         input.click();
     } else if (action === 'search') {
@@ -709,6 +874,41 @@ function showToast(msg) {
 }
 
 
+window.saveProfile = async () => {
+    const name = document.getElementById('profile-name').value;
+    const email = document.getElementById('profile-email').value;
+    const password = document.getElementById('profile-password').value;
+
+    if (!name || !email) {
+        showToast("Name and Email are required! ⚠️");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${apiBase}/api/client/profile`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name,
+                email,
+                password: password ? password : undefined
+            })
+        });
+
+        if (!res.ok) throw new Error("Failed to update");
+
+        showToast("Profile updated successfully! ✅");
+
+        // Clear password field
+        document.getElementById('profile-password').value = '';
+
+    } catch (e) {
+        console.error(e);
+        showToast("Error updating profile ❌");
+    }
+};
+
+
 // --- TRAINER INTERACTIVITY ---
 function uploadVideo() {
     const title = prompt("Video Title:");
@@ -743,6 +943,14 @@ async function initializeExerciseList(config) {
         console.log("[DEBUG] First ex:", exercises[0].name, "Video:", exercises[0].video_id);
     }
 
+    // Store exercises globally for other components (like Metrics) 
+    if (!window.APP_STATE) window.APP_STATE = {};
+    window.APP_STATE.exercises = exercises;
+
+    // Store exercises globally for other components (like Metrics)
+    if (!window.APP_STATE) window.APP_STATE = {};
+    window.APP_STATE.exercises = exercises;
+
     // Render Function
     const render = () => {
         const searchVal = document.getElementById(searchId)?.value.toLowerCase() || '';
@@ -773,6 +981,16 @@ async function initializeExerciseList(config) {
         filtered.forEach(ex => {
             const div = document.createElement('div');
             div.className = "glass-card p-4 flex flex-col justify-between relative overflow-hidden group tap-effect slide-up min-h-[120px]";
+
+            // CLICK TO ADD TO WORKOUT
+            if (onClick === 'addToWorkout') {
+                div.style.cursor = 'pointer';
+                div.addEventListener('click', () => {
+                    if (typeof window.addExerciseToWorkout === 'function') {
+                        window.addExerciseToWorkout(ex);
+                    }
+                });
+            }
 
             const icon = muscleIcons[ex.muscle] || '🏋️';
             const badgeClass = typeColors[ex.type] || 'bg-gray-500/20 text-gray-400';
@@ -832,7 +1050,12 @@ async function initializeExerciseList(config) {
                 e.stopPropagation(); // Prevent card click
                 openEditExerciseModal(ex);
             });
-            div.appendChild(editBtn); // Ensure it's appended
+            // div.appendChild(editBtn); // REMOVED: This breaks the layout by moving the button out of the header
+
+            // If no specific onClick action (Main List), do nothing (only edit button works)
+            if (!onClick) {
+                div.style.cursor = 'default';
+            }
 
             container.appendChild(div);
         });
@@ -847,6 +1070,7 @@ async function initializeExerciseList(config) {
 
     populateVideoSuggestions(exercises);
 }
+
 
 // --- DIET ASSIGNMENT ---
 window.openAssignDietModal = async () => {
@@ -1416,39 +1640,276 @@ function adjustReps(delta) {
     document.getElementById('rep-counter').innerText = workoutState.currentReps;
 }
 
-function completeSet() {
+// function completeSet() removed (duplicate)
+
+async function finishWorkout() {
+    // Call API to mark as complete
+    try {
+        const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local time
+
+        // Disable button specific logic if needed, or show loading state
+
+        const res = await fetch(`${apiBase}/api/client/schedule/complete`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                date: todayStr,
+                exercises: workoutState.exercises // Send performance data
+            })
+        });
+
+        if (res.ok) {
+            console.log("Workout marked as complete on server");
+
+            // Clear Cache to prevent stale data on reload
+            localStorage.removeItem(getCacheKey());
+
+            // Show Success UI ONLY after server confirms
+            document.getElementById('celebration-overlay').classList.remove('hidden');
+            startConfetti();
+
+            // Update UI to show completed state
+            const startBtn = document.querySelector('a[href*="mode=workout"]');
+            if (startBtn) {
+                startBtn.innerText = "COMPLETED ✓";
+                startBtn.className = "block w-full py-3 bg-green-500 text-white text-center font-bold rounded-xl hover:bg-green-600 transition";
+                // Append view=completed to existing href
+                if (!startBtn.href.includes('view=completed')) {
+                    if (startBtn.href.includes('?')) {
+                        startBtn.href += "&view=completed";
+                    } else {
+                        startBtn.href += "?view=completed";
+                    }
+                }
+            }
+        } else {
+            console.error("Failed to mark workout complete");
+            const errText = await res.text();
+            showToast("Failed to save workout: " + errText); // Show error to user
+        }
+    } catch (e) {
+        console.error("Error finishing workout:", e);
+        showToast("Error finishing workout. Please try again.");
+    }
+}
+
+window.updateSetData = async function (exIdx, setIdx, reps, weight) {
     if (!workoutState) return;
 
-    const ex = workoutState.exercises[workoutState.currentExerciseIdx];
+    const ex = workoutState.exercises[exIdx];
+    const setNum = setIdx + 1;
+    const dateStr = new Date().toLocaleDateString('en-CA');
 
-    // Show Rest Timer
-    showRestTimer(ex.rest || 60, () => {
-        // Move to next set
-        if (workoutState.currentSet < ex.sets) {
-            workoutState.currentSet++;
-            // Parse reps if it's a range like "8-10"
-            let targetReps = ex.reps;
-            if (typeof ex.reps === 'string' && ex.reps.includes('-')) {
-                targetReps = ex.reps.split('-')[1]; // Take upper bound
-            }
-            workoutState.currentReps = parseInt(targetReps);
-            updateWorkoutUI();
+    const payload = {
+        date: dateStr,
+        workout_id: workoutState.workoutId,
+        exercise_name: ex.name,
+        set_number: setNum,
+        reps: reps,
+        weight: weight
+    };
+
+    try {
+        const res = await fetch(`${apiBase}/api/client/schedule/update_set`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast("Set updated! 💾");
+            // Update local state to reflect changes
+            workoutState.exercises[exIdx].performance[setIdx].reps = reps;
+            workoutState.exercises[exIdx].performance[setIdx].weight = weight;
         } else {
-            // Move to next exercise
-            if (workoutState.currentExerciseIdx < workoutState.exercises.length - 1) {
-                workoutState.currentExerciseIdx++;
-                workoutState.currentSet = 1;
-                const nextEx = workoutState.exercises[workoutState.currentExerciseIdx];
-                let nextReps = nextEx.reps;
-                if (typeof nextEx.reps === 'string' && nextEx.reps.includes('-')) {
-                    nextReps = nextEx.reps.split('-')[1];
-                }
-                workoutState.currentReps = parseInt(nextReps);
-                updateWorkoutUI();
+            const err = await res.text();
+            showToast("Failed to update: " + err);
+        }
+    } catch (e) {
+        console.error(e);
+        showToast("Error updating set");
+    }
+};
+
+// --- METRICS MODAL LOGIC ---
+
+let metricsChartInstance = null;
+
+function openMetricsModal(clientId = null) {
+    if (!clientId) {
+        // Try to get from client details modal dataset (most reliable source when opened from client card)
+        const clientModal = document.getElementById('client-modal');
+        if (clientModal && clientModal.dataset.clientId) {
+            clientId = clientModal.dataset.clientId;
+        } else {
+            // Fallback to checking other potential sources if client modal isn't the source
+            clientId = document.getElementById('diet-client-id')?.value ||
+                document.getElementById('assign-client-id')?.value;
+        }
+    }
+
+    if (!clientId) {
+        showToast("Error: No client selected.");
+        return;
+    }
+
+    document.getElementById('metrics-client-id').value = clientId;
+
+    // Set Client Name if available
+    const clientName = document.getElementById('modal-client-name').innerText;
+    document.getElementById('metrics-client-name').innerText = `Performance Analytics for ${clientName}`;
+
+    showModal('metrics-modal');
+
+    // Reset Chart
+    if (metricsChartInstance) {
+        metricsChartInstance.destroy();
+        metricsChartInstance = null;
+    }
+
+    // Clear search and show empty state
+    document.getElementById('metrics-exercise-search').value = "";
+    document.getElementById('metrics-search-suggestions').classList.add('hidden');
+
+    // Maybe render empty chart or auto-fetch a common exercise?
+    // Let's try to fetch "Bench Press" as a default to show something cool immediately
+    // fetchExerciseMetrics(clientId, "Bench Press (Barbell)"); 
+}
+
+const metricsSearchInput = document.getElementById('metrics-exercise-search');
+const metricsSuggestions = document.getElementById('metrics-search-suggestions');
+let metricsDebounceTimer;
+
+if (metricsSearchInput) {
+    metricsSearchInput.addEventListener('input', (e) => {
+        const query = e.target.value;
+        clearTimeout(metricsDebounceTimer);
+
+        if (query.length < 2) {
+            metricsSuggestions.classList.add('hidden');
+            return;
+        }
+
+        metricsDebounceTimer = setTimeout(() => {
+            // Use global exercises list if available
+            let options = [];
+            if (window.APP_STATE && window.APP_STATE.exercises) {
+                options = window.APP_STATE.exercises.map(ex => ex.name);
             } else {
-                // Workout complete!
-                document.getElementById('celebration-overlay').classList.remove('hidden');
-                startConfetti();
+                // Fallback to video suggestions if APP_STATE not ready (unlikely in trainer mode)
+                const datalist = document.getElementById('video-suggestions');
+                if (datalist) {
+                    options = Array.from(datalist.options).map(o => o.value);
+                }
+            }
+
+            // Deduplicate and Filter
+            const uniqueOptions = [...new Set(options)];
+            const matches = uniqueOptions.filter(name => name.toLowerCase().includes(query.toLowerCase())).slice(0, 10);
+
+            renderMetricsSuggestions(matches);
+        }, 300);
+    });
+}
+
+function renderMetricsSuggestions(matches) {
+    metricsSuggestions.innerHTML = '';
+    if (matches.length === 0) {
+        metricsSuggestions.classList.add('hidden');
+        return;
+    }
+
+    matches.forEach(name => {
+        const li = document.createElement('li');
+        li.className = "px-4 py-2 hover:bg-white/10 cursor-pointer text-sm text-gray-300";
+        li.innerText = name;
+        li.onclick = () => {
+            document.getElementById('metrics-exercise-search').value = name;
+            metricsSuggestions.classList.add('hidden');
+            const clientId = document.getElementById('metrics-client-id').value;
+            fetchExerciseMetrics(clientId, name);
+        };
+        metricsSuggestions.appendChild(li);
+    });
+    metricsSuggestions.classList.remove('hidden');
+}
+
+async function fetchExerciseMetrics(clientId, exerciseName) {
+    if (!exerciseName) return;
+
+    try {
+        const response = await fetch(`${APP_CONFIG.apiBase}/api/client/${clientId}/history?exercise_name=${encodeURIComponent(exerciseName)}`);
+        if (!response.ok) throw new Error("Failed to fetch history");
+
+        const history = await response.json();
+        renderExerciseChart(history, exerciseName);
+
+    } catch (e) {
+        console.error(e);
+        showToast("Error loading metrics.");
+    }
+}
+
+function renderExerciseChart(history, exerciseName) {
+    const ctx = document.getElementById('exerciseProgressChart');
+    if (!ctx) return;
+
+    if (metricsChartInstance) {
+        metricsChartInstance.destroy();
+    }
+
+    if (!history || history.length === 0) {
+        // Show "No Data" message on canvas?
+        // Or just an empty chart
+        showToast(`No history found for ${exerciseName}`);
+        return;
+    }
+
+    // Format Data
+    const labels = history.map(h => new Date(h.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
+    const weights = history.map(h => h.max_weight);
+    // const reps = history.map(h => h.total_reps);
+
+    metricsChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Max Weight (kg)',
+                data: weights,
+                borderColor: '#4CAF50', // Green
+                backgroundColor: 'rgba(76, 175, 80, 0.2)',
+                borderWidth: 2,
+                tension: 0.4, // Smooth curves
+                pointBackgroundColor: '#fff',
+                pointRadius: 4
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: { color: '#fff' }
+                },
+                title: {
+                    display: true,
+                    text: `${exerciseName} Progress`,
+                    color: '#fff',
+                    font: { size: 16 }
+                }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    ticks: { color: '#aaa' }
+                },
+                x: {
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    ticks: { color: '#aaa' }
+                }
             }
         }
     });
@@ -1489,48 +1950,96 @@ function showRestTimer(seconds, callback) {
 // Initialize workout state when in workout mode
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('workout-screen')) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const isCompletedView = urlParams.get('view') === 'completed';
+
+        if (isCompletedView) {
+            // Hide controls
+            const completeBtn = document.getElementById('complete-btn');
+            if (completeBtn) completeBtn.style.display = 'none';
+
+            const repBtns = document.querySelectorAll('[data-action="adjustReps"]');
+            repBtns.forEach(btn => btn.style.display = 'none');
+
+            // Show banner
+            const header = document.querySelector('#workout-screen .absolute.top-0.left-0');
+            if (header) {
+                const banner = document.createElement('div');
+                banner.className = "absolute top-20 left-1/2 transform -translate-x-1/2 bg-green-500/90 text-white px-4 py-1 rounded-full text-xs font-bold backdrop-blur-md z-50";
+                banner.innerText = "COMPLETED VIEW";
+                header.appendChild(banner);
+            }
+        }
+
         fetch(`${apiBase}/api/client/data`)
             .then(res => res.json())
             .then(user => {
                 const workout = user.todays_workout;
-                workoutState = {
-                    exercises: workout.exercises,
-                    currentExerciseIdx: 0,
-                    currentSet: 1,
-                    currentReps: parseInt(String(workout.exercises[0].reps).split('-')[1] || workout.exercises[0].reps)
-                };
 
-                // Populate Routine List
-                const list = document.getElementById('workout-routine-list');
-                if (list) {
-                    list.innerHTML = '';
-                    workout.exercises.forEach((ex, idx) => {
-                        const div = document.createElement('div');
-                        div.id = `exercise-${idx}`;
-                        div.className = "glass-card p-4 flex justify-between items-center transition duration-300 tap-effect cursor-pointer";
-                        div.onclick = () => window.switchExercise(idx);
-                        div.innerHTML = `
-                            <div class="flex items-center space-x-4">
-                                <div class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center text-xl font-bold text-gray-400 status-icon">
-                                    ${idx + 1}
-                                </div>
-                                <div>
-                                    <h4 class="font-bold text-white text-sm">${ex.name}</h4>
-                                    <p class="text-[10px] text-gray-400">${ex.sets} Sets • ${ex.reps} Reps</p>
-                                </div>
-                            </div>
-                            <div class="w-6 h-6 rounded-full border border-white/20 flex items-center justify-center">
-                                <div class="w-3 h-3 bg-green-400 rounded-full opacity-0 status-dot"></div>
-                            </div>
-                        `;
-                        list.appendChild(div);
-                    });
+                if (!workout) {
+                    // Rest Day Logic
+                    document.getElementById('exercise-name').innerText = "Rest Day";
+                    document.getElementById('exercise-target').innerText = "Take it easy and recover! 🧘";
+                    document.getElementById('workout-screen').innerHTML = `
+                        <div class="flex flex-col items-center justify-center h-screen bg-gray-900 text-white p-8 text-center">
+                            <div class="text-6xl mb-4">🧘</div>
+                            <h1 class="text-4xl font-black mb-2">Rest Day</h1>
+                            <p class="text-gray-400 mb-8">No workout scheduled for today. Enjoy your recovery!</p>
+                            <a href="/?gym_id=${gymId}&role=client" class="px-8 py-3 bg-white/10 rounded-xl font-bold hover:bg-white/20 transition">Back to Dashboard</a>
+                        </div>
+                    `;
+                    return;
                 }
 
+                // Store global user ID for cache keys
+                window.currentUserId = user.id;
+
+                workoutState = {
+                    workoutId: workout.id, // Needed for cache key
+                    exercises: workout.exercises.map(ex => ({
+                        ...ex,
+                        collapsed: false, // Init collapsed state
+                        performance: ex.performance || Array(ex.sets).fill().map(() => ({ reps: '', weight: '', completed: false }))
+                    })),
+                    currentExerciseIdx: 0,
+                    currentSet: 1,
+                    currentReps: parseInt(String(workout.exercises[0].reps).split('-')[1] || workout.exercises[0].reps),
+                    isCompletedView: isCompletedView // Store in state
+                };
+
+                // Restore from cache if available, but only if NOT completed
+                if (!workout.completed) {
+                    loadProgress();
+                } else {
+                    console.log("Workout already completed. Using DB snapshot.");
+                }
+
+                // Populate Routine List
+                // Initial empty populate, real render happens in updateWorkoutUI
                 updateWorkoutUI();
             });
     }
 });
+
+// Helper to update performance data
+window.updatePerformance = function (exIdx, setIdx, field, val) {
+    if (workoutState && workoutState.exercises[exIdx]) {
+        workoutState.exercises[exIdx].performance[setIdx][field] = val;
+        saveProgress(); // Auto-save
+    }
+}
+
+window.toggleSetComplete = function (exIdx, setIdx, event) {
+    if (event) event.stopPropagation();
+    if (!workoutState || !workoutState.exercises[exIdx]) return;
+
+    // Toggle state
+    const currentState = workoutState.exercises[exIdx].performance[setIdx].completed;
+    workoutState.exercises[exIdx].performance[setIdx].completed = !currentState;
+
+    saveProgress(); // Auto-save
+    updateWorkoutUI();
+};
 
 window.switchExercise = function (idx) {
     if (!workoutState) return;
@@ -1549,6 +2058,137 @@ window.switchExercise = function (idx) {
     updateWorkoutUI();
 }
 
+window.toggleCollapse = function (idx, event) {
+    if (event) event.stopPropagation();
+    if (!workoutState || !workoutState.exercises[idx]) return;
+
+    workoutState.exercises[idx].collapsed = !workoutState.exercises[idx].collapsed;
+    saveProgress(); // Auto-save
+    updateWorkoutUI();
+}
+
+// --- PERSISTENCE HELPERS ---
+
+function getCacheKey() {
+    // Include DATE in key to separate workouts across days
+    if (!window.currentUserId || !workoutState || !workoutState.workoutId) return null;
+    const dateStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local
+    return `gym_cache_${window.currentUserId}_workout_${workoutState.workoutId}_${dateStr}`;
+}
+
+function saveProgress() {
+    const key = getCacheKey();
+    if (!key) return;
+
+    const dataToSave = {
+        exercises: workoutState.exercises.map(ex => ({
+            id: ex.id,
+            performance: ex.performance,
+            collapsed: ex.collapsed
+        })),
+        timestamp: Date.now()
+    };
+
+    localStorage.setItem(key, JSON.stringify(dataToSave));
+}
+
+function loadProgress() {
+    const key = getCacheKey();
+    if (!key) return;
+
+    const cached = localStorage.getItem(key);
+    if (!cached) return;
+
+    try {
+        const data = JSON.parse(cached);
+
+        // Merge data
+        data.exercises.forEach((savedEx, idx) => {
+            if (workoutState.exercises[idx] && workoutState.exercises[idx].id === savedEx.id) {
+                // RESTORE ALL FIELDS (Weight, Reps, Completed)
+                if (savedEx.performance) {
+                    savedEx.performance.forEach((p, setIdx) => {
+                        if (workoutState.exercises[idx].performance[setIdx]) {
+                            workoutState.exercises[idx].performance[setIdx].weight = p.weight;
+                            workoutState.exercises[idx].performance[setIdx].reps = p.reps;
+                            workoutState.exercises[idx].performance[setIdx].completed = p.completed;
+                        }
+                    });
+                }
+                workoutState.exercises[idx].collapsed = savedEx.collapsed || false;
+            }
+        });
+        console.log("Progress fully restored from daily cache");
+    } catch (e) {
+        console.error("Failed to load progress", e);
+    }
+}
+
+function completeSet() {
+    if (!workoutState) return;
+
+    const exId = workoutState.currentExerciseIdx;
+    const setId = workoutState.currentSet - 1; // 0-indexed
+
+    // VALIDATION: Check if weight is entered
+    if (workoutState.exercises[exId] && workoutState.exercises[exId].performance[setId]) {
+        const currentPerf = workoutState.exercises[exId].performance[setId];
+
+        if (!currentPerf.weight && currentPerf.weight !== 0) {
+            showToast("Please enter weight for this set! ⚖️");
+            return;
+        }
+
+        // AUTO-FILL REPS from Main Counter
+        currentPerf.reps = workoutState.currentReps;
+        currentPerf.completed = true; // Mark as done
+
+        // AUTO-FILL NEXT SET WEIGHT
+        const nextSetPerf = workoutState.exercises[exId].performance[setId + 1];
+        if (nextSetPerf) {
+            // Only auto-fill if next set has no weight yet
+            if (!nextSetPerf.weight && nextSetPerf.weight !== 0) {
+                nextSetPerf.weight = currentPerf.weight;
+            }
+        }
+
+        saveProgress(); // Save the new data
+    }
+
+    const ex = workoutState.exercises[workoutState.currentExerciseIdx];
+
+    // Show Rest Timer
+    showRestTimer(ex.rest || 60, () => {
+        // Move to next set
+        if (workoutState.currentSet < ex.sets) {
+            workoutState.currentSet++;
+            // Parse reps if it's a range like "8-10"
+            let targetReps = ex.reps;
+            if (typeof ex.reps === 'string' && ex.reps.includes('-')) {
+                targetReps = ex.reps.split('-')[1]; // Take upper bound
+            }
+            workoutState.currentReps = parseInt(targetReps);
+            updateWorkoutUI();
+        } else {
+            // Move to next exercise
+            if (workoutState.currentExerciseIdx < workoutState.exercises.length - 1) {
+                workoutState.currentExerciseIdx++;
+                workoutState.currentSet = 1;
+                const nextEx = workoutState.exercises[workoutState.currentExerciseIdx];
+                let nextReps = nextEx.reps;
+                if (typeof nextEx.reps === 'string' && nextEx.reps.includes('-')) {
+                    nextReps = nextEx.reps.split('-')[1];
+                }
+                workoutState.currentReps = parseInt(nextReps);
+                updateWorkoutUI();
+            } else {
+                // Workout complete!
+                finishWorkout();
+            }
+        }
+    });
+}
+
 function updateWorkoutUI() {
     if (!workoutState) return;
 
@@ -1556,22 +2196,43 @@ function updateWorkoutUI() {
 
     // Update Header & Counters
     document.getElementById('exercise-name').innerText = ex.name;
-    document.getElementById('exercise-target').innerText = `Set ${workoutState.currentSet} of ${ex.sets} • Target: ${ex.reps} Reps`;
+    document.getElementById('exercise-target').innerText = `Set ${workoutState.currentSet}/${ex.sets} • Target: ${ex.reps} Reps`;
     document.getElementById('rep-counter').innerText = workoutState.currentReps;
 
     // Update Video
     const videoEl = document.getElementById('exercise-video');
     const repVideoEl = document.getElementById('rep-counter-video');
-    const newSrc = `/static/videos/${ex.video_id}.mp4?v=3`;
 
-    if (!videoEl.src.includes(newSrc)) {
+    let src = ex.video_id ? ex.video_id.trim() : '';
+
+    if (src && !src.startsWith('http') && !src.startsWith('/')) {
+        src = `/static/videos/${src}.mp4`;
+    }
+
+    const newSrc = src ? `${src}?v=${Date.now()}` : '';
+
+    // Force update to ensure we aren't stuck on old video
+    if (newSrc) {
+        // Reset error state
+        videoEl.style.border = "none";
+
+        // Add error listener to catch broken paths
+        videoEl.onerror = (e) => {
+            console.error("Video failed to load:", newSrc, e);
+            videoEl.style.border = "5px solid red"; // Visual indicator
+            showToast("Video failed to load: " + newSrc.split('/').pop());
+        };
+
         // Update Main Video
         videoEl.src = newSrc;
         videoEl.load();
+        videoEl.muted = true; // Force muted for autoplay policy
+
         const playPromise = videoEl.play();
         if (playPromise !== undefined) {
             playPromise.catch(error => {
                 console.log("Autoplay prevented:", error);
+                // Try again muted (already muted but just in case)
                 videoEl.muted = true;
                 videoEl.play();
             });
@@ -1597,24 +2258,164 @@ function updateWorkoutUI() {
             div.dataset.action = 'switchExercise';
             div.dataset.idx = idx;
 
-            div.className = `p-3 rounded-xl flex items-center mb-2 cursor-pointer transition-all ${isCurrent ? 'bg-white/10 border border-primary/50' : 'hover:bg-white/5 border border-transparent'}`;
-            // Add onclick for direct interaction if delegation fails or for legacy support
-            div.onclick = () => window.switchExercise(idx);
+            if (isCurrent) {
+                // EXPANDED ACTIVE CARD
+                // Use glass-card class + glow for distinct active state
+                div.className = `glass-card p-5 mb-6 relative overflow-visible transition-all duration-500 transform scale-[1.02] border-2 border-primary/50 shadow-2xl shadow-primary/20`;
+                div.onclick = null; // Disable collapse on click
 
-            let icon = `<div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center mr-3 text-xs text-gray-400">${idx + 1}</div>`;
-            if (isCurrent) icon = '<div class="w-8 h-8 rounded-full bg-primary text-black flex items-center justify-center mr-3 font-bold animate-pulse">▶</div>';
-            if (idx < workoutState.currentExerciseIdx) icon = '<div class="w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center mr-3 font-bold animate-pulse">✓</div>';
+                // Active Indicator (Background Glow)
+                const glow = document.createElement('div');
+                glow.className = "absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-[50px] rounded-full pointer-events-none -mr-10 -mt-10";
+                div.appendChild(glow);
 
-            div.innerHTML = `
-                <div class="flex items-center space-x-4 pointer-events-none">
-                    ${icon}
-                    <div class="flex-1">
-                        <h4 class="font-bold text-white ${isCurrent ? 'text-lg' : 'text-sm'}">${item.name}</h4>
-                        <p class="text-xs text-gray-400">${item.sets} Sets • ${item.reps} Reps</p>
+                // Generate Sets Rows
+                // Add disable logic
+                const isDisabled = workoutState.isCompletedView ? 'disabled' : '';
+                // Adjusted input styling
+                const baseInputClass = "w-full bg-transparent border-none text-white text-right font-black outline-none text-xl font-mono placeholder-white/20";
+                const inputClass = isDisabled ? `${baseInputClass} opacity-50 cursor-not-allowed` : baseInputClass;
+
+                let setsHtml = '';
+                for (let i = 0; i < item.sets; i++) {
+                    const perf = item.performance[i];
+
+                    const isSetCompleted = perf.completed;
+                    const isSetActive = (i === (workoutState.currentSet - 1));
+
+                    // Dynamic styles
+                    let rowClass = "grid grid-cols-[1.5fr,1fr,1fr] gap-4 mb-3 items-center relative z-10 transition-all duration-300 rounded-xl p-2";
+                    let currentInputClass = inputClass; // Create a copy of const inputClass
+                    let statusIcon = "";
+
+                    if (isSetCompleted) {
+                        rowClass += " bg-green-500/10 border border-green-500/20"; // Removed opacity-60
+                        statusIcon = `<div class="absolute left-2 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-black font-bold text-xs shadow-lg shadow-green-500/50 z-20">✓</div>`;
+                        currentInputClass += " cursor-not-allowed text-white opacity-80"; // Changed to text-white for visibility
+                    } else if (isSetActive) {
+                        rowClass += " bg-primary/10 border border-primary/40 ring-1 ring-primary/20"; // Active look
+                        statusIcon = `<div class="absolute left-2 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-black font-bold text-xs shadow-lg shadow-primary/50 z-20 animate-pulse">▶</div>`;
+                    } else {
+                        rowClass += " border border-transparent"; // Pending
+                    }
+
+                    // Disable inputs if completed
+                    const isInputDisabled = isDisabled || isSetCompleted ? 'disabled' : '';
+
+                    // EDIT MODE LOGIC
+                    let editBtnHtml = '';
+                    if (workoutState.isCompletedView) {
+                        // Check if this specific set is in edit mode
+                        const isEditing = perf.isEditing || false;
+
+                        if (isEditing) {
+                            // Enable inputs
+                            currentInputClass = baseInputClass + " border-b border-primary";
+                            // Save Button
+                            editBtnHtml = `
+                                <button onclick="event.stopPropagation(); window.updateSetData(${idx}, ${i}, this.closest('.grid').querySelector('input[placeholder=\\'${item.reps}\\']').value, this.closest('.grid').querySelector('input[placeholder=\\'-\\' ]').value); workoutState.exercises[${idx}].performance[${i}].isEditing = false; updateWorkoutUI();" 
+                                    class="absolute -right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-black shadow-lg z-30 hover:scale-110 transition">
+                                    💾
+                                </button>
+                            `;
+                        } else {
+                            // Edit Button
+                            editBtnHtml = `
+                                <button onclick="event.stopPropagation(); workoutState.exercises[${idx}].performance[${i}].isEditing = true; updateWorkoutUI();" 
+                                    class="absolute -right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-white/10 rounded-full flex items-center justify-center text-gray-300 shadow-lg z-30 hover:bg-white/20 hover:text-white transition">
+                                    ✏️
+                                </button>
+                            `;
+                        }
+                    }
+
+                    setsHtml += `
+                        <div class="${rowClass}">
+                            ${statusIcon}
+                            <span class="text-sm font-bold text-gray-400 tracking-widest pl-10 font-mono uppercase ${isSetActive ? 'text-primary' : ''}">Set ${i + 1}</span>
+                            <div class="flex items-center bg-black/40 border border-white/10 rounded-xl px-3 py-3 focus-within:border-primary/80 focus-within:bg-black/60 transition duration-300 shadow-inner">
+                                <input type="number" value="${perf.reps}" 
+                                    oninput="window.updatePerformance(${idx}, ${i}, 'reps', this.value)"
+                                    onclick="event.stopPropagation()"
+                                    ${workoutState.isCompletedView && !perf.isEditing ? 'disabled' : (isInputDisabled && !perf.isEditing ? 'disabled' : '')}
+                                    class="${currentInputClass}" placeholder="${item.reps}">
+                                <span class="text-[10px] text-gray-500 font-bold ml-2 mt-1 tracking-wider">REPS</span>
+                            </div>
+                            <div class="flex items-center bg-black/40 border border-white/10 rounded-xl px-3 py-3 focus-within:border-primary/80 focus-within:bg-black/60 transition duration-300 shadow-inner">
+                                <input type="number" value="${perf.weight}" 
+                                    oninput="window.updatePerformance(${idx}, ${i}, 'weight', this.value)"
+                                    onclick="event.stopPropagation()"
+                                    ${workoutState.isCompletedView && !perf.isEditing ? 'disabled' : (isInputDisabled && !perf.isEditing ? 'disabled' : '')}
+                                    class="${currentInputClass}" placeholder="-">
+                                <span class="text-[10px] text-gray-500 font-bold ml-2 mt-1 tracking-wider text-white">KG</span>
+                            </div>
+                            ${editBtnHtml}
+                        </div>
+                     `;
+                }
+
+                const isCollapsed = item.collapsed || false;
+                const chevronRotate = isCollapsed ? '-rotate-90' : 'rotate-0';
+
+                // Badge Logic
+                const isAllDetailedCompleted = item.performance.every(p => p.completed);
+                let badgeHtml = '';
+                if (isAllDetailedCompleted) {
+                    badgeHtml = `
+                    <span class="text-[10px] font-black text-white bg-green-500 px-3 py-1 rounded-full shadow-lg shadow-green-500/40 tracking-widest uppercase items-center flex gap-1">
+                        <span class="w-2 h-2 bg-white rounded-full"></span> Done
+                    </span>`;
+                } else {
+                    badgeHtml = `
+                    <span class="text-[10px] font-black text-white bg-red-500 px-3 py-1 rounded-full shadow-lg shadow-red-500/40 tracking-widest uppercase items-center flex gap-1">
+                        <span class="w-2 h-2 bg-white rounded-full animate-ping"></span> Active
+                    </span>`;
+                }
+
+                div.innerHTML += `
+                    <div class="flex items-center justify-between mb-6 pb-4 border-b border-white/10 relative z-10 cursor-pointer group"
+                        onclick="window.toggleCollapse(${idx}, event)">
+                        <div class="flex items-center space-x-4">
+                            <div class="w-12 h-12 rounded-full bg-primary text-black flex items-center justify-center font-black animate-pulse text-xl shadow-lg shadow-primary/50">▶</div>
+                            <div>
+                                <h4 class="font-black text-white text-2xl tracking-tight leading-none mb-1 drop-shadow-md">${item.name}</h4>
+                                <p class="text-xs text-primary font-bold tracking-widest uppercase opacity-90">${item.sets} Sets • ${item.reps} Target</p>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-3">
+                             ${badgeHtml}
+                            <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center transition-transform duration-300 ${chevronRotate} group-hover:bg-white/20">
+                                ▼
+                            </div>
+                        </div>
                     </div>
-                    ${isCurrent ? '<span class="text-xs font-bold text-primary uppercase tracking-wider">Active</span>' : ''}
-                </div>
-            `;
+                    
+                    <div class="space-y-2 relative z-10 transition-all duration-300 overflow-hidden ${isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[1000px] opacity-100'}">
+                        ${setsHtml}
+                    </div>
+                `;
+
+            } else {
+                // COMPACT CARD (Inactive)
+                div.className = `p-3 rounded-xl flex items-center mb-2 cursor-pointer transition-all hover:bg-white/5 border border-transparent opacity-60 hover:opacity-100`;
+                div.onclick = () => window.switchExercise(idx);
+
+                let icon = `<div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center mr-3 text-xs text-gray-400 font-bold">${idx + 1}</div>`;
+                if (idx < workoutState.currentExerciseIdx || workoutState.isCompletedView) {
+                    icon = '<div class="w-8 h-8 rounded-full bg-green-500 text-black flex items-center justify-center mr-3 font-bold">✓</div>';
+                }
+
+                div.innerHTML = `
+                    <div class="flex items-center space-x-4 pointer-events-none w-full">
+                        ${icon}
+                        <div class="flex-1">
+                            <h4 class="font-bold text-white text-sm">${item.name}</h4>
+                            <p class="text-xs text-gray-400">${item.sets} Sets • ${item.reps} Reps</p>
+                        </div>
+                        ${idx < workoutState.currentExerciseIdx ? '<span class="text-xs text-green-400 font-bold">Done</span>' : ''}
+                    </div>
+                `;
+            }
 
             // Scroll to active item
             if (isCurrent) {
@@ -1629,7 +2430,12 @@ function updateWorkoutUI() {
 
     // Update Progress Text
     const totalExercises = workoutState.exercises.length;
-    const completedExercises = workoutState.currentExerciseIdx;
+    let completedExercises = workoutState.currentExerciseIdx;
+
+    if (workoutState.isCompletedView) {
+        completedExercises = totalExercises;
+    }
+
     const progressPct = Math.round((completedExercises / totalExercises) * 100);
     const progressEl = document.getElementById('routine-progress');
     if (progressEl) progressEl.innerText = `${progressPct}% Complete`;
@@ -1637,10 +2443,16 @@ function updateWorkoutUI() {
     // Update Progress Bar
     const totalSets = workoutState.exercises.reduce((acc, curr) => acc + curr.sets, 0);
     let completedSets = 0;
-    for (let i = 0; i < workoutState.currentExerciseIdx; i++) {
-        completedSets += workoutState.exercises[i].sets;
+
+    if (workoutState.isCompletedView) {
+        completedSets = totalSets;
+    } else {
+        for (let i = 0; i < workoutState.currentExerciseIdx; i++) {
+            completedSets += workoutState.exercises[i].sets;
+        }
+        completedSets += (workoutState.currentSet - 1);
     }
-    completedSets += (workoutState.currentSet - 1);
+
     const barPct = (completedSets / totalSets) * 100;
     const barEl = document.getElementById('workout-progress-bar');
     if (barEl) barEl.style.width = `${barPct}%`;
@@ -1659,3 +2471,428 @@ function startConfetti() {
         container.appendChild(conf);
     }
 }
+
+// --- SPLIT ASSIGNMENT LOGIC ---
+
+// [Duplicate openAssignSplitModal and assignSplit functions removed]
+
+
+window.openSchedulePicker = function () {
+    const clientId = document.getElementById('assign-split-client-id').value;
+    if (clientId) {
+        // Enable Date Picker Mode
+        window.datePickerMode = true;
+        window.onDatePicked = (dateStr) => {
+            document.getElementById('assign-split-date').value = dateStr;
+            hideModal('calendar-modal');
+            window.datePickerMode = false; // Reset
+            window.onDatePicked = null;
+        };
+
+        openTrainerCalendar(clientId);
+
+        // Add a listener to reset mode if modal is closed without picking
+        const modal = document.getElementById('calendar-modal');
+        const resetMode = () => {
+            window.datePickerMode = false;
+            window.onDatePicked = null;
+            modal.removeEventListener('click', checkClose);
+        };
+
+        const checkClose = (e) => {
+            if (e.target === modal || e.target.dataset.action === 'hideModal') {
+                resetMode();
+            }
+        };
+
+        // We need to attach this safely, maybe just relying on the hideModal global function is enough if we hook into it,
+        // but for now, let's just ensure if they click X it resets.
+        // Actually, renderCalendar is called every time, so the mode state is what matters.
+        // If we close the modal, the next time we open it for normal viewing, we want mode to be false.
+        // So we should ensure it's false by default or reset it when opening normally.
+    } else {
+        showToast('No client selected');
+    }
+}
+
+// Ensure normal calendar open resets the mode
+const originalOpenTrainerCalendar = window.openTrainerCalendar;
+window.openTrainerCalendar = async (explicitClientId) => {
+    if (!window.datePickerMode) {
+        window.datePickerMode = false;
+        window.onDatePicked = null;
+    }
+    await originalOpenTrainerCalendar(explicitClientId);
+};
+
+
+
+window.fetchAndRenderSplits = async function () {
+    const trainerId = getCurrentTrainerId();
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/splits`, {
+            headers: { 'x-trainer-id': trainerId }
+        });
+
+        if (!res.ok) throw new Error("Failed to fetch splits");
+
+        const splits = await res.json();
+        const container = document.getElementById('split-library');
+        if (!container) return;
+
+        container.innerHTML = '';
+        if (splits.length === 0) {
+            container.innerHTML = '<p class="text-xs text-gray-500 italic text-center py-2">No splits created yet.</p>';
+            return;
+        }
+
+        splits.forEach(s => {
+            const div = document.createElement('div');
+            div.className = "glass-card p-3 flex justify-between items-center mb-2";
+            div.innerHTML = `
+                <div>
+                    <p class="font-bold text-sm text-white">${s.name}</p>
+                    <p class="text-[10px] text-gray-400">${s.description || 'No description'}</p>
+                    <p class="text-[10px] text-primary mt-1">${s.days_per_week} Days</p>
+                </div>
+                <div class="flex gap-2">
+                    <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition" onclick="openAssignSplitModal('${s.id}')">Assign</button>
+                    <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition" onclick="deleteSplit('${s.id}')">🗑️</button>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    } catch (e) {
+        console.error("Error loading splits:", e);
+    }
+}
+
+// Initialize splits on load if trainer
+document.addEventListener('DOMContentLoaded', () => {
+    if (APP_CONFIG.role === 'trainer') {
+        // Small delay to ensure auth is ready
+        setTimeout(() => {
+            if (window.fetchAndRenderSplits) window.fetchAndRenderSplits();
+        }, 500);
+    }
+});
+
+window.deleteSplit = async function (splitId) {
+    if (!confirm("Are you sure you want to delete this split?")) return;
+
+    const trainerId = getCurrentTrainerId();
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/splits/${splitId}`, {
+            method: 'DELETE',
+            headers: { 'x-trainer-id': trainerId }
+        });
+
+        if (res.ok) {
+            showToast("Split deleted");
+            fetchAndRenderSplits();
+        } else {
+            showToast("Failed to delete split");
+        }
+    } catch (e) {
+        console.error(e);
+        showToast("Error deleting split");
+    }
+};
+
+// --- SPLIT CREATION LOGIC ---
+
+let splitScheduleState = {
+    Monday: null,
+    Tuesday: null,
+    Wednesday: null,
+    Thursday: null,
+    Friday: null,
+    Saturday: null,
+    Sunday: null
+};
+
+window.openCreateSplitModal = function () {
+    document.getElementById('new-split-name').value = '';
+    document.getElementById('new-split-desc').value = '';
+
+    // Reset State
+    splitScheduleState = {
+        Monday: null,
+        Tuesday: null,
+        Wednesday: null,
+        Thursday: null,
+        Friday: null,
+        Saturday: null,
+        Sunday: null
+    };
+
+    renderSplitScheduleBuilder();
+    showModal('create-split-modal');
+}
+
+function renderSplitScheduleBuilder() {
+    const container = document.getElementById('split-schedule-builder');
+    if (!container) return;
+
+    container.innerHTML = '';
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+    days.forEach(day => {
+        const div = document.createElement('div');
+        div.className = "flex items-center justify-between bg-white/5 p-3 rounded-xl";
+
+        const workout = splitScheduleState[day];
+        let content = `<span class="text-gray-500 italic text-xs">Rest Day</span>`;
+
+        if (workout && workout.id) {
+            content = `<span class="text-primary font-bold text-xs">${workout.title}</span>`;
+        }
+
+        div.innerHTML = `
+            <span class="text-sm font-bold text-white w-24">${day}</span>
+            <div class="flex-1 mx-4 text-center truncate">${content}</div>
+            <button onclick="openSplitWorkoutSelector('${day}')" class="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition">
+                ${workout ? 'Change' : '+ Add Workout'}
+            </button>
+        `;
+        container.appendChild(div);
+    });
+}
+
+window.openSplitWorkoutSelector = async function (day) {
+    const trainerId = getCurrentTrainerId();
+    const res = await fetch(`${apiBase}/api/trainer/workouts`, {
+        headers: { 'x-trainer-id': trainerId }
+    });
+    const workouts = await res.json();
+
+    const overlay = document.createElement('div');
+    overlay.className = "fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4 backdrop-blur-sm";
+
+    let options = `<option value="">Rest Day</option>`;
+    workouts.forEach(w => {
+        options += `<option value="${w.id}">${w.title}</option>`;
+    });
+
+    overlay.innerHTML = `
+        <div class="bg-[#1a1a1a] w-full max-w-sm rounded-3xl p-6 border border-white/10 relative slide-up">
+            <h2 class="text-xl font-bold mb-4 text-white">Select Workout for ${day}</h2>
+            <select id="temp-split-selector" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition mb-4">
+                ${options}
+            </select>
+            <div class="flex gap-2">
+                <button id="btn-cancel-split-sel" class="flex-1 py-3 bg-white/10 text-white font-bold rounded-xl">Cancel</button>
+                <button id="btn-confirm-split-sel" class="flex-1 py-3 bg-primary text-black font-bold rounded-xl">Confirm</button>
+            </div>
+        </div>
+    `;
+
+    document.body.appendChild(overlay);
+
+    document.getElementById('btn-cancel-split-sel').onclick = () => overlay.remove();
+    document.getElementById('btn-confirm-split-sel').onclick = () => {
+        const select = document.getElementById('temp-split-selector');
+        const val = select.value;
+        const title = select.options[select.selectedIndex].text;
+
+        splitScheduleState[day] = val ? { id: val, title: title } : null;
+        renderSplitScheduleBuilder();
+        overlay.remove();
+    };
+}
+
+window.createSplit = async function () {
+    const name = document.getElementById('new-split-name').value;
+    const desc = document.getElementById('new-split-desc').value;
+
+    if (!name) {
+        showToast('Please enter a split name');
+        return;
+    }
+
+    const payload = {
+        name: name,
+        description: desc,
+        days_per_week: 7,
+        schedule: splitScheduleState
+    };
+
+    try {
+        const trainerId = getCurrentTrainerId();
+        const res = await fetch(`${apiBase}/api/trainer/splits`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-trainer-id': trainerId
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast('Split created successfully! 🎉');
+            hideModal('create-split-modal');
+            if (window.fetchAndRenderSplits) {
+                window.fetchAndRenderSplits();
+            }
+        } else {
+            const err = await res.text();
+            console.error("Create Split Error:", err);
+            showToast('Failed to create split: ' + err);
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Error creating split');
+    }
+}
+window.openAssignSplitModal = async function (splitId, explicitClientId) {
+    const trainerId = getCurrentTrainerId();
+    const clientSelect = document.getElementById('assign-split-client-selector');
+    const container = document.getElementById('assign-split-client-selector-container');
+
+    if (!container || !clientSelect) {
+        console.error("Critical Error: Client selector UI elements missing!");
+        showToast("Error: UI element missing");
+        return;
+    }
+
+    try {
+        // 1. Fetch Clients
+        console.log("Fetching clients for trainer:", trainerId);
+        const res = await fetch(`${apiBase}/api/trainer/clients`, {
+            headers: { 'x-trainer-id': trainerId }
+        });
+
+        if (!res.ok) {
+            const err = await res.text();
+            console.error("Fetch clients failed:", res.status, err);
+            showToast("Error fetching clients: " + res.status);
+        } else {
+            const clients = await res.json();
+            console.log("Clients received:", clients);
+
+            clientSelect.innerHTML = '<option value="">Select a Client</option>';
+            if (clients.length === 0) {
+                const opt = document.createElement('option');
+                opt.innerText = "No clients found";
+                opt.disabled = true;
+                clientSelect.appendChild(opt);
+            } else {
+                clients.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.innerText = c.name || c.username || "Unknown";
+                    clientSelect.appendChild(opt);
+                });
+            }
+            container.classList.remove('hidden');
+
+            // Add listener to update hidden ID
+            console.log("Attaching onchange listener to client selector");
+            clientSelect.onchange = () => {
+                console.log("Client selected:", clientSelect.value);
+                document.getElementById('assign-split-client-id').value = clientSelect.value;
+            };
+
+            // AUTO-SELECT LOGIC
+            let targetClientId = explicitClientId;
+            if (!targetClientId) {
+                // Check if we are in the context of a specific client (Client Modal)
+                const clientModal = document.getElementById('client-modal');
+
+                // DEBUG LOGS
+                if (clientModal) {
+                    console.log("[DEBUG] Client Modal Found. Hidden:", clientModal.classList.contains('hidden'));
+                    console.log("[DEBUG] Client Modal Dataset:", clientModal.dataset);
+                    console.log("[DEBUG] Dataset Client ID:", clientModal.dataset.clientId);
+                } else {
+                    console.log("[DEBUG] Client Modal NOT found in DOM");
+                }
+
+                // Check if client modal is visible AND has an ID
+                // Relaxed check: verify dataset.clientId is present, ignore hidden state for a moment if z-indexing is complex
+                if (clientModal && clientModal.dataset.clientId) {
+                    targetClientId = clientModal.dataset.clientId;
+                }
+            }
+
+            if (targetClientId) {
+                console.log("Auto-selecting client:", targetClientId);
+
+                // Verify option exists
+                const optionExists = [...clientSelect.options].some(o => o.value == targetClientId);
+                console.log("[DEBUG] Target ID exists in options?", optionExists);
+
+                if (optionExists) {
+                    clientSelect.value = targetClientId;
+                    // Manually trigger the update
+                    document.getElementById('assign-split-client-id').value = targetClientId;
+                } else {
+                    console.warn("[DEBUG] Target client ID found but not in list:", targetClientId);
+                }
+            } else {
+                // Reset hidden ID if no auto-selection
+                document.getElementById('assign-split-client-id').value = "";
+            }
+        }
+
+        // 2. Fetch Splits to populate selector (and select current)
+        const splitSelect = document.getElementById('assign-split-select');
+        const resSplits = await fetch(`${apiBase}/api/trainer/splits`, {
+            headers: { 'x-trainer-id': trainerId }
+        });
+        const splits = await resSplits.json();
+
+        splitSelect.innerHTML = '';
+        splits.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            opt.innerText = s.name;
+            if (s.id === splitId) opt.selected = true;
+            splitSelect.appendChild(opt);
+        });
+
+        showModal('assign-split-modal');
+
+    } catch (e) {
+        console.error("Error in openAssignSplitModal:", e);
+        showToast("Error loading assignment data");
+    }
+};
+
+window.assignSplit = async function () {
+    const splitId = document.getElementById('assign-split-select').value;
+    const clientId = document.getElementById('assign-split-client-selector').value;
+    const startDate = document.getElementById('assign-split-date').value;
+
+    if (!splitId || !clientId || !startDate) {
+        showToast("Please fill in all fields");
+        return;
+    }
+
+    try {
+        const trainerId = getCurrentTrainerId();
+        const res = await fetch(`${apiBase}/api/trainer/assign_split`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-trainer-id': trainerId
+            },
+            body: JSON.stringify({
+                split_id: splitId,
+                client_id: clientId,
+                start_date: startDate
+            })
+        });
+
+        if (res.ok) {
+            showToast("Split assigned successfully! 📅");
+            hideModal('assign-split-modal');
+        } else {
+            const err = await res.text();
+            showToast("Failed to assign: " + err);
+        }
+    } catch (e) {
+        console.error(e);
+        showToast("Error assigning split");
+    }
+};

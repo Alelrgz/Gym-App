@@ -14,7 +14,11 @@ export function updateWorkoutUI(workoutState) {
     // Update Video
     const videoEl = document.getElementById('exercise-video');
     const repVideoEl = document.getElementById('rep-counter-video');
-    const newSrc = `/static/videos/${ex.video_id}.mp4?v=3`;
+    let src = ex.video_id;
+    if (!src.startsWith('http') && !src.startsWith('/')) {
+        src = `/static/videos/${src}.mp4`;
+    }
+    const newSrc = `${src}?v=3`;
 
     if (!videoEl.src.includes(newSrc)) {
         // Update Main Video

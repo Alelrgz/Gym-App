@@ -11,6 +11,8 @@
     <title>Gym App Prototype</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Preload the first video for instant playback -->
     <link rel="preload" href="/static/videos/InclineDBPress.mp4?v=1" as="video" type="video/mp4">
     <link rel="stylesheet" href="/static/css/style.css?v=1">
@@ -55,7 +57,7 @@
         </div>
         <div>
             <p class="text-xs text-gray-400 uppercase tracking-wider">Welcome back</p>
-            <h2 class="font-bold text-lg">Alex</h2>
+            <h2 class="font-bold text-lg" id="client-welcome-name">Loading...</h2>
         </div>
     </div>
     <div data-action="showModal" data-target="notification-modal"
@@ -543,6 +545,8 @@
             onclick="openTrainerCalendar()">View Schedule</button>
         <button class="w-full py-3 bg-white/10 text-white font-bold rounded-xl mb-2"
             onclick="openAssignDietModal()">Manage Diet</button>
+        <button class="w-full py-3 bg-white/10 text-white font-bold rounded-xl mb-2" onclick="openMetricsModal()">View
+            Metrics 📈</button>
         <button class="w-full py-3 bg-white/10 text-white font-bold rounded-xl mb-2"
             onclick="openAssignSplitModal()">Assign Weekly Split</button>
         <button class="w-full py-3 bg-primary text-white font-bold rounded-xl">Message Client</button>
@@ -552,7 +556,7 @@
 
 </div>
 
-<div id="calendar-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
+<div id="calendar-modal" class="fixed inset-0 bg-black/80 z-[70] hidden flex items-center justify-center p-4"
     data-action="hideModal" data-target="calendar-modal">
     
 <div class="glass-card w-full max-w-md p-6 slide-up max-h-[80vh] overflow-y-auto" onclick="event.stopPropagation()" >
@@ -737,9 +741,11 @@
                 <label class="text-xs text-gray-500 uppercase font-bold ml-1">Start Date (Monday)</label>
                 <div class="relative">
 
-                <input type="date" id="assign-split-date"
-                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
-                    <button onclick="openSchedulePicker()" class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-2" title="View Schedule">
+                    <input type="date" id="assign-split-date"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+                    <button onclick="openSchedulePicker()"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-2"
+                        title="View Schedule">
                         📅
                     </button>
                 </div>
@@ -808,15 +814,65 @@
     </div>
 </div>
 
+<!-- Metrics Modal -->
+<div id="metrics-modal"
+    class="fixed inset-0 bg-black/90 z-[60] hidden flex items-center justify-center p-0 backdrop-blur-sm"
+    data-action="hideModal" data-target="metrics-modal">
+    <div class="bg-[#1a1a1a] w-full h-full rounded-none p-6 border-0 relative slide-up overflow-y-auto"
+        onclick="event.stopPropagation()">
+        <button onclick="hideModal('metrics-modal')"
+            class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+
+        <h2 class="text-2xl font-bold mb-1 text-white">Client Metrics</h2>
+        <p class="text-sm text-gray-400 mb-6" id="metrics-client-name">Performance Analytics</p>
+
+        <input type="hidden" id="metrics-client-id">
+
+        <!-- Metrics Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+            <!-- Card 1: Exercise Progress -->
+            <div class="glass-card p-4 flex flex-col h-[400px]">
+                <h3 class="text-lg font-bold text-white mb-4">Exercise Progress</h3>
+
+                <!-- Search & Filter -->
+                <div class="relative mb-4">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+                    <input type="text" id="metrics-exercise-search" placeholder="Search exercise (e.g. Bench Press)"
+                        class="w-full bg-black/20 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition placeholder-gray-500">
+                    <ul id="metrics-search-suggestions"
+                        class="absolute z-10 w-full bg-[#2a2a2a] border border-white/10 rounded-xl mt-1 max-h-40 overflow-y-auto hidden">
+                        <!-- Suggestions injected by JS -->
+                    </ul>
+                </div>
+
+                <!-- Chart Container -->
+                <div class="flex-1 w-full bg-black/20 rounded-xl p-2 relative">
+                    <canvas id="exerciseProgressChart"></canvas>
+                </div>
+            </div>
+
+            <!-- Placeholder for future cards -->
+            <div
+                class="glass-card p-4 flex flex-col h-[400px] items-center justify-center border-dashed border-white/5">
+                <span class="text-4xl mb-2">🔜</span>
+                <p class="text-gray-500 text-sm">More metrics coming soon...</p>
+            </div>
+
+        </div>
+    </div>
+</div>
+
     <script>
         window.APP_CONFIG = {
             gymId: "iron_gym",
             role: "client",
             apiBase: "http://192.168.1.55:9007",
-            isStatic: true
+            isStatic: true,
+        token: ""
         };
     </script>
-    <script src="/static/js/app.js?v=4887"></script>
+    <script src="/static/js/app.js?v=FORCE_UPDATE_5"></script>
 </body>
 
 </html>

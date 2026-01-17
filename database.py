@@ -8,6 +8,10 @@ import os
 # Default to local unified SQLite file for development
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{os.path.join(os.path.dirname(__file__), 'db', 'gym_app.db')}")
 
+# Fix for Render/Heroku: SQLAlchemy requires postgresql://, but Render might provide postgres://
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 # Adjust connection args for SQLite (not needed for Postgres)
 connect_args = {}
 if DATABASE_URL.startswith("sqlite"):

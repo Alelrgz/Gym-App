@@ -2474,89 +2474,8 @@ function startConfetti() {
 
 // --- SPLIT ASSIGNMENT LOGIC ---
 
-window.openAssignSplitModal = async function () {
-    const clientId = document.getElementById('client-modal').dataset.clientId;
-    if (!clientId) {
-        showToast('Error: No client selected');
-        return;
-    }
+// [Duplicate openAssignSplitModal and assignSplit functions removed]
 
-    document.getElementById('assign-split-client-id').value = clientId;
-
-    // Fetch splits
-    try {
-        const trainerId = getCurrentTrainerId();
-        const res = await fetch(`${apiBase}/api/trainer/splits`, {
-            headers: { 'x-trainer-id': trainerId }
-        });
-        const splits = await res.json();
-
-        const select = document.getElementById('assign-split-select');
-        select.innerHTML = '';
-
-        if (splits.length === 0) {
-            const option = document.createElement('option');
-            option.text = "No splits available";
-            select.appendChild(option);
-        } else {
-            splits.forEach(s => {
-                const option = document.createElement('option');
-                option.value = s.id;
-                option.text = s.name;
-                select.appendChild(option);
-            });
-        }
-
-        // Set default date to next Monday
-        const today = new Date();
-        const nextMonday = new Date(today);
-        nextMonday.setDate(today.getDate() + (1 + 7 - today.getDay()) % 7 || 7);
-        document.getElementById('assign-split-date').value = nextMonday.toISOString().split('T')[0];
-
-        showModal('assign-split-modal');
-    } catch (e) {
-        console.error("Error fetching splits:", e);
-        showToast('Failed to load splits');
-    }
-}
-
-window.assignSplit = async function () {
-    const clientId = document.getElementById('assign-split-client-id').value;
-    const splitId = document.getElementById('assign-split-select').value;
-    const startDate = document.getElementById('assign-split-date').value;
-
-    if (!clientId || !splitId || !startDate) {
-        showToast('Please fill in all fields');
-        return;
-    }
-
-    try {
-        const trainerId = getCurrentTrainerId();
-        const res = await fetch(`${apiBase}/api/trainer/assign_split`, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'x-trainer-id': trainerId
-            },
-            body: JSON.stringify({
-                client_id: clientId,
-                split_id: splitId,
-                start_date: startDate
-            })
-        });
-
-        if (res.ok) {
-            showToast('Split assigned successfully! 📅');
-            hideModal('assign-split-modal');
-        } else {
-            const err = await res.text();
-            showToast('Failed: ' + err);
-        }
-    } catch (e) {
-        console.error(e);
-        showToast('Error assigning split');
-    }
-}
 
 window.openSchedulePicker = function () {
     const clientId = document.getElementById('assign-split-client-id').value;
@@ -2825,7 +2744,7 @@ window.createSplit = async function () {
         showToast('Error creating split');
     }
 }
-window.openAssignSplitModal = async function (splitId) {
+window.openAssignSplitModal = async function (splitId, explicitClientId) {
     const trainerId = getCurrentTrainerId();
     const clientSelect = document.getElementById('assign-split-client-selector');
     const container = document.getElementById('assign-split-client-selector-container');
@@ -2851,24 +2770,68 @@ window.openAssignSplitModal = async function (splitId) {
             const clients = await res.json();
             console.log("Clients received:", clients);
 
-            if (!Array.isArray(clients)) {
-                console.error("Clients is not an array:", clients);
-                showToast("Invalid client data received");
+            clientSelect.innerHTML = '<option value="">Select a Client</option>';
+            if (clients.length === 0) {
+                const opt = document.createElement('option');
+                opt.innerText = "No clients found";
+                opt.disabled = true;
+                clientSelect.appendChild(opt);
             } else {
-                clientSelect.innerHTML = '<option value="">Select a Client</option>';
-                if (clients.length === 0) {
-                    const opt = document.createElement('option');
-                    opt.innerText = "No clients found";
-                    opt.disabled = true;
-                    clientSelect.appendChild(opt);
-                }
                 clients.forEach(c => {
                     const opt = document.createElement('option');
                     opt.value = c.id;
                     opt.innerText = c.name || c.username || "Unknown";
                     clientSelect.appendChild(opt);
                 });
-                container.classList.remove('hidden');
+            }
+            container.classList.remove('hidden');
+
+            // Add listener to update hidden ID
+            console.log("Attaching onchange listener to client selector");
+            clientSelect.onchange = () => {
+                console.log("Client selected:", clientSelect.value);
+                document.getElementById('assign-split-client-id').value = clientSelect.value;
+            };
+
+            // AUTO-SELECT LOGIC
+            let targetClientId = explicitClientId;
+            if (!targetClientId) {
+                // Check if we are in the context of a specific client (Client Modal)
+                const clientModal = document.getElementById('client-modal');
+
+                // DEBUG LOGS
+                if (clientModal) {
+                    console.log("[DEBUG] Client Modal Found. Hidden:", clientModal.classList.contains('hidden'));
+                    console.log("[DEBUG] Client Modal Dataset:", clientModal.dataset);
+                    console.log("[DEBUG] Dataset Client ID:", clientModal.dataset.clientId);
+                } else {
+                    console.log("[DEBUG] Client Modal NOT found in DOM");
+                }
+
+                // Check if client modal is visible AND has an ID
+                // Relaxed check: verify dataset.clientId is present, ignore hidden state for a moment if z-indexing is complex
+                if (clientModal && clientModal.dataset.clientId) {
+                    targetClientId = clientModal.dataset.clientId;
+                }
+            }
+
+            if (targetClientId) {
+                console.log("Auto-selecting client:", targetClientId);
+
+                // Verify option exists
+                const optionExists = [...clientSelect.options].some(o => o.value == targetClientId);
+                console.log("[DEBUG] Target ID exists in options?", optionExists);
+
+                if (optionExists) {
+                    clientSelect.value = targetClientId;
+                    // Manually trigger the update
+                    document.getElementById('assign-split-client-id').value = targetClientId;
+                } else {
+                    console.warn("[DEBUG] Target client ID found but not in list:", targetClientId);
+                }
+            } else {
+                // Reset hidden ID if no auto-selection
+                document.getElementById('assign-split-client-id').value = "";
             }
         }
 

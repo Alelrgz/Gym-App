@@ -10,6 +10,7 @@ import bcrypt
 from jose import jwt
 from datetime import datetime, timedelta
 import os
+from typing import Optional
 
 # Setup
 templates = Jinja2Templates(directory="templates")
@@ -54,26 +55,61 @@ async def show_login(request: Request):
 
 # --- LOGIN POST ---
 @simple_auth_router.post("/login")
-async def do_login(
-    request: Request,
-    username: str = Form(...),
-    password: str = Form(...),
-    db: Session = Depends(get_db)
-):
-    # Find user
-    user = db.query(User).filter(User.username == username).first()
+async def do_login(request: Request, db: Session = Depends(get_db)):
+    # 1. Manually parse body based on Content-Type
+    content_type = request.headers.get("Content-Type", "")
+    username = None
+    password = None
+    is_json = False
+
+    try:
+        if "application/json" in content_type:
+            is_json = True
+            body = await request.json()
+            username = body.get("username")
+            password = body.get("password")
+        else:
+            # Assume Form
+            form = await request.form()
+            username = form.get("username")
+            password = form.get("password")
+    except Exception as e:
+        # Parsing failed
+        pass
+
+    # 2. Authenticate
+    user = None
+    if username:
+        user = db.query(User).filter(User.username == username).first()
     
     if not user or not verify_password(password, user.hashed_password):
+        error_msg = "Invalid username or password"
+        if is_json:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=401, content={"detail": error_msg})
+        
         return templates.TemplateResponse("login.html", {
             "request": request,
-            "error": "Invalid username or password",
+            "error": error_msg,
             "gym_id": "iron_gym",
             "role": "client",
             "mode": "auth"
         })
     
-    # Create token and redirect
+    # 3. Success - Create token
     token = create_token(user.username, user.role)
+    
+    # 4. Return response based on client type
+    if is_json:
+        from fastapi.responses import JSONResponse
+        return JSONResponse(content={
+            "access_token": token,
+            "token_type": "bearer",
+            "role": user.role,
+            "username": user.username
+        })
+    
+    # Default: Browser Redirect
     response = RedirectResponse(url=f"/?role={user.role}", status_code=302)
     response.set_cookie(key="access_token", value=token, httponly=True)
     return response

@@ -13,8 +13,25 @@ services:
           type: redis
           name: gym-redis
           property: connectionString
+      - key: DATABASE_URL
+        fromService:
+          type: psql
+          name: gym-db
+          property: connectionString
 
   - type: redis
     name: gym-redis
     plan: free # or starter for production
     ipAllowList: [] # internal access only
+
+  - type: psql
+    name: gym-db
+    plan: free
+    bgUser: admin
+    bgPassword: password
+    envVars:
+      - key: POSTGRES_USER
+        value: gym_user
+      - key: POSTGRES_DB
+        value: gym_db
+
