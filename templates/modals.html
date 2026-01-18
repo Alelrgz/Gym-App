@@ -340,24 +340,74 @@
 <div id="profile-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
     data-action="hideModal" data-target="profile-modal">
     {% call card(classes="w-full max-w-sm p-6 slide-up") %}
-    <div class="flex justify-between items-center mb-4">
-        <h3 class="font-bold text-lg text-white">Settings</h3>
+    <div class="flex justify-between items-center mb-6">
+        <h3 class="font-bold text-lg text-white">Trainer Profile</h3>
         <button data-action="hideModal" data-target="profile-modal" class="text-gray-400">✕</button>
     </div>
-    <div class="space-y-4">
-        <div class="flex justify-between items-center">
-            <span class="text-sm text-gray-300">Dark Mode</span>
-            <div class="w-10 h-6 bg-green-500 rounded-full relative">
-                <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+
+    <div class="space-y-6">
+        <!-- Trainer Data -->
+        <div class="bg-white/5 p-4 rounded-xl border border-white/5">
+            <div class="flex items-center space-x-3 mb-3">
+                <div
+                    class="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center text-primary text-xl font-bold">
+                    T
+                </div>
+                <div>
+                    <p class="text-white font-bold" id="profile-name">Loading...</p>
+                    <p class="text-xs text-gray-400" id="profile-email">Loading...</p>
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-2 mt-3">
+                <div class="bg-black/20 p-2 rounded-lg text-center">
+                    <p class="text-[10px] text-gray-500 uppercase">Clients</p>
+                    <p class="text-white font-bold" id="profile-client-count">-</p>
+                </div>
+                <div class="bg-black/20 p-2 rounded-lg text-center">
+                    <p class="text-[10px] text-gray-500 uppercase">Role</p>
+                    <p class="text-primary font-bold">Trainer</p>
+                </div>
             </div>
         </div>
-        <div class="flex justify-between items-center">
-            <span class="text-sm text-gray-300">Notifications</span>
-            <div class="w-10 h-6 bg-green-500 rounded-full relative">
-                <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+
+        <!-- Personal Workout -->
+        <div>
+            <h4 class="text-xs font-bold text-gray-500 uppercase mb-2 ml-1">My Training</h4>
+            <button
+                class="w-full flex items-center justify-between bg-white/5 hover:bg-white/10 p-4 rounded-xl transition group tap-effect"
+                onclick="alert('My Workout feature coming soon!')">
+                <div class="flex items-center space-x-3">
+                    <span class="text-2xl">💪</span>
+                    <div class="text-left">
+                        <p class="text-white font-bold text-sm">My Workout</p>
+                        <p class="text-xs text-gray-400">Track your own progress</p>
+                    </div>
+                </div>
+                <span class="text-gray-500 group-hover:text-white transition">→</span>
+            </button>
+        </div>
+
+        <!-- Settings -->
+        <div>
+            <h4 class="text-xs font-bold text-gray-500 uppercase mb-2 ml-1">App Settings</h4>
+            <div class="space-y-3">
+                <div class="flex justify-between items-center bg-white/5 p-3 rounded-xl">
+                    <span class="text-sm text-gray-300">Dark Mode</span>
+                    <div class="w-10 h-6 bg-green-500 rounded-full relative">
+                        <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center bg-white/5 p-3 rounded-xl">
+                    <span class="text-sm text-gray-300">Notifications</span>
+                    <div class="w-10 h-6 bg-green-500 rounded-full relative">
+                        <div class="absolute right-1 top-1 w-4 h-4 bg-white rounded-full"></div>
+                    </div>
+                </div>
             </div>
         </div>
-        <button onclick="logout()" class="w-full py-3 bg-red-500/20 text-red-400 font-bold rounded-xl mt-4">Log
+
+        <button onclick="logout()"
+            class="w-full py-3 bg-red-500/10 hover:bg-red-500/20 text-red-400 font-bold rounded-xl border border-red-500/20 transition">Log
             Out</button>
     </div>
     {% endcall %}

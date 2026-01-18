@@ -594,12 +594,44 @@ async function init() {
             const trainerRes = await fetch(`${apiBase}/api/trainer/data?limit_cache=${Date.now()}`);
             const data = await trainerRes.json();
 
-            // Update Stats
             if (document.getElementById('active-clients-count')) {
                 document.getElementById('active-clients-count').innerText = data.active_clients;
             }
             if (document.getElementById('at-risk-clients-count')) {
                 document.getElementById('at-risk-clients-count').innerText = data.at_risk_clients;
+            }
+
+            // --- TRAINER PROFILE & NOTES ---
+            // Populate Profile Modal
+            const tProfileName = document.getElementById('profile-name');
+            const tProfileEmail = document.getElementById('profile-email');
+            const tProfileClientCount = document.getElementById('profile-client-count');
+
+            if (tProfileName) tProfileName.innerText = username;
+            if (tProfileEmail) tProfileEmail.innerText = `${username.toLowerCase().replace(/\s+/g, '')}@irongym.com`; // Mock email if not available
+            if (tProfileClientCount) tProfileClientCount.innerText = data.active_clients;
+
+            // Simple Quick Notes Logic (LocalStorage)
+            const notesArea = document.getElementById('trainer-notes');
+            if (notesArea) {
+                // Load saved notes
+                const savedNotes = localStorage.getItem(`trainer_notes_${username}`);
+                if (savedNotes) notesArea.value = savedNotes;
+
+                // Auto-save logic
+                let saveTimeout;
+                notesArea.addEventListener('input', () => {
+                    const indicator = document.getElementById('notes-saved-indicator');
+                    if (indicator) indicator.style.opacity = '0';
+
+                    clearTimeout(saveTimeout);
+                    saveTimeout = setTimeout(() => {
+                        localStorage.setItem(`trainer_notes_${username}`, notesArea.value);
+                        if (indicator) {
+                            indicator.style.opacity = '1';
+                        }
+                    }, 1000); // Save after 1 second of inactivity
+                });
             }
 
             // Store and render clients

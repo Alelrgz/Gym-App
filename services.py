@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta
 from data import GYMS_DB, CLIENT_DATA, TRAINER_DATA, OWNER_DATA, LEADERBOARD_DATA, EXERCISE_LIBRARY, WORKOUTS_DB, SPLITS_DB
 from models import GymConfig, ClientData, TrainerData, OwnerData, LeaderboardData, WorkoutAssignment, AssignDietRequest, ClientProfileUpdate, ExerciseTemplate
 from database import get_db_session, Base, engine
-from models_orm import ExerciseORM, WorkoutORM, WeeklySplitORM, UserORM, ClientProfileORM, ClientScheduleORM, ClientDietSettingsORM, ClientExerciseLogORM, ClientDietLogORM
+from models_orm import ExerciseORM, WorkoutORM, WeeklySplitORM, UserORM, ClientProfileORM, ClientScheduleORM, ClientDietSettingsORM, ClientExerciseLogORM, ClientDietLogORM, TrainerScheduleORM
 from auth import verify_password, get_password_hash
 
 # Create tables (ensures unified DB is initialized)
@@ -768,6 +768,19 @@ class UserService:
             at_risk_count = 0
             today = date.today()
 
+            # Fetch Trainer Schedule
+            schedule_orm = db.query(TrainerScheduleORM).filter(TrainerScheduleORM.trainer_id == trainer_id).all()
+            schedule = []
+            for s in schedule_orm:
+                schedule.append({
+                    "id": str(s.id),
+                    "date": s.date,
+                    "time": s.time,
+                    "title": s.title,
+                    "subtitle": s.subtitle or "",
+                    "type": s.type
+                })
+
             for c in clients_orm:
                 # Fetch profile
                 profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == c.id).first()
@@ -822,7 +835,8 @@ class UserService:
                 clients=clients, 
                 video_library=video_library,
                 active_clients=active_count,
-                at_risk_clients=at_risk_count
+                at_risk_clients=at_risk_count,
+                schedule=schedule
             )
         finally:
             db.close()
@@ -1370,6 +1384,47 @@ class UserService:
                 "logs": logs,
                 "warnings": fail_count > 0
             }
+        finally:
+            db.close()
+
+    def add_trainer_event(self, event_data: dict, trainer_id: str):
+        db = get_db_session()
+        try:
+            new_event = TrainerScheduleORM(
+                trainer_id=trainer_id,
+                date=event_data["date"],
+                time=event_data["time"],
+                title=event_data["title"],
+                subtitle=event_data.get("subtitle"),
+                type=event_data["type"]
+            )
+            db.add(new_event)
+            db.commit()
+            db.refresh(new_event)
+            return {"status": "success", "event_id": new_event.id}
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to add event: {str(e)}")
+        finally:
+            db.close()
+
+    def remove_trainer_event(self, event_id: str, trainer_id: str):
+        db = get_db_session()
+        try:
+            event = db.query(TrainerScheduleORM).filter(
+                TrainerScheduleORM.id == int(event_id),
+                TrainerScheduleORM.trainer_id == trainer_id
+            ).first()
+            
+            if not event:
+                raise HTTPException(status_code=404, detail="Event not found")
+                
+            db.delete(event)
+            db.commit()
+            return {"status": "success", "message": "Event deleted"}
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to delete event: {str(e)}")
         finally:
             db.close()
 

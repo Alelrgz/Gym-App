@@ -1,0 +1,336 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-4 pb-24">
+    <!-- Header -->
+    <div class="flex justify-between items-start mb-6">
+        <div>
+            <p class="text-xs text-white/60 uppercase tracking-wider">My Profile</p>
+            <h2 class="text-2xl font-bold" id="personal-name">Loading...</h2>
+        </div>
+        <!-- Back Button -->
+        <a href="{{ 'trainer.html' if static_build else '/?gym_id=' + gym_id + '&role=trainer' }}"
+            class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect cursor-pointer">
+            ←
+        </a>
+    </div>
+
+    <!-- Personal Stats Grid -->
+    <div class="bento-grid mb-6">
+        <div class="glass-card p-4 flex flex-col items-center justify-center">
+            <span class="text-3xl font-bold text-primary" id="personal-workouts">0</span>
+            <span class="text-[10px] text-white/50 uppercase">Workouts</span>
+        </div>
+        <div class="glass-card p-4 flex flex-col items-center justify-center">
+            <span class="text-3xl font-bold text-green-400" id="personal-streak">0</span>
+            <span class="text-[10px] text-white/50 uppercase">Day Streak</span>
+        </div>
+    </div>
+
+    <!-- Calendar / Schedule Section -->
+    <div class="glass-card p-4 rounded-2xl mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <div class="flex items-center space-x-2">
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Schedule</h3>
+            </div>
+
+            <div class="flex items-center space-x-2">
+                <button onclick="changeWeek(-1)"
+                    class="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70">←</button>
+                <span class="text-xs text-white/40 min-w-[3rem] text-center" id="month-label">...</span>
+                <button onclick="changeWeek(1)"
+                    class="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70">→</button>
+            </div>
+        </div>
+
+        <div class="text-xs text-center font-mono mb-2 text-white/50 uppercase tracking-widest" id="current-full-date">
+        </div>
+
+        <!-- Interactive Weekly Strip -->
+        <div class="grid grid-cols-7 gap-1 mb-4 text-xs text-center font-mono" id="calendar-strip">
+            <!-- Dynamic Content -->
+        </div>
+
+        <!-- Hours / Agenda -->
+        <div class="space-y-3" id="schedule-container">
+            <!-- Dynamic Content -->
+        </div>
+    </div>
+
+    <!-- Personal Notes -->
+    <div class="glass-card p-4 rounded-2xl">
+        <div class="flex justify-between items-center mb-2">
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Personal Notes</h3>
+            <span class="text-[10px] text-green-400 opacity-0 transition-opacity duration-500"
+                id="personal-notes-saved-indicator">Saved</span>
+        </div>
+        <textarea id="personal-notes"
+            class="w-full bg-black/20 text-white text-sm rounded-xl p-3 border border-white/5 focus:border-white/20 outline-none resize-none h-32 placeholder-white/20 transition"
+            placeholder="Journal your progress, ideas, or training logs..."></textarea>
+    </div>
+</div>
+
+<!-- Add Event Modal -->
+<div id="add-event-modal"
+    class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 backdrop-blur-sm z-[60]">
+    <div class="glass-card w-full max-w-sm mx-4 p-6 rounded-2xl relative">
+        <button onclick="document.getElementById('add-event-modal').classList.add('hidden')"
+            class="absolute top-4 right-4 text-white/50 hover:text-white">✕</button>
+        <h3 class="text-xl font-bold mb-4 text-center">Add Event</h3>
+
+        <form id="add-event-form" class="space-y-4">
+            <div>
+                <label class="text-xs text-gray-400 uppercase">Title</label>
+                <input type="text" name="title" required
+                    class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none"
+                    placeholder="e.g. Client Consultation">
+            </div>
+            <div>
+                <label class="text-xs text-gray-400 uppercase">Subtitle / Details</label>
+                <input type="text" name="subtitle"
+                    class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none"
+                    placeholder="e.g. John Doe - Leg Day">
+            </div>
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-gray-400 uppercase">Time</label>
+                    <input type="time" name="time" required
+                        class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 uppercase">Type</label>
+                    <select name="type"
+                        class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none">
+                        <option value="personal">Personal</option>
+                        <option value="consultation">Consultation</option>
+                        <option value="class">Class</option>
+                    </select>
+                </div>
+            </div>
+            <input type="hidden" name="date" id="event-date-input">
+
+            <button type="submit"
+                class="w-full py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition text-center flex items-center justify-center">
+                Add to Schedule
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+    let currentSchedule = [];
+    const username = localStorage.getItem('username') || 'Trainer';
+
+    // Calendar State
+    let currentWeekMonday = new Date();
+    const day = currentWeekMonday.getDay() || 7;
+    if (day !== 1) currentWeekMonday.setHours(-24 * (day - 1));
+    currentWeekMonday.setHours(0, 0, 0, 0);
+
+    const toLocalISO = (d) => {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
+    let selectedDateStr = toLocalISO(new Date());
+
+    // Initialize Personal Page Logic
+    document.addEventListener('DOMContentLoaded', async () => {
+        // Name
+        const nameEl = document.getElementById('personal-name');
+        if (nameEl) nameEl.textContent = username;
+
+        // Fetch Data
+        await fetchTrainerData();
+
+        // Notes Logic
+        const notesArea = document.getElementById('personal-notes');
+        if (notesArea) {
+            const savedNotes = localStorage.getItem(`personal_notes_${username}`);
+            if (savedNotes) notesArea.value = savedNotes;
+
+            let saveTimeout;
+            notesArea.addEventListener('input', () => {
+                const indicator = document.getElementById('personal-notes-saved-indicator');
+                if (indicator) indicator.style.opacity = '0';
+
+                clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => {
+                    localStorage.setItem(`personal_notes_${username}`, notesArea.value);
+                    if (indicator) indicator.style.opacity = '1';
+                }, 1000);
+            });
+        }
+    });
+
+    async function fetchTrainerData() {
+        try {
+            const res = await fetch('/api/trainer/data');
+            const data = await res.json();
+
+            if (data.schedule) {
+                document.getElementById('personal-workouts').innerText = data.schedule.filter(e => e.type === 'personal').length;
+            }
+
+            currentSchedule = data.schedule || [];
+
+            renderCalendarStrip();
+            renderSchedule(selectedDateStr);
+
+        } catch (e) {
+            console.error("Error fetching trainer data:", e);
+        }
+    }
+
+    function changeWeek(offset) {
+        currentWeekMonday.setDate(currentWeekMonday.getDate() + (offset * 7));
+        renderCalendarStrip();
+    }
+
+    function renderCalendarStrip() {
+        const daysContainer = document.getElementById('calendar-strip');
+        if (!daysContainer) return;
+
+        daysContainer.innerHTML = '';
+
+        const monthLabel = document.getElementById('month-label');
+        if (monthLabel) monthLabel.innerText = currentWeekMonday.toLocaleDateString('en-US', { month: 'short' });
+
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(currentWeekMonday);
+            d.setDate(currentWeekMonday.getDate() + i);
+
+            const dateStr = toLocalISO(d);
+            const isSelected = dateStr === selectedDateStr;
+            const isToday = dateStr === toLocalISO(new Date());
+
+            const div = document.createElement('div');
+            div.className = `flex flex-col items-center p-2 rounded cursor-pointer transition ${isSelected ? 'bg-white/10 text-white' : 'text-white/40 hover:bg-white/5'}`;
+            if (isToday && !isSelected) div.classList.add('border', 'border-white/10');
+
+            const dayName = d.toLocaleDateString('en-US', { weekday: 'narrow' });
+            const dayNum = d.getDate();
+
+            const hasEvents = currentSchedule.some(e => e.date === dateStr);
+            const dot = hasEvents ? `<div class="w-1 h-1 rounded-full bg-primary mt-1"></div>` : '';
+
+            div.innerHTML = `<span class="opacity-50">${dayName}</span><span>${dayNum}</span>${dot}`;
+
+            div.onclick = () => {
+                selectedDateStr = dateStr;
+                renderCalendarStrip();
+                renderSchedule(dateStr);
+            };
+
+            daysContainer.appendChild(div);
+        }
+    }
+
+    function renderSchedule(dateStr) {
+        const container = document.getElementById('schedule-container');
+        if (!container) return;
+
+        const [y, m, d] = dateStr.split('-').map(Number);
+        const dateObj = new Date(y, m - 1, d);
+        document.getElementById('current-full-date').innerText = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+
+        container.innerHTML = '';
+
+        const dayEvents = currentSchedule.filter(e => e.date === dateStr);
+        dayEvents.sort((a, b) => a.time.localeCompare(b.time));
+
+        dayEvents.forEach(s => {
+            const div = document.createElement('div');
+            div.className = "flex justify-between items-center bg-white/5 border border-white/5 rounded-xl p-3 slide-up group relative";
+
+            let colorClass = "text-blue-400 bg-blue-500/20";
+            if (s.type === 'personal') colorClass = "text-green-400 bg-green-500/20";
+            if (s.type === 'class') colorClass = "text-yellow-400 bg-yellow-500/20";
+
+            let [h, m] = s.time.split(':');
+            let ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12;
+            h = h ? h : 12;
+
+            div.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 rounded-lg ${colorClass} flex flex-col items-center justify-center">
+                        <span class="font-bold text-lg leading-none">${h}</span>
+                        <span class="text-[9px] uppercase">${ampm}</span>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-sm text-white">${s.title}</h4>
+                        <p class="text-xs text-white/50">${s.subtitle}</p>
+                    </div>
+                </div>
+                <button onclick="deleteEvent('${s.id}')" class="text-red-500 opacity-0 group-hover:opacity-100 transition p-2 hover:bg-white/10 rounded cursor-pointer z-10">
+                    ✕
+                </button>
+             `;
+            container.appendChild(div);
+        });
+
+        // Add Button (Free Slot)
+        const addDiv = document.createElement('div');
+        addDiv.className = "flex items-center justify-center space-x-3 p-3 rounded-xl border border-white/20 border-dashed hover:bg-white/5 transition cursor-pointer group py-4";
+        addDiv.onclick = () => openAddModal(dateStr);
+        addDiv.innerHTML = `
+             <div class="flex items-center justify-center text-white/50 group-hover:text-white transition">
+                <span class="text-2xl font-light mr-2">+</span>
+                <span class="font-bold text-sm text-white/60 group-hover:text-white transition">Free Slot</span>
+            </div>
+        `;
+        container.appendChild(addDiv);
+    }
+
+    function openAddModal(dateStr) {
+        document.getElementById('event-date-input').value = dateStr;
+        document.getElementById('add-event-modal').classList.remove('hidden');
+    }
+
+    document.getElementById('add-event-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+
+        try {
+            const res = await fetch('/api/trainer/events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (res.ok) {
+                await fetchTrainerData();
+                document.getElementById('add-event-modal').classList.add('hidden');
+                e.target.reset();
+            } else {
+                const errText = await res.text();
+                if (res.status === 404) {
+                    alert("Still getting 404. This is unexpected after a restart. The route might be misconfigured.");
+                } else {
+                    alert(`Failed to add event: ${errText} (Status: ${res.status})`);
+                }
+            }
+        } catch (err) {
+            console.error(err);
+            alert("Network Error: " + err.message);
+        }
+    });
+
+    async function deleteEvent(id) {
+        if (!confirm("Delete this event?")) return;
+
+        try {
+            const res = await fetch(`/api/trainer/events/${id}`, { method: 'DELETE' });
+            if (res.ok) {
+                await fetchTrainerData();
+            }
+        } catch (e) {
+            console.error(e);
+        }
+    }
+</script>
+{% endblock %}

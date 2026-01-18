@@ -132,3 +132,15 @@ class ClientExerciseLogORM(Base):
     weight = Column(Float)
     metric_type = Column(String, default="weight_reps") 
 
+class TrainerScheduleORM(Base):
+    __tablename__ = "trainer_schedule"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    trainer_id = Column(String, ForeignKey("users.id"), index=True)
+    
+    date = Column(String, index=True) # YYYY-MM-DD
+    time = Column(String) # HH:MM AM/PM
+    title = Column(String)
+    subtitle = Column(String, nullable=True)
+    type = Column(String) # consultation, class, etc 
+

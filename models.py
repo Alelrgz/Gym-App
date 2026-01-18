@@ -103,6 +103,7 @@ class ClientProfileUpdate(BaseModel):
     password: Optional[str] = None
 
 # --- TRAINER ---
+
 class ClientSummary(BaseModel):
     id: str
     name: str
@@ -117,11 +118,20 @@ class Video(BaseModel):
     type: str
     thumb: str
 
+class TrainerEvent(BaseModel):
+    id: str
+    date: str # YYYY-MM-DD
+    time: str # HH:MM AM/PM
+    title: str
+    subtitle: str
+    type: str # 'consultation', 'class', 'personal', 'other'
+
 class TrainerData(BaseModel):
     clients: List[ClientSummary]
     video_library: List[Video]
     active_clients: int
     at_risk_clients: int
+    schedule: Optional[List[TrainerEvent]] = []
 
 # --- OWNER ---
 class Activity(BaseModel):

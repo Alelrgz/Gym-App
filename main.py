@@ -5,7 +5,7 @@ import logging
 from dotenv import load_dotenv
 
 load_dotenv()
-# Trigger reload v6.1
+# Trigger reload v6.2 - forcing reload for routes
 
 # Set up logging to see errors in the console
 logging.basicConfig(level=logging.INFO)
@@ -147,13 +147,6 @@ async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "cli
         "token": token
     })
 
-if __name__ == "__main__":
-    # Start the file watcher
-    try:
-        start_file_watcher()
-    except Exception as e:
-        logger.warning(f"File watcher failed to start: {e}")
-    
     port = int(os.environ.get("PORT", 9007))
     logger.info(f"Starting server on port {port}...")
     
@@ -161,3 +154,32 @@ if __name__ == "__main__":
         uvicorn.run("main:app", host="0.0.0.0", port=port, log_level="info", reload=True)
     except Exception as e:
         logger.error(f"Failed to start uvicorn: {e}")
+
+# --- DIRECT INJECTION OF ROUTES TO FIX 404 ---
+from services import UserService, get_user_service # Import dependencies
+from models_orm import UserORM # Import UserORM
+from auth import get_current_user # Import auth dependency
+from fastapi import Depends
+
+@app.post("/api/trainer/events")
+async def add_trainer_event_direct(
+    event_data: dict,
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    print(f"DEBUG: Hit add_trainer_event_direct for user {current_user.id}")
+    return service.add_trainer_event(event_data, current_user.id)
+
+@app.delete("/api/trainer/events/{event_id}")
+async def delete_trainer_event_direct(
+    event_id: str,
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    print(f"DEBUG: Hit delete_trainer_event_direct for {event_id}")
+    return service.remove_trainer_event(event_id, current_user.id)
+# ---------------------------------------------
+
+@app.get("/trainer/personal", response_class=HTMLResponse)
+async def read_trainer_personal(request: Request, gym_id: str = "default"):
+    return templates.TemplateResponse("trainer_personal.html", {"request": request, "gym_id": gym_id, "role": "trainer", "mode": "personal"})

@@ -26,62 +26,76 @@
 
 <body class="bg-gray-900 flex flex-col min-h-screen w-full pb-24">
 
-    <!-- DEBUG CONTROLS -->
-    <div class="fixed top-6 left-6 text-white/30 text-[10px] font-mono tracking-widest uppercase z-50">
-        <p class="mb-2">Prototype Config v5.5</p>
-        <div class="flex flex-col space-y-2">
-            <div class="space-x-2">
-                <a href="/?gym_id=iron_gym&role={{ role }}" class="hover:text-white transition">Iron Gym</a>
-                <a href="/?gym_id=zen_yoga&role={{ role }}" class="hover:text-white transition">Zen Yoga</a>
-            </div>
-            <div class="space-x-2">
-                <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
-                    class="{{ 'text-white' if role=='client' else 'hover:text-white' }} transition">Client</a>
-                <a href="{{ 'trainer.html' if static_build else '/?gym_id=' + gym_id + '&role=trainer' }}"
-                    class="{{ 'text-white' if role=='trainer' else 'hover:text-white' }} transition">Trainer</a>
-                <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner' }}"
-                    class="{{ 'text-white' if role=='owner' else 'hover:text-white' }} transition">Owner</a>
-            </div>
-            <button onclick="localStorage.clear(); location.reload(true);"
-                class="text-red-500 hover:text-red-400 text-left mt-2">HARD RESET</button>
-        </div>
-    </div>
+    <!-- DEBUG CONTROLS REMOVED AS PER USER REQUEST -->
+    <!-- (Was here) -->
 
     {% block content %}{% endblock %}
 
-    {% if mode != 'workout' and role != 'trainer' %}
+    {% if mode != 'workout' %}
     <!-- Footer -->
     <div
         class="fixed bottom-0 w-full h-24 bg-gradient-to-t from-black to-transparent flex justify-around items-end pb-6 px-2 z-40 pointer-events-none">
-        <div
-            class="glass-card h-16 w-full mx-4 flex justify-around items-center backdrop-blur-xl bg-black/40 border-white/5 pointer-events-auto">
 
+        <!-- Central FAB Container -->
+        <div class="fab-container pointer-events-auto">
+            <div class="fab-main text-black hover:scale-105" onclick="toggleFabMenu(this)">
+                <span>+</span>
+            </div>
 
-            {% if role == 'trainer' %}
-            <!-- Trainer Navigation 
+            <div class="fab-menu {% if role == 'trainer' %}fab-menu-3{% else %}fab-menu-4{% endif %}">
+                {% if role == 'trainer' %}
+                <!-- Trainer Menu -->
                 <a href="{{ 'trainer.html' if static_build else '/?gym_id=' + gym_id + '&role=trainer' }}"
-                    class="flex flex-col items-center text-white tap-effect"><span class="text-xl">🏠</span></a>
-                <!-- Settings/Profile for Trainer 
-                 <div data-action="showModal" data-target="profile-modal"
-                    class="flex flex-col items-center text-gray-500 tap-effect cursor-pointer"><span class="text-xl">⚙️</span></div>
-                -->
-            {% else %}
-
-            <!-- Client/Default Navigation -->
-            <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
-                class="flex flex-col items-center text-white tap-effect"><span class="text-xl">🏠</span></a>
-            <a href="{{ 'client_leaderboard.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=leaderboard' }}"
-                class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">🏆</span></a>
-            <a href="{{ 'client_progress.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=progress' }}"
-                class="flex flex-col items-center text-gray-500 tap-effect"><span class="text-xl">📊</span></a>
-            <a href="{{ 'client_dashboard.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=client_dashboard' }}"
-                class="flex flex-col items-center {{ 'text-white' if mode == 'client_dashboard' else 'text-gray-500' }} tap-effect"><span
-                    class="text-xl">👤</span>
-            </a>
-            {% endif %}
+                    class="fab-item" style="transition-delay: 0.05s">
+                    🏠<span class="fab-label">Home</span>
+                </a>
+                <a href="{{ 'trainer_personal.html' if static_build else '/trainer/personal?gym_id=' + gym_id }}"
+                    class="fab-item" style="transition-delay: 0.1s">
+                    👤<span class="fab-label">Me</span>
+                </a>
+                <!-- Placeholder for Quick Client Add or similar -->
+                <a href="#" onclick="showModal('create-workout-modal')" class="fab-item"
+                    style="transition-delay: 0.15s">
+                    💪<span class="fab-label">Workout</span>
+                </a>
+                {% else %}
+                <!-- Client Menu -->
+                <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
+                    class="fab-item" style="transition-delay: 0.05s">
+                    🏠<span class="fab-label">Home</span>
+                </a>
+                <a href="{{ 'client_progress.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=progress' }}"
+                    class="fab-item" style="transition-delay: 0.1s">
+                    📊<span class="fab-label">Stats</span>
+                </a>
+                <a href="{{ 'client_leaderboard.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=leaderboard' }}"
+                    class="fab-item" style="transition-delay: 0.15s">
+                    🏆<span class="fab-label">Ranks</span>
+                </a>
+                <a href="#" onclick="showModal('profile-modal')" class="fab-item" style="transition-delay: 0.2s">
+                    ⚙️<span class="fab-label">Profile</span>
+                </a>
+                {% endif %}
+            </div>
         </div>
+
+
     </div>
     {% endif %}
+
+    <script>
+        function toggleFabMenu(btn) {
+            btn.classList.toggle('active');
+        }
+
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            const fab = document.querySelector('.fab-main');
+            if (fab && fab.classList.contains('active') && !e.target.closest('.fab-container')) {
+                fab.classList.remove('active');
+            }
+        });
+    </script>
 
     {% include 'modals.html' %}
 
