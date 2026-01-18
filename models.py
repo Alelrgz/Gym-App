@@ -74,6 +74,7 @@ class Progress(BaseModel):
 
 # --- CALENDAR ---
 class CalendarEvent(BaseModel):
+    id: Optional[int] = None
     date: str  # YYYY-MM-DD
     title: str
     type: str  # 'workout', 'rest', 'milestone'
@@ -85,6 +86,7 @@ class CalendarData(BaseModel):
 
 # --- CLIENT ---
 class ClientData(BaseModel):
+    id: str
     name: str
     email: Optional[str] = None # Added
     streak: int

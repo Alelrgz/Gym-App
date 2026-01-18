@@ -118,16 +118,22 @@ class UserService:
                 print(f"ClientProfile {client_id} not found. Seeding from memory/defaults...")
                 # Try to find in memory CLIENT_DATA (backward compatibility/mocking)
                 mem_user = CLIENT_DATA.get(client_id, {
-                    "name": "New User",
+                    "name": None,
                     "streak": 0,
                     "gems": 0,
                     "health_score": 0
                 })
 
+                # Fetch User to get username
+                user_orm = db.query(UserORM).filter(UserORM.id == client_id).first()
+                default_name = user_orm.username if user_orm else "New User"
+                print(f"DEBUG: client_id={client_id}, user_orm={user_orm}, username={user_orm.username if user_orm else 'None'}, default_name={default_name}")
+                print(f"DEBUG: mem_user name={mem_user.get('name')}")
+
                 # Create Profile in Unified DB
                 profile = ClientProfileORM(
                     id=client_id, # PK is client_id (1-to-1 with User)
-                    name=mem_user["name"],
+                    name=mem_user.get("name") if mem_user.get("name") and mem_user.get("name") != "New User" else default_name,
                     streak=mem_user["streak"],
                     gems=mem_user["gems"],
                     health_score=mem_user.get("health_score", 0),
@@ -360,6 +366,7 @@ class UserService:
                      print(f"Error loading saved workout snapshot: {e}")
 
             return ClientData(
+                id=client_id,
                 name=profile.name or "Unknown User",
                 email=profile.email,
                 streak=profile.streak,
@@ -1044,12 +1051,11 @@ class UserService:
                 title = workout_orm.title
                 difficulty = workout_orm.difficulty
 
-            # Clean existing
+            # Clean existing - Delete ALL events for this day to prevent conflicts (e.g. Rest vs Workout)
             db.query(ClientScheduleORM).filter(
                 ClientScheduleORM.client_id == client_id,
-                ClientScheduleORM.date == date_str,
-                ClientScheduleORM.type == "workout"
-            ).delete()
+                ClientScheduleORM.date == date_str
+            ).delete(synchronize_session=False)
             
             # Assign
             new_event = ClientScheduleORM(
@@ -1263,24 +1269,48 @@ class UserService:
             weekday_map = {0: "Monday", 1: "Tuesday", 2: "Wednesday", 3: "Thursday", 4: "Friday", 5: "Saturday", 6: "Sunday"}
             
             logs = []
+            success_count = 0
+            fail_count = 0
+            
+            # Validate Client Exists
+            client = db.query(UserORM).filter(UserORM.id == client_id).first()
+            if not client:
+                 raise HTTPException(status_code=404, detail="Client not found")
+
             for day_offset in range(28): # 4 Weeks
                 current_date = start_date + timedelta(days=day_offset)
                 day_name = weekday_map[current_date.weekday()]
                 
-                workout_id = split_schedule.get(day_name)
-                if workout_id and workout_id != "rest":
-                    # Delegate to assign_workout
-                     try:
-                        self.assign_workout({
-                            "client_id": client_id,
-                            "workout_id": workout_id,
-                            "date": current_date.isoformat()
-                        })
-                        logs.append(f"Assigned {workout_id} to {current_date}")
-                     except Exception as e:
-                         logs.append(f"Failed to assign {workout_id}: {e}")
+                workout_data = split_schedule.get(day_name)
+                if workout_data and workout_data != "rest":
+                    # Handle both string ID (legacy) and object (new format)
+                    workout_id = workout_data
+                    if isinstance(workout_data, dict):
+                        workout_id = workout_data.get("id")
+
+                    if workout_id:
+                        # Delegate to assign_workout
+                        try:
+                            self.assign_workout({
+                                "client_id": client_id,
+                                "workout_id": workout_id,
+                                "date": current_date.isoformat()
+                            })
+                            logs.append(f"Assigned {workout_id} to {current_date}")
+                            success_count += 1
+                        except Exception as e:
+                            logs.append(f"Failed to assign {workout_id} on {current_date}: {str(e)}")
+                            fail_count += 1
             
-            return {"status": "success", "message": "Split assigned", "logs": logs}
+            if success_count == 0 and fail_count > 0:
+                 raise HTTPException(status_code=400, detail=f"Failed to assign any workouts. Errors: {logs[:3]}...")
+            
+            return {
+                "status": "success", 
+                "message": f"Split assigned. {success_count} workouts scheduled. {fail_count} failed.", 
+                "logs": logs,
+                "warnings": fail_count > 0
+            }
         finally:
             db.close()
 
