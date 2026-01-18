@@ -25,6 +25,7 @@ window.fetch = async function (url, options = {}) {
             options.headers['Authorization'] = `Bearer ${token}`;
         }
     }
+    console.log("FETCH Request:", url, "Headers:", options.headers);
 
     try {
         const response = await originalFetch(url, options);
@@ -74,6 +75,7 @@ if (role === 'client') {
 
 let workoutState = null;
 let selectedExercisesList = []; // Global state for workout creation
+let allClients = []; // Global state for client roster
 
 // --- WEBSOCKET CONNECTION ---
 const clientId = Date.now().toString();
@@ -298,6 +300,83 @@ window.openTrainerCalendar = async (explicitClientId) => {
     }
 };
 
+
+
+window.togglePremium = async (clientId, currentState, event) => {
+    event.stopPropagation(); // Prevent opening client modal
+
+    // Optimistic UI Update (find button and toggle immediately?)
+    // Or just reload list. Let's do API call then reload list.
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/client/${clientId}/toggle_premium`, {
+            method: 'POST'
+        });
+
+        if (!res.ok) throw new Error("Failed to toggle premium");
+
+        const data = await res.json();
+        showToast(data.message);
+
+        // Update local state and re-render
+        const clientIndex = allClients.findIndex(c => c.id === clientId);
+        if (clientIndex > -1) {
+            allClients[clientIndex].is_premium = data.is_premium;
+            renderClientList(allClients);
+        }
+    } catch (e) {
+        console.error("Toggle Premium Error:", e);
+        showToast("Error updating status");
+    }
+};
+
+function renderClientList(clients) {
+    const list = document.getElementById('client-list');
+    if (!list) return;
+
+    list.innerHTML = ''; // Clear current list
+
+    if (clients.length === 0) {
+        list.innerHTML = '<p class="text-gray-500 text-xs text-center py-4">No clients found.</p>';
+        return;
+    }
+
+    clients.forEach(c => {
+        const div = document.createElement('div');
+        div.className = "glass-card p-4 flex justify-between items-center tap-effect cursor-pointer hover:bg-white/5 transition";
+        div.onclick = function () {
+            showClientModal(c.name, c.plan, c.status, c.id);
+        };
+        const statusColor = c.status === 'At Risk' ? 'text-red-400' : 'text-green-400';
+
+        // Premium Tag/Button Logic
+        let premiumBtn = '';
+        if (c.is_premium) {
+            premiumBtn = `<button onclick="window.togglePremium('${c.id}', true, event)" class="ml-2 bg-yellow-500/20 text-yellow-500 border border-yellow-500 px-2 py-0.5 rounded text-[10px] font-bold hover:bg-yellow-500 hover:text-black transition">PRO</button>`;
+        } else {
+            premiumBtn = `<button onclick="window.togglePremium('${c.id}', false, event)" class="ml-2 bg-white/5 text-gray-500 border border-white/10 px-2 py-0.5 rounded text-[10px] font-bold hover:bg-white/20 hover:text-white transition">Make PRO</button>`;
+        }
+
+        div.innerHTML = `<div class="flex items-center"><div class="w-10 h-10 rounded-full bg-white/10 mr-3 overflow-hidden"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${c.name}" /></div><div><p class="font-bold text-sm text-white flex items-center">${c.name} ${premiumBtn}</p><p class="text-[10px] text-gray-400">${c.plan} • Seen ${c.last_seen}</p></div></div><span class="text-xs font-bold ${statusColor}">${c.status}</span>`;
+        list.appendChild(div);
+    });
+
+    // Scroll Shadow Logic
+    list.removeEventListener('scroll', handleClientListScroll); // Avoid duplicates
+    list.addEventListener('scroll', handleClientListScroll);
+}
+
+function handleClientListScroll(e) {
+    const shadow = document.getElementById('client-list-top-shadow');
+    if (shadow) {
+        if (e.target.scrollTop > 10) {
+            shadow.classList.remove('opacity-0');
+        } else {
+            shadow.classList.add('opacity-0');
+        }
+    }
+}
+
 // --- INITIALIZATION ---
 
 async function init() {
@@ -512,7 +591,7 @@ async function init() {
             const usernameEl = document.getElementById('trainer-username');
             if (usernameEl) usernameEl.textContent = username;
 
-            const trainerRes = await fetch(`${apiBase}/api/trainer/data`);
+            const trainerRes = await fetch(`${apiBase}/api/trainer/data?limit_cache=${Date.now()}`);
             const data = await trainerRes.json();
 
             // Update Stats
@@ -523,20 +602,23 @@ async function init() {
                 document.getElementById('at-risk-clients-count').innerText = data.at_risk_clients;
             }
 
-            const list = document.getElementById('client-list');
-            if (list) {
-                data.clients.forEach(c => {
-                    console.log("Rendering client:", c.name, "ID:", c.id);
-                    const div = document.createElement('div');
-                    div.className = "glass-card p-4 flex justify-between items-center tap-effect";
-                    div.onclick = function () {
-                        console.log("Clicked client:", c.name, "ID:", c.id);
-                        showClientModal(c.name, c.plan, c.status, c.id);
-                    };
-                    const statusColor = c.status === 'At Risk' ? 'text-red-400' : 'text-green-400';
-                    div.innerHTML = `<div class="flex items-center"><div class="w-10 h-10 rounded-full bg-white/10 mr-3 overflow-hidden"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${c.name}" /></div><div><p class="font-bold text-sm text-white">${c.name}</p><p class="text-[10px] text-gray-400">${c.plan} • Seen ${c.last_seen}</p></div></div><span class="text-xs font-bold ${statusColor}">${c.status}</span>`;
-                    list.appendChild(div);
-                });
+            // Store and render clients
+            if (data.clients) {
+                allClients = data.clients;
+                renderClientList(allClients);
+
+                // Setup Search Listener
+                const searchInput = document.getElementById('client-search');
+                if (searchInput) {
+                    searchInput.addEventListener('input', (e) => {
+                        const term = e.target.value.toLowerCase();
+                        const filtered = allClients.filter(c =>
+                            c.name.toLowerCase().includes(term) ||
+                            c.plan.toLowerCase().includes(term)
+                        );
+                        renderClientList(filtered);
+                    });
+                }
             }
 
             const vidLib = document.getElementById('video-library');

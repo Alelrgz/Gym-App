@@ -585,6 +585,64 @@ class UserService:
         finally:
             db.close()
 
+    def toggle_premium_status(self, client_id: str) -> dict:
+        print(f"DEBUG: Entering toggle_premium_status for {client_id}")
+        try:
+            db = get_db_session()
+        except Exception as e:
+            print(f"CRITICAL ERROR creating DB session: {e}")
+            raise HTTPException(status_code=500, detail="Database Connection Failed")
+
+        try:
+            print(f"DEBUG: Toggling premium for {client_id}")
+            profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
+            
+            if not profile:
+                # Create default profile if missing (Lazy Init)
+                print(f"DEBUG: Profile missing for {client_id}, creating new one.")
+                user = db.query(UserORM).filter(UserORM.id == client_id).first()
+                if not user:
+                    print(f"DEBUG: User {client_id} not found in UserORM table.")
+                    raise HTTPException(status_code=404, detail="User not found")
+                    
+                profile = ClientProfileORM(
+                    id=client_id,
+                    name=user.username,
+                    streak=0,
+                    gems=0,
+                    health_score=0,
+                    plan="Standard",
+                    status="Active",
+                    last_seen="Never",
+                    is_premium=False
+                )
+                db.add(profile)
+                db.commit() # Commit to get ID
+                db.refresh(profile)
+            
+            # Toggle
+            current_status = profile.is_premium
+            profile.is_premium = not current_status
+            db.commit()
+            db.refresh(profile)
+            
+            print(f"DEBUG: Premium status changed from {current_status} to {profile.is_premium}")
+            
+            return {
+                "status": "success", 
+                "client_id": client_id, 
+                "is_premium": profile.is_premium,
+                "message": f"User is now {'PREMIUM' if profile.is_premium else 'STANDARD'}"
+            }
+        except Exception as e:
+            import traceback
+            error_details = traceback.format_exc()
+            print(f"ERROR toggling premium: {e}\n{error_details}")
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+        finally:
+            db.close()
+
     def scan_meal(self, file_bytes: bytes) -> dict:
         import google.generativeai as genai
         import os
@@ -755,7 +813,8 @@ class UserService:
                     "name": profile.name if profile and profile.name else c.username,
                     "status": status,
                     "last_seen": f"{days_inactive} days ago" if days_inactive < 99 else "Never",
-                    "plan": profile.plan if profile else "Standard"
+                    "plan": profile.plan if profile else "Standard",
+                    "is_premium": profile.is_premium if profile else False
                 })
             
             video_library = TRAINER_DATA["video_library"]

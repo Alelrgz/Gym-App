@@ -70,6 +70,8 @@ class ClientProfileORM(Base):
     
     # Simple assignment logic for now
     trainer_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)
+    
+    is_premium = Column(Boolean, default=False)
 
 class ClientScheduleORM(Base):
     __tablename__ = "client_schedule"

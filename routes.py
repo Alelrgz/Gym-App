@@ -129,6 +129,17 @@ async def get_client_for_trainer(
 ):
     return service.get_client(client_id)
 
+@router.post("/api/trainer/client/{client_id}/toggle_premium")
+async def toggle_client_premium(
+    client_id: str,
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    with open("server_debug.log", "a") as f:
+        f.write(f"ROUTE HIT: toggle_client_premium for {client_id}. User: {current_user.username}\n")
+    return service.toggle_premium_status(client_id)
+
+
 @router.get("/api/trainer/clients")
 async def get_trainer_clients(
     service: UserService = Depends(get_user_service),

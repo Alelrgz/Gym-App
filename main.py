@@ -5,7 +5,7 @@ import logging
 from dotenv import load_dotenv
 
 load_dotenv()
-# Trigger reload v6
+# Trigger reload v6.1
 
 # Set up logging to see errors in the console
 logging.basicConfig(level=logging.INFO)
@@ -71,8 +71,12 @@ async def startup_event():
         logger.error(f"Database initialization failed: {e}")
 
     logger.info("Registered Routes:")
-    for route in app.routes:
-        logger.info(f"{route.path} [{route.name}]")
+    with open("server_debug.log", "a") as f:
+        f.write("\n--- REGISTERED ROUTES ---\n")
+        for route in app.routes:
+            logger.info(f"{route.path} [{route.name}]")
+            f.write(f"{route.path} [{route.name}]\n")
+        f.write("-------------------------\n")
 
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
@@ -87,9 +91,17 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
 async def log_requests(request: Request, call_next):
     with open("server_debug.log", "a") as f:
         f.write(f"MIDDLEWARE: {request.method} {request.url.path} at {time.time()}\n")
-    response = await call_next(request)
-    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0, private"
-    return response
+    
+    try:
+        response = await call_next(request)
+        with open("server_debug.log", "a") as f:
+            f.write(f"COMPLETED: {request.method} {request.url.path} - Status: {response.status_code}\n")
+        response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0, private"
+        return response
+    except Exception as e:
+        with open("server_debug.log", "a") as f:
+            f.write(f"ERROR: {request.method} {request.url.path} - Exception: {e}\n")
+        raise e
 
 # Removed conflicting login/register routes (now handled by simple_auth with /auth prefix)
 
