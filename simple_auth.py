@@ -106,7 +106,8 @@ async def do_login(request: Request, db: Session = Depends(get_db)):
             "access_token": token,
             "token_type": "bearer",
             "role": user.role,
-            "username": user.username
+            "username": user.username,
+            "user_id": user.id
         })
     
     # Default: Browser Redirect

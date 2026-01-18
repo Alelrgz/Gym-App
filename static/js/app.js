@@ -41,7 +41,7 @@ window.fetch = async function (url, options = {}) {
 function logout() {
     localStorage.removeItem('token');
     localStorage.removeItem('role');
-    window.location.href = '/auth/login';
+    window.location.href = '/auth/logout';
 }
 window.logout = logout;
 
@@ -2553,13 +2553,75 @@ window.fetchAndRenderSplits = async function () {
                 </div>
                 <div class="flex gap-2">
                     <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition" onclick="openAssignSplitModal('${s.id}')">Assign</button>
+                    <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition" onclick="openEditSplitModal('${s.id}')">✏️</button>
                     <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition" onclick="deleteSplit('${s.id}')">🗑️</button>
                 </div>
             `;
             container.appendChild(div);
         });
+
+        // Store splits for editing
+        window.loadedSplits = splits;
+
     } catch (e) {
         console.error("Error loading splits:", e);
+    }
+}
+
+window.openEditSplitModal = function (splitId) {
+    const split = window.loadedSplits.find(s => s.id === splitId);
+    if (!split) return;
+
+    document.getElementById('edit-split-id').value = split.id;
+    document.getElementById('edit-split-name').value = split.name;
+    document.getElementById('edit-split-desc').value = split.description || '';
+
+    // Populate state
+    splitScheduleState = JSON.parse(JSON.stringify(split.schedule)); // Deep copy
+
+    renderSplitScheduleBuilder('edit-split-schedule-builder');
+    showModal('edit-split-modal');
+}
+
+window.updateSplit = async function () {
+    const id = document.getElementById('edit-split-id').value;
+    const name = document.getElementById('edit-split-name').value;
+    const desc = document.getElementById('edit-split-desc').value;
+
+    if (!name) {
+        showToast('Please enter a split name');
+        return;
+    }
+
+    const payload = {
+        name: name,
+        description: desc,
+        days_per_week: 7,
+        schedule: splitScheduleState
+    };
+
+    try {
+        const trainerId = getCurrentTrainerId();
+        const res = await fetch(`${apiBase}/api/trainer/splits/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-trainer-id': trainerId
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast('Split updated! 💾');
+            hideModal('edit-split-modal');
+            fetchAndRenderSplits();
+        } else {
+            const err = await res.text();
+            showToast('Failed to update split: ' + err);
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Error updating split');
     }
 }
 
@@ -2622,12 +2684,12 @@ window.openCreateSplitModal = function () {
         Sunday: null
     };
 
-    renderSplitScheduleBuilder();
+    renderSplitScheduleBuilder('split-schedule-builder');
     showModal('create-split-modal');
 }
 
-function renderSplitScheduleBuilder() {
-    const container = document.getElementById('split-schedule-builder');
+function renderSplitScheduleBuilder(containerId) {
+    const container = document.getElementById(containerId);
     if (!container) return;
 
     container.innerHTML = '';
@@ -2647,7 +2709,7 @@ function renderSplitScheduleBuilder() {
         div.innerHTML = `
             <span class="text-sm font-bold text-white w-24">${day}</span>
             <div class="flex-1 mx-4 text-center truncate">${content}</div>
-            <button onclick="openSplitWorkoutSelector('${day}')" class="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition">
+            <button onclick="openSplitWorkoutSelector('${day}', '${containerId}')" class="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition">
                 ${workout ? 'Change' : '+ Add Workout'}
             </button>
         `;
@@ -2655,7 +2717,7 @@ function renderSplitScheduleBuilder() {
     });
 }
 
-window.openSplitWorkoutSelector = async function (day) {
+window.openSplitWorkoutSelector = async function (day, containerId) {
     const trainerId = getCurrentTrainerId();
     const res = await fetch(`${apiBase}/api/trainer/workouts`, {
         headers: { 'x-trainer-id': trainerId }
@@ -2692,7 +2754,7 @@ window.openSplitWorkoutSelector = async function (day) {
         const title = select.options[select.selectedIndex].text;
 
         splitScheduleState[day] = val ? { id: val, title: title } : null;
-        renderSplitScheduleBuilder();
+        renderSplitScheduleBuilder(containerId);
         overlay.remove();
     };
 }
@@ -2881,7 +2943,13 @@ window.assignSplit = async function () {
         });
 
         if (res.ok) {
-            showToast("Split assigned successfully! 📅");
+            const data = await res.json();
+            if (data.warnings) {
+                showToast("⚠️ Assigned with some errors. Check console.");
+                console.warn("Assignment Logs:", data.logs);
+            } else {
+                showToast("Split assigned successfully! 📅");
+            }
             hideModal('assign-split-modal');
         } else {
             const err = await res.text();

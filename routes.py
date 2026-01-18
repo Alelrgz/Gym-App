@@ -6,7 +6,7 @@ from auth import create_access_token, get_current_user
 from models_orm import UserORM
 
 router = APIRouter()
-# Trigger reload v2
+# Trigger reload v4
 
 # --- DEPENDENCIES ---
 def get_gym_service() -> GymService:
