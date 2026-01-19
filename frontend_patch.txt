@@ -1,0 +1,59 @@
+// PATCH FOR trainer_personal.html
+// Apply these two changes to complete the implementation:
+
+// ============================================
+// CHANGE 1: Add after line 331 (after getting form data)
+// ============================================
+// FIND THIS (around line 329-331):
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
+
+// ADD THIS LINE AFTER IT:
+        // Parse duration as integer
+        data.duration = parseInt(data.duration) || 60;
+
+
+// ============================================
+// CHANGE 2: Update error handling (around line 340-350)
+// ============================================
+// FIND THIS:
+            if (res.ok) {
+                await fetchTrainerData();
+                document.getElementById('add-event-modal').classList.add('hidden');
+                e.target.reset();
+            } else {
+                const errText = await res.text();
+                if (res.status === 404) {
+                    alert("Still getting 404. This is unexpected after a restart. The route might be misconfigured.");
+                } else {
+                    alert(`Failed to add event: ${errText} (Status: ${res.status})`);
+                }
+            }
+
+// REPLACE WITH THIS:
+            if (res.ok) {
+                await fetchTrainerData();
+                document.getElementById('add-event-modal').classList.add('hidden');
+                e.target.reset();
+                // Reset duration to default
+                e.target.querySelector('[name="duration"]').value = 60;
+            } else if (res.status === 409) {
+                // Conflict error
+                const error = await res.json();
+                alert(`⚠️ ${error.detail}`);
+            } else {
+                const errText = await res.text();
+                if (res.status === 404) {
+                    alert("Still getting 404. This is unexpected after a restart. The route might be misconfigured.");
+                } else {
+                    alert(`Failed to add event: ${errText} (Status: ${res.status})`);
+                }
+            }
+
+// ============================================
+// That's it! These two changes will:
+// 1. Parse duration as an integer before sending to backend
+// 2. Handle 409 conflict errors with a user-friendly alert
+// 3. Reset the duration field after successful submission
+// ============================================

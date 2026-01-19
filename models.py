@@ -133,6 +133,7 @@ class TrainerEvent(BaseModel):
     title: str
     subtitle: str
     type: str # 'consultation', 'class', 'personal', 'other'
+    duration: int = 60 # Default to 60
 
 class TrainerData(BaseModel):
     id: str # Self ID

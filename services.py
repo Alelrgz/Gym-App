@@ -778,7 +778,8 @@ class UserService:
                     "time": s.time,
                     "title": s.title,
                     "subtitle": s.subtitle or "",
-                    "type": s.type
+                    "type": s.type,
+                    "duration": s.duration if s.duration else 60  # Include duration
                 })
 
             for c in clients_orm:
@@ -1427,21 +1428,107 @@ class UserService:
         finally:
             db.close()
 
+    # Helper functions for schedule conflict detection
+    def _parse_time(self, time_str: str):
+        """Convert '9:00 AM' to datetime.time object"""
+        try:
+            return datetime.strptime(time_str, "%I:%M %p").time()
+        except ValueError:
+            # Try without AM/PM
+            try:
+                return datetime.strptime(time_str, "%H:%M").time()
+            except ValueError:
+                raise HTTPException(status_code=400, detail=f"Invalid time format: {time_str}")
+    
+    def _add_minutes_to_time(self, time_obj, minutes: int):
+        """Add minutes to a time object, returns new time"""
+        dt = datetime.combine(datetime.today(), time_obj)
+        return (dt + timedelta(minutes=minutes)).time()
+    
+    def _times_overlap(self, start1, end1, start2, end2):
+        """Check if two time ranges overlap"""
+        return start1 < end2 and end1 > start2
+    
+    def _check_schedule_conflict(self, trainer_id: str, date: str, time: str, duration: int, db, exclude_event_id=None):
+        """
+        Check if a new event conflicts with existing events
+        
+        Returns:
+            (has_conflict: bool, conflicting_event: dict or None)
+        """
+        try:
+            # Parse start and end times
+            start_time = self._parse_time(time)
+            end_time = self._add_minutes_to_time(start_time, duration)
+            
+            # Get all events on the same date for this trainer
+            query = db.query(TrainerScheduleORM).filter(
+                TrainerScheduleORM.trainer_id == trainer_id,
+                TrainerScheduleORM.date == date
+            )
+            
+            if exclude_event_id:
+                query = query.filter(TrainerScheduleORM.id != exclude_event_id)
+            
+            existing_events = query.all()
+            
+            # Check for overlaps
+            for event in existing_events:
+                event_start = self._parse_time(event.time)
+                event_duration = event.duration if event.duration else 60  # Default 60 min
+                event_end = self._add_minutes_to_time(event_start, event_duration)
+                
+                # Check if times overlap
+                if self._times_overlap(start_time, end_time, event_start, event_end):
+                    return True, {
+                        "id": event.id,
+                        "title": event.title,
+                        "time": event.time,
+                        "duration": event_duration
+                    }
+            
+            return False, None
+        except Exception as e:
+            print(f"Error in conflict detection: {e}")
+            # If there's an error in conflict detection, allow the event (fail open)
+            return False, None
+
     def add_trainer_event(self, event_data: dict, trainer_id: str):
         db = get_db_session()
         try:
+            duration = event_data.get("duration", 60)  # Default 60 minutes
+            
+            # Check for conflicts
+            has_conflict, conflict = self._check_schedule_conflict(
+                trainer_id,
+                event_data["date"],
+                event_data["time"],
+                duration,
+                db
+            )
+            
+            if has_conflict:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"Schedule conflict with '{conflict['title']}' at {conflict['time']} ({conflict['duration']} min)"
+                )
+            
+            # Create event
             new_event = TrainerScheduleORM(
                 trainer_id=trainer_id,
                 date=event_data["date"],
                 time=event_data["time"],
                 title=event_data["title"],
                 subtitle=event_data.get("subtitle"),
-                type=event_data["type"]
+                type=event_data["type"],
+                duration=duration
             )
             db.add(new_event)
             db.commit()
             db.refresh(new_event)
             return {"status": "success", "event_id": new_event.id}
+        except HTTPException:
+            raise
         except Exception as e:
             db.rollback()
             raise HTTPException(status_code=500, detail=f"Failed to add event: {str(e)}")
