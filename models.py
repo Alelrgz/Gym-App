@@ -9,6 +9,7 @@ class GymConfig(BaseModel):
     logo_text: str
 
 # --- WORKOUT ---
+# --- WORKOUT ---
 class Exercise(BaseModel):
     name: str
     sets: int
@@ -38,6 +39,13 @@ class WorkoutTemplate(BaseModel):
     duration: str
     difficulty: str
     exercises: List[Exercise]
+
+class WeeklySplit(BaseModel):
+    id: str
+    name: str
+    description: Optional[str] = ""
+    days_per_week: int
+    schedule: Dict[str, Optional[Union[str, Dict]]] # Key: "Monday", "Tuesday", etc. Value: workout_id or {id, title} or None (Rest)
 
 # --- PROGRESS ---
 class DailyQuest(BaseModel):
@@ -127,11 +135,15 @@ class TrainerEvent(BaseModel):
     type: str # 'consultation', 'class', 'personal', 'other'
 
 class TrainerData(BaseModel):
+    id: str # Self ID
     clients: List[ClientSummary]
     video_library: List[Video]
     active_clients: int
     at_risk_clients: int
     schedule: Optional[List[TrainerEvent]] = []
+    todays_workout: Optional[Workout] = None
+    workouts: Optional[List[WorkoutTemplate]] = []
+    splits: Optional[List[WeeklySplit]] = []
 
 # --- OWNER ---
 class Activity(BaseModel):
@@ -162,13 +174,6 @@ class WeeklyChallenge(BaseModel):
 class WorkoutAssignment(BaseModel):
     client_name: str
     workout_type: str
-
-class WeeklySplit(BaseModel):
-    id: str
-    name: str
-    description: Optional[str] = ""
-    days_per_week: int
-    schedule: Dict[str, Optional[str]] # Key: "Monday", "Tuesday", etc. Value: workout_id or None (Rest)
 
 class LeaderboardData(BaseModel):
     users: List[LeaderboardUser]

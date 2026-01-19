@@ -132,12 +132,12 @@ async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "cli
         print(f"DEBUG: Could not extract role from token: {e}")
 
     template_name = "client.html"
-    if role == "trainer":
+    if mode == "workout":
+        template_name = "workout.html"
+    elif role == "trainer":
         template_name = "trainer.html"
     elif role == "owner":
         template_name = "owner.html"
-    elif mode == "workout":
-        template_name = "workout.html"
     
     return templates.TemplateResponse(template_name, {
         "request": request,
@@ -147,13 +147,7 @@ async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "cli
         "token": token
     })
 
-    port = int(os.environ.get("PORT", 9007))
-    logger.info(f"Starting server on port {port}...")
-    
-    try:
-        uvicorn.run("main:app", host="0.0.0.0", port=port, log_level="info", reload=True)
-    except Exception as e:
-        logger.error(f"Failed to start uvicorn: {e}")
+
 
 # --- DIRECT INJECTION OF ROUTES TO FIX 404 ---
 from services import UserService, get_user_service # Import dependencies
@@ -183,3 +177,11 @@ async def delete_trainer_event_direct(
 @app.get("/trainer/personal", response_class=HTMLResponse)
 async def read_trainer_personal(request: Request, gym_id: str = "default"):
     return templates.TemplateResponse("trainer_personal.html", {"request": request, "gym_id": gym_id, "role": "trainer", "mode": "personal"})
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 9007))
+    logger.info(f"Starting server on port {port}...")
+    try:
+        uvicorn.run("main:app", host="0.0.0.0", port=port, log_level="info", reload=True)
+    except Exception as e:
+        logger.error(f"Failed to start uvicorn: {e}")

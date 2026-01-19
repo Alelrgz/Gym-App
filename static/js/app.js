@@ -710,10 +710,128 @@ async function init() {
                 });
             }
 
-            // Fetch and Render Workouts
+            // Fetch and Render Workouts (Library)
             if (document.getElementById('workout-library')) {
                 fetchAndRenderWorkouts();
+            }
 
+            // --- MY WORKOUTS SECTION ---
+            const toggleMyWorkout = document.getElementById('toggle-my-workout-btn');
+            const myWorkoutSection = document.getElementById('my-workout-section');
+            if (toggleMyWorkout && myWorkoutSection) {
+                toggleMyWorkout.onclick = () => {
+                    myWorkoutSection.classList.toggle('hidden');
+                    const isHidden = myWorkoutSection.classList.contains('hidden');
+                    // Optional: Change button text or style on toggle
+                };
+            }
+
+            if (data.workouts) {
+                const container = document.getElementById('my-workout-card-container');
+                if (container) {
+                    container.innerHTML = '';
+
+                    // Create Button (Centered)
+                    // Create Button (Centered)
+                    const createBtn = document.createElement('div');
+                    createBtn.className = "flex justify-center mb-4";
+                    createBtn.innerHTML = `<button data-action="openCreateWorkout" class="w-auto px-8 py-3 bg-white/10 rounded-xl hover:bg-white/20 transition flex items-center justify-center gap-2 font-bold text-sm border border-white/5 shadow-lg"><span>+</span> Create Personal Workout</button>`;
+                    container.appendChild(createBtn);
+
+                    if (data.workouts.length === 0) {
+                        const emptyDiv = document.createElement('div');
+                        emptyDiv.className = "glass-card p-4 text-center text-gray-500 italic";
+                        emptyDiv.innerText = "No personal workouts created yet.";
+                        container.appendChild(emptyDiv);
+                    } else {
+                        data.workouts.forEach(w => {
+                            // Client Structure Card
+                            const card = document.createElement('div');
+                            card.className = "glass-card p-5 relative overflow-hidden group tap-effect mb-4";
+                            card.innerHTML = `
+                                <div class="absolute inset-0 bg-primary opacity-5 group-hover:opacity-10 transition"></div>
+                                <div class="relative z-10">
+                                    <div class="flex justify-between items-start mb-4">
+                                        <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Workout</span>
+                                        <span class="text-xl">💪</span>
+                                    </div>
+                                    <h3 class="text-2xl font-black italic uppercase mb-1 text-white">${w.title}</h3>
+                                    <p class="text-sm text-gray-300 mb-4">${w.duration} • ${w.difficulty}</p>
+                                    <div class="flex gap-2">
+                                         <button onclick='openEditWorkout(JSON.parse(decodeURIComponent("${encodeURIComponent(JSON.stringify(w))}")))' class="flex-1 py-3 bg-white/10 text-white text-center font-bold rounded-xl hover:bg-white/20 transition">EDIT</button>
+                                         <a href="/?gym_id=${gymId}&role=client&mode=workout&view=preview&workout_id=${w.id}" class="flex-1 py-3 bg-white text-black text-center font-bold rounded-xl hover:bg-gray-200 transition">PREVIEW</a>
+                                    </div>
+                                </div>
+                            `;
+                            container.appendChild(card);
+                        });
+                    }
+                }
+            }
+
+            // --- MY SPLITS SECTION ---
+            const toggleMySplit = document.getElementById('toggle-my-split-btn');
+            const mySplitSection = document.getElementById('my-split-section');
+            if (toggleMySplit && mySplitSection) {
+                toggleMySplit.onclick = () => {
+                    mySplitSection.classList.toggle('hidden');
+                };
+            }
+
+            if (data.splits) {
+                const container = document.getElementById('my-split-card-container');
+                if (container) {
+                    container.innerHTML = '';
+
+                    // Create Button (Centered)
+                    // Create Button (Centered)
+                    const createBtn = document.createElement('div');
+                    createBtn.className = "flex justify-center mb-4";
+                    createBtn.innerHTML = `<button data-action="openCreateSplit" class="w-auto px-8 py-3 bg-white/10 rounded-xl hover:bg-white/20 transition flex items-center justify-center gap-2 font-bold text-sm border border-white/5 shadow-lg"><span>+</span> Create Personal Split</button>`;
+                    container.appendChild(createBtn);
+
+                    if (data.splits.length === 0) {
+                        const emptyDiv = document.createElement('div');
+                        emptyDiv.className = "glass-card p-4 text-center text-gray-500 italic";
+                        emptyDiv.innerText = "No personal splits created yet.";
+                        container.appendChild(emptyDiv);
+                    } else {
+                        data.splits.forEach(s => {
+                            const card = document.createElement('div');
+                            card.className = "glass-card p-5 relative overflow-hidden group tap-effect mb-4";
+                            card.innerHTML = `
+                                <div class="flex justify-between items-start mb-2">
+                                     <div class="flex items-center gap-3">
+                                         <div class="p-2 bg-purple-500/20 rounded-lg text-purple-400">
+                                             📅
+                                         </div>
+                                         <div>
+                                             <h3 class="font-bold text-white text-lg leading-tight">${s.name}</h3>
+                                             <p class="text-xs text-gray-500">${s.description || 'No description'}</p>
+                                         </div>
+                                     </div>
+                                     
+                                     <div class="flex gap-2">
+                                         <button onclick='window.openEditSplit(JSON.parse(decodeURIComponent("${encodeURIComponent(JSON.stringify(s))}")))' 
+                                            class="text-gray-500 hover:text-white transition p-1" title="Edit">
+                                            ✏️
+                                         </button>
+                                         <button onclick='window.deleteSplit("${s.id}")' 
+                                            class="text-gray-500 hover:text-red-400 transition p-1" title="Delete">
+                                            🗑️
+                                         </button>
+                                     </div>
+                                </div>
+
+                                <button onclick='window.assignSplitToSelf("${s.id}")' 
+                                    class="w-full mt-3 py-2 bg-white/5 hover:bg-purple-600 hover:text-white text-gray-400 text-sm font-bold rounded-lg transition border border-white/10 group-hover:border-purple-500/50">
+                                    Assign to Me
+                                </button>
+                            `;
+                            container.appendChild(card);
+                        });
+                    }
+                }
             }
         }
 
@@ -1838,6 +1956,268 @@ window.updateSetData = async function (exIdx, setIdx, reps, weight) {
     } catch (e) {
         console.error(e);
         showToast("Error updating set");
+    }
+};
+
+// --- WEEKLY SPLIT LOGIC ---
+
+window.openCreateSplit = function () {
+    document.getElementById('new-split-name').value = '';
+    document.getElementById('new-split-desc').value = '';
+    renderSplitScheduleBuilder('split-schedule-builder', []);
+    showModal('create-split-modal');
+};
+
+window.openEditSplit = function (split) {
+    document.getElementById('edit-split-id').value = split.id;
+    document.getElementById('edit-split-name').value = split.name;
+    document.getElementById('edit-split-desc').value = split.description || '';
+    renderSplitScheduleBuilder('edit-split-schedule-builder', split.schedule || []);
+    showModal('edit-split-modal');
+};
+
+window.createSplit = async function () {
+    const name = document.getElementById('new-split-name').value;
+    const desc = document.getElementById('new-split-desc').value;
+    const schedule = getSplitScheduleFromBuilder('split-schedule-builder');
+
+    if (!name) {
+        showToast('Please enter a split name');
+        return;
+    }
+
+    const trainerId = getCurrentTrainerId();
+    const payload = { name, description: desc, schedule };
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/splits`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-trainer-id': trainerId
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast('Split created successfully! 📅');
+            hideModal('create-split-modal');
+            // Refresh data based on context
+            if (location.pathname.includes('personal')) {
+                if (typeof fetchTrainerData === 'function') fetchTrainerData();
+            } else {
+                if (typeof init === 'function') init(); // Reload dashboard data
+                else window.location.reload();
+            }
+        } else {
+            showToast('Failed to create split');
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Error creating split');
+    }
+};
+
+window.updateSplit = async function () {
+    const id = document.getElementById('edit-split-id').value;
+    const name = document.getElementById('edit-split-name').value;
+    const desc = document.getElementById('edit-split-desc').value;
+    const schedule = getSplitScheduleFromBuilder('edit-split-schedule-builder');
+
+    if (!id || !name) {
+        showToast('Missing information');
+        return;
+    }
+
+    const trainerId = getCurrentTrainerId();
+    const payload = { name, description: desc, schedule };
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/splits/${id}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-trainer-id': trainerId
+            },
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            showToast('Split updated! 💾');
+            hideModal('edit-split-modal');
+            if (location.pathname.includes('personal')) {
+                if (typeof fetchTrainerData === 'function') fetchTrainerData();
+            } else {
+                if (typeof init === 'function') init();
+                else window.location.reload();
+            }
+        } else {
+            showToast('Failed to update split');
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Error updating split');
+    }
+};
+
+window.deleteSplit = async function (id) {
+    if (!id) id = document.getElementById('edit-split-id').value; // fallback for modal usage
+    if (!confirm("Are you sure you want to delete this split?")) return;
+
+    const trainerId = getCurrentTrainerId();
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/splits/${id}`, {
+            method: 'DELETE',
+            headers: { 'x-trainer-id': trainerId }
+        });
+
+        if (res.ok) {
+            showToast('Split deleted 🗑️');
+            hideModal('edit-split-modal');
+            if (location.pathname.includes('personal')) {
+                if (typeof fetchTrainerData === 'function') fetchTrainerData();
+            } else {
+                if (typeof init === 'function') init();
+                else window.location.reload();
+            }
+        } else {
+            showToast('Failed to delete split');
+        }
+    } catch (e) {
+        console.error(e);
+        showToast('Error deleting split');
+    }
+};
+
+// Helper to build the 7-day schedule UI
+function renderSplitScheduleBuilder(containerId, scheduleData) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = '<p class="text-xs text-center text-gray-500">Loading workouts...</p>';
+
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+    // Convert scheduleData to map for easy lookup { 'Monday': workoutId, ... }
+    const scheduleMap = {};
+    if (scheduleData) {
+        scheduleData.forEach(item => {
+            scheduleMap[item.day] = item.workout_id;
+        });
+    }
+
+    // Fetch Workouts
+    fetch(`${apiBase}/api/trainer/workouts`).then(res => res.json()).then(workouts => {
+        container.innerHTML = ''; // Clear loading
+        days.forEach(day => {
+            const row = document.createElement('div');
+            row.className = "flex items-center space-x-3 bg-white/5 p-2 rounded-lg";
+
+            let optionsHtml = `<option value="">Rest Day</option>`;
+            workouts.forEach(w => {
+                const selected = scheduleMap[day] === w.id ? 'selected' : '';
+                optionsHtml += `<option value="${w.id}" ${selected}>${w.title}</option>`;
+            });
+
+            row.innerHTML = `
+                <span class="w-24 text-sm text-gray-400 font-bold">${day}</span>
+                <select class="flex-1 bg-black/30 border border-white/10 rounded-lg p-2 text-sm text-white focus:border-primary outline-none transition"
+                    data-day="${day}">
+                    ${optionsHtml}
+                </select>
+            `;
+            container.appendChild(row);
+        });
+    }).catch(err => {
+        console.error("Failed to load workouts for split builder", err);
+        container.innerHTML = '<p class="text-xs text-red-500">Failed to load workouts.</p>';
+    });
+}
+
+function getSplitScheduleFromBuilder(containerId) {
+    const container = document.getElementById(containerId);
+    if (!container) return [];
+
+    const schedule = [];
+    const selects = container.querySelectorAll('select');
+    selects.forEach(select => {
+        const day = select.dataset.day;
+        const workoutId = select.value;
+        if (workoutId) {
+            schedule.push({ day, workout_id: workoutId });
+        }
+    });
+    return schedule;
+}
+
+window.assignSplitToSelf = async function (splitId) {
+    // Current date (Monday of this week)
+    let d = new Date();
+    const day = d.getDay() || 7;
+    if (day !== 1) d.setHours(-24 * (day - 1));
+    d.setHours(0, 0, 0, 0);
+    const startDate = d.toLocaleDateString('en-CA'); // YYYY-MM-DD
+
+    let myId = window.currentTrainerId;
+
+    if (!myId) {
+        // Fallback: Fetch trainer data to get ID
+        try {
+            const res = await fetch(`${apiBase}/api/trainer/data`);
+            if (res.ok) {
+                const data = await res.json();
+                myId = data.id;
+                window.currentTrainerId = myId; // Cache it
+            }
+        } catch (e) {
+            console.error("Failed to fetch trainer ID from trainer/data", e);
+        }
+    }
+
+    // Double fallback to client/data if trainer data doesn't return ID
+    if (!myId) {
+        try {
+            const meRes = await fetch(`${apiBase}/api/client/data`);
+            if (meRes.ok) {
+                const me = await meRes.json();
+                myId = me.id;
+            }
+        } catch (e) {
+            console.error("Failed to fetch ID from client/data", e);
+        }
+    }
+
+    if (!myId) {
+        showToast("Error: Could not identify your user account.");
+        return;
+    }
+
+    if (!confirm(`Assign this split to yourself starting this week (${startDate})?`)) return;
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/assign_split`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                client_id: myId,
+                split_id: splitId,
+                start_date: startDate
+            })
+        });
+
+        if (res.ok) {
+            showToast("Split assigned to you! 🚀");
+            // Reload page to reflect changes on calendar (simplest way since we don't have granular refresh)
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            const errText = await res.text();
+            console.error("Assign split error:", errText);
+            showToast("Failed: " + errText);
+        }
+
+    } catch (e) {
+        console.error(e);
+        showToast("Error assigning split: " + e.message);
     }
 };
 

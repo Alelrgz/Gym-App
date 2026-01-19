@@ -830,13 +830,36 @@ class UserService:
                     "is_premium": profile.is_premium if profile else False
                 })
             
+            # --- FETCH MY WORKOUT (TRAINER) ---
+            todays_workout = None
+            today_str = date.today().isoformat()
+            
+            # Check for workout event for trainer "client"
+            my_event = db.query(ClientScheduleORM).filter(
+                ClientScheduleORM.client_id == trainer_id,
+                ClientScheduleORM.date == today_str,
+                ClientScheduleORM.type == "workout"
+            ).first()
+            
+            if my_event and my_event.workout_id:
+                try:
+                    todays_workout = self.get_workout_details(my_event.workout_id, context_trainer_id=trainer_id, db_session=db)
+                    if todays_workout:
+                        todays_workout["completed"] = my_event.completed
+                except Exception as e:
+                    print(f"Warning: Could not fetch trainer workout {my_event.workout_id}: {e}")
+
             video_library = TRAINER_DATA["video_library"]
             return TrainerData(
+                id=trainer_id,
                 clients=clients, 
                 video_library=video_library,
                 active_clients=active_count,
                 at_risk_clients=at_risk_count,
-                schedule=schedule
+                schedule=schedule,
+                todays_workout=todays_workout,
+                workouts=self.get_workouts(trainer_id),
+                splits=self.get_splits(trainer_id)
             )
         finally:
             db.close()
@@ -1336,8 +1359,24 @@ class UserService:
                 split_schedule = SPLITS_DB[split_id]["schedule"]
             else:
                 raise HTTPException(status_code=404, detail="Split not found")
+
+            # 2. Normalize Schedule to Map { "Monday": "workout_id" }
+            # Handle list format from frontend: [ { "day": "Monday", "workout_id": "123" }, ... ]
+            schedule_map = {}
+            if isinstance(split_schedule, list):
+                for item in split_schedule:
+                    if isinstance(item, dict):
+                         day = item.get("day")
+                         wid = item.get("workout_id")
+                         if day and wid:
+                             schedule_map[day] = wid
+            elif isinstance(split_schedule, dict):
+                # Assume it's already { "Monday": "...", ... }
+                schedule_map = split_schedule
+            else:
+                print(f"Warning: Unknown schedule format: {type(split_schedule)}")
                 
-            # 2. Assign
+            # 3. Assign
             start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
             weekday_map = {0: "Monday", 1: "Tuesday", 2: "Wednesday", 3: "Thursday", 4: "Friday", 5: "Saturday", 6: "Sunday"}
             
@@ -1354,26 +1393,27 @@ class UserService:
                 current_date = start_date + timedelta(days=day_offset)
                 day_name = weekday_map[current_date.weekday()]
                 
-                workout_data = split_schedule.get(day_name)
-                if workout_data and workout_data != "rest":
-                    # Handle both string ID (legacy) and object (new format)
-                    workout_id = workout_data
-                    if isinstance(workout_data, dict):
-                        workout_id = workout_data.get("id")
+                # Lookup in normalized map
+                workout_id = schedule_map.get(day_name)
+                
+                # If workout_id is dict (legacy edge case), extract id
+                if isinstance(workout_id, dict):
+                    workout_id = workout_id.get("id")
 
-                    if workout_id:
-                        # Delegate to assign_workout
-                        try:
-                            self.assign_workout({
-                                "client_id": client_id,
-                                "workout_id": workout_id,
-                                "date": current_date.isoformat()
-                            })
-                            logs.append(f"Assigned {workout_id} to {current_date}")
-                            success_count += 1
-                        except Exception as e:
-                            logs.append(f"Failed to assign {workout_id} on {current_date}: {str(e)}")
-                            fail_count += 1
+                if workout_id and workout_id != "rest":
+                    # Delegate to assign_workout
+                    try:
+                        self.assign_workout({
+                            "client_id": client_id,
+                            "workout_id": workout_id,
+                            "date": current_date.isoformat()
+                        })
+                        logs.append(f"Assigned {workout_id} to {current_date}")
+                        success_count += 1
+                    except Exception as e:
+                        print(f"Assign Error for {current_date}: {e}")
+                        logs.append(f"Failed to assign {workout_id} on {current_date}: {str(e)}")
+                        fail_count += 1
             
             if success_count == 0 and fail_count > 0:
                  raise HTTPException(status_code=400, detail=f"Failed to assign any workouts. Errors: {logs[:3]}...")
@@ -1431,3 +1471,6 @@ class UserService:
 class LeaderboardService:
     def get_leaderboard(self) -> LeaderboardData:
         return LeaderboardData(**LEADERBOARD_DATA)
+
+def get_user_service():
+    return UserService()
