@@ -13,7 +13,7 @@
 
         <!-- Header Controls -->
         <div class="absolute top-0 left-0 w-full p-6 pt-12 flex justify-between items-center z-10">
-            <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
+            <a href="{{ '/trainer/personal' if role == 'trainer' else ('client.html' if static_build else '/?gym_id=' + gym_id + '&role=client') }}"
                 class="w-10 h-10 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center text-white tap-effect border border-white/10">✕</a>
             <div
                 class="flex items-center space-x-2 bg-red-500/20 px-3 py-1 rounded-full border border-red-500/30 backdrop-blur-md">
@@ -87,7 +87,7 @@
         <div class="text-8xl mb-6">🎉</div>
         <h1 class="text-5xl font-black text-white mb-4">WORKOUT<br>COMPLETE!</h1>
         <p class="text-xl text-gray-300 mb-8">You earned <span class="text-yellow-400 font-bold">+100 💎</span></p>
-        <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
+        <a href="{{ '/trainer/personal' if role == 'trainer' else ('client.html' if static_build else '/?gym_id=' + gym_id + '&role=client') }}"
             class="inline-block px-8 py-4 bg-primary rounded-2xl font-bold text-white tap-effect">FINISH</a>
     </div>
 </div>

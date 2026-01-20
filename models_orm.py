@@ -14,6 +14,7 @@ class UserORM(Base):
     role = Column(String) # client, trainer, owner
     is_active = Column(Boolean, default=True)
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    settings = Column(String, nullable=True) # JSON string
 
 # --- EXERCISE & WORKOUT LIBRARY (Global + Personal) ---
 
@@ -145,5 +146,7 @@ class TrainerScheduleORM(Base):
     type = Column(String) # consultation, class, etc 
     duration = Column(Integer, default=60)  # Duration in minutes
     completed = Column(Boolean, default=False)
+    workout_id = Column(String, nullable=True)
+    details = Column(String, nullable=True)  # Store workout snapshot JSON on completion
 
 

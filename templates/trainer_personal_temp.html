@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+﻿{% extends "base.html" %}
 
 {% block content %}
 <div class="p-4 pb-24">
@@ -11,16 +11,16 @@
         <div class="flex space-x-2">
             <div data-action="showModal" data-target="notification-modal"
                 class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect cursor-pointer">
-                🔔
+                dY""
             </div>
             <div data-action="showModal" data-target="profile-modal"
                 class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect cursor-pointer">
-                ⚙️
+                âsTï,?
             </div>
             <!-- Back Button -->
             <a href="{{ 'trainer.html' if static_build else '/?gym_id=' + gym_id + '&role=trainer' }}"
                 class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect cursor-pointer">
-                ←
+                â+?
             </a>
         </div>
     </div>
@@ -85,10 +85,10 @@
 
             <div class="flex items-center space-x-2">
                 <button onclick="changeWeek(-1)"
-                    class="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70">←</button>
+                    class="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70">â+?</button>
                 <span class="text-xs text-white/40 min-w-[3rem] text-center" id="month-label">...</span>
                 <button onclick="changeWeek(1)"
-                    class="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70">→</button>
+                    class="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70">â+'</button>
             </div>
         </div>
 
@@ -124,7 +124,7 @@
     class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 backdrop-blur-sm z-[60]">
     <div class="glass-card w-full max-w-sm mx-4 p-6 rounded-2xl relative">
         <button onclick="document.getElementById('add-event-modal').classList.add('hidden')"
-            class="absolute top-4 right-4 text-white/50 hover:text-white">✕</button>
+            class="absolute top-4 right-4 text-white/50 hover:text-white">âo</button>
         <h3 class="text-xl font-bold mb-4 text-center">Add Event</h3>
 
         <form id="add-event-form" class="space-y-4">
@@ -244,6 +244,7 @@
             });
         }
 
+
         // Type Selector Logic
         const typeSelect = document.querySelector('select[name="type"]');
         const workoutContainer = document.getElementById('workout-selector-container');
@@ -258,23 +259,6 @@
             // Trigger initial state
             typeSelect.dispatchEvent(new Event('change'));
         }
-
-        // Toggle Logic for My Workouts / My Splits
-        const workoutBtn = document.getElementById('toggle-my-workout-btn');
-        if (workoutBtn) {
-            workoutBtn.addEventListener('click', () => {
-                const section = document.getElementById('my-workout-section');
-                if (section) section.classList.toggle('hidden');
-            });
-        }
-
-        const splitBtn = document.getElementById('toggle-my-split-btn');
-        if (splitBtn) {
-            splitBtn.addEventListener('click', () => {
-                const section = document.getElementById('my-split-section');
-                if (section) section.classList.toggle('hidden');
-            });
-        }
     });
 
     async function fetchTrainerData() {
@@ -282,11 +266,10 @@
             const res = await fetch('/api/trainer/data');
             const data = await res.json();
             console.log("TRAINER DATA FETCHED:", data);
+            console.log("TODAYS WORKOUT:", data.todays_workout);
 
             if (data.schedule) {
-                const personalCount = data.schedule.filter(e => e.type === 'personal').length;
-                const personalEl = document.getElementById('personal-workouts');
-                if (personalEl) personalEl.innerText = personalCount;
+                document.getElementById('personal-workouts').innerText = data.schedule.filter(e => e.type === 'personal').length;
             }
 
             currentSchedule = data.schedule || [];
@@ -302,11 +285,11 @@
                             <div class="relative z-10">
                                 <div class="flex justify-between items-start mb-4">
                                     <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
-                                    <span class="text-xl">${w.completed ? '✅' : '💪'}</span>
+                                    <span class="text-xl">${w.completed ? 'âo.' : 'dY'ª'}</span>
                                 </div>
                                 <h3 class="text-2xl font-black italic uppercase mb-1">${w.title}</h3>
-                                <p class="text-sm text-gray-300 mb-4">${w.duration || 60} min • ${w.difficulty || 'Intermediate'}</p>
-                                <button class="block w-full py-3 ${w.completed ? 'bg-green-500 text-white' : 'bg-white text-black hover:bg-gray-200'} text-center font-bold rounded-xl transition">${w.completed ? 'COMPLETED ✓' : 'START SESSION'}</button>
+                                <p class="text-sm text-gray-300 mb-4">${w.duration || 60} min â?¢ ${w.difficulty || 'Intermediate'}</p>
+                                <button class="block w-full py-3 ${w.completed ? 'bg-green-500 text-white' : 'bg-white text-black hover:bg-gray-200'} text-center font-bold rounded-xl transition">${w.completed ? 'COMPLETED âo"' : 'START SESSION'}</button>
                             </div>
                         </div>
                     `;
@@ -318,37 +301,37 @@
             }
 
             // Render My Workouts
-            const workoutCardContainer = document.getElementById('my-workout-card-container');
-            if (workoutCardContainer && data.workouts) {
+            const workoutContainer = document.getElementById('my-workout-card-container');
+            if (workoutContainer && data.workouts) {
                 if (data.workouts.length === 0) {
-                    workoutCardContainer.innerHTML = '<p class="text-xs text-gray-500 italic text-center py-2">No workouts created yet.</p>';
+                    workoutContainer.innerHTML = '<p class="text-xs text-gray-500 italic text-center py-2">No workouts created yet.</p>';
                 } else {
-                    workoutCardContainer.innerHTML = '';
+                    workoutContainer.innerHTML = '';
                     data.workouts.forEach(w => {
                         const div = document.createElement('div');
                         div.className = "glass-card p-3 mb-2 flex justify-between items-center";
                         div.innerHTML = `
                             <div>
                                 <h4 class="font-bold text-sm text-white">${w.title}</h4>
-                                <p class="text-[10px] text-gray-400">${w.duration} • ${w.difficulty}</p>
+                                <p class="text-[10px] text-gray-400">${w.duration} â?¢ ${w.difficulty}</p>
                             </div>
                             <button class="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-white transition" 
                                 onclick="window.location.href='/?gym_id=${localGymId}&role=trainer&mode=workout&workout_id=${w.id}'">
                                 Preview
                             </button>
                         `;
-                        workoutCardContainer.appendChild(div);
+                        workoutContainer.appendChild(div);
                     });
                 }
             }
 
             // Render My Splits
-            const splitCardContainer = document.getElementById('my-split-card-container');
-            if (splitCardContainer && data.splits) {
+            const splitContainer = document.getElementById('my-split-card-container');
+            if (splitContainer && data.splits) {
                 if (data.splits.length === 0) {
-                    splitCardContainer.innerHTML = '<p class="text-xs text-gray-500 italic text-center py-2">No splits created yet.</p>';
+                    splitContainer.innerHTML = '<p class="text-xs text-gray-500 italic text-center py-2">No splits created yet.</p>';
                 } else {
-                    splitCardContainer.innerHTML = '';
+                    splitContainer.innerHTML = '';
                     data.splits.forEach(s => {
                         const div = document.createElement('div');
                         div.className = "glass-card p-3 mb-2";
@@ -361,17 +344,20 @@
                                 <span class="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded">${s.days_per_week} Days</span>
                             </div>
                         `;
-                        splitCardContainer.appendChild(div);
+                        splitContainer.appendChild(div);
                     });
                 }
             }
 
             renderCalendarStrip();
             renderSchedule(selectedDateStr);
+
         } catch (e) {
             console.error("Error fetching trainer data:", e);
         }
     }
+
+    // Toggle logic is now in DOMContentLoaded callback
 
     window.changeWeek = function (offset) {
         currentWeekMonday.setDate(currentWeekMonday.getDate() + (offset * 7));
@@ -423,8 +409,7 @@
 
         const [y, m, d] = dateStr.split('-').map(Number);
         const dateObj = new Date(y, m - 1, d);
-        const dateEl = document.getElementById('current-full-date');
-        if (dateEl) dateEl.innerText = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+        document.getElementById('current-full-date').innerText = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
         container.innerHTML = '';
 
@@ -433,6 +418,7 @@
 
         dayEvents.forEach(s => {
             const div = document.createElement('div');
+            // Add opacity if completed
             const opacityClass = s.completed ? 'opacity-50 grayscale' : '';
             div.className = `flex justify-between items-center bg-white/5 border border-white/5 rounded-xl p-3 slide-up group relative ${opacityClass}`;
 
@@ -463,13 +449,15 @@
                         ${s.completed
                     ? 'bg-green-500 border-green-500 text-white shadow-[0_0_15px_rgba(34,197,94,0.5)]'
                     : 'border-white/20 text-transparent hover:border-white/50 hover:bg-white/5'}">
-                        <span class="transform transition-transform duration-300 ${s.completed ? 'scale-100' : 'scale-0'}">✓</span>
+                        
+                        <span class="transform transition-transform duration-300 ${s.completed ? 'scale-100' : 'scale-0'}">âo"</span>
                     </button>
+                    
                     <button onclick="deleteEvent('${s.id}')" class="text-red-500 opacity-0 group-hover:opacity-100 transition p-2 hover:bg-white/10 rounded-lg cursor-pointer z-10">
-                        <span class="text-lg">✕</span>
+                        <span class="text-lg">âo</span>
                     </button>
                 </div>
-            `;
+             `;
             container.appendChild(div);
         });
 
@@ -487,13 +475,12 @@
     }
 
     async function openAddModal(dateStr) {
-        const dateInput = document.getElementById('event-date-input');
-        if (dateInput) dateInput.value = dateStr;
-        window.showModal('add-event-modal');
+        document.getElementById('event-date-input').value = dateStr;
+        document.getElementById('add-event-modal').classList.remove('hidden');
 
         // Fetch workouts for selector
         const select = document.getElementById('event-workout-select');
-        if (select && select.options.length <= 1) {
+        if (select.options.length <= 1) { // Only default option
             try {
                 const res = await fetch('/api/trainer/workouts');
                 const workouts = await res.json();
@@ -509,50 +496,61 @@
         }
     }
 
-    const addEventForm = document.getElementById('add-event-form');
-    if (addEventForm) {
-        addEventForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const formData = new FormData(e.target);
-            const data = Object.fromEntries(formData.entries());
-            data.duration = parseInt(data.duration) || 60;
+    document.getElementById('add-event-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        const data = Object.fromEntries(formData.entries());
 
-            try {
-                const res = await fetch('/api/trainer/events', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify(data)
-                });
+        // Parse duration as integer
+        data.duration = parseInt(data.duration) || 60;
 
-                if (res.ok) {
-                    await fetchTrainerData();
-                    window.hideModal('add-event-modal');
-                    e.target.reset();
-                    const durationInput = e.target.querySelector('[name="duration"]');
-                    if (durationInput) durationInput.value = 60;
+        try {
+            const res = await fetch('/api/trainer/events', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+
+            if (res.ok) {
+                await fetchTrainerData();
+                document.getElementById('add-event-modal').classList.add('hidden');
+                e.target.reset();
+                // Reset duration to default
+                e.target.querySelector('[name="duration"]').value = 60;
+            } else if (res.status === 409) {
+                // Conflict error
+                const error = await res.json();
+                alert(`âs ï,? ${error.detail}`);
+            } else {
+                const errText = await res.text();
+                if (res.status === 404) {
+                    alert("Still getting 404. This is unexpected after a restart. The route might be misconfigured.");
                 } else {
-                    const err = await res.json();
-                    alert(err.detail || "Failed to add event");
+                    alert(`Failed to add event: ${errText} (Status: ${res.status})`);
                 }
-            } catch (err) {
-                console.error(err);
-                alert("Network Error: " + err.message);
             }
-        });
-    }
+        } catch (err) {
+            console.error(err);
+            alert("Network Error: " + err.message);
+        }
+    });
 
     async function deleteEvent(id) {
+        console.log("Attempting to delete event:", id);
         if (!confirm("Delete this event?")) return;
+
         try {
             const res = await fetch(`/api/trainer/events/${id}`, { method: 'DELETE' });
+            console.log("Delete response status:", res.status);
             if (res.ok) {
                 await fetchTrainerData();
             } else {
                 const text = await res.text();
+                console.error("Delete failed:", text);
                 alert("Failed to delete event: " + text);
             }
         } catch (e) {
-            console.error(e);
+            console.error("Delete error:", e);
             alert("Error deleting event: " + e.message);
         }
     }

@@ -463,6 +463,34 @@ class UserService:
         finally:
             db.close()
 
+    def complete_trainer_schedule_item(self, payload: dict, trainer_id: str) -> dict:
+        """Mark a trainer's personal workout schedule item as complete and save performance data."""
+        date_str = payload.get("date")
+        exercises = payload.get("exercises", [])
+        
+        db = get_db_session()
+        try:
+            # Find trainer's workout event for the given date
+            item = db.query(TrainerScheduleORM).filter(
+                TrainerScheduleORM.trainer_id == trainer_id,
+                TrainerScheduleORM.date == date_str,
+                TrainerScheduleORM.workout_id != None  # Must have a workout attached
+            ).first()
+                
+            if not item:
+                raise HTTPException(status_code=404, detail="Trainer schedule item not found")
+                
+            item.completed = True
+            
+            # Save detailed snapshot (just like client)
+            if exercises:
+                item.details = json.dumps(exercises)
+            
+            db.commit()
+            return {"status": "success", "message": "Trainer workout completed!"}
+        finally:
+            db.close()
+
     def update_completed_workout(self, payload: dict, client_id: str) -> dict:
         date_str = payload.get("date")
         workout_id = payload.get("workout_id")
@@ -834,22 +862,43 @@ class UserService:
             
             # --- FETCH MY WORKOUT (TRAINER) ---
             todays_workout = None
-            today_str = date.today().isoformat()
-            
-            # Check for workout event for trainer "client"
-            my_event = db.query(ClientScheduleORM).filter(
-                ClientScheduleORM.client_id == trainer_id,
-                ClientScheduleORM.date == today_str,
-                ClientScheduleORM.type == "workout"
-            ).first()
-            
-            if my_event and my_event.workout_id:
-                try:
-                    todays_workout = self.get_workout_details(my_event.workout_id, context_trainer_id=trainer_id, db_session=db)
-                    if todays_workout:
-                        todays_workout["completed"] = my_event.completed
-                except Exception as e:
-                    print(f"Warning: Could not fetch trainer workout {my_event.workout_id}: {e}")
+            try:
+                today_str = datetime.now().strftime("%Y-%m-%d")
+                my_event = db.query(TrainerScheduleORM).filter(
+                    TrainerScheduleORM.trainer_id == trainer_id,
+                    TrainerScheduleORM.date == today_str,
+                    TrainerScheduleORM.workout_id != None
+                ).first()
+                
+                if my_event:
+                    w_orm = db.query(WorkoutORM).filter(WorkoutORM.id == my_event.workout_id).first()
+                    if w_orm:
+                        exercises = []
+                        if w_orm.exercises_json:
+                            try:
+                                exercises = json.loads(w_orm.exercises_json)
+                            except:
+                                pass
+                        
+                        todays_workout = {
+                            "id": w_orm.id,
+                            "title": w_orm.title,
+                            "duration": w_orm.duration,
+                            "difficulty": w_orm.difficulty,
+                            "exercises": exercises,
+                            "completed": my_event.completed
+                        }
+                        
+                        # PRIORITIZE SNAPSHOT FROM DB IF COMPLETED (like client)
+                        if my_event.completed and my_event.details:
+                            try:
+                                saved_exercises = json.loads(my_event.details)
+                                todays_workout["exercises"] = saved_exercises
+                            except Exception as e:
+                                print(f"Error loading saved trainer workout snapshot: {e}")
+            except Exception as e:
+                with open("server_debug.log", "a") as f:
+                    f.write(f"Error fetching trainer workout: {e}\n")
 
             video_library = TRAINER_DATA["video_library"]
             return TrainerData(
@@ -1522,7 +1571,8 @@ class UserService:
                 title=event_data["title"],
                 subtitle=event_data.get("subtitle"),
                 type=event_data["type"],
-                duration=duration
+                duration=duration,
+                workout_id=event_data.get("workout_id")
             )
             db.add(new_event)
             db.commit()

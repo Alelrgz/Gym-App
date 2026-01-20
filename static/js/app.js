@@ -46,6 +46,62 @@ function logout() {
 }
 window.logout = logout;
 
+// --- MODAL UTILS ---
+window.showModal = function (id) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.classList.remove('hidden');
+    } else {
+        console.error("Modal not found:", id);
+    }
+};
+
+window.hideModal = function (id) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.classList.add('hidden');
+    }
+};
+
+window.showToast = function (message, duration = 3000) {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        container.className = 'fixed top-4 left-1/2 transform -translate-x-1/2 z-[100] flex flex-col items-center space-y-2 pointer-events-none';
+        document.body.appendChild(container);
+    }
+
+    const toast = document.createElement('div');
+    toast.className = 'bg-white/10 backdrop-blur-md border border-white/20 text-white px-4 py-2 rounded-full shadow-lg text-sm font-bold slide-down pointer-events-auto';
+    toast.innerText = message;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+    }, duration);
+};
+
+// Global Action Listener
+document.addEventListener('click', (e) => {
+    const trigger = e.target.closest('[data-action]');
+    if (trigger) {
+        const action = trigger.dataset.action;
+        const target = trigger.dataset.target;
+
+        if (action === 'showModal' && target) {
+            window.showModal(target);
+        } else if (action === 'hideModal' && target) {
+            window.hideModal(target);
+        } else if (action === 'showToast') {
+            const msg = trigger.dataset.message;
+            if (window.showToast && msg) window.showToast(msg);
+        }
+    }
+});
+
 // Debug logout button removed (moved to Settings modal)
 /*
 document.addEventListener('DOMContentLoaded', () => {
@@ -1877,7 +1933,12 @@ async function finishWorkout() {
 
         // Disable button specific logic if needed, or show loading state
 
-        const res = await fetch(`${apiBase}/api/client/schedule/complete`, {
+        // Use different endpoint for trainers vs clients
+        const endpoint = APP_CONFIG.role === 'trainer'
+            ? `${apiBase}/api/trainer/schedule/complete`
+            : `${apiBase}/api/client/schedule/complete`;
+
+        const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -2461,7 +2522,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
 
-        fetch(`${apiBase}/api/client/data`)
+        const role = APP_CONFIG.role;
+        const endpoint = role === 'trainer' ? `${apiBase}/api/trainer/data` : `${apiBase}/api/client/data`;
+
+        fetch(endpoint)
             .then(res => res.json())
             .then(user => {
                 const workout = user.todays_workout;
@@ -2475,7 +2539,7 @@ document.addEventListener('DOMContentLoaded', () => {
                             <div class="text-6xl mb-4">🧘</div>
                             <h1 class="text-4xl font-black mb-2">Rest Day</h1>
                             <p class="text-gray-400 mb-8">No workout scheduled for today. Enjoy your recovery!</p>
-                            <a href="/?gym_id=${gymId}&role=client" class="px-8 py-3 bg-white/10 rounded-xl font-bold hover:bg-white/20 transition">Back to Dashboard</a>
+                            <a href="/?gym_id=${gymId}&role=${APP_CONFIG.role}" class="px-8 py-3 bg-white/10 rounded-xl font-bold hover:bg-white/20 transition">Back to Dashboard</a>
                         </div>
                     `;
                     return;

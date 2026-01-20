@@ -5,7 +5,7 @@ import logging
 from dotenv import load_dotenv
 
 load_dotenv()
-# Trigger reload v6.2 - forcing reload for routes
+# Trigger reload v6.3 - forcing reload for services
 
 # Set up logging to see errors in the console
 logging.basicConfig(level=logging.INFO)
@@ -30,6 +30,11 @@ try:
     from jose import jwt, JWTError
     from database import engine, Base
     import models_orm # Register models
+    from models import TrainerData # Import TrainerData
+    from services import UserService, get_user_service
+    from auth import get_current_user
+    from fastapi import Depends
+    from models_orm import UserORM
 except ImportError as e:
     logger.error(f"Missing dependency: {e}")
     logger.info("Please run: pip install fastapi uvicorn sqlalchemy jinja2 python-multipart")
@@ -48,6 +53,20 @@ app.add_middleware(
 # Mount static and templates
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+
+# --- OVERRIDE ROUTES BEFORE ROUTER INCLUSION ---
+@app.get("/api/trainer/data", response_model=TrainerData)
+async def get_trainer_data_direct(
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    with open("server_debug.log", "a") as f:
+        f.write(f"DEBUG: Hit get_trainer_data_direct for {current_user.username}\n")
+    data = service.get_trainer(current_user.id)
+    with open("server_debug.log", "a") as f:
+        f.write(f"DEBUG: get_trainer returned todays_workout: {data.todays_workout}\n")
+    return data
+# ---------------------------------------------
 
 app.include_router(router)
 app.include_router(simple_auth_router, prefix="/auth")
@@ -161,7 +180,8 @@ async def add_trainer_event_direct(
     service: UserService = Depends(get_user_service),
     current_user: UserORM = Depends(get_current_user)
 ):
-    print(f"DEBUG: Hit add_trainer_event_direct for user {current_user.id}")
+    with open("server_debug.log", "a") as f:
+        f.write(f"DEBUG: Hit add_trainer_event_direct for user {current_user.id}. Data: {event_data}\n")
     return service.add_trainer_event(event_data, current_user.id)
 
 @app.delete("/api/trainer/events/{event_id}")
@@ -172,6 +192,17 @@ async def delete_trainer_event_direct(
 ):
     print(f"DEBUG: Hit delete_trainer_event_direct for {event_id}")
     return service.remove_trainer_event(event_id, current_user.id)
+
+@app.post("/api/trainer/schedule/complete")
+async def complete_trainer_schedule_direct(
+    payload: dict,
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    print(f"DEBUG: Hit complete_trainer_schedule_direct for {current_user.id}")
+    return service.complete_trainer_schedule_item(payload, current_user.id)
+
+# Moved to top
 # ---------------------------------------------
 
 @app.get("/trainer/personal", response_class=HTMLResponse)

@@ -79,6 +79,16 @@ async def complete_schedule_item(
     # payload: { "date": "YYYY-MM-DD", "item_id": "..." }
     return service.complete_schedule_item(payload, current_user.id)
 
+@router.post("/api/trainer/schedule/complete")
+async def complete_trainer_schedule_item(
+    payload: dict,
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    # payload: { "date": "YYYY-MM-DD" }
+    return service.complete_trainer_schedule_item(payload, current_user.id)
+
+
 @router.put("/api/client/schedule/update_set")
 async def update_completed_workout(
     payload: dict,
@@ -119,6 +129,8 @@ async def get_trainer_data(
     service: UserService = Depends(get_user_service),
     current_user: UserORM = Depends(get_current_user)
 ):
+    with open("server_debug.log", "a") as f:
+        f.write(f"DEBUG: ROUTE HIT: get_trainer_data for {current_user.username}\n")
     return service.get_trainer(current_user.id)
 
 @router.get("/api/trainer/client/{client_id}", response_model=ClientData)
