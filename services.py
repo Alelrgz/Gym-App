@@ -779,7 +779,8 @@ class UserService:
                     "title": s.title,
                     "subtitle": s.subtitle or "",
                     "type": s.type,
-                    "duration": s.duration if s.duration else 60  # Include duration
+                    "duration": s.duration if s.duration else 60,  # Include duration
+                    "completed": s.completed
                 })
 
             for c in clients_orm:
@@ -1552,6 +1553,34 @@ class UserService:
         except Exception as e:
             db.rollback()
             raise HTTPException(status_code=500, detail=f"Failed to delete event: {str(e)}")
+        finally:
+            db.close()
+
+    def toggle_trainer_event_completion(self, event_id: str, trainer_id: str) -> dict:
+        db = get_db_session()
+        try:
+            event = db.query(TrainerScheduleORM).filter(
+                TrainerScheduleORM.id == event_id,
+                TrainerScheduleORM.trainer_id == trainer_id
+            ).first()
+            
+            if not event:
+                raise HTTPException(status_code=404, detail="Event not found")
+            
+            # Toggle
+            event.completed = not event.completed
+            db.commit()
+            db.refresh(event)
+            
+            return {
+                "status": "success", 
+                "message": "Event updated", 
+                "event_id": event_id, 
+                "completed": event.completed
+            }
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to toggle event: {str(e)}")
         finally:
             db.close()
 

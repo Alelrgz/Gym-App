@@ -155,6 +155,14 @@ async def delete_trainer_event(
 ):
     return service.remove_trainer_event(event_id, current_user.id)
 
+@router.post("/api/trainer/events/{event_id}/toggle_complete")
+async def toggle_trainer_event_completion(
+    event_id: str,
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    return service.toggle_trainer_event_completion(event_id, current_user.id)
+
 
 @router.get("/api/trainer/clients")
 async def get_trainer_clients(

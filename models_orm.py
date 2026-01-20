@@ -144,5 +144,6 @@ class TrainerScheduleORM(Base):
     subtitle = Column(String, nullable=True)
     type = Column(String) # consultation, class, etc 
     duration = Column(Integer, default=60)  # Duration in minutes
+    completed = Column(Boolean, default=False)
 
 
