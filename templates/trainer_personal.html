@@ -71,9 +71,19 @@
         </div>
     </div>
 
-    <!-- Today's Plan Section -->
-    <div id="todays-plan-container" class="mb-6 hidden">
-        <!-- Injected via JS -->
+    <!-- Today's Plan Section - Always Visible -->
+    <div id="todays-plan-container" class="mb-6">
+        <!-- Default: No workout assigned - will be replaced by JS if workout exists -->
+        <div class="glass-card p-5 relative overflow-hidden" id="default-plan-placeholder">
+            <div class="flex justify-between items-start mb-4">
+                <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's
+                    Plan</span>
+                <span class="text-xl">📋</span>
+            </div>
+            <h3 class="text-xl font-bold text-white/50 mb-2">No Workout Assigned</h3>
+            <p class="text-sm text-gray-400 mb-4">Select a workout from "My Workouts" and click "Assign to Me" to set
+                today's workout.</p>
+        </div>
     </div>
 
     <!-- Calendar / Schedule Section -->
@@ -263,9 +273,12 @@
         // Toggle Logic for My Workouts / My Splits
         const workoutBtn = document.getElementById('toggle-my-workout-btn');
         if (workoutBtn) {
-            workoutBtn.addEventListener('click', () => {
+            workoutBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
                 const section = document.getElementById('my-workout-section');
-                if (section) section.classList.toggle('hidden');
+                if (section) {
+                    section.classList.toggle('hidden');
+                }
             });
         }
 
@@ -273,7 +286,9 @@
         if (splitBtn) {
             splitBtn.addEventListener('click', () => {
                 const section = document.getElementById('my-split-section');
-                if (section) section.classList.toggle('hidden');
+                if (section) {
+                    section.classList.toggle('hidden');
+                }
             });
         }
     });
@@ -313,8 +328,18 @@
                     `;
                     planContainer.classList.remove('hidden');
                 } else {
-                    planContainer.innerHTML = '';
-                    planContainer.classList.add('hidden');
+                    // Show default "No Workout" message
+                    planContainer.innerHTML = `
+                        <div class="glass-card p-5 relative overflow-hidden" id="default-plan-placeholder">
+                            <div class="flex justify-between items-start mb-4">
+                                <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
+                                <span class="text-xl">📋</span>
+                            </div>
+                            <h3 class="text-xl font-bold text-white/50 mb-2">No Workout Assigned</h3>
+                            <p class="text-sm text-gray-400 mb-4">Select a workout from "My Workouts" and click "Assign to Me" to set today's workout.</p>
+                        </div>
+                    `;
+                    planContainer.classList.remove('hidden');
                 }
             }
 
@@ -327,15 +352,20 @@
                     workoutCardContainer.innerHTML = '';
                     data.workouts.forEach(w => {
                         const div = document.createElement('div');
-                        div.className = "glass-card p-3 mb-2 flex justify-between items-center";
+                        div.className = "glass-card p-3 mb-2";
                         div.innerHTML = `
-                            <div>
-                                <h4 class="font-bold text-sm text-white">${w.title}</h4>
-                                <p class="text-[10px] text-gray-400">${w.duration} • ${w.difficulty}</p>
+                            <div class="flex justify-between items-center mb-2">
+                                <div>
+                                    <h4 class="font-bold text-sm text-white">${w.title}</h4>
+                                    <p class="text-[10px] text-gray-400">${w.duration} • ${w.difficulty}</p>
+                                </div>
+                                <button class="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-white transition" 
+                                    onclick="window.location.href='/?gym_id=${localGymId}&role=trainer&mode=workout&workout_id=${w.id}'">
+                                    Preview
+                                </button>
                             </div>
-                            <button class="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-white transition" 
-                                onclick="window.location.href='/?gym_id=${localGymId}&role=trainer&mode=workout&workout_id=${w.id}'">
-                                Preview
+                            <button class="w-full py-1.5 bg-green-600/20 hover:bg-green-600 text-green-400 hover:text-white text-xs font-bold rounded-lg transition border border-green-500/30"
+                                onclick="window.assignWorkoutToSelf('${w.id}', '${w.title}')">✅ Assign to Me (Today)
                             </button>
                         `;
                         workoutCardContainer.appendChild(div);

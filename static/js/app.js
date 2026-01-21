@@ -1,5 +1,5 @@
 const { gymId, role, apiBase } = window.APP_CONFIG;
-alert("App.js loaded! apiBase: " + apiBase);
+console.log("App.js loaded! apiBase: " + apiBase);
 console.log("App.js loaded (Restored Monolithic) v" + Math.random());
 
 // --- AUTHENTICATION ---
@@ -772,13 +772,13 @@ async function init() {
             }
 
             // --- MY WORKOUTS SECTION ---
+            // Skip on trainer_personal page (has its own handlers)
+            const isTrainerPersonalPage = window.location.pathname.includes('/trainer/personal');
             const toggleMyWorkout = document.getElementById('toggle-my-workout-btn');
             const myWorkoutSection = document.getElementById('my-workout-section');
-            if (toggleMyWorkout && myWorkoutSection) {
+            if (toggleMyWorkout && myWorkoutSection && !isTrainerPersonalPage) {
                 toggleMyWorkout.onclick = () => {
                     myWorkoutSection.classList.toggle('hidden');
-                    const isHidden = myWorkoutSection.classList.contains('hidden');
-                    // Optional: Change button text or style on toggle
                 };
             }
 
@@ -813,10 +813,14 @@ async function init() {
                                     </div>
                                     <h3 class="text-2xl font-black italic uppercase mb-1 text-white">${w.title}</h3>
                                     <p class="text-sm text-gray-300 mb-4">${w.duration} • ${w.difficulty}</p>
-                                    <div class="flex gap-2">
+                                    <div class="flex gap-2 mb-2">
                                          <button onclick='openEditWorkout(JSON.parse(decodeURIComponent("${encodeURIComponent(JSON.stringify(w))}")))' class="flex-1 py-3 bg-white/10 text-white text-center font-bold rounded-xl hover:bg-white/20 transition">EDIT</button>
                                          <a href="/?gym_id=${gymId}&role=client&mode=workout&view=preview&workout_id=${w.id}" class="flex-1 py-3 bg-white text-black text-center font-bold rounded-xl hover:bg-gray-200 transition">PREVIEW</a>
                                     </div>
+                                    <button onclick='window.assignWorkoutToSelf("${w.id}", "${w.title.replace(/'/g, "\\'")}")' 
+                                        class="w-full py-2 bg-green-600/20 hover:bg-green-600 text-green-400 hover:text-white text-sm font-bold rounded-lg transition border border-green-500/30">
+                                        📅 Assign to Me (Today)
+                                    </button>
                                 </div>
                             `;
                             container.appendChild(card);
@@ -826,11 +830,14 @@ async function init() {
             }
 
             // --- MY SPLITS SECTION ---
+            // Skip on trainer_personal page (has its own handlers)
             const toggleMySplit = document.getElementById('toggle-my-split-btn');
             const mySplitSection = document.getElementById('my-split-section');
-            if (toggleMySplit && mySplitSection) {
+            if (toggleMySplit && mySplitSection && !isTrainerPersonalPage) {
                 toggleMySplit.onclick = () => {
+                    console.log('TOGGLE DEBUG [app.js]: My Splits onclick triggered!');
                     mySplitSection.classList.toggle('hidden');
+                    console.log('TOGGLE DEBUG [app.js]: NOW hidden:', mySplitSection.classList.contains('hidden'));
                 };
             }
 
@@ -2282,6 +2289,54 @@ window.assignSplitToSelf = async function (splitId) {
     }
 };
 
+// Assign workout to trainer's own schedule for Today
+window.assignWorkoutToSelf = async function (workoutId, workoutTitle) {
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+
+    // Prompt for time
+    const timeInput = prompt(`Enter time for "${workoutTitle}" (HH:MM, 24h format):`, '09:00');
+    if (!timeInput) return; // User cancelled
+
+    // Basic time validation
+    if (!/^\d{1,2}:\d{2}$/.test(timeInput)) {
+        showToast("Invalid time format. Use HH:MM (e.g., 09:00 or 14:30)");
+        return;
+    }
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/events`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                title: workoutTitle,
+                subtitle: 'Personal Workout',
+                date: today,
+                time: timeInput,
+                type: 'personal',
+                duration: 60,
+                workout_id: workoutId
+            })
+        });
+
+        if (res.ok) {
+            showToast(`Workout assigned at ${timeInput}! 💪`);
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            const errData = await res.json().catch(() => ({ detail: 'Unknown error' }));
+            console.error("Assign workout error:", errData);
+
+            if (errData.detail && errData.detail.includes('conflict')) {
+                showToast(`⚠️ Time conflict! Choose a different time.`);
+            } else {
+                showToast("Failed: " + (errData.detail || 'Unknown error'));
+            }
+        }
+    } catch (e) {
+        console.error(e);
+        showToast("Error assigning workout: " + e.message);
+    }
+};
+
 // --- METRICS MODAL LOGIC ---
 
 let metricsChartInstance = null;
@@ -2498,6 +2553,42 @@ function showRestTimer(seconds, callback) {
     };
 }
 
+// Helper function to initialize workout with given data
+function initWorkoutWithData(workout, isPreview = false) {
+    console.log('initWorkoutWithData called:', workout.title, 'preview:', isPreview);
+
+    workoutState = {
+        workoutId: workout.id,
+        exercises: workout.exercises.map(ex => ({
+            ...ex,
+            collapsed: false,
+            performance: ex.performance || Array(ex.sets || 3).fill().map(() => ({ reps: '', weight: '', completed: false }))
+        })),
+        currentExerciseIdx: 0,
+        currentSet: 1,
+        currentReps: parseInt(String(workout.exercises[0]?.reps || '10').split('-')[1] || workout.exercises[0]?.reps || '10'),
+        isCompletedView: isPreview, // Treat preview like completed view (no edits)
+        isPreview: isPreview
+    };
+
+    // Show preview banner if in preview mode
+    if (isPreview) {
+        const header = document.querySelector('#workout-screen .absolute.top-0.left-0');
+        if (header) {
+            const banner = document.createElement('div');
+            banner.className = "absolute top-20 left-1/2 transform -translate-x-1/2 bg-blue-500/90 text-white px-4 py-1 rounded-full text-xs font-bold backdrop-blur-md z-50";
+            banner.innerText = "PREVIEW MODE";
+            header.appendChild(banner);
+        }
+
+        // Hide complete button in preview
+        const completeBtn = document.getElementById('complete-btn');
+        if (completeBtn) completeBtn.style.display = 'none';
+    }
+
+    updateWorkoutUI();
+}
+
 // Initialize workout state when in workout mode
 document.addEventListener('DOMContentLoaded', () => {
     if (document.getElementById('workout-screen')) {
@@ -2523,6 +2614,35 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         const role = APP_CONFIG.role;
+        const previewWorkoutId = urlParams.get('workout_id');
+
+        // If previewing a specific workout, fetch it directly
+        if (previewWorkoutId) {
+            console.log('PREVIEW MODE: Loading workout ID:', previewWorkoutId);
+            fetch(`${apiBase}/api/trainer/workouts`)
+                .then(res => res.json())
+                .then(workouts => {
+                    const workout = workouts.find(w => w.id === previewWorkoutId || w.id === parseInt(previewWorkoutId));
+                    if (!workout) {
+                        console.error('Workout not found:', previewWorkoutId);
+                        document.getElementById('workout-screen').innerHTML = `
+                            <div class="flex flex-col items-center justify-center h-screen bg-gray-900 text-white p-8 text-center">
+                                <div class="text-6xl mb-4">⚠️</div>
+                                <h1 class="text-4xl font-black mb-2">Workout Not Found</h1>
+                                <p class="text-gray-400 mb-8">The requested workout could not be loaded.</p>
+                                <a href="/?gym_id=${gymId}&role=${APP_CONFIG.role}" class="px-8 py-3 bg-white/10 rounded-xl font-bold hover:bg-white/20 transition">Back to Dashboard</a>
+                            </div>
+                        `;
+                        return;
+                    }
+                    initWorkoutWithData(workout, true); // true = preview mode
+                })
+                .catch(err => {
+                    console.error('Error loading preview workout:', err);
+                });
+            return;
+        }
+
         const endpoint = role === 'trainer' ? `${apiBase}/api/trainer/data` : `${apiBase}/api/client/data`;
 
         fetch(endpoint)
