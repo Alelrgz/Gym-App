@@ -319,6 +319,43 @@ async def delete_split(
     return service.delete_split(split_id, current_user.id)
 
 
+# --- TRAINER NOTES ROUTES ---
+@router.get("/api/trainer/notes")
+async def get_trainer_notes(
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    return service.get_trainer_notes(current_user.id)
+
+@router.post("/api/trainer/notes")
+async def save_trainer_note(
+    note_data: dict,
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    title = note_data.get("title", "Untitled Note")
+    content = note_data.get("content", "")
+    return service.save_trainer_note(current_user.id, title, content)
+
+@router.put("/api/trainer/notes/{note_id}")
+async def update_trainer_note(
+    note_id: str,
+    note_data: dict,
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    title = note_data.get("title", "Untitled Note")
+    content = note_data.get("content", "")
+    return service.update_trainer_note(note_id, current_user.id, title, content)
+
+@router.delete("/api/trainer/notes/{note_id}")
+async def delete_trainer_note(
+    note_id: str,
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    return service.delete_trainer_note(note_id, current_user.id)
+
 
 import shutil
 import os

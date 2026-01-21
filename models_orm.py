@@ -150,3 +150,12 @@ class TrainerScheduleORM(Base):
     details = Column(String, nullable=True)  # Store workout snapshot JSON on completion
 
 
+class TrainerNoteORM(Base):
+    __tablename__ = "trainer_notes"
+
+    id = Column(String, primary_key=True, index=True)
+    trainer_id = Column(String, ForeignKey("users.id"), index=True)
+    title = Column(String)
+    content = Column(String)  # Note body
+    created_at = Column(String)
+    updated_at = Column(String)
