@@ -9,6 +9,7 @@ from .workout_service import WorkoutService, workout_service, get_workout_servic
 from .split_service import SplitService, split_service, get_split_service
 from .exercise_service import ExerciseService, exercise_service, get_exercise_service
 from .notes_service import NotesService, notes_service, get_notes_service
+from .diet_service import DietService, diet_service, get_diet_service
 
 __all__ = [
     'WorkoutService',
@@ -23,4 +24,7 @@ __all__ = [
     'NotesService',
     'notes_service',
     'get_notes_service',
+    'DietService',
+    'diet_service',
+    'get_diet_service',
 ]

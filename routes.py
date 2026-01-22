@@ -10,6 +10,7 @@ from route_modules.workout_routes import router as workout_router
 from route_modules.split_routes import router as split_router
 from route_modules.exercise_routes import router as exercise_router
 from route_modules.notes_routes import router as notes_router
+from route_modules.diet_routes import router as diet_router
 
 router = APIRouter()
 # Include modular routers
@@ -17,7 +18,8 @@ router.include_router(workout_router)
 router.include_router(split_router)
 router.include_router(exercise_router)
 router.include_router(notes_router)
-# Trigger reload v8 - modular workout + split + exercise + notes routes
+router.include_router(diet_router)
+# Trigger reload v9 - modular workout + split + exercise + notes + diet routes
 
 # --- DEPENDENCIES ---
 def get_gym_service() -> GymService:
@@ -117,23 +119,7 @@ async def update_client_profile(
 ):
     return service.update_client_profile(profile_update, current_user.id)
 
-@router.post("/api/client/diet/scan")
-async def scan_meal(
-    file: UploadFile = File(...),
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    # Read file bytes
-    content = await file.read()
-    return service.scan_meal(content)
-
-@router.post("/api/client/diet/log")
-async def log_meal(
-    meal_data: dict,
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.log_meal(current_user.id, meal_data)
+# Diet routes moved to route_modules/diet_routes.py
 
 @router.get("/api/trainer/data", response_model=TrainerData)
 async def get_trainer_data(
@@ -213,28 +199,7 @@ async def get_leaderboard_data(
 
 # Exercise routes moved to route_modules/exercise_routes.py
 # Workout routes moved to route_modules/workout_routes.py
-
-@router.post("/api/trainer/diet")
-async def update_diet(
-    diet_data: dict, 
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    # Expects { "client_id": "...", "macros": {...}, "hydration_target": 2500, "consistency_target": 80 }
-    client_id = diet_data.get("client_id")
-    if not client_id:
-        from fastapi import HTTPException
-        raise HTTPException(status_code=400, detail="Missing client_id")
-    return service.update_client_diet(client_id, diet_data)
-
-@router.post("/api/trainer/assign_diet")
-async def assign_diet(
-    diet_req: AssignDietRequest, 
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.assign_diet(diet_req)
-
+# Diet routes moved to route_modules/diet_routes.py
 # Split routes moved to route_modules/split_routes.py
 
 

@@ -9,11 +9,13 @@ from fastapi import APIRouter
 from .workout_routes import router as workout_router
 from .exercise_routes import router as exercise_router
 from .notes_routes import router as notes_router
+from .diet_routes import router as diet_router
 
 # Combined router that includes all sub-routers
 combined_router = APIRouter()
 combined_router.include_router(workout_router, tags=["workouts"])
 combined_router.include_router(exercise_router, tags=["exercises"])
 combined_router.include_router(notes_router, tags=["notes"])
+combined_router.include_router(diet_router, tags=["diet"])
 
-__all__ = ['combined_router', 'workout_router', 'exercise_router', 'notes_router']
+__all__ = ['combined_router', 'workout_router', 'exercise_router', 'notes_router', 'diet_router']
