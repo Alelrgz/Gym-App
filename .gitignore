@@ -16,8 +16,11 @@ db/*.db
 
 # Logs and Backups
 *.log
+server_debug.log
 *.bak
 *.local
+*_old_backup.*
+*_backup_*
 
 # Test and debug files
 test_*.py
@@ -27,6 +30,15 @@ reproduce*.py
 crash_*.py
 static/test_trigger.txt
 .vscode/
+_debug_scripts/
+_conflict_backup/
+_deprecated_scripts/
+
+# Claude Code working directory
+.claude/
+
+# Windows error files
+nul
 
 # SQLite temp files
 *.db-shm
