@@ -12,7 +12,8 @@ from database import get_db_session, Base, engine
 from models_orm import (
     ExerciseORM, WorkoutORM, WeeklySplitORM, UserORM,
     ClientProfileORM, ClientScheduleORM, ClientDietSettingsORM,
-    ClientExerciseLogORM, ClientDietLogORM, TrainerScheduleORM
+    ClientExerciseLogORM, ClientDietLogORM, TrainerScheduleORM,
+    TrainerNoteORM
 )
 
 # Re-export for convenience
@@ -21,7 +22,8 @@ __all__ = [
     'get_db_session', 'Base', 'engine',
     'ExerciseORM', 'WorkoutORM', 'WeeklySplitORM', 'UserORM',
     'ClientProfileORM', 'ClientScheduleORM', 'ClientDietSettingsORM',
-    'ClientExerciseLogORM', 'ClientDietLogORM', 'TrainerScheduleORM'
+    'ClientExerciseLogORM', 'ClientDietLogORM', 'TrainerScheduleORM',
+    'TrainerNoteORM'
 ]
 
 logger = logging.getLogger("gym_app")

@@ -7,6 +7,8 @@ with the existing monolithic services.py imports.
 from .base import *
 from .workout_service import WorkoutService, workout_service, get_workout_service
 from .split_service import SplitService, split_service, get_split_service
+from .exercise_service import ExerciseService, exercise_service, get_exercise_service
+from .notes_service import NotesService, notes_service, get_notes_service
 
 __all__ = [
     'WorkoutService',
@@ -15,4 +17,10 @@ __all__ = [
     'SplitService',
     'split_service',
     'get_split_service',
+    'ExerciseService',
+    'exercise_service',
+    'get_exercise_service',
+    'NotesService',
+    'notes_service',
+    'get_notes_service',
 ]

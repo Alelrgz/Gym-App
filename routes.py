@@ -8,12 +8,16 @@ from models_orm import UserORM
 # Import modular routes
 from route_modules.workout_routes import router as workout_router
 from route_modules.split_routes import router as split_router
+from route_modules.exercise_routes import router as exercise_router
+from route_modules.notes_routes import router as notes_router
 
 router = APIRouter()
 # Include modular routers
 router.include_router(workout_router)
 router.include_router(split_router)
-# Trigger reload v6 - modular workout + split routes
+router.include_router(exercise_router)
+router.include_router(notes_router)
+# Trigger reload v8 - modular workout + split + exercise + notes routes
 
 # --- DEPENDENCIES ---
 def get_gym_service() -> GymService:
@@ -207,32 +211,8 @@ async def get_leaderboard_data(
 
 
 
-@router.get("/api/trainer/exercises")
-async def get_exercises(
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.get_exercises(current_user.id)
-
-@router.post("/api/trainer/exercises")
-async def create_exercise(
-    exercise: ExerciseTemplate, 
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    # Convert Pydantic model to dict for service layer
-    return service.create_exercise(exercise.model_dump(), current_user.id)
-
-@router.put("/api/trainer/exercises/{exercise_id}")
-async def update_exercise(
-    exercise_id: str,
-    exercise: ExerciseTemplate,
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.update_exercise(exercise_id, exercise.model_dump(exclude_unset=True), current_user.id)
-
-# Workout routes moved to routes/workout_routes.py
+# Exercise routes moved to route_modules/exercise_routes.py
+# Workout routes moved to route_modules/workout_routes.py
 
 @router.post("/api/trainer/diet")
 async def update_diet(
@@ -258,42 +238,7 @@ async def assign_diet(
 # Split routes moved to route_modules/split_routes.py
 
 
-# --- TRAINER NOTES ROUTES ---
-@router.get("/api/trainer/notes")
-async def get_trainer_notes(
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.get_trainer_notes(current_user.id)
-
-@router.post("/api/trainer/notes")
-async def save_trainer_note(
-    note_data: dict,
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    title = note_data.get("title", "Untitled Note")
-    content = note_data.get("content", "")
-    return service.save_trainer_note(current_user.id, title, content)
-
-@router.put("/api/trainer/notes/{note_id}")
-async def update_trainer_note(
-    note_id: str,
-    note_data: dict,
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    title = note_data.get("title", "Untitled Note")
-    content = note_data.get("content", "")
-    return service.update_trainer_note(note_id, current_user.id, title, content)
-
-@router.delete("/api/trainer/notes/{note_id}")
-async def delete_trainer_note(
-    note_id: str,
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.delete_trainer_note(note_id, current_user.id)
+# Notes routes moved to route_modules/notes_routes.py
 
 
 import shutil
