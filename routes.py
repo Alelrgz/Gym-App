@@ -7,11 +7,13 @@ from models_orm import UserORM
 
 # Import modular routes
 from route_modules.workout_routes import router as workout_router
+from route_modules.split_routes import router as split_router
 
 router = APIRouter()
 # Include modular routers
 router.include_router(workout_router)
-# Trigger reload v5 - modular routes
+router.include_router(split_router)
+# Trigger reload v6 - modular workout + split routes
 
 # --- DEPENDENCIES ---
 def get_gym_service() -> GymService:
@@ -253,47 +255,7 @@ async def assign_diet(
 ):
     return service.assign_diet(diet_req)
 
-@router.get("/api/trainer/splits")
-async def get_splits(
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.get_splits(current_user.id)
-
-@router.post("/api/trainer/splits")
-async def create_split(
-    split_data: dict,
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.create_split(split_data, current_user.id)
-
-@router.post("/api/trainer/assign_split")
-async def assign_split(
-    assignment: dict,
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    with open("server_debug.log", "a") as f:
-        f.write(f"[ROUTE] assign_split called: assignment={assignment}, trainer_id={current_user.id}\n")
-    return service.assign_split(assignment, current_user.id)
-
-@router.put("/api/trainer/splits/{split_id}")
-async def update_split(
-    split_id: str,
-    split_data: dict,
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.update_split(split_id, split_data, current_user.id)
-
-@router.delete("/api/trainer/splits/{split_id}")
-async def delete_split(
-    split_id: str,
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.delete_split(split_id, current_user.id)
+# Split routes moved to route_modules/split_routes.py
 
 
 # --- TRAINER NOTES ROUTES ---

@@ -6,9 +6,13 @@ with the existing monolithic services.py imports.
 """
 from .base import *
 from .workout_service import WorkoutService, workout_service, get_workout_service
+from .split_service import SplitService, split_service, get_split_service
 
 __all__ = [
     'WorkoutService',
     'workout_service',
     'get_workout_service',
+    'SplitService',
+    'split_service',
+    'get_split_service',
 ]
