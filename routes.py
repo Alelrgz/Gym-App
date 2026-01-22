@@ -11,6 +11,7 @@ from route_modules.split_routes import router as split_router
 from route_modules.exercise_routes import router as exercise_router
 from route_modules.notes_routes import router as notes_router
 from route_modules.diet_routes import router as diet_router
+from route_modules.schedule_routes import router as schedule_router
 
 router = APIRouter()
 # Include modular routers
@@ -19,7 +20,8 @@ router.include_router(split_router)
 router.include_router(exercise_router)
 router.include_router(notes_router)
 router.include_router(diet_router)
-# Trigger reload v9 - modular workout + split + exercise + notes + diet routes
+router.include_router(schedule_router)
+# Trigger reload v10 - modular workout + split + exercise + notes + diet + schedule routes
 
 # --- DEPENDENCIES ---
 def get_gym_service() -> GymService:
@@ -66,49 +68,7 @@ async def get_client_data(
 ):
     return service.get_client(current_user.id)
 
-@router.get("/api/client/schedule")
-async def get_client_schedule(
-    date: str = None, 
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.get_client_schedule(current_user.id, date)
-
-@router.get("/api/client/{client_id}/history")
-async def get_client_history(client_id: str, exercise_name: str = None):
-    try:
-        user_service = UserService()
-        # Ensure trainer has access to this client (skip auth for prototype)
-        return user_service.get_client_exercise_history(client_id, exercise_name)
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-@router.post("/api/client/schedule/complete")
-async def complete_schedule_item(
-    payload: dict,
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    # payload: { "date": "YYYY-MM-DD", "item_id": "..." }
-    return service.complete_schedule_item(payload, current_user.id)
-
-@router.post("/api/trainer/schedule/complete")
-async def complete_trainer_schedule_item(
-    payload: dict,
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    # payload: { "date": "YYYY-MM-DD" }
-    return service.complete_trainer_schedule_item(payload, current_user.id)
-
-
-@router.put("/api/client/schedule/update_set")
-async def update_completed_workout(
-    payload: dict,
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.update_completed_workout(payload, current_user.id)
+# Schedule routes moved to route_modules/schedule_routes.py
 
 from models import ClientProfileUpdate
 @router.put("/api/client/profile")
@@ -148,29 +108,7 @@ async def toggle_client_premium(
         f.write(f"ROUTE HIT: toggle_client_premium for {client_id}. User: {current_user.username}\n")
     return service.toggle_premium_status(client_id)
 
-@router.post("/api/trainer/events")
-async def add_trainer_event(
-    event_data: dict,
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.add_trainer_event(event_data, current_user.id)
-
-@router.delete("/api/trainer/events/{event_id}")
-async def delete_trainer_event(
-    event_id: str,
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.remove_trainer_event(event_id, current_user.id)
-
-@router.post("/api/trainer/events/{event_id}/toggle_complete")
-async def toggle_trainer_event_completion(
-    event_id: str,
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.toggle_trainer_event_completion(event_id, current_user.id)
+# Trainer event routes moved to route_modules/schedule_routes.py
 
 
 @router.get("/api/trainer/clients")
