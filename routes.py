@@ -12,6 +12,7 @@ from route_modules.exercise_routes import router as exercise_router
 from route_modules.notes_routes import router as notes_router
 from route_modules.diet_routes import router as diet_router
 from route_modules.schedule_routes import router as schedule_router
+from route_modules.client_routes import router as client_router
 
 router = APIRouter()
 # Include modular routers
@@ -21,7 +22,8 @@ router.include_router(exercise_router)
 router.include_router(notes_router)
 router.include_router(diet_router)
 router.include_router(schedule_router)
-# Trigger reload v10 - modular workout + split + exercise + notes + diet + schedule routes
+router.include_router(client_router)
+# Trigger reload v11 - modular workout + split + exercise + notes + diet + schedule + client routes
 
 # --- DEPENDENCIES ---
 def get_gym_service() -> GymService:
@@ -61,23 +63,13 @@ async def register(
 async def get_gym_config(gym_id: str, service: GymService = Depends(get_gym_service)):
     return service.get_gym(gym_id)
 
-@router.get("/api/client/data", response_model=ClientData)
-async def get_client_data(
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.get_client(current_user.id)
+# Client routes moved to route_modules/client_routes.py
+# - /api/client/data (get client's own data)
+# - /api/client/profile (update profile)
+# - /api/trainer/client/{client_id} (get client data for trainer)
+# - /api/trainer/client/{client_id}/toggle_premium (toggle premium)
 
 # Schedule routes moved to route_modules/schedule_routes.py
-
-from models import ClientProfileUpdate
-@router.put("/api/client/profile")
-async def update_client_profile(
-    profile_update: ClientProfileUpdate,
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.update_client_profile(profile_update, current_user.id)
 
 # Diet routes moved to route_modules/diet_routes.py
 
@@ -89,24 +81,6 @@ async def get_trainer_data(
     with open("server_debug.log", "a") as f:
         f.write(f"DEBUG: ROUTE HIT: get_trainer_data for {current_user.username}\n")
     return service.get_trainer(current_user.id)
-
-@router.get("/api/trainer/client/{client_id}", response_model=ClientData)
-async def get_client_for_trainer(
-    client_id: str, 
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.get_client(client_id)
-
-@router.post("/api/trainer/client/{client_id}/toggle_premium")
-async def toggle_client_premium(
-    client_id: str,
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    with open("server_debug.log", "a") as f:
-        f.write(f"ROUTE HIT: toggle_client_premium for {client_id}. User: {current_user.username}\n")
-    return service.toggle_premium_status(client_id)
 
 # Trainer event routes moved to route_modules/schedule_routes.py
 

@@ -11,6 +11,7 @@ from .exercise_service import ExerciseService, exercise_service, get_exercise_se
 from .notes_service import NotesService, notes_service, get_notes_service
 from .diet_service import DietService, diet_service, get_diet_service
 from .schedule_service import ScheduleService, schedule_service, get_schedule_service
+from .client_service import ClientService, client_service, get_client_service
 
 __all__ = [
     'WorkoutService',
@@ -31,4 +32,7 @@ __all__ = [
     'ScheduleService',
     'schedule_service',
     'get_schedule_service',
+    'ClientService',
+    'client_service',
+    'get_client_service',
 ]
