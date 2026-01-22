@@ -1717,16 +1717,43 @@ async function fetchAndRenderWorkouts() {
                 <p class="font-bold text-sm text-white">${w.title}</p>
                 <p class="text-[10px] text-gray-400">${w.exercises.length} Exercises • ${w.duration} • ${w.difficulty}</p>
             </div>
-            <button class="edit-workout-btn text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition">Edit</button>
+            <div class="flex gap-2">
+                <button class="edit-workout-btn text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition">Edit</button>
+                <button class="delete-workout-btn text-xs bg-red-500/20 hover:bg-red-500/40 px-2 py-1 rounded text-red-400 transition">🗑️</button>
+            </div>
         `;
 
         div.querySelector('.edit-workout-btn').onclick = () => openEditWorkout(w);
+        div.querySelector('.delete-workout-btn').onclick = () => deleteWorkout(w.id, w.title);
 
         container.appendChild(div);
     });
 }
 
+window.deleteWorkout = async function (workoutId, workoutTitle) {
+    if (!confirm(`Are you sure you want to delete "${workoutTitle}"? This cannot be undone.`)) {
+        return;
+    }
 
+    const { apiBase } = window.APP_CONFIG || {};
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/workouts/${workoutId}`, {
+            method: 'DELETE'
+        });
+
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.detail || 'Failed to delete workout');
+        }
+
+        showToast(`"${workoutTitle}" deleted successfully`);
+        fetchAndRenderWorkouts(); // Refresh the list
+    } catch (error) {
+        console.error('Error deleting workout:', error);
+        showToast(`Error: ${error.message}`);
+    }
+}
 
 // --- SELECTED EXERCISES LOGIC ---
 

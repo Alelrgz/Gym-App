@@ -249,6 +249,14 @@ async def update_workout(
 ):
     return service.update_workout(workout_id, workout, current_user.id)
 
+@router.delete("/api/trainer/workouts/{workout_id}")
+async def delete_workout(
+    workout_id: str,
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    return service.delete_workout(workout_id, current_user.id)
+
 @router.post("/api/trainer/assign_workout")
 async def assign_workout(
     assignment: dict, 

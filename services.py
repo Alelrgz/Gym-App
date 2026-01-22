@@ -1242,6 +1242,29 @@ class UserService:
         finally:
             db.close()
 
+    def delete_workout(self, workout_id: str, trainer_id: str) -> dict:
+        db = get_db_session()
+        try:
+            workout = db.query(WorkoutORM).filter(WorkoutORM.id == workout_id).first()
+
+            if not workout:
+                raise HTTPException(status_code=404, detail="Workout not found")
+
+            # Check ownership
+            if workout.owner_id != trainer_id and workout.owner_id is not None:
+                raise HTTPException(status_code=403, detail="Cannot delete this workout")
+
+            db.delete(workout)
+            db.commit()
+            return {"status": "success", "message": "Workout deleted"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to delete workout: {str(e)}")
+        finally:
+            db.close()
+
     def assign_workout(self, assignment: dict) -> dict:
         client_id = assignment.get("client_id")
         workout_id = assignment.get("workout_id")
