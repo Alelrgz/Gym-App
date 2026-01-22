@@ -5,8 +5,13 @@ from services import GymService, UserService, LeaderboardService
 from auth import create_access_token, get_current_user
 from models_orm import UserORM
 
+# Import modular routes
+from route_modules.workout_routes import router as workout_router
+
 router = APIRouter()
-# Trigger reload v4
+# Include modular routers
+router.include_router(workout_router)
+# Trigger reload v5 - modular routes
 
 # --- DEPENDENCIES ---
 def get_gym_service() -> GymService:
@@ -225,45 +230,7 @@ async def update_exercise(
 ):
     return service.update_exercise(exercise_id, exercise.model_dump(exclude_unset=True), current_user.id)
 
-@router.get("/api/trainer/workouts")
-async def get_workouts(
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.get_workouts(current_user.id)
-
-@router.post("/api/trainer/workouts")
-async def create_workout(
-    workout: dict, 
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.create_workout(workout, current_user.id)
-
-@router.put("/api/trainer/workouts/{workout_id}")
-async def update_workout(
-    workout_id: str,
-    workout: dict,
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.update_workout(workout_id, workout, current_user.id)
-
-@router.delete("/api/trainer/workouts/{workout_id}")
-async def delete_workout(
-    workout_id: str,
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.delete_workout(workout_id, current_user.id)
-
-@router.post("/api/trainer/assign_workout")
-async def assign_workout(
-    assignment: dict, 
-    service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
-):
-    return service.assign_workout(assignment)
+# Workout routes moved to routes/workout_routes.py
 
 @router.post("/api/trainer/diet")
 async def update_diet(

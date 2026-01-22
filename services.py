@@ -10,6 +10,9 @@ from database import get_db_session, Base, engine
 from models_orm import ExerciseORM, WorkoutORM, WeeklySplitORM, UserORM, ClientProfileORM, ClientScheduleORM, ClientDietSettingsORM, ClientExerciseLogORM, ClientDietLogORM, TrainerScheduleORM
 from auth import verify_password, get_password_hash
 
+# Import modular services for delegation
+from service_modules.workout_service import workout_service as _workout_service
+
 # Create tables (ensures unified DB is initialized)
 Base.metadata.create_all(bind=engine)
 
@@ -1089,230 +1092,28 @@ class UserService:
             db.close()
 
     def get_workouts(self, trainer_id: str) -> list:
-        db = get_db_session()
-        try:
-            workouts = db.query(WorkoutORM).filter(
-                (WorkoutORM.owner_id == None) | (WorkoutORM.owner_id == trainer_id)
-            ).all()
-            
-            # Map logic to override globals
-            workout_map = {}
-            for w in workouts:
-                # Basic map logic
-                w_data = {
-                    "id": w.id,
-                    "title": w.title,
-                    "duration": w.duration,
-                    "difficulty": w.difficulty,
-                    "exercises": json.loads(w.exercises_json)
-                }
-                
-                if w.owner_id is None:
-                    workout_map[w.id] = w_data
-                else: 
-                    # If this is a shadown/fork, it might have same ID? 
-                    # Usually local IDs are unique UUIDs. 
-                    # In current logic, they are mixed. 
-                    workout_map[w.id] = w_data
-                    
-            return list(workout_map.values())
-        finally:
-            db.close()
+        """Delegate to WorkoutService."""
+        return _workout_service.get_workouts(trainer_id)
 
-    def get_workout_details(self, workout_id: str, context_trainer_id: str = None, db_session = None) -> dict:
-        # Allow passing session to avoid reopening
-        db = db_session if db_session else get_db_session()
-        should_close = db_session is None
-        
-        try:
-            w_orm = db.query(WorkoutORM).filter(WorkoutORM.id == workout_id).first()
-            if not w_orm:
-                # Fallback to WORKOUTS_DB memory if not in DB (backward compat)
-                if workout_id in WORKOUTS_DB:
-                    return WORKOUTS_DB[workout_id].copy()
-                return None
-            
-            workout = {
-                "id": w_orm.id,
-                "title": w_orm.title,
-                "duration": w_orm.duration,
-                "difficulty": w_orm.difficulty,
-                "exercises": json.loads(w_orm.exercises_json)
-            }
-            
-            # Sync video IDs if context available
-            if context_trainer_id:
-                # Fetch trainer exercises to override video IDs
-                trainer_exercises = db.query(ExerciseORM).filter(
-                    (ExerciseORM.owner_id == None) | (ExerciseORM.owner_id == context_trainer_id)
-                ).all()
-                ex_map = {ex.name: ex.video_id for ex in trainer_exercises}
-                
-                for ex in workout["exercises"]:
-                    if ex.get("name") in ex_map:
-                        ex["video_id"] = ex_map[ex["name"]]
-                        
-            return workout
-        finally:
-            if should_close:
-                db.close()
+    def get_workout_details(self, workout_id: str, context_trainer_id: str = None, db_session=None) -> dict:
+        """Delegate to WorkoutService."""
+        return _workout_service.get_workout_details(workout_id, context_trainer_id, db_session)
 
     def create_workout(self, workout: dict, trainer_id: str) -> dict:
-        db = get_db_session()
-        try:
-            new_id = str(uuid.uuid4())
-            db_workout = WorkoutORM(
-                id=new_id,
-                title=workout["title"],
-                duration=workout["duration"],
-                difficulty=workout["difficulty"],
-                exercises_json=json.dumps(workout["exercises"]),
-                owner_id=trainer_id
-            )
-            db.add(db_workout)
-            db.commit()
-            db.refresh(db_workout)
-            
-            return {
-                "id": db_workout.id,
-                "title": db_workout.title,
-                "duration": db_workout.duration,
-                "difficulty": db_workout.difficulty,
-                "exercises": json.loads(db_workout.exercises_json)
-            }
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=f"Failed to create workout: {str(e)}")
-        finally:
-            db.close()
+        """Delegate to WorkoutService."""
+        return _workout_service.create_workout(workout, trainer_id)
 
     def update_workout(self, workout_id: str, updates: dict, trainer_id: str) -> dict:
-        db = get_db_session()
-        try:
-            workout = db.query(WorkoutORM).filter(WorkoutORM.id == workout_id).first()
-            
-            if not workout:
-                # Check for global shadow creation
-                if workout_id in WORKOUTS_DB:
-                    # Shadow it
-                    global_w = WORKOUTS_DB[workout_id]
-                    workout = WorkoutORM(
-                        id=workout_id, # Keep ID
-                        title=updates.get("title", global_w["title"]),
-                        duration=updates.get("duration", global_w["duration"]),
-                        difficulty=updates.get("difficulty", global_w["difficulty"]),
-                        exercises_json=json.dumps(updates.get("exercises", global_w["exercises"])),
-                        owner_id=trainer_id
-                    )
-                    db.add(workout)
-                    db.commit()
-                    db.refresh(workout)
-                    return {
-                        "id": workout.id,
-                        "title": workout.title,
-                        "duration": workout.duration,
-                        "difficulty": workout.difficulty,
-                        "exercises": json.loads(workout.exercises_json)
-                    }
-                raise HTTPException(status_code=404, detail="Workout not found")
-            
-            # Check ownership
-            if workout.owner_id != trainer_id and workout.owner_id is not None:
-                # Fork/Shadow logic could go here if trying to edit another trainer's workout
-                raise HTTPException(status_code=403, detail="Cannot edit this workout")
-            
-            # Update
-            if "title" in updates: workout.title = updates["title"]
-            if "duration" in updates: workout.duration = updates["duration"]
-            if "difficulty" in updates: workout.difficulty = updates["difficulty"]
-            if "exercises" in updates: workout.exercises_json = json.dumps(updates["exercises"])
-            
-            db.commit()
-            db.refresh(workout)
-            return {
-                "id": workout.id,
-                "title": workout.title,
-                "duration": workout.duration,
-                "difficulty": workout.difficulty,
-                "exercises": json.loads(workout.exercises_json)
-            }
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=f"Failed to update workout: {str(e)}")
-        finally:
-            db.close()
+        """Delegate to WorkoutService."""
+        return _workout_service.update_workout(workout_id, updates, trainer_id)
 
     def delete_workout(self, workout_id: str, trainer_id: str) -> dict:
-        db = get_db_session()
-        try:
-            workout = db.query(WorkoutORM).filter(WorkoutORM.id == workout_id).first()
-
-            if not workout:
-                raise HTTPException(status_code=404, detail="Workout not found")
-
-            # Check ownership
-            if workout.owner_id != trainer_id and workout.owner_id is not None:
-                raise HTTPException(status_code=403, detail="Cannot delete this workout")
-
-            db.delete(workout)
-            db.commit()
-            return {"status": "success", "message": "Workout deleted"}
-        except HTTPException:
-            raise
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=f"Failed to delete workout: {str(e)}")
-        finally:
-            db.close()
+        """Delegate to WorkoutService."""
+        return _workout_service.delete_workout(workout_id, trainer_id)
 
     def assign_workout(self, assignment: dict) -> dict:
-        client_id = assignment.get("client_id")
-        workout_id = assignment.get("workout_id")
-        date_str = assignment.get("date")
-        
-        db = get_db_session()
-        try:
-            # Resolve workout logic (Unified DB lookup)
-            workout_orm = db.query(WorkoutORM).filter(WorkoutORM.id == workout_id).first()
-            
-            if not workout_orm:
-                # Fallback check memory
-                if workout_id in WORKOUTS_DB:
-                     workout_data = WORKOUTS_DB[workout_id]
-                     title = workout_data["title"]
-                     difficulty = workout_data["difficulty"]
-                else:
-                    raise HTTPException(status_code=404, detail="Workout not found")
-            else:
-                title = workout_orm.title
-                difficulty = workout_orm.difficulty
-
-            # Clean existing - Delete ALL events for this day to prevent conflicts (e.g. Rest vs Workout)
-            db.query(ClientScheduleORM).filter(
-                ClientScheduleORM.client_id == client_id,
-                ClientScheduleORM.date == date_str
-            ).delete(synchronize_session=False)
-            
-            # Assign
-            new_event = ClientScheduleORM(
-                client_id=client_id,
-                date=date_str,
-                title=title,
-                type="workout",
-                completed=False,
-                workout_id=workout_id,
-                details=difficulty
-            )
-            db.add(new_event)
-            db.commit()
-            db.refresh(new_event)
-            
-            return {"status": "success"}
-        except Exception as e:
-            db.rollback()
-            raise HTTPException(status_code=500, detail=f"Failed to assign workout: {str(e)}")
-        finally:
-            db.close()
+        """Delegate to WorkoutService."""
+        return _workout_service.assign_workout(assignment)
 
     def update_client_diet(self, client_id: str, diet_data: dict) -> dict:
         db = get_db_session()
