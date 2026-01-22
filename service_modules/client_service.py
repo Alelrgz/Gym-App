@@ -20,6 +20,12 @@ class ClientService:
         db = get_db_session()
         try:
             logger.debug(f"get_client called for {client_id}")
+
+            # Get User for username
+            user = db.query(UserORM).filter(UserORM.id == client_id).first()
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found")
+
             # 1. Get Profile
             profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
 
@@ -273,20 +279,133 @@ class ClientService:
                  except Exception as e:
                      logger.error(f"Error loading saved workout snapshot: {e}")
 
+            # --- CALCULATE STREAK ---
+            streak = self._calculate_client_streak(client_id, db)
+
+            # --- GENERATE DAILY QUESTS ---
+            daily_quests = self._generate_daily_quests(
+                client_id=client_id,
+                db=db,
+                today_event=today_event,
+                diet_settings=diet_settings,
+                today_logs=today_logs if diet_settings else []
+            )
+
             return ClientData(
                 id=client_id,
+                username=user.username,
                 name=profile.name or "Unknown User",
                 email=profile.email,
-                streak=profile.streak,
+                streak=streak,
                 gems=profile.gems,
                 health_score=profile.health_score,
                 todays_workout=todays_workout,
-                daily_quests=CLIENT_DATA.get(client_id, {}).get("daily_quests", []), # Fallback
+                daily_quests=daily_quests,
                 progress=progress_data if progress_data else None,
                 calendar=calendar_data
             )
         finally:
             db.close()
+
+    def _calculate_client_streak(self, client_id: str, db) -> int:
+        """Calculate client's workout streak based on completed scheduled workouts."""
+        streak = 0
+        try:
+            today = datetime.now().date()
+            current_date = today
+
+            logger.debug(f"[CLIENT_STREAK] Starting streak calculation for client {client_id}, today={today}")
+
+            # Go backwards from today, counting consecutive days
+            while True:
+                date_str = current_date.isoformat()
+
+                # Check if there's a workout scheduled for this day
+                day_event = db.query(ClientScheduleORM).filter(
+                    ClientScheduleORM.client_id == client_id,
+                    ClientScheduleORM.date == date_str,
+                    ClientScheduleORM.type == "workout"
+                ).first()
+
+                logger.debug(f"[CLIENT_STREAK] {date_str}: day_event={day_event is not None}, completed={day_event.completed if day_event else 'N/A'}")
+
+                if day_event:
+                    # There's a workout scheduled for this day
+                    if day_event.completed:
+                        # Workout completed, continue streak
+                        streak += 1
+                        logger.debug(f"[CLIENT_STREAK] {date_str}: Completed! Streak now = {streak}")
+                    else:
+                        # Workout not completed
+                        if current_date < today:
+                            # Past day with incomplete workout - break streak
+                            logger.debug(f"[CLIENT_STREAK] {date_str}: Past day not completed, breaking streak")
+                            break
+                        else:
+                            # Today's workout not done yet - don't count but don't break
+                            logger.debug(f"[CLIENT_STREAK] {date_str}: Today not completed yet, not counting")
+                            pass
+                else:
+                    # No workout scheduled (rest day) - continue counting
+                    logger.debug(f"[CLIENT_STREAK] {date_str}: Rest day, continuing")
+
+                # Move to previous day
+                current_date = current_date - timedelta(days=1)
+
+                # Safety limit: don't go back more than 365 days
+                if (today - current_date).days > 365:
+                    logger.debug(f"[CLIENT_STREAK] Reached 365 day limit, stopping. Final streak = {streak}")
+                    break
+
+            logger.debug(f"[CLIENT_STREAK] Final calculated streak = {streak}")
+        except Exception as e:
+            logger.error(f"[CLIENT_STREAK] Error calculating client streak: {e}", exc_info=True)
+            streak = 0
+
+        return streak
+
+    def _generate_daily_quests(self, client_id: str, db, today_event, diet_settings, today_logs) -> list:
+        """Generate dynamic daily quests based on client's actual progress."""
+        quests = []
+
+        # Quest 1: Complete Today's Workout
+        workout_completed = today_event and today_event.get("completed", False) if today_event else False
+        quests.append({
+            "text": "Complete today's workout",
+            "xp": 50,
+            "completed": workout_completed
+        })
+
+        # Quest 2: Log at least 3 meals
+        meals_logged = len(today_logs) if today_logs else 0
+        quests.append({
+            "text": f"Log 3 meals ({meals_logged}/3)",
+            "xp": 30,
+            "completed": meals_logged >= 3
+        })
+
+        # Quest 3: Hit calorie target (within 10%)
+        if diet_settings:
+            calories_current = diet_settings.calories_current
+            calories_target = diet_settings.calories_target
+            within_range = abs(calories_current - calories_target) <= (calories_target * 0.1)
+            quests.append({
+                "text": f"Hit calorie target ({calories_current}/{calories_target})",
+                "xp": 40,
+                "completed": within_range and calories_current > 0
+            })
+
+        # Quest 4: Meet protein goal
+        if diet_settings:
+            protein_current = diet_settings.protein_current
+            protein_target = diet_settings.protein_target
+            quests.append({
+                "text": f"Meet protein goal ({protein_current}g/{protein_target}g)",
+                "xp": 35,
+                "completed": protein_current >= protein_target
+            })
+
+        return quests
 
     def update_client_profile(self, profile_update: ClientProfileUpdate, client_id: str) -> dict:
         """Update a client's profile information."""

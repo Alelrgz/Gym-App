@@ -42,6 +42,9 @@ except ImportError as e:
 
 app = FastAPI()
 
+# Cache busting - timestamp changes on every server restart
+CACHE_BUSTER = str(int(time.time()))
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # Allow all origins for development
@@ -158,13 +161,17 @@ async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "cli
     elif role == "owner":
         template_name = "owner.html"
     
-    return templates.TemplateResponse(template_name, {
+    context = {
         "request": request,
         "gym_id": gym_id,
         "role": role,
         "mode": mode,
-        "token": token
-    })
+        "token": token,
+        "cache_buster": str(int(time.time())),  # Use timestamp directly
+        "static_build": False
+    }
+    logger.info(f"Rendering {template_name} with cache_buster={context['cache_buster']}")
+    return templates.TemplateResponse(template_name, context)
 
 
 
@@ -207,7 +214,7 @@ async def complete_trainer_schedule_direct(
 
 @app.get("/trainer/personal", response_class=HTMLResponse)
 async def read_trainer_personal(request: Request, gym_id: str = "default"):
-    return templates.TemplateResponse("trainer_personal.html", {"request": request, "gym_id": gym_id, "role": "trainer", "mode": "personal"})
+    return templates.TemplateResponse("trainer_personal.html", {"request": request, "gym_id": gym_id, "role": "trainer", "mode": "personal", "cache_buster": CACHE_BUSTER})
 
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 9007))

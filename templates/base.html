@@ -15,7 +15,7 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- Preload the first video for instant playback -->
     <link rel="preload" href="/static/videos/InclineDBPress.mp4?v=1" as="video" type="video/mp4">
-    <link rel="stylesheet" href="/static/css/style.css?v=1">
+    <link rel="stylesheet" href="/static/css/style.css?v={{ cache_buster }}">
     <script>
         window.onerror = function (msg, url, line, col, error) {
             alert("Error: " + msg + "\nurl: " + url + "\nline: " + line);
@@ -108,7 +108,7 @@
         token: "{{ token }}"
         };
     </script>
-    <script src="/static/js/app.js?v=DELETE_WORKOUT"></script>
+    <script src="/static/js/app.js?v=FIXED_2026_01_22"></script>
     {% block scripts %}{% endblock %}
 </body>
 

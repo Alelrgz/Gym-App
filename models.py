@@ -95,6 +95,7 @@ class CalendarData(BaseModel):
 # --- CLIENT ---
 class ClientData(BaseModel):
     id: str
+    username: str
     name: str
     email: Optional[str] = None # Added
     streak: int

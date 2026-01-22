@@ -469,6 +469,12 @@ async function init() {
                     }
                 };
 
+                // Update display name with actual username from API
+                if (user.username) {
+                    if (displayNameEl) displayNameEl.textContent = user.username;
+                    if (welcomeNameEl) welcomeNameEl.textContent = user.username;
+                }
+
                 setTxt('streak-count', user.streak);
                 setTxt('gem-count', user.gems);
                 setTxt('health-score', user.health_score);
@@ -2034,6 +2040,41 @@ async function finishWorkout() {
                     } else {
                         startBtn.href += "?view=completed";
                     }
+                }
+            }
+
+            // Refresh streak and quest data after workout completion
+            if (APP_CONFIG.role === 'client') {
+                try {
+                    const clientDataRes = await fetch(`${apiBase}/api/client/data`);
+                    if (clientDataRes.ok) {
+                        const clientData = await clientDataRes.json();
+                        console.log("Refreshed client data after workout:", clientData);
+
+                        // Update username display
+                        if (clientData.username) {
+                            const displayNameEl = document.getElementById('client-display-name');
+                            const welcomeNameEl = document.getElementById('client-welcome-name');
+                            if (displayNameEl) displayNameEl.textContent = clientData.username;
+                            if (welcomeNameEl) welcomeNameEl.textContent = clientData.username;
+                        }
+
+                        // Update streak display
+                        const streakEl = document.getElementById('streak-count');
+                        if (streakEl) {
+                            streakEl.innerText = clientData.streak;
+                        }
+
+                        // Update next goal
+                        const streakMilestones = [7, 14, 30, 60, 100, 200, 365];
+                        const nextMilestone = streakMilestones.find(m => m > clientData.streak) || (clientData.streak + 100);
+                        const nextGoalEl = document.getElementById('next-goal');
+                        if (nextGoalEl) {
+                            nextGoalEl.innerText = `${nextMilestone} Days`;
+                        }
+                    }
+                } catch (e) {
+                    console.error("Error refreshing client data:", e);
                 }
             }
         } else {
