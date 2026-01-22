@@ -146,6 +146,7 @@ class TrainerData(BaseModel):
     todays_workout: Optional[Workout] = None
     workouts: Optional[List[WorkoutTemplate]] = []
     splits: Optional[List[WeeklySplit]] = []
+    streak: int = 0
 
 # --- OWNER ---
 class Activity(BaseModel):

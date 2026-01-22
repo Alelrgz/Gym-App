@@ -657,6 +657,37 @@ async function init() {
                 document.getElementById('at-risk-clients-count').innerText = data.at_risk_clients;
             }
 
+            // --- TODAY'S PLAN SECTION ---
+            const planContainer = document.getElementById('todays-plan-container');
+            if (planContainer && data.todays_workout) {
+                const workout = data.todays_workout;
+                const completedClass = workout.completed ? 'bg-green-500' : 'bg-white';
+                const completedText = workout.completed ? 'COMPLETED ✓' : 'START SESSION';
+                const completedTextColor = workout.completed ? 'text-white' : 'text-black';
+
+                planContainer.innerHTML = `
+                    <div class="glass-card p-5 relative overflow-hidden group tap-effect cursor-pointer" onclick="window.location.href='/?gym_id=${gymId}&role=trainer&mode=workout&workout_id=${workout.id}${workout.completed ? '&view=completed' : ''}'">
+                        <div class="absolute inset-0 bg-primary opacity-20 group-hover:opacity-30 transition"></div>
+                        <div class="relative z-10">
+                            <div class="flex justify-between items-start mb-4">
+                                <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
+                                <span class="text-xl">💪</span>
+                            </div>
+                            <h3 class="text-2xl font-black italic uppercase mb-1">${workout.title}</h3>
+                            <p class="text-sm text-gray-300 mb-4">${workout.duration} min • ${workout.difficulty}</p>
+                            <button class="block w-full py-3 ${completedClass} hover:bg-gray-200 ${completedTextColor} text-center font-bold rounded-xl transition">${completedText}</button>
+                        </div>
+                    </div>
+                `;
+            }
+
+            // --- TRAINER STATS ---
+            // Update streak on personal page
+            const streakEl = document.getElementById('personal-streak');
+            if (streakEl && data.streak !== undefined) {
+                streakEl.innerText = data.streak;
+            }
+
             // --- TRAINER PROFILE & NOTES ---
             // Populate Profile Modal
             const tProfileName = document.getElementById('profile-name');
@@ -886,9 +917,9 @@ async function init() {
                                      </div>
                                 </div>
 
-                                <button onclick='window.assignSplitToSelf("${s.id}")' 
+                                <button onclick='window.assignSplitToSelf("${s.id}", "${s.name.replace(/'/g, "\\'")}")'
                                     class="w-full mt-3 py-2 bg-white/5 hover:bg-purple-600 hover:text-white text-gray-400 text-sm font-bold rounded-lg transition border border-white/10 group-hover:border-purple-500/50">
-                                    Assign to Me
+                                    📅 Assign to Me (This Week)
                                 </button>
                             `;
                             container.appendChild(card);
@@ -2218,7 +2249,15 @@ function getSplitScheduleFromBuilder(containerId) {
     return schedule;
 }
 
-window.assignSplitToSelf = async function (splitId) {
+window.assignSplitToSelf = async function (splitId, splitName) {
+    const planContainer = document.getElementById('todays-plan-container');
+    if (!planContainer) {
+        showToast("Could not find Today's Plan section");
+        return;
+    }
+
+    const { gymId: localGymId, apiBase } = window.APP_CONFIG || {};
+
     // Current date (Monday of this week)
     let d = new Date();
     const day = d.getDay() || 7;
@@ -2260,8 +2299,6 @@ window.assignSplitToSelf = async function (splitId) {
         return;
     }
 
-    if (!confirm(`Assign this split to yourself starting this week (${startDate})?`)) return;
-
     try {
         const res = await fetch(`${apiBase}/api/trainer/assign_split`, {
             method: 'POST',
@@ -2273,67 +2310,117 @@ window.assignSplitToSelf = async function (splitId) {
             })
         });
 
-        if (res.ok) {
-            showToast("Split assigned to you! 🚀");
-            // Reload page to reflect changes on calendar (simplest way since we don't have granular refresh)
-            setTimeout(() => window.location.reload(), 1500);
-        } else {
+        if (!res.ok) {
             const errText = await res.text();
-            console.error("Assign split error:", errText);
-            showToast("Failed: " + errText);
+            throw new Error(errText || 'Failed to assign split');
         }
 
-    } catch (e) {
-        console.error(e);
-        showToast("Error assigning split: " + e.message);
+        // Fetch updated trainer data to get today's workout
+        const trainerRes = await fetch(`${apiBase}/api/trainer/data?limit_cache=${Date.now()}`);
+        const trainerData = await trainerRes.json();
+
+        if (trainerData.todays_workout) {
+            const workout = trainerData.todays_workout;
+            const completedClass = workout.completed ? 'bg-green-500' : 'bg-white';
+            const completedText = workout.completed ? 'COMPLETED ✓' : 'START SESSION';
+            const completedTextColor = workout.completed ? 'text-white' : 'text-black';
+
+            planContainer.innerHTML = `
+                <div class="glass-card p-5 relative overflow-hidden group tap-effect cursor-pointer" onclick="window.location.href='/?gym_id=${localGymId}&role=trainer&mode=workout&workout_id=${workout.id}${workout.completed ? '&view=completed' : ''}'">
+                    <div class="absolute inset-0 bg-primary opacity-20 group-hover:opacity-30 transition"></div>
+                    <div class="relative z-10">
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
+                            <span class="text-xl">💪</span>
+                        </div>
+                        <h3 class="text-2xl font-black italic uppercase mb-1">${workout.title}</h3>
+                        <p class="text-sm text-gray-300 mb-4">${workout.duration} min • ${workout.difficulty}</p>
+                        <p class="text-xs text-gray-400 mb-3">📅 From: ${splitName}</p>
+                        <button class="block w-full py-3 ${completedClass} hover:bg-gray-200 ${completedTextColor} text-center font-bold rounded-xl transition">${completedText}</button>
+                    </div>
+                </div>
+            `;
+        } else {
+            // If no workout for today, just show success message
+            planContainer.innerHTML = `
+                <div class="glass-card p-5 relative overflow-hidden">
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
+                        <span class="text-xl">📋</span>
+                    </div>
+                    <h3 class="text-xl font-bold text-white/50 mb-2">Rest Day</h3>
+                    <p class="text-sm text-gray-400">Split "${splitName}" assigned! No workout scheduled for today.</p>
+                </div>
+            `;
+        }
+
+        showToast(`${splitName} assigned to you! 🚀`);
+    } catch (error) {
+        console.error('Error assigning split:', error);
+        showToast(`Error: ${error.message}`);
     }
 };
 
 // Assign workout to trainer's own schedule for Today
 window.assignWorkoutToSelf = async function (workoutId, workoutTitle) {
-    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
-
-    // Prompt for time
-    const timeInput = prompt(`Enter time for "${workoutTitle}" (HH:MM, 24h format):`, '09:00');
-    if (!timeInput) return; // User cancelled
-
-    // Basic time validation
-    if (!/^\d{1,2}:\d{2}$/.test(timeInput)) {
-        showToast("Invalid time format. Use HH:MM (e.g., 09:00 or 14:30)");
+    const planContainer = document.getElementById('todays-plan-container');
+    if (!planContainer) {
+        showToast("Could not find Today's Plan section");
         return;
     }
 
+    const { gymId: localGymId, apiBase } = window.APP_CONFIG || {};
+
     try {
-        const res = await fetch(`${apiBase}/api/trainer/events`, {
+        // Get today's date in YYYY-MM-DD format
+        const today = new Date();
+        const dateStr = today.toISOString().split('T')[0];
+
+        // Create event data for the API
+        const eventData = {
+            date: dateStr,
+            time: "08:00", // Default morning time
+            title: workoutTitle,
+            subtitle: "Personal Workout",
+            type: "workout",
+            duration: 60,
+            workout_id: workoutId
+        };
+
+        // Save to database via API
+        const response = await fetch(`${apiBase}/api/trainer/events`, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                title: workoutTitle,
-                subtitle: 'Personal Workout',
-                date: today,
-                time: timeInput,
-                type: 'personal',
-                duration: 60,
-                workout_id: workoutId
-            })
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(eventData)
         });
 
-        if (res.ok) {
-            showToast(`Workout assigned at ${timeInput}! 💪`);
-            setTimeout(() => window.location.reload(), 1500);
-        } else {
-            const errData = await res.json().catch(() => ({ detail: 'Unknown error' }));
-            console.error("Assign workout error:", errData);
-
-            if (errData.detail && errData.detail.includes('conflict')) {
-                showToast(`⚠️ Time conflict! Choose a different time.`);
-            } else {
-                showToast("Failed: " + (errData.detail || 'Unknown error'));
-            }
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to assign workout');
         }
-    } catch (e) {
-        console.error(e);
-        showToast("Error assigning workout: " + e.message);
+
+        // Update UI after successful save
+        planContainer.innerHTML = `
+            <div class="glass-card p-5 relative overflow-hidden group tap-effect cursor-pointer" onclick="window.location.href='/?gym_id=${localGymId}&role=trainer&mode=workout&workout_id=${workoutId}'">
+                <div class="absolute inset-0 bg-primary opacity-20 group-hover:opacity-30 transition"></div>
+                <div class="relative z-10">
+                    <div class="flex justify-between items-start mb-4">
+                        <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
+                        <span class="text-xl">💪</span>
+                    </div>
+                    <h3 class="text-2xl font-black italic uppercase mb-1">${workoutTitle}</h3>
+                    <p class="text-sm text-gray-300 mb-4">60 min • Intermediate</p>
+                    <button class="block w-full py-3 bg-white text-black hover:bg-gray-200 text-center font-bold rounded-xl transition">START SESSION</button>
+                </div>
+            </div>
+        `;
+
+        showToast(`${workoutTitle} set as today's plan! 💪`);
+    } catch (error) {
+        console.error('Error assigning workout:', error);
+        showToast(`Error: ${error.message}`);
     }
 };
 
@@ -2615,9 +2702,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const role = APP_CONFIG.role;
         const previewWorkoutId = urlParams.get('workout_id');
+        const isPreviewMode = urlParams.get('view') === 'preview';
 
-        // If previewing a specific workout, fetch it directly
-        if (previewWorkoutId) {
+        // If previewing a specific workout (not today's workout), fetch it directly
+        if (previewWorkoutId && isPreviewMode) {
             console.log('PREVIEW MODE: Loading workout ID:', previewWorkoutId);
             fetch(`${apiBase}/api/trainer/workouts`)
                 .then(res => res.json())

@@ -299,6 +299,8 @@ async def assign_split(
     service: UserService = Depends(get_user_service),
     current_user: UserORM = Depends(get_current_user)
 ):
+    with open("server_debug.log", "a") as f:
+        f.write(f"[ROUTE] assign_split called: assignment={assignment}, trainer_id={current_user.id}\n")
     return service.assign_split(assignment, current_user.id)
 
 @router.put("/api/trainer/splits/{split_id}")

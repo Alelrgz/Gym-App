@@ -900,17 +900,83 @@ class UserService:
                 with open("server_debug.log", "a") as f:
                     f.write(f"Error fetching trainer workout: {e}\n")
 
+            # --- CALCULATE STREAK ---
+            streak = 0
+            try:
+                today = datetime.now().date()
+                current_date = today
+
+                with open("server_debug.log", "a") as f:
+                    f.write(f"[STREAK] Starting streak calculation for trainer {trainer_id}, today={today}\n")
+
+                # Go backwards from today, counting consecutive days
+                while True:
+                    date_str = current_date.isoformat()
+
+                    # Check if there's a workout scheduled for this day
+                    day_event = db.query(TrainerScheduleORM).filter(
+                        TrainerScheduleORM.trainer_id == trainer_id,
+                        TrainerScheduleORM.date == date_str,
+                        TrainerScheduleORM.workout_id != None
+                    ).first()
+
+                    with open("server_debug.log", "a") as f:
+                        f.write(f"[STREAK] {date_str}: day_event={day_event is not None}, completed={day_event.completed if day_event else 'N/A'}\n")
+
+                    if day_event:
+                        # There's a workout scheduled for this day
+                        if day_event.completed:
+                            # Workout completed, continue streak
+                            streak += 1
+                            with open("server_debug.log", "a") as f:
+                                f.write(f"[STREAK] {date_str}: Completed! Streak now = {streak}\n")
+                        else:
+                            # Workout not completed
+                            if current_date < today:
+                                # Past day with incomplete workout - break streak
+                                with open("server_debug.log", "a") as f:
+                                    f.write(f"[STREAK] {date_str}: Past day not completed, breaking streak\n")
+                                break
+                            else:
+                                # Today's workout not done yet - don't count but don't break
+                                with open("server_debug.log", "a") as f:
+                                    f.write(f"[STREAK] {date_str}: Today not completed yet, not counting\n")
+                                pass
+                    else:
+                        # No workout scheduled (rest day)
+                        with open("server_debug.log", "a") as f:
+                            f.write(f"[STREAK] {date_str}: Rest day, continuing\n")
+
+                    # Move to previous day
+                    current_date = current_date - timedelta(days=1)
+
+                    # Safety limit: don't go back more than 365 days
+                    if (today - current_date).days > 365:
+                        with open("server_debug.log", "a") as f:
+                            f.write(f"[STREAK] Reached 365 day limit, stopping. Final streak = {streak}\n")
+                        break
+
+                with open("server_debug.log", "a") as f:
+                    f.write(f"[STREAK] Final calculated streak = {streak}\n")
+            except Exception as e:
+                with open("server_debug.log", "a") as f:
+                    f.write(f"[STREAK] Error calculating trainer streak: {e}\n")
+                    import traceback
+                    f.write(f"[STREAK] Traceback: {traceback.format_exc()}\n")
+                streak = 0
+
             video_library = TRAINER_DATA["video_library"]
             return TrainerData(
                 id=trainer_id,
-                clients=clients, 
+                clients=clients,
                 video_library=video_library,
                 active_clients=active_count,
                 at_risk_clients=at_risk_count,
                 schedule=schedule,
                 todays_workout=todays_workout,
                 workouts=self.get_workouts(trainer_id),
-                splits=self.get_splits(trainer_id)
+                splits=self.get_splits(trainer_id),
+                streak=streak
             )
         finally:
             db.close()
@@ -1398,9 +1464,18 @@ class UserService:
         client_id = assignment.get("client_id")
         split_id = assignment.get("split_id")
         start_date_str = assignment.get("start_date")
-        
+
+        with open("server_debug.log", "a") as f:
+            f.write(f"[ASSIGN_SPLIT] Called with client_id={client_id} (type={type(client_id)}), trainer_id={trainer_id} (type={type(trainer_id)})\n")
+
         db = get_db_session()
         try:
+            # Check if trainer is assigning to themselves
+            is_self_assignment = (client_id == trainer_id)
+
+            with open("server_debug.log", "a") as f:
+                f.write(f"[ASSIGN_SPLIT] is_self_assignment={is_self_assignment}\n")
+
             # 1. Fetch Split (DB or Memory)
             split_schedule = None
             split_orm = db.query(WeeklySplitORM).filter(WeeklySplitORM.id == split_id).first()
@@ -1426,52 +1501,93 @@ class UserService:
                 schedule_map = split_schedule
             else:
                 print(f"Warning: Unknown schedule format: {type(split_schedule)}")
-                
+
             # 3. Assign
             start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
             weekday_map = {0: "Monday", 1: "Tuesday", 2: "Wednesday", 3: "Thursday", 4: "Friday", 5: "Saturday", 6: "Sunday"}
-            
+
             logs = []
             success_count = 0
             fail_count = 0
-            
-            # Validate Client Exists
-            client = db.query(UserORM).filter(UserORM.id == client_id).first()
-            if not client:
-                 raise HTTPException(status_code=404, detail="Client not found")
+
+            # Validate user exists
+            user = db.query(UserORM).filter(UserORM.id == client_id).first()
+            if not user:
+                 raise HTTPException(status_code=404, detail="User not found")
+
+            with open("server_debug.log", "a") as f:
+                f.write(f"[ASSIGN_SPLIT] Assigning split {split_id} to {'trainer (self)' if is_self_assignment else 'client'} {client_id}\n")
 
             for day_offset in range(28): # 4 Weeks
                 current_date = start_date + timedelta(days=day_offset)
                 day_name = weekday_map[current_date.weekday()]
-                
+
                 # Lookup in normalized map
                 workout_id = schedule_map.get(day_name)
-                
+
                 # If workout_id is dict (legacy edge case), extract id
                 if isinstance(workout_id, dict):
                     workout_id = workout_id.get("id")
 
                 if workout_id and workout_id != "rest":
-                    # Delegate to assign_workout
                     try:
-                        self.assign_workout({
-                            "client_id": client_id,
-                            "workout_id": workout_id,
-                            "date": current_date.isoformat()
-                        })
-                        logs.append(f"Assigned {workout_id} to {current_date}")
+                        if is_self_assignment:
+                            # Assign to trainer's own schedule (TrainerScheduleORM)
+                            # First, delete any existing workout on this date
+                            existing_workouts = db.query(TrainerScheduleORM).filter(
+                                TrainerScheduleORM.trainer_id == trainer_id,
+                                TrainerScheduleORM.date == current_date.isoformat(),
+                                TrainerScheduleORM.workout_id != None
+                            ).all()
+
+                            for existing in existing_workouts:
+                                with open("server_debug.log", "a") as f:
+                                    f.write(f"[ASSIGN_SPLIT] Deleting existing trainer workout on {current_date}: {existing.title}\n")
+                                db.delete(existing)
+
+                            # Get workout title for the event
+                            workout = db.query(WorkoutORM).filter(WorkoutORM.id == workout_id).first()
+                            workout_title = workout.title if workout else "Workout"
+
+                            # Create new trainer event
+                            new_event = TrainerScheduleORM(
+                                trainer_id=trainer_id,
+                                date=current_date.isoformat(),
+                                time="08:00",
+                                title=workout_title,
+                                subtitle="From Split",
+                                type="workout",
+                                duration=60,
+                                workout_id=workout_id
+                            )
+                            db.add(new_event)
+                            db.commit()
+
+                            with open("server_debug.log", "a") as f:
+                                f.write(f"[ASSIGN_SPLIT] Added trainer workout on {current_date}: {workout_title}\n")
+
+                            logs.append(f"Assigned {workout_title} to {current_date}")
+                        else:
+                            # Assign to client schedule (ClientScheduleORM)
+                            self.assign_workout({
+                                "client_id": client_id,
+                                "workout_id": workout_id,
+                                "date": current_date.isoformat()
+                            })
+                            logs.append(f"Assigned {workout_id} to {current_date}")
+
                         success_count += 1
                     except Exception as e:
                         print(f"Assign Error for {current_date}: {e}")
                         logs.append(f"Failed to assign {workout_id} on {current_date}: {str(e)}")
                         fail_count += 1
-            
+
             if success_count == 0 and fail_count > 0:
                  raise HTTPException(status_code=400, detail=f"Failed to assign any workouts. Errors: {logs[:3]}...")
-            
+
             return {
-                "status": "success", 
-                "message": f"Split assigned. {success_count} workouts scheduled. {fail_count} failed.", 
+                "status": "success",
+                "message": f"Split assigned. {success_count} workouts scheduled. {fail_count} failed.",
                 "logs": logs,
                 "warnings": fail_count > 0
             }
@@ -1547,23 +1663,45 @@ class UserService:
         db = get_db_session()
         try:
             duration = event_data.get("duration", 60)  # Default 60 minutes
-            
-            # Check for conflicts
-            has_conflict, conflict = self._check_schedule_conflict(
-                trainer_id,
-                event_data["date"],
-                event_data["time"],
-                duration,
-                db
-            )
-            
-            if has_conflict:
-                raise HTTPException(
-                    status_code=409,
-                    detail=f"Schedule conflict with '{conflict['title']}' at {conflict['time']} ({conflict['duration']} min)"
+
+            # If this is a workout event, replace any existing workout for the same day
+            # Workouts don't check for conflicts - they just replace existing workouts
+            if event_data.get("workout_id"):
+                existing_workout_events = db.query(TrainerScheduleORM).filter(
+                    TrainerScheduleORM.trainer_id == trainer_id,
+                    TrainerScheduleORM.date == event_data["date"],
+                    TrainerScheduleORM.workout_id != None
+                ).all()
+
+                for existing_event in existing_workout_events:
+                    with open("server_debug.log", "a") as f:
+                        f.write(f"[ADD_EVENT] Deleting existing workout event: {existing_event.title} on {existing_event.date}\n")
+                    db.delete(existing_event)
+
+                # Commit the deletions before adding the new event
+                db.commit()
+
+                with open("server_debug.log", "a") as f:
+                    f.write(f"[ADD_EVENT] Adding new workout event: {event_data['title']} on {event_data['date']}\n")
+            else:
+                # For non-workout events (calendar events, consultations, etc.), check for conflicts
+                has_conflict, conflict = self._check_schedule_conflict(
+                    trainer_id,
+                    event_data["date"],
+                    event_data["time"],
+                    duration,
+                    db
                 )
-            
-            # Create event
+
+                if has_conflict:
+                    with open("server_debug.log", "a") as f:
+                        f.write(f"[ADD_EVENT] Conflict detected: {event_data['title']} conflicts with {conflict['title']}\n")
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"Schedule conflict with '{conflict['title']}' at {conflict['time']} ({conflict['duration']} min)"
+                    )
+
+            # Create new event
             new_event = TrainerScheduleORM(
                 trainer_id=trainer_id,
                 date=event_data["date"],
