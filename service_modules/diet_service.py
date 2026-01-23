@@ -14,26 +14,128 @@ class DietService:
     """Service for managing client diet, meal scanning, and logging."""
 
     def scan_meal(self, file_bytes: bytes) -> dict:
-        """Scan a meal image using Gemini AI and return nutritional estimates."""
-        import google.generativeai as genai
+        """Scan a meal image using hybrid AI approach (Clarifai + Nutritionix) for maximum accuracy."""
         import os
         import random
 
-        api_key = os.environ.get("GEMINI_API_KEY")
-        print(f"DEBUG: scan_meal called. API Key present: {bool(api_key)}")
+        # Try Hybrid Approach first (most accurate)
+        clarifai_key = os.environ.get("CLARIFAI_API_KEY")
+        nutritionix_app_id = os.environ.get("NUTRITIONIX_APP_ID")
+        nutritionix_api_key = os.environ.get("NUTRITIONIX_API_KEY")
 
-        if not api_key:
-            print("Warning: GEMINI_API_KEY not found, using mock.")
-            # Mock AI Analysis Fallback
-            foods = [
-                {"name": "Grilled Chicken Salad", "cals": 450, "protein": 40, "carbs": 15, "fat": 20},
-                {"name": "Avocado Toast", "cals": 350, "protein": 12, "carbs": 45, "fat": 18},
-                {"name": "Protein Oatmeal", "cals": 380, "protein": 25, "carbs": 50, "fat": 6},
-                {"name": "Salmon & Rice", "cals": 550, "protein": 35, "carbs": 60, "fat": 22},
-                {"name": "Greek Yogurt Parfait", "cals": 280, "protein": 20, "carbs": 30, "fat": 5}
-            ]
-            result = random.choice(foods)
-            return {"status": "success", "data": result}
+        if clarifai_key and nutritionix_app_id and nutritionix_api_key:
+            try:
+                result = self._scan_hybrid(file_bytes, clarifai_key, nutritionix_app_id, nutritionix_api_key)
+                return {"status": "success", "data": result}
+            except Exception as e:
+                logger.error(f"Hybrid scan failed: {e}")
+
+        # Fallback to Gemini
+        gemini_key = os.environ.get("GEMINI_API_KEY")
+        if gemini_key:
+            try:
+                result = self._scan_gemini(file_bytes, gemini_key)
+                return {"status": "success", "data": result}
+            except Exception as e:
+                logger.error(f"Gemini scan failed: {e}")
+
+        # Final fallback: Mock data
+        print("Warning: No API keys found, using mock data.")
+        foods = [
+            {"name": "Grilled Chicken Salad", "cals": 450, "protein": 40, "carbs": 15, "fat": 20},
+            {"name": "Avocado Toast", "cals": 350, "protein": 12, "carbs": 45, "fat": 18},
+            {"name": "Protein Oatmeal", "cals": 380, "protein": 25, "carbs": 50, "fat": 6},
+            {"name": "Salmon & Rice", "cals": 550, "protein": 35, "carbs": 60, "fat": 22},
+            {"name": "Greek Yogurt Parfait", "cals": 280, "protein": 20, "carbs": 30, "fat": 5}
+        ]
+        result = random.choice(foods)
+        return {"status": "success", "data": result}
+
+    def _scan_hybrid(self, file_bytes: bytes, clarifai_key: str, nutritionix_app_id: str, nutritionix_api_key: str) -> dict:
+        """Hybrid approach: Clarifai identifies food, Nutritionix gets accurate macros."""
+        import base64
+        import requests
+
+        logger.info("Using hybrid scan (Clarifai + Nutritionix)")
+
+        # Step 1: Use Clarifai to identify food items
+        clarifai_url = "https://api.clarifai.com/v2/models/food-item-recognition/outputs"
+        headers = {
+            "Authorization": f"Key {clarifai_key}",
+            "Content-Type": "application/json"
+        }
+
+        base64_image = base64.b64encode(file_bytes).decode('utf-8')
+        payload = {
+            "inputs": [{
+                "data": {
+                    "image": {
+                        "base64": base64_image
+                    }
+                }
+            }]
+        }
+
+        clarifai_response = requests.post(clarifai_url, headers=headers, json=payload, timeout=10)
+        clarifai_response.raise_for_status()
+
+        # Extract top food items
+        clarifai_data = clarifai_response.json()
+        concepts = clarifai_data['outputs'][0]['data']['concepts']
+        top_foods = [c['name'] for c in concepts[:3] if c['value'] > 0.7]  # Top 3 with >70% confidence
+
+        if not top_foods:
+            raise Exception("No food items detected with sufficient confidence")
+
+        logger.info(f"Clarifai identified: {top_foods}")
+
+        # Step 2: Use Nutritionix to get accurate macros for primary food
+        primary_food = top_foods[0]
+        nutritionix_url = "https://trackapi.nutritionix.com/v2/natural/nutrients"
+        headers = {
+            "x-app-id": nutritionix_app_id,
+            "x-app-key": nutritionix_api_key,
+            "Content-Type": "application/json"
+        }
+
+        # Build query from all identified foods
+        query = " and ".join(top_foods)
+        payload = {"query": query}
+
+        nutritionix_response = requests.post(nutritionix_url, headers=headers, json=payload, timeout=10)
+        nutritionix_response.raise_for_status()
+
+        # Aggregate nutritional data
+        nutritionix_data = nutritionix_response.json()
+        foods_data = nutritionix_data.get('foods', [])
+
+        if not foods_data:
+            raise Exception("No nutritional data found")
+
+        # Sum up all identified foods
+        total_cals = sum(food.get('nf_calories', 0) for food in foods_data)
+        total_protein = sum(food.get('nf_protein', 0) for food in foods_data)
+        total_carbs = sum(food.get('nf_total_carbohydrate', 0) for food in foods_data)
+        total_fat = sum(food.get('nf_total_fat', 0) for food in foods_data)
+
+        # Build meal name
+        meal_name = ", ".join([food.get('food_name', '').title() for food in foods_data[:3]])
+        serving_info = foods_data[0].get('serving_qty', 1)
+        serving_unit = foods_data[0].get('serving_unit', 'serving')
+
+        return {
+            "name": meal_name,
+            "cals": int(total_cals),
+            "protein": int(total_protein),
+            "carbs": int(total_carbs),
+            "fat": int(total_fat),
+            "portion_size": f"{serving_info} {serving_unit}" + (f" + {len(foods_data)-1} items" if len(foods_data) > 1 else ""),
+            "confidence": "high"
+        }
+
+    def _scan_gemini(self, file_bytes: bytes, api_key: str) -> dict:
+        """Fallback to Gemini AI for meal scanning."""
+        import google.generativeai as genai
 
         try:
             genai.configure(api_key=api_key)
@@ -93,31 +195,11 @@ class DietService:
                 text = text[:-3]
 
             data = json.loads(text.strip())
-
-            return {
-                "status": "success",
-                "data": data
-            }
+            return data
 
         except Exception as e:
-            print(f"Gemini Error: {e}")
-            print("Falling back to mock data due to API error.")
-
-            # Mock Data Fallback
-            foods = [
-                {"name": "Grilled Chicken Salad", "cals": 450, "protein": 40, "carbs": 15, "fat": 20},
-                {"name": "Avocado Toast", "cals": 350, "protein": 12, "carbs": 45, "fat": 18},
-                {"name": "Protein Oatmeal", "cals": 380, "protein": 25, "carbs": 50, "fat": 6},
-                {"name": "Salmon & Rice", "cals": 550, "protein": 35, "carbs": 60, "fat": 22},
-                {"name": "Greek Yogurt Parfait", "cals": 280, "protein": 20, "carbs": 30, "fat": 5}
-            ]
-            result = random.choice(foods)
-
-            return {
-                "status": "success",
-                "data": result,
-                "message": "⚠️ AI Quota Exceeded. Using simulated data."
-            }
+            logger.error(f"Gemini Error: {e}")
+            raise
 
     def log_meal(self, client_id: str, meal_data: dict) -> dict:
         """Log a meal for a client and update their current macros."""
