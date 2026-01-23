@@ -39,6 +39,14 @@ class DietService:
             except Exception as e:
                 logger.error(f"Clarifai+Groq scan failed: {e}")
 
+        # Fallback to Groq Vision only (80-85% accuracy, no Clarifai needed)
+        if groq_key:
+            try:
+                result = self._scan_groq_only(file_bytes, groq_key)
+                return {"status": "success", "data": result}
+            except Exception as e:
+                logger.error(f"Groq Vision scan failed: {e}")
+
         # Fallback to Gemini
         gemini_key = os.environ.get("GEMINI_API_KEY")
         if gemini_key:
@@ -265,6 +273,93 @@ Example: {{"name": "Grilled Chicken with Rice and Vegetables", "cals": 520, "pro
 
         data = json.loads(text.strip())
         logger.info(f"Groq analysis complete: {data.get('name')}")
+
+        return data
+
+    def _scan_groq_only(self, file_bytes: bytes, groq_key: str) -> dict:
+        """Groq Vision only: Direct meal analysis without Clarifai pre-processing."""
+        import base64
+        import requests
+
+        logger.info("Using Groq Vision only (no Clarifai)")
+
+        base64_image = base64.b64encode(file_bytes).decode('utf-8')
+
+        groq_url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {groq_key}",
+            "Content-Type": "application/json"
+        }
+
+        prompt = """You are a professional nutritionist analyzing food images. Carefully examine this meal image and provide accurate nutritional estimates.
+
+ANALYSIS STEPS:
+1. Identify all food items visible in the image
+2. Estimate portion sizes (compare to standard serving sizes - e.g., palm-sized protein, fist-sized carbs)
+3. Calculate nutritional values based on USDA food database standards
+4. Consider cooking methods (fried adds ~30% fat, grilled is leaner)
+5. Account for visible oils, sauces, dressings, and toppings
+
+IMPORTANT GUIDELINES:
+- Be conservative with estimates - if unsure, estimate higher calories
+- Restaurant portions are typically 1.5-2x home portions
+- Include hidden calories from oils, butter, sugar in sauces
+- 1 palm = ~4oz protein (~120-180 calories)
+- 1 fist = ~1 cup carbs (~200-240 calories for rice/pasta)
+- 1 thumb = ~1 tbsp fat (~100-120 calories)
+
+Return ONLY a raw JSON object (no markdown, no code blocks) with these keys:
+{
+    "name": "Descriptive meal name (e.g., 'Grilled Chicken with Rice and Vegetables')",
+    "cals": total_calories_integer,
+    "protein": protein_grams_integer,
+    "carbs": carbs_grams_integer,
+    "fat": fat_grams_integer,
+    "portion_size": "Description of estimated portion (e.g., 'Large restaurant portion', 'Standard serving')",
+    "confidence": "high/medium/low based on image clarity and food visibility"
+}
+
+Example response:
+{"name": "Grilled Chicken Breast with Brown Rice and Steamed Broccoli", "cals": 520, "protein": 45, "carbs": 58, "fat": 12, "portion_size": "Standard serving (6oz chicken, 1 cup rice, 1.5 cups vegetables)", "confidence": "high"}"""
+
+        payload = {
+            "model": "llama-3.2-90b-vision-preview",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "temperature": 0.3,
+            "max_tokens": 500
+        }
+
+        groq_response = requests.post(groq_url, headers=headers, json=payload, timeout=30)
+        groq_response.raise_for_status()
+
+        # Parse Groq response
+        groq_data = groq_response.json()
+        content = groq_data['choices'][0]['message']['content']
+
+        # Clean up markdown code blocks if present
+        text = content.strip()
+        if text.startswith("```json"):
+            text = text[7:]
+        elif text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+
+        data = json.loads(text.strip())
+        logger.info(f"Groq Vision analysis complete: {data.get('name')}")
 
         return data
 
