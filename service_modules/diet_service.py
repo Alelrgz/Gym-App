@@ -43,15 +43,36 @@ class DietService:
             model = genai.GenerativeModel(model_name)
 
             prompt = """
-            Analyze this food image and estimate the nutritional content.
-            Return ONLY a raw JSON object with these keys:
-            - name: A short descriptive name of the meal
-            - cals: Total calories (integer)
-            - protein: Protein in grams (integer)
-            - carbs: Carbs in grams (integer)
-            - fat: Fat in grams (integer)
+            You are a professional nutritionist analyzing food images. Carefully examine this meal image and provide accurate nutritional estimates.
 
-            Example: {"name": "Chicken Salad", "cals": 450, "protein": 40, "carbs": 10, "fat": 20}
+            ANALYSIS STEPS:
+            1. Identify all food items visible in the image
+            2. Estimate portion sizes (compare to standard serving sizes - e.g., palm-sized protein, fist-sized carbs)
+            3. Calculate nutritional values based on USDA food database standards
+            4. Consider cooking methods (fried adds ~30% fat, grilled is leaner)
+            5. Account for visible oils, sauces, dressings, and toppings
+
+            IMPORTANT GUIDELINES:
+            - Be conservative with estimates - if unsure, estimate higher calories
+            - Restaurant portions are typically 1.5-2x home portions
+            - Include hidden calories from oils, butter, sugar in sauces
+            - 1 palm = ~4oz protein (~120-180 calories)
+            - 1 fist = ~1 cup carbs (~200-240 calories for rice/pasta)
+            - 1 thumb = ~1 tbsp fat (~100-120 calories)
+
+            Return ONLY a raw JSON object (no markdown, no code blocks) with these keys:
+            {
+                "name": "Descriptive meal name (e.g., 'Grilled Chicken with Rice and Vegetables')",
+                "cals": total_calories_integer,
+                "protein": protein_grams_integer,
+                "carbs": carbs_grams_integer,
+                "fat": fat_grams_integer,
+                "portion_size": "Description of estimated portion (e.g., 'Large restaurant portion', 'Standard serving')",
+                "confidence": "high/medium/low based on image clarity and food visibility"
+            }
+
+            Example response:
+            {"name": "Grilled Chicken Breast with Brown Rice and Steamed Broccoli", "cals": 520, "protein": 45, "carbs": 58, "fat": 12, "portion_size": "Standard serving (6oz chicken, 1 cup rice, 1.5 cups vegetables)", "confidence": "high"}
             """
 
             response = model.generate_content([

@@ -1110,6 +1110,7 @@ function quickAction(action) {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*';
+        input.capture = 'environment'; // Directly open camera on mobile
         input.onchange = async e => {
             if (!e.target.files[0]) return;
 
@@ -1136,7 +1137,9 @@ function quickAction(action) {
                         showToast(result.message);
                     }
                     const food = result.data;
-                    if (confirm(`Found: ${food.name}\n${food.cals} kcal | P: ${food.protein}g | C: ${food.carbs}g | F: ${food.fat}g\n\nLog this meal?`)) {
+                    const portionInfo = food.portion_size ? `\nPortion: ${food.portion_size}` : '';
+                    const confidenceInfo = food.confidence ? `\nConfidence: ${food.confidence}` : '';
+                    if (confirm(`Found: ${food.name}\n\n📊 Nutrition:\n${food.cals} kcal | P: ${food.protein}g | C: ${food.carbs}g | F: ${food.fat}g${portionInfo}${confidenceInfo}\n\nLog this meal?`)) {
                         // Log it
                         const logRes = await fetch(`${apiBase}/api/client/diet/log`, {
                             method: 'POST',
