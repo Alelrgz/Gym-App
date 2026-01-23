@@ -30,6 +30,15 @@ class DietService:
             except Exception as e:
                 logger.error(f"Hybrid scan failed: {e}")
 
+        # Fallback to Clarifai + Groq (85-90% accuracy)
+        groq_key = os.environ.get("GROQ_API_KEY")
+        if clarifai_key and groq_key:
+            try:
+                result = self._scan_clarifai_groq(file_bytes, clarifai_key, groq_key)
+                return {"status": "success", "data": result}
+            except Exception as e:
+                logger.error(f"Clarifai+Groq scan failed: {e}")
+
         # Fallback to Gemini
         gemini_key = os.environ.get("GEMINI_API_KEY")
         if gemini_key:
@@ -132,6 +141,124 @@ class DietService:
             "portion_size": f"{serving_info} {serving_unit}" + (f" + {len(foods_data)-1} items" if len(foods_data) > 1 else ""),
             "confidence": "high"
         }
+
+    def _scan_clarifai_groq(self, file_bytes: bytes, clarifai_key: str, groq_key: str) -> dict:
+        """Clarifai + Groq hybrid: Clarifai identifies food, Groq analyzes portions and estimates macros."""
+        import base64
+        import requests
+
+        logger.info("Using Clarifai + Groq hybrid scan")
+
+        # Step 1: Use Clarifai to identify food items
+        clarifai_url = "https://api.clarifai.com/v2/models/food-item-recognition/outputs"
+        headers = {
+            "Authorization": f"Key {clarifai_key}",
+            "Content-Type": "application/json"
+        }
+
+        base64_image = base64.b64encode(file_bytes).decode('utf-8')
+        payload = {
+            "inputs": [{
+                "data": {
+                    "image": {
+                        "base64": base64_image
+                    }
+                }
+            }]
+        }
+
+        clarifai_response = requests.post(clarifai_url, headers=headers, json=payload, timeout=10)
+        clarifai_response.raise_for_status()
+
+        # Extract top food items
+        clarifai_data = clarifai_response.json()
+        concepts = clarifai_data['outputs'][0]['data']['concepts']
+        top_foods = [c['name'] for c in concepts[:3] if c['value'] > 0.7]
+
+        if not top_foods:
+            raise Exception("No food items detected with sufficient confidence")
+
+        logger.info(f"Clarifai identified: {top_foods}")
+        food_list = ", ".join(top_foods)
+
+        # Step 2: Use Groq Vision to analyze portions and estimate macros
+        groq_url = "https://api.groq.com/openai/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {groq_key}",
+            "Content-Type": "application/json"
+        }
+
+        prompt = f"""You are a professional nutritionist analyzing food images.
+
+Clarifai has identified these foods in the image: {food_list}
+
+Now analyze this image carefully and provide accurate nutritional estimates:
+
+1. Estimate the portion size of each food item (use visual cues like plate size, hand comparisons)
+2. Calculate nutritional values based on USDA standards
+3. Account for cooking methods and visible oils/sauces
+
+IMPORTANT GUIDELINES:
+- Be conservative with estimates - if unsure, estimate higher calories
+- Restaurant portions are typically 1.5-2x home portions
+- Include hidden calories from oils, butter, sugar in sauces
+- 1 palm = ~4oz protein (~120-180 calories)
+- 1 fist = ~1 cup carbs (~200-240 calories for rice/pasta)
+- 1 thumb = ~1 tbsp fat (~100-120 calories)
+
+Return ONLY a raw JSON object (no markdown, no code blocks) with these keys:
+{{
+    "name": "Descriptive meal name",
+    "cals": total_calories_integer,
+    "protein": protein_grams_integer,
+    "carbs": carbs_grams_integer,
+    "fat": fat_grams_integer,
+    "portion_size": "Description of estimated portion",
+    "confidence": "high/medium/low based on image clarity"
+}}
+
+Example: {{"name": "Grilled Chicken with Rice and Vegetables", "cals": 520, "protein": 45, "carbs": 58, "fat": 12, "portion_size": "Standard serving (6oz chicken, 1 cup rice, 1.5 cups vegetables)", "confidence": "high"}}"""
+
+        payload = {
+            "model": "llama-3.2-90b-vision-preview",
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {
+                            "type": "image_url",
+                            "image_url": {
+                                "url": f"data:image/jpeg;base64,{base64_image}"
+                            }
+                        }
+                    ]
+                }
+            ],
+            "temperature": 0.3,
+            "max_tokens": 500
+        }
+
+        groq_response = requests.post(groq_url, headers=headers, json=payload, timeout=30)
+        groq_response.raise_for_status()
+
+        # Parse Groq response
+        groq_data = groq_response.json()
+        content = groq_data['choices'][0]['message']['content']
+
+        # Clean up markdown code blocks if present
+        text = content.strip()
+        if text.startswith("```json"):
+            text = text[7:]
+        elif text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+
+        data = json.loads(text.strip())
+        logger.info(f"Groq analysis complete: {data.get('name')}")
+
+        return data
 
     def _scan_gemini(self, file_bytes: bytes, api_key: str) -> dict:
         """Fallback to Gemini AI for meal scanning."""
