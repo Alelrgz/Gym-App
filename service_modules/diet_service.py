@@ -76,6 +76,10 @@ class DietService:
 
         base64_image = base64.b64encode(file_bytes).decode('utf-8')
         payload = {
+            "user_app_id": {
+                "user_id": "clarifai",
+                "app_id": "main"
+            },
             "inputs": [{
                 "data": {
                     "image": {
@@ -158,6 +162,10 @@ class DietService:
 
         base64_image = base64.b64encode(file_bytes).decode('utf-8')
         payload = {
+            "user_app_id": {
+                "user_id": "clarifai",
+                "app_id": "main"
+            },
             "inputs": [{
                 "data": {
                     "image": {
