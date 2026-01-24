@@ -158,8 +158,22 @@ class UserService:
     def get_trainer(self, trainer_id: str) -> TrainerData:
         db = get_db_session()
         try:
-            clients_orm = db.query(UserORM).filter(UserORM.role == "client").all()
-            
+            # Get the trainer to find which gym they belong to
+            trainer = db.query(UserORM).filter(UserORM.id == trainer_id).first()
+            gym_owner_id = trainer.gym_owner_id if trainer else None
+
+            # Get ALL clients in this gym (not just assigned to this trainer)
+            # Clients are linked to gym via their profile's gym_id
+            if gym_owner_id:
+                clients_orm = db.query(UserORM).join(
+                    ClientProfileORM, UserORM.id == ClientProfileORM.id
+                ).filter(
+                    UserORM.role == "client",
+                    ClientProfileORM.gym_id == gym_owner_id
+                ).all()
+            else:
+                clients_orm = []
+
             clients = []
             active_count = 0
             at_risk_count = 0
@@ -220,13 +234,16 @@ class UserService:
                 else:
                     active_count += 1
 
+                # Client is "PRO" for this trainer if they selected this trainer as their personal trainer
+                is_my_client = profile.trainer_id == trainer_id if profile else False
+
                 clients.append({
                     "id": c.id,
                     "name": profile.name if profile and profile.name else c.username,
                     "status": status,
                     "last_seen": f"{days_inactive} days ago" if days_inactive < 99 else "Never",
                     "plan": profile.plan if profile else "Standard",
-                    "is_premium": profile.is_premium if profile else False
+                    "is_premium": is_my_client  # PRO tag shown only if this client selected this trainer
                 })
             
             # --- FETCH MY WORKOUT (TRAINER) ---

@@ -75,7 +75,7 @@ class Hydration(BaseModel):
 class Progress(BaseModel):
     photos: List[str]
     hydration: Hydration
-    weekly_history: List[int]
+    weekly_health_scores: List[int]  # Daily health scores Mon-Sun for consistency chart
     macros: Macros
     diet_log: Dict[str, List[DietItem]]
     consistency_target: Optional[int] = 80
@@ -191,3 +191,144 @@ class AssignDietRequest(BaseModel):
     fat: int
     hydration_target: int
     consistency_target: int
+
+# --- SUBSCRIPTION & BILLING ---
+
+class SubscriptionPlan(BaseModel):
+    id: Optional[str] = None
+    gym_id: str
+    name: str
+    description: Optional[str] = None
+    price: float
+    currency: str = "usd"
+    features: Optional[List[str]] = []
+    is_active: bool = True
+    trial_period_days: int = 0
+    billing_interval: str = "month"
+    stripe_price_id: Optional[str] = None
+    stripe_product_id: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+class CreateSubscriptionPlanRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+    price: float
+    features: Optional[List[str]] = []
+    trial_period_days: int = 0
+    billing_interval: str = "month"  # month or year
+
+class UpdateSubscriptionPlanRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    price: Optional[float] = None
+    features: Optional[List[str]] = None
+    is_active: Optional[bool] = None
+    trial_period_days: Optional[int] = None
+
+class ClientSubscription(BaseModel):
+    id: Optional[str] = None
+    client_id: str
+    plan_id: str
+    gym_id: str
+    status: str  # active, canceled, past_due, trialing
+    start_date: str
+    current_period_start: Optional[str] = None
+    current_period_end: Optional[str] = None
+    cancel_at_period_end: bool = False
+    canceled_at: Optional[str] = None
+    trial_end: Optional[str] = None
+    stripe_subscription_id: Optional[str] = None
+    stripe_customer_id: Optional[str] = None
+
+class CreateSubscriptionRequest(BaseModel):
+    plan_id: str
+    payment_method_id: Optional[str] = None  # Stripe payment method ID
+
+class CancelSubscriptionRequest(BaseModel):
+    subscription_id: str
+    cancel_immediately: bool = False  # If False, cancels at period end
+
+class Payment(BaseModel):
+    id: str
+    client_id: str
+    subscription_id: Optional[str] = None
+    gym_id: str
+    amount: float
+    currency: str
+    status: str  # succeeded, pending, failed, refunded
+    description: Optional[str] = None
+    paid_at: Optional[str] = None
+    created_at: str
+
+class SubscriptionPlanWithDetails(SubscriptionPlan):
+    """Subscription plan with additional computed fields"""
+    active_subscriptions_count: int = 0
+    monthly_revenue: float = 0.0
+
+
+# --- APPOINTMENT BOOKING MODELS ---
+
+class TrainerAvailability(BaseModel):
+    id: Optional[int] = None
+    trainer_id: str
+    day_of_week: int  # 0 = Monday, 6 = Sunday
+    start_time: str  # HH:MM format
+    end_time: str    # HH:MM format
+    is_available: bool = True
+    created_at: Optional[str] = None
+
+class SetAvailabilityRequest(BaseModel):
+    day_of_week: int
+    start_time: str
+    end_time: str
+
+class UpdateAvailabilityRequest(BaseModel):
+    availability: List[SetAvailabilityRequest]
+
+class Appointment(BaseModel):
+    id: Optional[str] = None
+    client_id: str
+    trainer_id: str
+    date: str  # YYYY-MM-DD
+    start_time: str  # HH:MM
+    end_time: str    # HH:MM
+    duration: int = 60
+    title: str = "1-on-1 Training Session"
+    notes: Optional[str] = None
+    trainer_notes: Optional[str] = None
+    status: str = "scheduled"  # scheduled, completed, canceled, no_show
+    canceled_by: Optional[str] = None
+    canceled_at: Optional[str] = None
+    cancellation_reason: Optional[str] = None
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+class BookAppointmentRequest(BaseModel):
+    trainer_id: str
+    date: str  # YYYY-MM-DD
+    start_time: str  # HH:MM
+    duration: int = 60
+    notes: Optional[str] = None
+
+class CancelAppointmentRequest(BaseModel):
+    cancellation_reason: Optional[str] = None
+
+class AvailableSlot(BaseModel):
+    start_time: str  # HH:MM
+    end_time: str    # HH:MM
+    available: bool = True
+
+# --- GYM/TRAINER ASSIGNMENT ---
+
+class JoinGymRequest(BaseModel):
+    gym_code: str
+
+class SelectTrainerRequest(BaseModel):
+    trainer_id: str
+
+class TrainerInfo(BaseModel):
+    id: str
+    username: str
+    email: Optional[str] = None
+    client_count: int = 0

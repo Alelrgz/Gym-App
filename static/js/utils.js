@@ -139,7 +139,7 @@ export function toggleQuest(el) {
 
         // Celebration
         const reward = el.querySelector('.text-yellow-500').innerText;
-        showToast(`Quest Complete! ${reward} 💎`);
+        showToast(`Quest Complete! ${reward} 🔶`);
 
         // Update gems (mock)
         const gemEl = document.getElementById('gem-count');

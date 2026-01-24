@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Float, ForeignKey
+from sqlalchemy import Column, Integer, String, Boolean, Float, ForeignKey, Text
 from database import Base
 from datetime import datetime
 
@@ -15,6 +15,12 @@ class UserORM(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
     settings = Column(String, nullable=True) # JSON string
+    profile_picture = Column(String, nullable=True)  # Path to profile image
+
+    # Gym code system
+    gym_code = Column(String(6), unique=True, nullable=True, index=True)  # 6-char code for owners
+    gym_owner_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)  # For trainers: which gym they belong to
+    is_approved = Column(Boolean, default=True)  # For trainers: needs owner approval (False = pending)
 
 # --- EXERCISE & WORKOUT LIBRARY (Global + Personal) ---
 
@@ -68,10 +74,11 @@ class ClientProfileORM(Base):
     plan = Column(String, nullable=True)
     status = Column(String, nullable=True)
     last_seen = Column(String, nullable=True)
-    
-    # Simple assignment logic for now
+
+    # Gym and trainer assignment
+    gym_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)  # Owner's ID representing the gym
     trainer_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)
-    
+
     is_premium = Column(Boolean, default=False)
 
 class ClientScheduleORM(Base):
@@ -92,7 +99,7 @@ class ClientDietSettingsORM(Base):
     __tablename__ = "client_diet_settings"
 
     id = Column(String, ForeignKey("users.id"), primary_key=True, index=True) # client_id
-    
+
     calories_target = Column(Integer, default=2000)
     protein_target = Column(Integer, default=150)
     carbs_target = Column(Integer, default=200)
@@ -100,24 +107,52 @@ class ClientDietSettingsORM(Base):
     hydration_target = Column(Integer, default=2500)
     consistency_target = Column(Integer, default=80)
 
-    # Cache current values
+    # Current day values (resets daily)
     calories_current = Column(Integer, default=0)
     protein_current = Column(Integer, default=0)
     carbs_current = Column(Integer, default=0)
     fat_current = Column(Integer, default=0)
     hydration_current = Column(Integer, default=0)
 
+    # Track when we last reset (YYYY-MM-DD)
+    last_reset_date = Column(String, nullable=True)
+
 class ClientDietLogORM(Base):
     __tablename__ = "client_diet_log"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     client_id = Column(String, ForeignKey("users.id"), index=True)
-    
-    date = Column(String, index=True) 
-    meal_type = Column(String) 
+
+    date = Column(String, index=True)
+    meal_type = Column(String)
     meal_name = Column(String)
     calories = Column(Integer)
     time = Column(String)
+
+class ClientDailyDietSummaryORM(Base):
+    """Daily diet summaries - stores end-of-day totals for metrics/history"""
+    __tablename__ = "client_daily_diet_summary"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    client_id = Column(String, ForeignKey("users.id"), index=True)
+
+    date = Column(String, index=True)  # YYYY-MM-DD
+
+    # Daily totals
+    total_calories = Column(Integer, default=0)
+    total_protein = Column(Integer, default=0)
+    total_carbs = Column(Integer, default=0)
+    total_fat = Column(Integer, default=0)
+    total_hydration = Column(Integer, default=0)
+
+    # Targets for that day (for historical comparison)
+    target_calories = Column(Integer, nullable=True)
+    target_protein = Column(Integer, nullable=True)
+    target_carbs = Column(Integer, nullable=True)
+    target_fat = Column(Integer, nullable=True)
+
+    # Meal count
+    meal_count = Column(Integer, default=0)
 
 class ClientExerciseLogORM(Base):
     __tablename__ = "client_exercise_log"
@@ -138,16 +173,20 @@ class TrainerScheduleORM(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     trainer_id = Column(String, ForeignKey("users.id"), index=True)
-    
+
     date = Column(String, index=True) # YYYY-MM-DD
     time = Column(String) # HH:MM AM/PM
     title = Column(String)
     subtitle = Column(String, nullable=True)
-    type = Column(String) # consultation, class, etc 
+    type = Column(String) # consultation, class, 1on1_appointment, etc
     duration = Column(Integer, default=60)  # Duration in minutes
     completed = Column(Boolean, default=False)
     workout_id = Column(String, nullable=True)
     details = Column(String, nullable=True)  # Store workout snapshot JSON on completion
+
+    # For 1-on-1 appointments
+    client_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
+    appointment_id = Column(String, nullable=True, index=True)  # Links to AppointmentORM
 
 
 class TrainerNoteORM(Base):
@@ -159,3 +198,236 @@ class TrainerNoteORM(Base):
     content = Column(String)  # Note body
     created_at = Column(String)
     updated_at = Column(String)
+
+
+# --- SUBSCRIPTION & BILLING MODELS ---
+
+class SubscriptionPlanORM(Base):
+    """Subscription plans created by gym owners/trainers"""
+    __tablename__ = "subscription_plans"
+
+    id = Column(String, primary_key=True, index=True)
+    gym_id = Column(String, ForeignKey("users.id"), index=True)  # Owner/trainer who created this plan
+
+    name = Column(String)  # e.g., "Basic", "Premium", "VIP"
+    description = Column(String, nullable=True)
+    price = Column(Float)  # Monthly price in dollars
+    currency = Column(String, default="usd")
+
+    # Stripe integration
+    stripe_price_id = Column(String, nullable=True)  # Stripe Price ID
+    stripe_product_id = Column(String, nullable=True)  # Stripe Product ID
+
+    # Plan features (JSON string)
+    features_json = Column(String, nullable=True)  # e.g., '["Unlimited workouts", "Meal plans", "1-on-1 coaching"]'
+
+    # Plan settings
+    is_active = Column(Boolean, default=True)
+    trial_period_days = Column(Integer, default=0)  # Free trial days
+    billing_interval = Column(String, default="month")  # month, year
+
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    updated_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
+class ClientSubscriptionORM(Base):
+    """Tracks client subscriptions to gym plans"""
+    __tablename__ = "client_subscriptions"
+
+    id = Column(String, primary_key=True, index=True)
+    client_id = Column(String, ForeignKey("users.id"), index=True)
+    plan_id = Column(String, ForeignKey("subscription_plans.id"), index=True)
+    gym_id = Column(String, ForeignKey("users.id"), index=True)  # Which gym they're subscribed to
+
+    # Stripe integration
+    stripe_subscription_id = Column(String, nullable=True, unique=True)
+    stripe_customer_id = Column(String, nullable=True)
+
+    # Subscription status
+    status = Column(String, default="active")  # active, canceled, past_due, trialing, incomplete
+
+    # Dates
+    start_date = Column(String)  # ISO format
+    current_period_start = Column(String, nullable=True)
+    current_period_end = Column(String, nullable=True)
+    cancel_at_period_end = Column(Boolean, default=False)
+    canceled_at = Column(String, nullable=True)
+    ended_at = Column(String, nullable=True)
+    trial_end = Column(String, nullable=True)
+
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    updated_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
+class PaymentORM(Base):
+    """Payment history for subscriptions"""
+    __tablename__ = "payments"
+
+    id = Column(String, primary_key=True, index=True)
+    client_id = Column(String, ForeignKey("users.id"), index=True)
+    subscription_id = Column(String, ForeignKey("client_subscriptions.id"), index=True, nullable=True)
+    gym_id = Column(String, ForeignKey("users.id"), index=True)
+
+    # Payment details
+    amount = Column(Float)
+    currency = Column(String, default="usd")
+    status = Column(String)  # succeeded, pending, failed, refunded
+
+    # Stripe integration
+    stripe_payment_intent_id = Column(String, nullable=True, unique=True)
+    stripe_invoice_id = Column(String, nullable=True)
+
+    # Payment metadata
+    description = Column(String, nullable=True)
+    payment_method = Column(String, nullable=True)  # card, bank_transfer, etc.
+
+    # Dates
+    paid_at = Column(String, nullable=True)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
+# --- APPOINTMENT BOOKING MODELS ---
+
+class TrainerAvailabilityORM(Base):
+    """Trainer's weekly availability schedule for 1-on-1 appointments"""
+    __tablename__ = "trainer_availability"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    trainer_id = Column(String, ForeignKey("users.id"), index=True)
+
+    # Day of week (0 = Monday, 6 = Sunday)
+    day_of_week = Column(Integer, index=True)
+
+    # Time slots in HH:MM format (24-hour)
+    start_time = Column(String)  # e.g., "09:00"
+    end_time = Column(String)    # e.g., "17:00"
+
+    # If false, this slot is temporarily blocked
+    is_available = Column(Boolean, default=True)
+
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
+class AppointmentORM(Base):
+    """1-on-1 appointments between clients and trainers"""
+    __tablename__ = "appointments"
+
+    id = Column(String, primary_key=True, index=True)
+    client_id = Column(String, ForeignKey("users.id"), index=True)
+    trainer_id = Column(String, ForeignKey("users.id"), index=True)
+
+    # Appointment date and time
+    date = Column(String, index=True)  # ISO format YYYY-MM-DD
+    start_time = Column(String)  # HH:MM format
+    end_time = Column(String)    # HH:MM format
+    duration = Column(Integer, default=60)  # Duration in minutes
+
+    # Appointment details
+    title = Column(String, default="1-on-1 Training Session")
+    notes = Column(String, nullable=True)  # Client's notes/goals for the session
+    trainer_notes = Column(String, nullable=True)  # Trainer's notes after session
+
+    # Status
+    status = Column(String, default="scheduled")  # scheduled, completed, canceled, no_show
+
+    # Cancellation
+    canceled_by = Column(String, nullable=True)  # user_id of who canceled
+    canceled_at = Column(String, nullable=True)
+    cancellation_reason = Column(String, nullable=True)
+
+    # Timestamps
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    updated_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
+# --- MESSAGING MODELS ---
+
+class ConversationORM(Base):
+    """Conversation thread between two users (trainer <-> client)"""
+    __tablename__ = "conversations"
+
+    id = Column(String, primary_key=True, index=True)
+
+    # Participants (trainer and client)
+    trainer_id = Column(String, ForeignKey("users.id"), index=True)
+    client_id = Column(String, ForeignKey("users.id"), index=True)
+
+    # Last activity for sorting
+    last_message_at = Column(String, nullable=True)
+    last_message_preview = Column(String, nullable=True)  # First 50 chars of last message
+
+    # Unread counts
+    trainer_unread_count = Column(Integer, default=0)
+    client_unread_count = Column(Integer, default=0)
+
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
+class MessageORM(Base):
+    """Individual message in a conversation"""
+    __tablename__ = "messages"
+
+    id = Column(String, primary_key=True, index=True)
+    conversation_id = Column(String, ForeignKey("conversations.id"), index=True)
+
+    # Sender info
+    sender_id = Column(String, ForeignKey("users.id"), index=True)
+    sender_role = Column(String)  # 'trainer' or 'client'
+
+    # Message content
+    content = Column(String)
+
+    # Read status
+    is_read = Column(Boolean, default=False)
+    read_at = Column(String, nullable=True)
+
+    # Timestamps
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
+class PhysiquePhotoORM(Base):
+    """Physique progress photos - visible to client and their trainer/nutritionist."""
+    __tablename__ = "physique_photos"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    client_id = Column(String, nullable=False, index=True)  # Owner of the photo
+    trainer_id = Column(String, nullable=True, index=True)  # Trainer who can view (if assigned)
+
+    # Photo metadata
+    title = Column(String, nullable=True)  # e.g., "Front pose", "Back pose"
+    photo_date = Column(String, nullable=False)  # Date the photo was taken
+    notes = Column(Text, nullable=True)  # Optional notes
+
+    # File info
+    filename = Column(String, nullable=False)
+    file_path = Column(String, nullable=False)  # Relative path to the file
+
+    # Timestamps
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    updated_at = Column(String, nullable=True)
+
+
+class DailyQuestCompletionORM(Base):
+    """Tracks manual quest completions for a client on a specific date."""
+    __tablename__ = "daily_quest_completions"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    client_id = Column(String, ForeignKey("users.id"), index=True)
+    date = Column(String, index=True)  # YYYY-MM-DD
+    quest_index = Column(Integer)  # Index of the quest (0, 1, 2, 3...)
+    completed = Column(Boolean, default=False)
+    completed_at = Column(String, nullable=True)
+
+
+class NotificationORM(Base):
+    """Notifications for users (trainers, clients, owners)."""
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, ForeignKey("users.id"), index=True)  # Who receives the notification
+    type = Column(String, index=True)  # appointment_booked, appointment_canceled, message, etc.
+    title = Column(String)
+    message = Column(String)
+    data = Column(Text, nullable=True)  # JSON data for additional context
+    read = Column(Boolean, default=False)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())

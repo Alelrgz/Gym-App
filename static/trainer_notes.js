@@ -24,7 +24,7 @@
                 <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Personal Notes</h3>
                 <div class="flex items-center space-x-2">
                     <span class="text-[10px] text-green-400 opacity-0 transition-opacity duration-500" id="personal-notes-saved-indicator">Saved</span>
-                    <button id="save-note-btn" class="bg-primary hover:bg-red-700 text-white text-xs px-3 py-1.5 rounded-lg font-bold transition flex items-center space-x-1">
+                    <button id="save-note-btn" class="bg-white/10 hover:bg-white/20 text-white text-xs px-3 py-1.5 rounded-lg font-medium transition flex items-center space-x-1 border border-white/10">
                         <span>💾</span>
                         <span>Save</span>
                     </button>
@@ -46,10 +46,12 @@
             const savedNotesSection = document.createElement('div');
             savedNotesSection.className = 'mt-4';
             savedNotesSection.innerHTML = `
-                <button id="toggle-saved-notes-btn" class="w-full py-2 text-sm bg-purple-600 text-white font-bold rounded-xl mb-4 hover:bg-purple-700 transition shadow-lg shadow-purple-600/20">
-                    📝 Saved Notes
+                <button id="toggle-saved-notes-btn" class="w-full glass-card p-3 flex items-center justify-center space-x-2 hover:bg-white/10 transition tap-effect">
+                    <span id="saved-notes-icon" class="text-lg transition-transform duration-300">📝</span>
+                    <span class="text-xs text-white/70 uppercase tracking-wider font-bold">Saved Notes</span>
+                    <span id="saved-notes-chevron" class="text-white/40 text-xs transition-transform duration-300">▼</span>
                 </button>
-                <div id="saved-notes-section" class="hidden transition-all duration-300 ease-in-out">
+                <div id="saved-notes-section" class="overflow-hidden transition-all duration-300 ease-out mt-3" style="max-height: 0; opacity: 0;">
                     <div id="saved-notes-container">
                         <p class="text-gray-400 text-sm text-center py-4">Click to load notes...</p>
                     </div>
@@ -57,13 +59,26 @@
             `;
             notesCard.parentElement.insertBefore(savedNotesSection, notesCard.nextSibling);
 
-            // Toggle handler
+            // Toggle handler with slide animation
+            let savedNotesOpen = false;
             document.getElementById('toggle-saved-notes-btn').addEventListener('click', () => {
                 const section = document.getElementById('saved-notes-section');
+                const chevron = document.getElementById('saved-notes-chevron');
+
                 if (section) {
-                    section.classList.toggle('hidden');
-                    if (!section.classList.contains('hidden')) {
+                    savedNotesOpen = !savedNotesOpen;
+
+                    if (savedNotesOpen) {
+                        // Opening - load notes first, then animate
                         loadSavedNotes();
+                        section.style.maxHeight = section.scrollHeight + 500 + 'px';
+                        section.style.opacity = '1';
+                        if (chevron) chevron.style.transform = 'rotate(180deg)';
+                    } else {
+                        // Closing
+                        section.style.maxHeight = '0';
+                        section.style.opacity = '0';
+                        if (chevron) chevron.style.transform = 'rotate(0deg)';
                     }
                 }
             });

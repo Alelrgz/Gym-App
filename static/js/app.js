@@ -308,7 +308,9 @@ window.openTrainerCalendar = async (explicitClientId) => {
 
     try {
         console.log("Fetching client data for calendar:", clientId);
-        const res = await fetch(`${apiBase}/api/trainer/client/${clientId}`);
+        const res = await fetch(`${apiBase}/api/trainer/client/${clientId}`, {
+            credentials: 'include'
+        });
         if (!res.ok) throw new Error("Failed to fetch client data: " + res.status);
         const user = await res.json();
         console.log("Client data received:", user);
@@ -366,7 +368,8 @@ window.togglePremium = async (clientId, currentState, event) => {
 
     try {
         const res = await fetch(`${apiBase}/api/trainer/client/${clientId}/toggle_premium`, {
-            method: 'POST'
+            method: 'POST',
+            credentials: 'include'
         });
 
         if (!res.ok) throw new Error("Failed to toggle premium");
@@ -401,17 +404,20 @@ function renderClientList(clients) {
         const div = document.createElement('div');
         div.className = "glass-card p-4 flex justify-between items-center tap-effect cursor-pointer hover:bg-white/5 transition";
         div.onclick = function () {
-            showClientModal(c.name, c.plan, c.status, c.id);
+            showClientModal(c.name, c.plan, c.status, c.id, c.is_premium);
         };
         const statusColor = c.status === 'At Risk' ? 'text-red-400' : 'text-green-400';
 
-        // Premium Tag/Button Logic
+        // Premium Tag Logic - PRO means this client selected this trainer as their personal trainer
         let premiumBtn = '';
         if (c.is_premium) {
-            premiumBtn = `<button onclick="window.togglePremium('${c.id}', true, event)" class="ml-2 bg-yellow-500/20 text-yellow-500 border border-yellow-500 px-2 py-0.5 rounded text-[10px] font-bold hover:bg-yellow-500 hover:text-black transition">PRO</button>`;
-        } else {
-            premiumBtn = `<button onclick="window.togglePremium('${c.id}', false, event)" class="ml-2 bg-white/5 text-gray-500 border border-white/10 px-2 py-0.5 rounded text-[10px] font-bold hover:bg-white/20 hover:text-white transition">Make PRO</button>`;
+            // Show PRO badge (non-clickable) for clients who selected this trainer
+            premiumBtn = `<span class="ml-2 bg-yellow-500/20 text-yellow-500 border border-yellow-500 px-2 py-0.5 rounded text-[10px] font-bold">PRO</span>`;
         }
+        // COMMENTED OUT: Manual "Make PRO" button - now handled automatically when client selects trainer
+        // else {
+        //     premiumBtn = `<button onclick="window.togglePremium('${c.id}', false, event)" class="ml-2 bg-white/5 text-gray-500 border border-white/10 px-2 py-0.5 rounded text-[10px] font-bold hover:bg-white/20 hover:text-white transition">Make PRO</button>`;
+        // }
 
         div.innerHTML = `<div class="flex items-center"><div class="w-10 h-10 rounded-full bg-white/10 mr-3 overflow-hidden"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${c.name}" /></div><div><p class="font-bold text-sm text-white flex items-center">${c.name} ${premiumBtn}</p><p class="text-[10px] text-gray-400">${c.plan} • Seen ${c.last_seen}</p></div></div><span class="text-xs font-bold ${statusColor}">${c.status}</span>`;
         list.appendChild(div);
@@ -475,7 +481,15 @@ async function init() {
                     if (welcomeNameEl) welcomeNameEl.textContent = user.username;
                 }
 
-                setTxt('streak-count', user.streak);
+                // Update streak display (week streak)
+                setTxt('client-streak', user.streak);
+                setTxt('streak-count', user.streak); // Legacy fallback
+
+                // Calculate next goal for week streak (milestones: 4, 8, 12, 16, 24, 52 weeks)
+                const weekMilestones = [4, 8, 12, 16, 24, 36, 52];
+                const nextWeekGoal = weekMilestones.find(m => m > user.streak) || (user.streak + 12);
+                setTxt('client-next-goal', `${nextWeekGoal} Weeks`);
+
                 setTxt('gem-count', user.gems);
                 setTxt('health-score', user.health_score);
 
@@ -527,12 +541,13 @@ async function init() {
 
             const questList = document.getElementById('quest-list');
             if (questList) {
-                user.daily_quests.forEach(quest => {
+                user.daily_quests.forEach((quest, index) => {
                     const div = document.createElement('div');
                     div.className = "glass-card p-4 flex justify-between items-center tap-effect";
+                    div.setAttribute('data-quest-index', index);
                     div.onclick = function () { toggleQuest(this); };
-                    if (quest.completed) div.style.borderColor = "rgba(255, 255, 0, 0.3)";
-                    div.innerHTML = `<div class="flex items-center"><div class="w-5 h-5 rounded-full border border-white/20 mr-3 flex items-center justify-center ${quest.completed ? 'bg-yellow-400 text-black border-none' : ''}">${quest.completed ? '✓' : ''}</div><span class="text-sm font-medium text-gray-200">${quest.text}</span></div><span class="text-xs font-bold text-yellow-500">+${quest.xp}</span>`;
+                    if (quest.completed) div.style.borderColor = "rgba(249, 115, 22, 0.3)";
+                    div.innerHTML = `<div class="flex items-center"><div class="w-5 h-5 rounded-full border border-white/20 mr-3 flex items-center justify-center ${quest.completed ? 'bg-orange-500 text-white border-none' : ''}">${quest.completed ? '✓' : ''}</div><span class="text-sm font-medium text-gray-200">${quest.text}</span></div><span class="text-xs font-bold text-orange-500">+${quest.xp}</span>`;
                     questList.appendChild(div);
                 });
             }
@@ -548,14 +563,40 @@ async function init() {
                     document.getElementById('hydro-wave').style.top = `${pct}%`;
                 }
 
-                // Weekly History
+                // Weekly Health Scores Chart
                 const chart = document.getElementById('weekly-chart');
-                if (chart && user.progress.weekly_history) {
-                    user.progress.weekly_history.forEach(val => {
-                        const h = Math.min((val / 2500) * 100, 100);
+                if (chart && user.progress.weekly_health_scores) {
+                    chart.innerHTML = ''; // Clear existing bars
+                    const today = new Date().getDay(); // 0=Sun, 1=Mon, etc
+                    const todayIdx = today === 0 ? 6 : today - 1; // Convert to Mon=0, Sun=6
+
+                    user.progress.weekly_health_scores.forEach((score, idx) => {
                         const bar = document.createElement('div');
-                        bar.className = "w-full bg-white/20 rounded-t-sm hover:bg-white/40 transition";
-                        bar.style.height = `${h}%`;
+                        bar.className = 'w-full flex items-end justify-center';
+                        bar.style.height = '100%';
+
+                        const innerBar = document.createElement('div');
+                        innerBar.className = 'w-full rounded-t-sm transition-all';
+
+                        if (score > 0) {
+                            // Has data - show colored bar
+                            let colorClass = 'bg-red-500';
+                            if (score >= 80) colorClass = 'bg-green-500';
+                            else if (score >= 60) colorClass = 'bg-yellow-500';
+                            else if (score >= 40) colorClass = 'bg-orange-500';
+
+                            innerBar.classList.add(colorClass);
+                            innerBar.style.height = `${Math.max(score, 10)}%`;
+                            innerBar.title = `${score}%`;
+                        } else {
+                            // No data - show subtle dot
+                            innerBar.classList.add('bg-white/20');
+                            innerBar.style.height = '3px';
+                            innerBar.style.borderRadius = '2px';
+                            innerBar.title = 'No data';
+                        }
+
+                        bar.appendChild(innerBar);
                         chart.appendChild(bar);
                     });
                 }
@@ -598,15 +639,10 @@ async function init() {
                     }
                 }
 
-                // Photos
+                // Photos - load from physique API
                 const photoGallery = document.getElementById('photo-gallery');
                 if (photoGallery) {
-                    user.progress.photos.forEach(url => {
-                        const img = document.createElement('img');
-                        img.src = url;
-                        img.className = "w-24 h-32 object-cover rounded-xl border border-white/10 flex-shrink-0";
-                        photoGallery.appendChild(img);
-                    });
+                    loadPhysiquePhotos(photoGallery);
                 }
             }
 
@@ -653,7 +689,9 @@ async function init() {
             const usernameEl = document.getElementById('trainer-username');
             if (usernameEl) usernameEl.textContent = username;
 
-            const trainerRes = await fetch(`${apiBase}/api/trainer/data?limit_cache=${Date.now()}`);
+            const trainerRes = await fetch(`${apiBase}/api/trainer/data?limit_cache=${Date.now()}`, {
+                credentials: 'include'
+            });
             const data = await trainerRes.json();
 
             if (document.getElementById('active-clients-count')) {
@@ -792,14 +830,27 @@ async function init() {
             // Setup Global Exercise Modals (Create/Edit)
             setupExerciseModals();
 
-            // Toggle Exercise List Visibility
+            // Toggle Exercise List Visibility with slide animation
             const toggleBtn = document.getElementById('toggle-exercises-btn');
             const exercisesSection = document.getElementById('exercises-section');
+            const exercisesChevron = document.getElementById('exercises-chevron');
+            let exercisesOpen = false;
+
             if (toggleBtn && exercisesSection) {
                 toggleBtn.addEventListener('click', () => {
-                    exercisesSection.classList.toggle('hidden');
-                    const isHidden = exercisesSection.classList.contains('hidden');
-                    toggleBtn.textContent = isHidden ? 'Edit Exercises' : 'Hide Exercises';
+                    exercisesOpen = !exercisesOpen;
+
+                    if (exercisesOpen) {
+                        // Opening
+                        exercisesSection.style.maxHeight = exercisesSection.scrollHeight + 500 + 'px';
+                        exercisesSection.style.opacity = '1';
+                        if (exercisesChevron) exercisesChevron.style.transform = 'rotate(180deg)';
+                    } else {
+                        // Closing
+                        exercisesSection.style.maxHeight = '0';
+                        exercisesSection.style.opacity = '0';
+                        if (exercisesChevron) exercisesChevron.style.transform = 'rotate(0deg)';
+                    }
                 });
             }
 
@@ -998,7 +1049,7 @@ async function init() {
                         </div>
                     </div>
                     <div class="text-right">
-                        <p class="text-yellow-400 font-bold">💎 ${u.gems}</p>
+                        <p class="text-yellow-400 font-bold">🔶 ${u.gems}</p>
                     </div>
                 `;
                 leaderList.appendChild(div);
@@ -1054,25 +1105,181 @@ function hideModal(id) {
     document.getElementById(id).classList.add('hidden');
 }
 
-function toggleQuest(el) {
+// Flying gems animation
+function animateFlyingGems(fromEl, toEl, gemCount, onComplete) {
+    const fromRect = fromEl.getBoundingClientRect();
+    const toRect = toEl.getBoundingClientRect();
+
+    // Start position (center of quest)
+    const startX = fromRect.left + fromRect.width / 2;
+    const startY = fromRect.top + fromRect.height / 2;
+
+    // End position (gem counter)
+    const endX = toRect.left + toRect.width / 2;
+    const endY = toRect.top + toRect.height / 2;
+
+    // Create multiple gem particles
+    const numGems = Math.min(Math.ceil(gemCount / 10), 5); // 1-5 gems based on reward
+    let completedGems = 0;
+
+    for (let i = 0; i < numGems; i++) {
+        setTimeout(() => {
+            const gem = document.createElement('div');
+            gem.innerHTML = '🔶';
+            gem.style.cssText = `
+                position: fixed;
+                left: ${startX}px;
+                top: ${startY}px;
+                font-size: 24px;
+                z-index: 9999;
+                pointer-events: none;
+                transform: translate(-50%, -50%) scale(0);
+                filter: drop-shadow(0 0 10px rgba(249, 115, 22, 0.8));
+            `;
+            document.body.appendChild(gem);
+
+            // Pop in animation
+            requestAnimationFrame(() => {
+                gem.style.transition = 'transform 0.15s ease-out';
+                gem.style.transform = 'translate(-50%, -50%) scale(1.2)';
+
+                setTimeout(() => {
+                    // Calculate curved path with random offset
+                    const offsetX = (Math.random() - 0.5) * 100;
+                    const controlY = Math.min(startY, endY) - 100 - Math.random() * 50;
+
+                    // Animate along bezier-like curve
+                    gem.style.transition = 'all 0.6s cubic-bezier(0.2, 0, 0.3, 1)';
+                    gem.style.left = `${endX}px`;
+                    gem.style.top = `${endY}px`;
+                    gem.style.transform = 'translate(-50%, -50%) scale(0.5)';
+                    gem.style.opacity = '0.8';
+
+                    setTimeout(() => {
+                        gem.remove();
+                        completedGems++;
+
+                        // When all gems arrive, pulse the counter
+                        if (completedGems === numGems && onComplete) {
+                            onComplete();
+                        }
+                    }, 600);
+                }, 150);
+            });
+        }, i * 80); // Stagger gem spawns
+    }
+}
+
+// Pulse animation for gem counter
+function pulseGemCounter() {
+    const gemContainer = document.querySelector('[data-target="shop-modal"]');
+    if (gemContainer) {
+        gemContainer.style.transition = 'transform 0.15s ease-out';
+        gemContainer.style.transform = 'scale(1.3)';
+        gemContainer.style.background = 'rgba(249, 115, 22, 0.3)';
+
+        setTimeout(() => {
+            gemContainer.style.transform = 'scale(1)';
+            setTimeout(() => {
+                gemContainer.style.background = '';
+            }, 150);
+        }, 150);
+    }
+}
+
+async function toggleQuest(el) {
     const check = el.querySelector('.rounded-full');
-    const isComplete = check.classList.contains('bg-yellow-400');
+    const isComplete = check.classList.contains('bg-orange-500');
+    const questIndex = parseInt(el.getAttribute('data-quest-index'));
 
-    if (!isComplete) {
-        check.classList.add('bg-yellow-400', 'text-black', 'border-none');
-        check.innerText = '✓';
-        el.style.borderColor = "rgba(255, 255, 0, 0.3)";
+    if (isNaN(questIndex)) {
+        console.error('Quest index not found');
+        return;
+    }
 
-        // Celebration
-        const reward = el.querySelector('.text-yellow-500').innerText;
-        showToast(`Quest Complete! ${reward} 💎`);
+    // Prevent double-clicking during animation
+    if (el.classList.contains('animating')) return;
 
-        // Update gems (mock)
-        const gemEl = document.getElementById('gem-count');
-        if (gemEl) {
-            let gems = parseInt(gemEl.innerText);
-            gemEl.innerText = gems + parseInt(reward.replace('+', ''));
+    try {
+        const response = await fetch('/api/client/quest/toggle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ quest_index: questIndex })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to toggle quest');
         }
+
+        const result = await response.json();
+
+        if (result.completed) {
+            el.classList.add('animating');
+
+            // Mark as complete with orange styling
+            check.classList.add('bg-orange-500', 'text-white', 'border-none');
+            check.innerText = '✓';
+            el.style.borderColor = "rgba(249, 115, 22, 0.5)";
+            el.style.boxShadow = "0 0 20px rgba(249, 115, 22, 0.3)";
+
+            // Get reward amount
+            const rewardText = el.querySelector('.text-orange-500').innerText;
+            const rewardAmount = parseInt(rewardText.replace('+', ''));
+            const gemEl = document.getElementById('gem-count');
+            const gemContainer = document.querySelector('[data-target="shop-modal"]');
+
+            // Celebration toast
+            showToast(`Quest Complete! ${rewardText} 🔶`);
+
+            // Animate flying gems to counter
+            if (gemContainer && gemEl) {
+                animateFlyingGems(el, gemContainer, rewardAmount, () => {
+                    // Update gem count when gems arrive
+                    let currentGems = parseInt(gemEl.innerText);
+                    gemEl.innerText = currentGems + rewardAmount;
+                    pulseGemCounter();
+                });
+            } else if (gemEl) {
+                // Fallback if container not found
+                let currentGems = parseInt(gemEl.innerText);
+                gemEl.innerText = currentGems + rewardAmount;
+            }
+
+            // Zoom in animation then remove
+            el.style.transition = 'transform 0.3s ease-out, opacity 0.3s ease-out, box-shadow 0.3s ease-out';
+            el.style.transform = 'scale(1.05)';
+
+            setTimeout(() => {
+                // Zoom out and fade
+                el.style.transform = 'scale(0.8)';
+                el.style.opacity = '0';
+                el.style.boxShadow = 'none';
+
+                setTimeout(() => {
+                    // Collapse height smoothly
+                    el.style.transition = 'all 0.3s ease-out';
+                    el.style.height = el.offsetHeight + 'px';
+                    el.offsetHeight; // Force reflow
+                    el.style.height = '0';
+                    el.style.padding = '0';
+                    el.style.marginBottom = '0';
+                    el.style.overflow = 'hidden';
+
+                    setTimeout(() => {
+                        el.remove();
+                    }, 300);
+                }, 250);
+            }, 400); // Increased delay to let gems fly
+        } else {
+            // Unmark as complete (restore quest)
+            check.classList.remove('bg-orange-500', 'text-white', 'border-none');
+            check.innerText = '';
+            el.style.borderColor = "";
+        }
+    } catch (error) {
+        console.error('Error toggling quest:', error);
+        showToast('Failed to update quest');
+        el.classList.remove('animating');
     }
 }
 
@@ -1094,13 +1301,24 @@ function addWater() {
     }
 }
 
-function showClientModal(name, plan, status, clientId) {
-    console.log("showClientModal called with ID:", clientId);
+function showClientModal(name, plan, status, clientId, isPremium = false) {
+    console.log("showClientModal called with ID:", clientId, "isPremium:", isPremium);
     document.getElementById('modal-client-name').innerText = name;
     document.getElementById('modal-client-plan').innerText = plan;
     document.getElementById('modal-client-status').innerText = status;
     document.getElementById('modal-client-status').className = `text-lg font-bold ${status === 'At Risk' ? 'text-red-400' : 'text-green-400'}`;
     document.getElementById('client-modal').dataset.clientId = clientId;
+
+    // Show/hide PRO-only buttons based on whether this client selected this trainer
+    const btnManageDiet = document.getElementById('btn-manage-diet');
+    const btnViewMetrics = document.getElementById('btn-view-metrics');
+    if (btnManageDiet) {
+        btnManageDiet.classList.toggle('hidden', !isPremium);
+    }
+    if (btnViewMetrics) {
+        btnViewMetrics.classList.toggle('hidden', !isPremium);
+    }
+
     showModal('client-modal');
 }
 
@@ -1175,18 +1393,726 @@ function quickAction(action) {
     }
 }
 
-// Physique Photos
-function addPhoto() {
-    const url = prompt("Enter photo URL:");
-    if (url) {
-        const gallery = document.getElementById('photo-gallery');
-        const img = document.createElement('img');
-        img.src = url;
-        img.className = "w-24 h-32 object-cover rounded-xl border border-white/10 flex-shrink-0 slide-up";
-        gallery.prepend(img);
-        showToast('Physique update saved! 📸');
+// ============ PHYSIQUE PHOTOS ============
+
+// Selected file for upload
+let selectedPhysiqueFile = null;
+let selectedPhysiqueTag = null;
+
+function openPhysiqueModal() {
+    const modal = document.getElementById('physique-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        // Set default date to today
+        document.getElementById('physique-date').value = new Date().toISOString().split('T')[0];
+        // Clear previous state
+        clearPhysiquePhoto();
+        clearPhysiqueTags();
+        document.getElementById('physique-title').value = '';
+        document.getElementById('physique-notes').value = '';
     }
 }
+
+function selectPhysiqueTag(btn, tag) {
+    // Clear all selected tags
+    document.querySelectorAll('.physique-tag').forEach(t => {
+        t.classList.remove('bg-primary', 'border-primary', 'text-white');
+        t.classList.add('bg-white/10', 'border-white/20');
+    });
+
+    // If clicking the same tag, deselect
+    if (selectedPhysiqueTag === tag) {
+        selectedPhysiqueTag = null;
+        return;
+    }
+
+    // Select this tag
+    selectedPhysiqueTag = tag;
+    btn.classList.remove('bg-white/10', 'border-white/20');
+    btn.classList.add('bg-primary', 'border-primary', 'text-white');
+}
+
+function clearPhysiqueTags() {
+    selectedPhysiqueTag = null;
+    document.querySelectorAll('.physique-tag').forEach(t => {
+        t.classList.remove('bg-primary', 'border-primary', 'text-white');
+        t.classList.add('bg-white/10', 'border-white/20');
+    });
+}
+
+function closePhysiqueModal() {
+    const modal = document.getElementById('physique-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        clearPhysiquePhoto();
+    }
+}
+
+function previewPhysiquePhoto(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+        showToast('Please select a valid image (JPG, PNG, WEBP, GIF)', 'error');
+        input.value = '';
+        return;
+    }
+
+    // Validate file size (10MB max)
+    if (file.size > 10 * 1024 * 1024) {
+        showToast('Image too large. Maximum 10MB', 'error');
+        input.value = '';
+        return;
+    }
+
+    selectedPhysiqueFile = file;
+
+    // Show preview
+    const reader = new FileReader();
+    reader.onload = (e) => {
+        document.getElementById('physique-preview').src = e.target.result;
+        document.getElementById('physique-preview-container').classList.remove('hidden');
+        document.getElementById('physique-upload-area').classList.add('hidden');
+    };
+    reader.readAsDataURL(file);
+}
+
+function clearPhysiquePhoto() {
+    selectedPhysiqueFile = null;
+    document.getElementById('physique-file-input').value = '';
+    document.getElementById('physique-preview-container').classList.add('hidden');
+    document.getElementById('physique-upload-area').classList.remove('hidden');
+}
+
+// Form submission handler
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('physique-form');
+    if (form) {
+        form.addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            if (!selectedPhysiqueFile) {
+                showToast('Please select a photo', 'error');
+                return;
+            }
+
+            const submitBtn = document.getElementById('physique-submit-btn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Uploading...';
+
+            try {
+                const formData = new FormData();
+                formData.append('file', selectedPhysiqueFile);
+
+                // Build title with tag and custom title
+                let title = '';
+                if (selectedPhysiqueTag) {
+                    title = selectedPhysiqueTag;
+                    const customTitle = document.getElementById('physique-title').value.trim();
+                    if (customTitle) {
+                        title += ' - ' + customTitle;
+                    }
+                } else {
+                    title = document.getElementById('physique-title').value || 'Progress Photo';
+                }
+                formData.append('title', title);
+                formData.append('photo_date', document.getElementById('physique-date').value);
+                formData.append('notes', document.getElementById('physique-notes').value);
+
+                const res = await fetch('/api/physique/photo', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await res.json();
+
+                if (res.ok) {
+                    showToast('Progress photo saved! 📸', 'success');
+                    closePhysiqueModal();
+
+                    // Reload gallery
+                    const gallery = document.getElementById('photo-gallery');
+                    if (gallery) {
+                        loadPhysiquePhotos(gallery);
+                    }
+                } else {
+                    showToast(data.detail || 'Failed to upload photo', 'error');
+                }
+            } catch (e) {
+                console.error('Error uploading physique photo:', e);
+                showToast('Failed to upload photo', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Upload Photo';
+            }
+        });
+    }
+});
+
+async function deletePhysiquePhoto(photoId, element) {
+    if (!confirm('Delete this photo?')) return;
+
+    try {
+        const res = await fetch(`/api/physique/photo/${photoId}`, {
+            method: 'DELETE'
+        });
+
+        if (res.ok) {
+            element.remove();
+            showToast('Photo deleted', 'success');
+
+            // Check if gallery is empty
+            const gallery = document.getElementById('photo-gallery');
+            if (gallery && gallery.children.length === 0) {
+                gallery.innerHTML = '<p class="text-gray-500 text-xs py-4">No photos yet. Tap + Add to track your progress!</p>';
+            }
+        } else {
+            showToast('Failed to delete photo', 'error');
+        }
+    } catch (e) {
+        console.error('Error deleting photo:', e);
+        showToast('Failed to delete photo', 'error');
+    }
+}
+
+async function loadPhysiquePhotos(gallery) {
+    try {
+        const res = await fetch('/api/physique/photos');
+        if (res.ok) {
+            const data = await res.json();
+            gallery.innerHTML = ''; // Clear existing
+
+            if (data.photos && data.photos.length > 0) {
+                data.photos.forEach(photo => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'relative flex-shrink-0 group';
+                    wrapper.innerHTML = `
+                        <div class="relative cursor-pointer" onclick="openPhotoViewer('${photo.photo_url}', '${photo.title || ''}', '${photo.photo_date || ''}', '${(photo.notes || '').replace(/'/g, "\\'")}')">
+                            <img src="${photo.photo_url}" class="w-24 h-32 object-cover rounded-xl border border-white/10">
+                            ${photo.title ? `<div class="absolute bottom-0 left-0 right-0 bg-black/60 px-1 py-0.5 rounded-b-xl">
+                                <p class="text-[8px] text-white truncate">${photo.title}</p>
+                            </div>` : ''}
+                        </div>
+                        <button onclick="event.stopPropagation(); deletePhysiquePhoto(${photo.photo_id}, this.parentElement)"
+                            class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full text-white text-xs flex items-center justify-center hover:bg-red-600 transition opacity-0 group-hover:opacity-100">×</button>
+                    `;
+                    gallery.appendChild(wrapper);
+                });
+            } else {
+                gallery.innerHTML = '<p class="text-gray-500 text-xs py-4">No photos yet. Tap + Add to track your progress!</p>';
+            }
+        }
+    } catch (e) {
+        console.error('Error loading physique photos:', e);
+        gallery.innerHTML = '<p class="text-red-400 text-xs py-4">Failed to load photos</p>';
+    }
+}
+
+function openPhotoViewer(url, title, date, notes) {
+    const viewer = document.createElement('div');
+    viewer.className = 'fixed inset-0 bg-black/70 backdrop-blur-xl z-50 flex flex-col items-center justify-center p-4';
+    viewer.onclick = (e) => { if (e.target === viewer) viewer.remove(); };
+    viewer.innerHTML = `
+        <button onclick="this.parentElement.remove()" class="absolute top-4 right-4 w-10 h-10 bg-white/10 backdrop-blur-sm border border-white/20 rounded-full text-white text-xl flex items-center justify-center hover:bg-white/20 transition z-10">×</button>
+        <div class="bg-white/10 backdrop-blur-sm p-3 rounded-2xl border border-white/20">
+            <img src="${url}" class="max-w-full max-h-[60vh] object-contain rounded-xl">
+        </div>
+        ${title || date || notes ? `
+        <div class="mt-4 text-center max-w-md bg-white/5 backdrop-blur-sm px-6 py-3 rounded-xl border border-white/10">
+            ${title ? `<h3 class="text-lg font-bold text-white">${title}</h3>` : ''}
+            ${date ? `<p class="text-sm text-gray-400">${new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>` : ''}
+            ${notes ? `<p class="text-sm text-gray-300 mt-2">${notes}</p>` : ''}
+        </div>
+        ` : ''}
+    `;
+    document.body.appendChild(viewer);
+}
+
+// Legacy function for backward compatibility
+function addPhoto() {
+    openPhysiqueModal();
+}
+
+// ============ PHYSIQUE COMPARISON (CAROUSEL) ============
+let comparePhotos = [];
+let allPhysiquePhotos = [];
+let compareScrollY = 0;
+let carouselIndex = 0;
+
+async function openCompareModal() {
+    const modal = document.getElementById('compare-modal');
+    if (!modal) return;
+
+    // Prevent background scroll (mobile-friendly)
+    compareScrollY = window.scrollY;
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${compareScrollY}px`;
+    document.body.style.left = '0';
+    document.body.style.right = '0';
+    document.body.style.overflow = 'hidden';
+
+    // Reset state
+    comparePhotos = [];
+    carouselIndex = 0;
+    updateCarouselDisplay();
+    resetSelectorPanel();
+
+    // Reset filters
+    const searchInput = document.getElementById('compare-search');
+    const dateFilter = document.getElementById('compare-date-filter');
+    const poseFilter = document.getElementById('compare-pose-filter');
+    if (searchInput) searchInput.value = '';
+    if (dateFilter) dateFilter.value = 'all';
+    if (poseFilter) poseFilter.value = 'all';
+
+    // Load photos for selection
+    try {
+        const res = await fetch('/api/physique/photos');
+        if (res.ok) {
+            const data = await res.json();
+            allPhysiquePhotos = data.photos || [];
+            renderComparePhotoList();
+        }
+    } catch (e) {
+        console.error('Error loading photos for comparison:', e);
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function closeCompareModal() {
+    const modal = document.getElementById('compare-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        // Restore background scroll
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, compareScrollY);
+    }
+}
+
+function getFilteredPhotos() {
+    const searchTerm = (document.getElementById('compare-search')?.value || '').toLowerCase();
+    const dateFilter = document.getElementById('compare-date-filter')?.value || 'all';
+    const poseFilter = document.getElementById('compare-pose-filter')?.value || 'all';
+
+    const now = new Date();
+    const weekAgo = new Date(now - 7 * 24 * 60 * 60 * 1000);
+    const monthAgo = new Date(now - 30 * 24 * 60 * 60 * 1000);
+    const threeMonthsAgo = new Date(now - 90 * 24 * 60 * 60 * 1000);
+    const yearStart = new Date(now.getFullYear(), 0, 1);
+
+    return allPhysiquePhotos.map((photo, idx) => ({ photo, idx })).filter(({ photo }) => {
+        // Search filter
+        if (searchTerm && !(photo.title || '').toLowerCase().includes(searchTerm)) {
+            return false;
+        }
+
+        // Pose filter
+        if (poseFilter !== 'all') {
+            const title = (photo.title || '').toLowerCase();
+            if (!title.includes(poseFilter.toLowerCase())) {
+                return false;
+            }
+        }
+
+        // Date filter
+        if (dateFilter !== 'all' && photo.photo_date) {
+            const photoDate = new Date(photo.photo_date);
+            switch (dateFilter) {
+                case 'week':
+                    if (photoDate < weekAgo) return false;
+                    break;
+                case 'month':
+                    if (photoDate < monthAgo) return false;
+                    break;
+                case '3months':
+                    if (photoDate < threeMonthsAgo) return false;
+                    break;
+                case 'year':
+                    if (photoDate < yearStart) return false;
+                    break;
+            }
+        }
+
+        return true;
+    });
+}
+
+function filterComparePhotos() {
+    renderComparePhotoList();
+}
+
+function renderComparePhotoList() {
+    const list = document.getElementById('compare-photo-list');
+    const countEl = document.getElementById('compare-photo-count');
+    if (!list) return;
+
+    if (allPhysiquePhotos.length < 2) {
+        list.innerHTML = '<p class="text-gray-500 text-sm py-2">Upload at least 2 photos to compare progress</p>';
+        if (countEl) countEl.textContent = '';
+        return;
+    }
+
+    const filtered = getFilteredPhotos();
+
+    if (countEl) {
+        countEl.textContent = `(${comparePhotos.length} selected, ${filtered.length} shown)`;
+    }
+
+    if (filtered.length === 0) {
+        list.innerHTML = '<p class="text-gray-500 text-sm py-2">No photos match your filters</p>';
+        return;
+    }
+
+    list.innerHTML = filtered.map(({ photo, idx }) => `
+        <div class="flex-shrink-0 cursor-pointer compare-thumb ${comparePhotos.includes(idx) ? 'ring-2 ring-primary' : ''}"
+             onclick="toggleComparePhoto(${idx})">
+            <img src="${photo.photo_url}" class="w-16 h-20 object-cover rounded-lg border border-white/10">
+            <p class="text-[8px] text-gray-400 text-center mt-1 truncate w-16">${photo.title || photo.photo_date || ''}</p>
+        </div>
+    `).join('');
+}
+
+function toggleComparePhoto(idx) {
+    const photoIdx = comparePhotos.indexOf(idx);
+
+    if (photoIdx > -1) {
+        // Remove from selection
+        comparePhotos.splice(photoIdx, 1);
+        // Adjust carousel index if needed
+        if (carouselIndex >= comparePhotos.length && carouselIndex > 0) {
+            carouselIndex = comparePhotos.length - 1;
+        }
+    } else {
+        // Add to selection (no limit now - can add multiple photos)
+        comparePhotos.push(idx);
+        // Jump to newly added photo
+        carouselIndex = comparePhotos.length - 1;
+    }
+
+    renderComparePhotoList();
+    updateCarouselDisplay();
+}
+
+function carouselPrev() {
+    if (comparePhotos.length === 0) return;
+    carouselIndex = (carouselIndex - 1 + comparePhotos.length) % comparePhotos.length;
+    updateCarouselDisplay();
+}
+
+function carouselNext() {
+    if (comparePhotos.length === 0) return;
+    carouselIndex = (carouselIndex + 1) % comparePhotos.length;
+    updateCarouselDisplay();
+}
+
+function goToCarouselSlide(index) {
+    if (index >= 0 && index < comparePhotos.length) {
+        carouselIndex = index;
+        updateCarouselDisplay();
+    }
+}
+
+function updateCarouselDisplay() {
+    const img = document.getElementById('carousel-img');
+    const placeholder = document.getElementById('carousel-placeholder');
+    const label = document.getElementById('carousel-label');
+    const dateEl = document.getElementById('carousel-date');
+    const dotsContainer = document.getElementById('carousel-dots');
+    const prevBtn = document.getElementById('carousel-prev');
+    const nextBtn = document.getElementById('carousel-next');
+
+    // Update navigation button states
+    if (prevBtn) prevBtn.disabled = comparePhotos.length <= 1;
+    if (nextBtn) nextBtn.disabled = comparePhotos.length <= 1;
+
+    // Show current photo
+    if (comparePhotos.length > 0 && allPhysiquePhotos[comparePhotos[carouselIndex]]) {
+        const photo = allPhysiquePhotos[comparePhotos[carouselIndex]];
+        if (img) {
+            img.src = photo.photo_url;
+            img.classList.remove('hidden');
+        }
+        if (placeholder) placeholder.classList.add('hidden');
+        if (label) label.textContent = photo.title || 'Progress Photo';
+        if (dateEl) dateEl.textContent = formatCompareDate(photo.photo_date);
+    } else {
+        if (img) img.classList.add('hidden');
+        if (placeholder) placeholder.classList.remove('hidden');
+        if (label) label.textContent = '';
+        if (dateEl) dateEl.textContent = '';
+    }
+
+    // Render pagination dots
+    if (dotsContainer) {
+        if (comparePhotos.length <= 1) {
+            dotsContainer.innerHTML = '';
+        } else {
+            dotsContainer.innerHTML = comparePhotos.map((_, i) => `
+                <button onclick="goToCarouselSlide(${i})"
+                    class="w-2.5 h-2.5 rounded-full transition-all ${i === carouselIndex
+                        ? 'bg-primary scale-125'
+                        : 'bg-white/30 hover:bg-white/50'}">
+                </button>
+            `).join('');
+        }
+    }
+}
+
+function formatCompareDate(dateStr) {
+    if (!dateStr) return '';
+    try {
+        return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    } catch {
+        return dateStr;
+    }
+}
+
+// Photo selector panel toggle
+let selectorPanelOpen = true;
+
+function togglePhotoSelector() {
+    const panel = document.getElementById('photo-selector-panel');
+    const handle = document.getElementById('selector-toggle-icon');
+    const photoContainer = document.getElementById('carousel-photo-container');
+    const prevBtn = document.getElementById('carousel-prev');
+    const nextBtn = document.getElementById('carousel-next');
+
+    if (!panel) return;
+
+    selectorPanelOpen = !selectorPanelOpen;
+
+    if (selectorPanelOpen) {
+        // Open panel
+        panel.style.maxHeight = '260px';
+        if (handle) {
+            handle.style.width = '2.5rem';  // 40px - normal
+            handle.style.opacity = '0.3';
+        }
+        // Reset photo container margin
+        if (photoContainer) {
+            photoContainer.style.marginLeft = '3.5rem';
+            photoContainer.style.marginRight = '3.5rem';
+        }
+        // Reset nav buttons
+        if (prevBtn) {
+            prevBtn.style.background = 'rgba(255,255,255,0.1)';
+            prevBtn.style.borderColor = 'rgba(255,255,255,0.2)';
+            prevBtn.style.left = '0.5rem';
+        }
+        if (nextBtn) {
+            nextBtn.style.background = 'rgba(255,255,255,0.1)';
+            nextBtn.style.borderColor = 'rgba(255,255,255,0.2)';
+            nextBtn.style.right = '0.5rem';
+        }
+    } else {
+        // Close panel - show only the handle
+        panel.style.maxHeight = '28px';
+        if (handle) {
+            handle.style.width = '4rem';  // 64px - wider to indicate expandable
+            handle.style.opacity = '0.5';
+        }
+        // Expand photo container horizontally
+        if (photoContainer) {
+            photoContainer.style.marginLeft = '0.5rem';
+            photoContainer.style.marginRight = '0.5rem';
+        }
+        // Make nav buttons transparent and move inward
+        if (prevBtn) {
+            prevBtn.style.background = 'transparent';
+            prevBtn.style.borderColor = 'transparent';
+            prevBtn.style.left = '1.5rem';
+        }
+        if (nextBtn) {
+            nextBtn.style.background = 'transparent';
+            nextBtn.style.borderColor = 'transparent';
+            nextBtn.style.right = '1.5rem';
+        }
+    }
+}
+
+// Reset selector panel state when opening modal
+function resetSelectorPanel() {
+    const panel = document.getElementById('photo-selector-panel');
+    const handle = document.getElementById('selector-toggle-icon');
+    const photoContainer = document.getElementById('carousel-photo-container');
+    const prevBtn = document.getElementById('carousel-prev');
+    const nextBtn = document.getElementById('carousel-next');
+
+    selectorPanelOpen = true;
+    if (panel) panel.style.maxHeight = '260px';
+    if (handle) {
+        handle.style.width = '2.5rem';
+        handle.style.opacity = '0.3';
+    }
+    // Reset photo container margin
+    if (photoContainer) {
+        photoContainer.style.marginLeft = '3.5rem';
+        photoContainer.style.marginRight = '3.5rem';
+    }
+    // Reset nav buttons
+    if (prevBtn) {
+        prevBtn.style.background = 'rgba(255,255,255,0.1)';
+        prevBtn.style.borderColor = 'rgba(255,255,255,0.2)';
+        prevBtn.style.left = '0.5rem';
+    }
+    if (nextBtn) {
+        nextBtn.style.background = 'rgba(255,255,255,0.1)';
+        nextBtn.style.borderColor = 'rgba(255,255,255,0.2)';
+        nextBtn.style.right = '0.5rem';
+    }
+}
+
+// Carousel animation settings
+let carouselAnimationsEnabled = true;
+
+function toggleCarouselAnimations() {
+    carouselAnimationsEnabled = !carouselAnimationsEnabled;
+    const btn = document.getElementById('animation-toggle-btn');
+    if (btn) {
+        btn.innerHTML = carouselAnimationsEnabled
+            ? '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
+            : '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+        btn.title = carouselAnimationsEnabled ? 'Animations On' : 'Animations Off';
+    }
+    showToast(carouselAnimationsEnabled ? 'Swipe animations enabled' : 'Swipe animations disabled');
+}
+
+// Animated carousel navigation (for swipe only)
+function carouselPrevAnimated() {
+    if (comparePhotos.length === 0) return;
+    if (carouselAnimationsEnabled) {
+        animateCarouselSlide('right', () => {
+            carouselIndex = (carouselIndex - 1 + comparePhotos.length) % comparePhotos.length;
+            updateCarouselDisplay();
+        });
+    } else {
+        carouselPrev();
+    }
+}
+
+function carouselNextAnimated() {
+    if (comparePhotos.length === 0) return;
+    if (carouselAnimationsEnabled) {
+        animateCarouselSlide('left', () => {
+            carouselIndex = (carouselIndex + 1) % comparePhotos.length;
+            updateCarouselDisplay();
+        });
+    } else {
+        carouselNext();
+    }
+}
+
+function animateCarouselSlide(direction, callback) {
+    const img = document.getElementById('carousel-img');
+    if (!img) {
+        callback();
+        return;
+    }
+
+    const slideDistance = direction === 'left' ? '-100%' : '100%';
+
+    // Slide out current image
+    img.style.transition = 'transform 0.12s ease-out, opacity 0.12s ease-out';
+    img.style.transform = `translateX(${slideDistance})`;
+    img.style.opacity = '0';
+
+    setTimeout(() => {
+        // Update to new image (happens in callback)
+        callback();
+
+        // Position new image on opposite side
+        img.style.transition = 'none';
+        img.style.transform = `translateX(${direction === 'left' ? '100%' : '-100%'})`;
+        img.style.opacity = '0';
+
+        // Force reflow
+        img.offsetHeight;
+
+        // Slide in new image
+        img.style.transition = 'transform 0.12s ease-out, opacity 0.12s ease-out';
+        img.style.transform = 'translateX(0)';
+        img.style.opacity = '1';
+
+        // Clean up after animation
+        setTimeout(() => {
+            img.style.transition = '';
+            img.style.transform = '';
+        }, 130);
+    }, 120);
+}
+
+// Initialize carousel swipe support with drag animation
+(function initCarouselSwipe() {
+    let touchStartX = 0;
+    let touchCurrentX = 0;
+    let isDragging = false;
+    const minSwipeDistance = 50;
+    const maxDragDistance = 150;
+
+    document.addEventListener('touchstart', (e) => {
+        const container = document.getElementById('carousel-photo-container');
+        if (container && container.contains(e.target)) {
+            touchStartX = e.changedTouches[0].screenX;
+            touchCurrentX = touchStartX;
+            isDragging = true;
+        }
+    }, { passive: true });
+
+    document.addEventListener('touchmove', (e) => {
+        if (!isDragging || !carouselAnimationsEnabled) return;
+
+        const container = document.getElementById('carousel-photo-container');
+        const img = document.getElementById('carousel-img');
+        if (!container || !container.contains(e.target) || !img) return;
+
+        touchCurrentX = e.changedTouches[0].screenX;
+        const dragDistance = touchCurrentX - touchStartX;
+
+        // Limit drag distance and add resistance
+        const limitedDrag = Math.sign(dragDistance) * Math.min(Math.abs(dragDistance), maxDragDistance);
+        const resistance = 1 - (Math.abs(limitedDrag) / maxDragDistance) * 0.3;
+
+        // Apply transform during drag
+        img.style.transition = 'none';
+        img.style.transform = `translateX(${limitedDrag * resistance}px)`;
+        img.style.opacity = `${1 - Math.abs(limitedDrag) / maxDragDistance * 0.3}`;
+    }, { passive: true });
+
+    document.addEventListener('touchend', (e) => {
+        if (!isDragging) return;
+        isDragging = false;
+
+        const container = document.getElementById('carousel-photo-container');
+        const img = document.getElementById('carousel-img');
+        if (!container || !container.contains(e.target)) return;
+
+        const swipeDistance = touchCurrentX - touchStartX;
+
+        if (Math.abs(swipeDistance) >= minSwipeDistance) {
+            if (swipeDistance > 0) {
+                carouselPrevAnimated(); // Swipe right = previous
+            } else {
+                carouselNextAnimated(); // Swipe left = next
+            }
+        } else if (img) {
+            // Snap back if swipe wasn't far enough
+            img.style.transition = 'transform 0.1s ease-out, opacity 0.1s ease-out';
+            img.style.transform = 'translateX(0)';
+            img.style.opacity = '1';
+            setTimeout(() => {
+                img.style.transition = '';
+                img.style.transform = '';
+            }, 110);
+        }
+    }, { passive: true });
+})();
 
 // Toast Notification System
 function showToast(msg) {
@@ -1718,6 +2644,18 @@ async function fetchAndRenderWorkouts() {
     if (!container) return;
 
     container.innerHTML = '';
+
+    if (workouts.length === 0) {
+        container.innerHTML = `
+            <button data-action="openCreateWorkout"
+                class="w-full py-6 border-2 border-dashed border-white/10 rounded-xl text-white/40 hover:text-white/70 hover:border-white/20 transition flex flex-col items-center justify-center gap-2 group">
+                <span class="text-2xl group-hover:scale-110 transition-transform">💪</span>
+                <span class="text-xs uppercase tracking-wider font-medium">Create Your First Workout</span>
+            </button>
+        `;
+        return;
+    }
+
     workouts.forEach(w => {
         const div = document.createElement('div');
         div.className = "glass-card p-3 flex justify-between items-center";
@@ -2062,18 +3000,27 @@ async function finishWorkout() {
                             if (welcomeNameEl) welcomeNameEl.textContent = clientData.username;
                         }
 
-                        // Update streak display
-                        const streakEl = document.getElementById('streak-count');
+                        // Update streak display (week streak)
+                        const streakEl = document.getElementById('client-streak');
                         if (streakEl) {
                             streakEl.innerText = clientData.streak;
                         }
+                        // Legacy fallback
+                        const legacyStreakEl = document.getElementById('streak-count');
+                        if (legacyStreakEl) {
+                            legacyStreakEl.innerText = clientData.streak;
+                        }
 
-                        // Update next goal
-                        const streakMilestones = [7, 14, 30, 60, 100, 200, 365];
-                        const nextMilestone = streakMilestones.find(m => m > clientData.streak) || (clientData.streak + 100);
-                        const nextGoalEl = document.getElementById('next-goal');
+                        // Update next goal for week streak
+                        const weekMilestones = [4, 8, 12, 16, 24, 36, 52];
+                        const nextMilestone = weekMilestones.find(m => m > clientData.streak) || (clientData.streak + 12);
+                        const nextGoalEl = document.getElementById('client-next-goal');
                         if (nextGoalEl) {
-                            nextGoalEl.innerText = `${nextMilestone} Days`;
+                            nextGoalEl.innerText = `${nextMilestone} Weeks`;
+                        }
+                        const legacyNextGoalEl = document.getElementById('next-goal');
+                        if (legacyNextGoalEl) {
+                            legacyNextGoalEl.innerText = `${nextMilestone} Weeks`;
                         }
                     }
                 } catch (e) {
@@ -2341,7 +3288,9 @@ window.assignSplitToSelf = async function (splitId, splitName) {
     if (!myId) {
         // Fallback: Fetch trainer data to get ID
         try {
-            const res = await fetch(`${apiBase}/api/trainer/data`);
+            const res = await fetch(`${apiBase}/api/trainer/data`, {
+                credentials: 'include'
+            });
             if (res.ok) {
                 const data = await res.json();
                 myId = data.id;
@@ -2355,7 +3304,9 @@ window.assignSplitToSelf = async function (splitId, splitName) {
     // Double fallback to client/data if trainer data doesn't return ID
     if (!myId) {
         try {
-            const meRes = await fetch(`${apiBase}/api/client/data`);
+            const meRes = await fetch(`${apiBase}/api/client/data`, {
+                credentials: 'include'
+            });
             if (meRes.ok) {
                 const me = await meRes.json();
                 myId = me.id;
@@ -2374,6 +3325,7 @@ window.assignSplitToSelf = async function (splitId, splitName) {
         const res = await fetch(`${apiBase}/api/trainer/assign_split`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({
                 client_id: myId,
                 split_id: splitId,
@@ -2387,7 +3339,9 @@ window.assignSplitToSelf = async function (splitId, splitName) {
         }
 
         // Fetch updated trainer data to get today's workout
-        const trainerRes = await fetch(`${apiBase}/api/trainer/data?limit_cache=${Date.now()}`);
+        const trainerRes = await fetch(`${apiBase}/api/trainer/data?limit_cache=${Date.now()}`, {
+            credentials: 'include'
+        });
         const trainerData = await trainerRes.json();
 
         if (trainerData.todays_workout) {
@@ -3375,7 +4329,13 @@ window.fetchAndRenderSplits = async function () {
 
         container.innerHTML = '';
         if (splits.length === 0) {
-            container.innerHTML = '<p class="text-xs text-gray-500 italic text-center py-2">No splits created yet.</p>';
+            container.innerHTML = `
+                <button data-action="openCreateSplit"
+                    class="w-full py-6 border-2 border-dashed border-white/10 rounded-xl text-white/40 hover:text-white/70 hover:border-white/20 transition flex flex-col items-center justify-center gap-2 group">
+                    <span class="text-2xl group-hover:scale-110 transition-transform">📅</span>
+                    <span class="text-xs uppercase tracking-wider font-medium">Create Your First Split</span>
+                </button>
+            `;
             return;
         }
 
@@ -3654,7 +4614,8 @@ window.openAssignSplitModal = async function (splitId, explicitClientId) {
         // 1. Fetch Clients
         console.log("Fetching clients for trainer:", trainerId);
         const res = await fetch(`${apiBase}/api/trainer/clients`, {
-            headers: { 'x-trainer-id': trainerId }
+            headers: { 'x-trainer-id': trainerId },
+            credentials: 'include'
         });
 
         if (!res.ok) {
@@ -3795,5 +4756,427 @@ window.assignSplit = async function () {
     } catch (e) {
         console.error(e);
         showToast("Error assigning split");
+    }
+};
+
+// --- CHAT / MESSAGING FUNCTIONS ---
+
+// Scroll lock helpers
+let scrollLockCount = 0;
+let savedScrollY = 0;
+
+function lockBodyScroll() {
+    if (scrollLockCount === 0) {
+        savedScrollY = window.scrollY;
+        document.body.style.position = 'fixed';
+        document.body.style.top = `-${savedScrollY}px`;
+        document.body.style.left = '0';
+        document.body.style.right = '0';
+        document.body.style.overflow = 'hidden';
+    }
+    scrollLockCount++;
+}
+
+function unlockBodyScroll() {
+    scrollLockCount--;
+    if (scrollLockCount <= 0) {
+        scrollLockCount = 0;
+        document.body.style.position = '';
+        document.body.style.top = '';
+        document.body.style.left = '';
+        document.body.style.right = '';
+        document.body.style.overflow = '';
+        window.scrollTo(0, savedScrollY);
+    }
+}
+
+let currentChatState = {
+    conversationId: null,
+    otherUserId: null,
+    otherUserName: null,
+    messages: []
+};
+
+window.openChatModal = async function(otherUserId, otherUserName) {
+    // If called from client modal, get info from there
+    if (!otherUserId) {
+        const clientModal = document.getElementById('client-modal');
+        if (clientModal && clientModal.dataset.clientId) {
+            otherUserId = clientModal.dataset.clientId;
+            otherUserName = clientModal.dataset.clientName || 'Client';
+        }
+    }
+
+    if (!otherUserId) {
+        showToast('No user selected for chat');
+        return;
+    }
+
+    currentChatState.otherUserId = otherUserId;
+    currentChatState.otherUserName = otherUserName || 'User';
+    currentChatState.conversationId = null;
+    currentChatState.messages = [];
+
+    // Update chat header
+    const chatUserName = document.getElementById('chat-user-name');
+    if (chatUserName) chatUserName.innerText = currentChatState.otherUserName;
+
+    // Clear messages container
+    const messagesContainer = document.getElementById('chat-messages');
+    if (messagesContainer) {
+        messagesContainer.innerHTML = '<div class="text-center text-gray-500 py-8">Loading messages...</div>';
+    }
+
+    // Show modal with animation
+    const chatModal = document.getElementById('chat-modal');
+    if (chatModal) {
+        chatModal.classList.remove('hidden', 'slide-out-right');
+        chatModal.classList.add('slide-in-right');
+        // Lock body scroll
+        lockBodyScroll();
+    }
+
+    // Load messages
+    await loadChatMessages();
+};
+
+window.closeChatModal = function() {
+    const chatModal = document.getElementById('chat-modal');
+    if (chatModal) {
+        chatModal.classList.remove('slide-in-right');
+        chatModal.classList.add('slide-out-right');
+        // Hide after animation completes
+        setTimeout(() => {
+            chatModal.classList.add('hidden');
+            chatModal.classList.remove('slide-out-right');
+            // Restore body scroll
+            unlockBodyScroll();
+        }, 250);
+    }
+
+    currentChatState = {
+        conversationId: null,
+        otherUserId: null,
+        otherUserName: null,
+        messages: []
+    };
+};
+
+async function loadChatMessages() {
+    try {
+        // Fetch conversations to find existing one with this user
+        const convsRes = await fetch(`${apiBase}/api/messages/conversations`, {
+            credentials: 'include'
+        });
+
+        if (!convsRes.ok) {
+            throw new Error('Failed to load conversations');
+        }
+
+        const conversations = await convsRes.json();
+
+        // Find conversation with this user
+        const existingConv = conversations.find(c => c.other_user_id === currentChatState.otherUserId);
+
+        if (existingConv) {
+            currentChatState.conversationId = existingConv.id;
+
+            // Fetch messages for this conversation
+            const msgsRes = await fetch(`${apiBase}/api/messages/conversation/${existingConv.id}`, {
+                credentials: 'include'
+            });
+
+            if (msgsRes.ok) {
+                const data = await msgsRes.json();
+                currentChatState.messages = data.messages || [];
+
+                // Mark as read and update badge
+                await fetch(`${apiBase}/api/messages/conversation/${existingConv.id}/read`, {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                // Update the notification badge
+                updateUnreadBadge();
+            }
+        }
+
+        renderChatMessages();
+
+    } catch (e) {
+        console.error('Error loading chat:', e);
+        const messagesContainer = document.getElementById('chat-messages');
+        if (messagesContainer) {
+            messagesContainer.innerHTML = '<div class="text-center text-red-400 py-8">Failed to load messages</div>';
+        }
+    }
+}
+
+function renderChatMessages() {
+    const container = document.getElementById('chat-messages');
+    if (!container) return;
+
+    if (currentChatState.messages.length === 0) {
+        container.innerHTML = `
+            <div class="text-center text-gray-500 py-8">
+                <div class="text-4xl mb-2">💬</div>
+                <p>No messages yet</p>
+                <p class="text-xs mt-1">Start the conversation!</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = '';
+
+    currentChatState.messages.forEach(msg => {
+        const isMe = msg.sender_role === APP_CONFIG.role;
+        const div = document.createElement('div');
+        div.className = `flex ${isMe ? 'justify-end' : 'justify-start'}`;
+
+        const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        div.innerHTML = `
+            <div class="max-w-[80%] ${isMe ? 'bg-primary text-black' : 'bg-white/10 text-white'} rounded-2xl px-4 py-2 ${isMe ? 'rounded-br-sm' : 'rounded-bl-sm'}">
+                <p class="text-sm">${escapeHtml(msg.content)}</p>
+                <div class="flex items-center justify-end gap-1 mt-1">
+                    <span class="text-[10px] ${isMe ? 'text-black/60' : 'text-gray-400'}">${time}</span>
+                    ${isMe && msg.is_read ? '<span class="text-[10px]">✓✓</span>' : ''}
+                </div>
+            </div>
+        `;
+        container.appendChild(div);
+    });
+
+    // Scroll to bottom
+    container.scrollTop = container.scrollHeight;
+}
+
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+window.sendChatMessage = async function() {
+    const input = document.getElementById('chat-input');
+    if (!input) return;
+
+    const content = input.value.trim();
+    if (!content) return;
+
+    if (!currentChatState.otherUserId) {
+        showToast('No recipient selected');
+        return;
+    }
+
+    // Clear input immediately
+    input.value = '';
+
+    // Optimistically add message to UI
+    const tempMsg = {
+        id: 'temp-' + Date.now(),
+        sender_id: 'me',
+        sender_role: APP_CONFIG.role,
+        content: content,
+        is_read: false,
+        created_at: new Date().toISOString()
+    };
+    currentChatState.messages.push(tempMsg);
+    renderChatMessages();
+
+    try {
+        const res = await fetch(`${apiBase}/api/messages/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                receiver_id: currentChatState.otherUserId,
+                content: content
+            })
+        });
+
+        if (!res.ok) {
+            throw new Error('Failed to send message');
+        }
+
+        const result = await res.json();
+
+        // Update conversation ID if this was the first message
+        if (result.conversation_id && !currentChatState.conversationId) {
+            currentChatState.conversationId = result.conversation_id;
+        }
+
+        // Replace temp message with real one
+        const idx = currentChatState.messages.findIndex(m => m.id === tempMsg.id);
+        if (idx !== -1 && result.message) {
+            currentChatState.messages[idx] = result.message;
+            renderChatMessages();
+        }
+
+    } catch (e) {
+        console.error('Error sending message:', e);
+        showToast('Failed to send message');
+
+        // Remove temp message on error
+        currentChatState.messages = currentChatState.messages.filter(m => m.id !== tempMsg.id);
+        renderChatMessages();
+    }
+};
+
+// Handle incoming WebSocket messages for chat
+if (typeof window.handleWebSocketMessage === 'undefined') {
+    window.handleWebSocketMessage = function(data) {
+        if (data.type === 'new_message') {
+            // If chat is open with this sender, add the message
+            if (currentChatState.otherUserId === data.message.sender_id) {
+                currentChatState.messages.push(data.message);
+                renderChatMessages();
+
+                // Mark as read since chat is open
+                if (currentChatState.conversationId) {
+                    fetch(`${apiBase}/api/messages/conversation/${currentChatState.conversationId}/read`, {
+                        method: 'POST',
+                        credentials: 'include'
+                    });
+                }
+            } else {
+                // Show notification for new message from someone else
+                showToast(`New message from ${data.sender_name || 'User'}`);
+            }
+
+            // Update unread badge if exists
+            updateUnreadBadge();
+        }
+    };
+}
+
+async function updateUnreadBadge() {
+    try {
+        const res = await fetch(`${apiBase}/api/messages/unread-count`, {
+            credentials: 'include'
+        });
+        if (res.ok) {
+            const data = await res.json();
+            const badge = document.getElementById('unread-messages-badge');
+            if (badge) {
+                if (data.unread_count > 0) {
+                    badge.innerText = data.unread_count;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+        }
+    } catch (e) {
+        console.error('Error updating unread badge:', e);
+    }
+}
+
+// Handle Enter key in chat input
+document.addEventListener('DOMContentLoaded', () => {
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+        chatInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                window.sendChatMessage();
+            }
+        });
+    }
+
+    // Initial unread badge update
+    if (APP_CONFIG.role === 'trainer' || APP_CONFIG.role === 'client') {
+        updateUnreadBadge();
+    }
+});
+
+// --- CONVERSATIONS LIST MODAL (for trainers to see all chats) ---
+
+window.openConversationsModal = async function() {
+    const modal = document.getElementById('conversations-modal');
+    const list = document.getElementById('conversations-list');
+
+    if (!modal || !list) return;
+
+    // Show with animation
+    modal.classList.remove('hidden', 'slide-out-right');
+    modal.classList.add('slide-in-right');
+    // Lock body scroll
+    lockBodyScroll();
+    list.innerHTML = '<div class="text-center text-gray-500 py-8">Loading conversations...</div>';
+
+    try {
+        const res = await fetch(`${apiBase}/api/messages/conversations`, {
+            credentials: 'include'
+        });
+
+        if (!res.ok) {
+            throw new Error('Failed to load conversations');
+        }
+
+        const conversations = await res.json();
+
+        if (conversations.length === 0) {
+            list.innerHTML = `
+                <div class="text-center text-gray-500 py-8">
+                    <div class="text-4xl mb-2">💬</div>
+                    <p>No conversations yet</p>
+                    <p class="text-xs mt-1">Start chatting with a client from their profile</p>
+                </div>
+            `;
+            return;
+        }
+
+        list.innerHTML = '';
+        conversations.forEach(conv => {
+            const div = document.createElement('div');
+            div.className = 'bg-white/5 hover:bg-white/10 p-4 rounded-xl cursor-pointer transition tap-effect';
+            div.onclick = () => {
+                closeConversationsModal();
+                window.openChatModal(conv.other_user_id, conv.other_user_name);
+            };
+
+            const time = conv.last_message_at ? new Date(conv.last_message_at).toLocaleString([], {
+                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+            }) : '';
+
+            div.innerHTML = `
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center">
+                            <span class="text-lg">👤</span>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">${conv.other_user_name}</p>
+                            <p class="text-xs text-gray-400 truncate max-w-[200px]">${conv.last_message_preview || 'No messages yet'}</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-[10px] text-gray-500">${time}</p>
+                        ${conv.unread_count > 0 ? `<span class="inline-block w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full text-center leading-5 mt-1">${conv.unread_count}</span>` : ''}
+                    </div>
+                </div>
+            `;
+            list.appendChild(div);
+        });
+
+    } catch (e) {
+        console.error('Error loading conversations:', e);
+        list.innerHTML = '<div class="text-center text-red-400 py-8">Failed to load conversations</div>';
+    }
+};
+
+window.closeConversationsModal = function() {
+    const modal = document.getElementById('conversations-modal');
+    if (modal) {
+        modal.classList.remove('slide-in-right');
+        modal.classList.add('slide-out-right');
+        // Hide after animation completes
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('slide-out-right');
+            // Restore body scroll
+            unlockBodyScroll();
+        }, 250);
     }
 };

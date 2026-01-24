@@ -87,7 +87,7 @@ async def do_login(request: Request, db: Session = Depends(get_db)):
         if is_json:
             from fastapi.responses import JSONResponse
             return JSONResponse(status_code=401, content={"detail": error_msg})
-        
+
         return templates.TemplateResponse("login.html", {
             "request": request,
             "error": error_msg,
@@ -95,7 +95,22 @@ async def do_login(request: Request, db: Session = Depends(get_db)):
             "role": "client",
             "mode": "auth"
         })
-    
+
+    # Check if trainer is approved
+    if user.role == "trainer" and hasattr(user, 'is_approved') and user.is_approved == False:
+        error_msg = "Your account is pending approval from your gym owner. Please wait for them to approve your registration."
+        if is_json:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(status_code=403, content={"detail": error_msg})
+
+        return templates.TemplateResponse("login.html", {
+            "request": request,
+            "error": error_msg,
+            "gym_id": "iron_gym",
+            "role": "client",
+            "mode": "auth"
+        })
+
     # 3. Success - Create token
     token = create_token(user.username, user.role)
     
@@ -131,24 +146,16 @@ async def do_register(
     request: Request,
     username: str = Form(...),
     password: str = Form(...),
+    email: str = Form(None),
     role: str = Form("client"),
     secret_key: str = Form(None),
+    gym_code: str = Form(None),
     db: Session = Depends(get_db)
 ):
     import uuid
-    
-    # Validate owner registration
-    OWNER_SECRET = os.getenv("OWNER_SECRET_KEY", "gymowner123")
-    if role == "owner":
-        if not secret_key or secret_key != OWNER_SECRET:
-            return templates.TemplateResponse("register.html", {
-                "request": request,
-                "error": "Invalid owner secret key",
-                "gym_id": "iron_gym",
-                "role": "client",
-                "mode": "auth"
-            })
-    
+    import random
+    import string
+
     # Check if username exists
     existing = db.query(User).filter(User.username == username).first()
     if existing:
@@ -159,18 +166,98 @@ async def do_register(
             "role": "client",
             "mode": "auth"
         })
-    
+
+    # Initialize variables
+    generated_gym_code = None
+    gym_owner_id = None
+    is_approved = True  # Default to approved
+
+    # Handle registration based on role
+    if role == "owner":
+        # Generate a unique 6-character gym code for owners
+        while True:
+            generated_gym_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
+            existing_code = db.query(User).filter(User.gym_code == generated_gym_code).first()
+            if not existing_code:
+                break
+
+    elif role == "trainer":
+        # Trainers MUST have a gym code
+        if not gym_code or not gym_code.strip():
+            return templates.TemplateResponse("register.html", {
+                "request": request,
+                "error": "Gym code is required for trainers. Please get the code from your gym owner.",
+                "gym_id": "iron_gym",
+                "role": "client",
+                "mode": "auth"
+            })
+
+        # Look up the gym owner by gym code
+        gym_owner = db.query(User).filter(
+            User.gym_code == gym_code.strip().upper(),
+            User.role == "owner"
+        ).first()
+
+        if not gym_owner:
+            return templates.TemplateResponse("register.html", {
+                "request": request,
+                "error": "Invalid gym code. Please check with your gym owner.",
+                "gym_id": "iron_gym",
+                "role": "client",
+                "mode": "auth"
+            })
+
+        gym_owner_id = gym_owner.id
+        is_approved = False  # Trainers need owner approval
+
+    elif role == "client" and gym_code and gym_code.strip():
+        # Clients can optionally join a gym
+        gym_owner = db.query(User).filter(
+            User.gym_code == gym_code.strip().upper(),
+            User.role == "owner"
+        ).first()
+
+        if gym_owner:
+            gym_owner_id = gym_owner.id
+        # If invalid code, just ignore for clients (they can join later)
+
     # Create user
     new_user = User(
         id=str(uuid.uuid4()),
         username=username,
+        email=email if email else None,
         hashed_password=hash_password(password),
-        role=role
+        role=role,
+        gym_code=generated_gym_code,  # Only set for owners
+        gym_owner_id=gym_owner_id,  # Set for trainers/clients joining a gym
+        is_approved=is_approved
     )
     db.add(new_user)
     db.commit()
-    
-    # Redirect to login
+
+    # If owner, show them their gym code
+    if role == "owner":
+        return templates.TemplateResponse("register.html", {
+            "request": request,
+            "success": f"Registration successful! Your Gym Code is: {generated_gym_code}",
+            "gym_code": generated_gym_code,
+            "show_gym_code": True,
+            "gym_id": "iron_gym",
+            "role": "client",
+            "mode": "auth"
+        })
+
+    # For trainers pending approval
+    if role == "trainer":
+        return templates.TemplateResponse("register.html", {
+            "request": request,
+            "error": "Registration submitted! Please wait for your gym owner to approve your account.",
+            "gym_id": "iron_gym",
+            "role": "client",
+            "mode": "auth"
+        })
+
+    # For clients, redirect to login
     return RedirectResponse(url="/auth/login?registered=true", status_code=302)
 
 # --- LOGOUT ---

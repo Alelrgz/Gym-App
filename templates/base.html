@@ -38,12 +38,26 @@
 
         <!-- Central FAB Container -->
         <div class="fab-container pointer-events-auto">
-            <div class="fab-main text-black hover:scale-105" onclick="toggleFabMenu(this)">
-                <span>+</span>
+            <div class="fab-main" onclick="toggleFabMenu(this)">
+                <span class="fab-icon">+</span>
             </div>
 
-            <div class="fab-menu {% if role == 'trainer' %}fab-menu-3{% else %}fab-menu-4{% endif %}">
-                {% if role == 'trainer' %}
+            <div class="fab-menu {% if role == 'trainer' %}fab-menu-3{% elif role == 'owner' %}fab-menu-3{% else %}fab-menu-4{% endif %}">
+                {% if role == 'owner' %}
+                <!-- Owner Menu -->
+                <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner' }}"
+                    class="fab-item" style="transition-delay: 0.05s">
+                    🏠<span class="fab-label">Home</span>
+                </a>
+                <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=settings' }}"
+                    class="fab-item" style="transition-delay: 0.1s">
+                    ⚙️<span class="fab-label">Settings</span>
+                </a>
+                <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=trainers' }}"
+                    class="fab-item" style="transition-delay: 0.15s">
+                    👥<span class="fab-label">Trainers</span>
+                </a>
+                {% elif role == 'trainer' %}
                 <!-- Trainer Menu -->
                 <a href="{{ 'trainer.html' if static_build else '/?gym_id=' + gym_id + '&role=trainer' }}"
                     class="fab-item" style="transition-delay: 0.05s">
@@ -72,8 +86,9 @@
                     class="fab-item" style="transition-delay: 0.15s">
                     🏆<span class="fab-label">Ranks</span>
                 </a>
-                <a href="#" onclick="showModal('profile-modal')" class="fab-item" style="transition-delay: 0.2s">
-                    ⚙️<span class="fab-label">Profile</span>
+                <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=account_settings' }}"
+                    class="fab-item" style="transition-delay: 0.2s">
+                    ⚙️<span class="fab-label">Settings</span>
                 </a>
                 {% endif %}
             </div>
@@ -107,8 +122,119 @@
             isStatic: {{ 'true' if static_build else 'false' }},
         token: "{{ token }}"
         };
+
+        // --- NOTIFICATION FUNCTIONS (Global) ---
+        function closeNotificationsModal() {
+            window.hideModal('notification-modal');
+        }
+
+        async function loadNotifications() {
+            const list = document.getElementById('notifications-list');
+            if (!list) return;
+
+            try {
+                const res = await fetch('/api/notifications?limit=20');
+                const notifications = await res.json();
+
+                if (notifications.length === 0) {
+                    list.innerHTML = `
+                        <div class="text-center text-gray-400 py-8">
+                            <span class="text-4xl mb-2 block">🔔</span>
+                            <p class="text-sm">No notifications yet</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                list.innerHTML = notifications.map(n => {
+                    const icon = getNotificationIcon(n.type);
+                    const timeAgo = formatTimeAgo(n.created_at);
+                    const unreadClass = n.read ? 'opacity-60' : 'border-l-2 border-orange-500';
+
+                    return `
+                        <div class="flex items-start space-x-3 p-3 bg-white/5 rounded-xl ${unreadClass}"
+                             onclick="markNotificationRead(${n.id})">
+                            <span class="text-xl">${icon}</span>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-bold text-white">${n.title}</p>
+                                <p class="text-xs text-gray-400 truncate">${n.message}</p>
+                                <p class="text-[10px] text-gray-500 mt-1">${timeAgo}</p>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+
+            } catch (e) {
+                console.error('Error loading notifications:', e);
+                list.innerHTML = `
+                    <div class="text-center text-red-400 py-4">
+                        <p class="text-sm">Failed to load notifications</p>
+                    </div>
+                `;
+            }
+        }
+
+        function getNotificationIcon(type) {
+            const icons = {
+                'appointment_booked': '📅',
+                'appointment_canceled': '❌',
+                'message': '💬',
+                'streak': '🔥',
+                'achievement': '🏆',
+                'reminder': '⏰'
+            };
+            return icons[type] || '🔔';
+        }
+
+        function formatTimeAgo(dateStr) {
+            const date = new Date(dateStr);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMs / 3600000);
+            const diffDays = Math.floor(diffMs / 86400000);
+
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            if (diffDays < 7) return `${diffDays}d ago`;
+            return date.toLocaleDateString();
+        }
+
+        async function markNotificationRead(notificationId) {
+            try {
+                await fetch(`/api/notifications/${notificationId}/read`, { method: 'POST' });
+                loadNotifications();
+            } catch (e) {
+                console.error('Error marking notification read:', e);
+            }
+        }
+
+        async function markAllNotificationsRead() {
+            try {
+                await fetch('/api/notifications/read-all', { method: 'POST' });
+                loadNotifications();
+            } catch (e) {
+                console.error('Error marking all notifications read:', e);
+            }
+        }
+
+        // Auto-load notifications when modal opens via data-action
+        document.addEventListener('DOMContentLoaded', () => {
+            const notificationModal = document.getElementById('notification-modal');
+            if (notificationModal) {
+                const observer = new MutationObserver((mutations) => {
+                    mutations.forEach((mutation) => {
+                        if (mutation.attributeName === 'class' && !notificationModal.classList.contains('hidden')) {
+                            loadNotifications();
+                        }
+                    });
+                });
+                observer.observe(notificationModal, { attributes: true });
+            }
+        });
     </script>
-    <script src="/static/js/app.js?v=CLARIFAI_FIX_2026_01_23"></script>
+    <script src="/static/js/app.js?v=CAROUSEL_HANDLE_2026_01_24"></script>
     {% block scripts %}{% endblock %}
 </body>
 

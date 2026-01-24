@@ -4,7 +4,8 @@ Client Service - handles client profile management, data retrieval, and premium 
 from .base import (
     HTTPException, uuid, json, logging, date, datetime, timedelta,
     get_db_session, UserORM, ClientProfileORM, ClientScheduleORM,
-    ClientDietSettingsORM, ClientDietLogORM, ClientExerciseLogORM
+    ClientDietSettingsORM, ClientDietLogORM, ClientExerciseLogORM,
+    DailyQuestCompletionORM, ClientDailyDietSummaryORM
 )
 from models import ClientData, ClientProfileUpdate
 from data import CLIENT_DATA
@@ -164,8 +165,8 @@ class ClientService:
                     },
                     "hydration": {"current": diet_settings.hydration_current, "target": diet_settings.hydration_target},
                     "consistency_target": diet_settings.consistency_target,
-                    # Mock history and logs for now (could fetch from DietLogORM)
-                    "weekly_history": [1800, 2100, 1950, 2200, 2000, 1850, 1450]
+                    # Weekly health scores (Mon-Sun) for consistency chart
+                    "weekly_health_scores": self._get_weekly_health_scores(client_id, db, diet_settings)
                 }
 
                 # Fetch real diet logs
@@ -308,83 +309,92 @@ class ClientService:
             db.close()
 
     def _calculate_client_streak(self, client_id: str, db) -> int:
-        """Calculate client's workout streak based on completed scheduled workouts."""
+        """Calculate client's WEEK streak - consecutive weeks with at least one completed workout."""
         streak = 0
         try:
             today = datetime.now().date()
-            current_date = today
 
-            logger.debug(f"[CLIENT_STREAK] Starting streak calculation for client {client_id}, today={today}")
+            # Get start of current week (Monday)
+            current_week_start = today - timedelta(days=today.weekday())
 
-            # Go backwards from today, counting consecutive days
+            logger.debug(f"[WEEK_STREAK] Starting week streak calculation for client {client_id}, today={today}")
+
+            # Go backwards week by week
             while True:
-                date_str = current_date.isoformat()
+                week_start = current_week_start
+                week_end = week_start + timedelta(days=6)
 
-                # Check if there's a workout scheduled for this day
-                day_event = db.query(ClientScheduleORM).filter(
+                # Check if there's at least one completed workout this week
+                completed_this_week = db.query(ClientScheduleORM).filter(
                     ClientScheduleORM.client_id == client_id,
-                    ClientScheduleORM.date == date_str,
-                    ClientScheduleORM.type == "workout"
+                    ClientScheduleORM.date >= week_start.isoformat(),
+                    ClientScheduleORM.date <= week_end.isoformat(),
+                    ClientScheduleORM.type == "workout",
+                    ClientScheduleORM.completed == True
                 ).first()
 
-                logger.debug(f"[CLIENT_STREAK] {date_str}: day_event={day_event is not None}, completed={day_event.completed if day_event else 'N/A'}")
+                logger.debug(f"[WEEK_STREAK] Week {week_start} to {week_end}: completed={completed_this_week is not None}")
 
-                if day_event:
-                    # There's a workout scheduled for this day
-                    if day_event.completed:
-                        # Workout completed, continue streak
-                        streak += 1
-                        logger.debug(f"[CLIENT_STREAK] {date_str}: Completed! Streak now = {streak}")
-                    else:
-                        # Workout not completed
-                        if current_date < today:
-                            # Past day with incomplete workout - break streak
-                            logger.debug(f"[CLIENT_STREAK] {date_str}: Past day not completed, breaking streak")
-                            break
-                        else:
-                            # Today's workout not done yet - don't count but don't break
-                            logger.debug(f"[CLIENT_STREAK] {date_str}: Today not completed yet, not counting")
-                            pass
+                if completed_this_week:
+                    # At least one workout completed this week
+                    streak += 1
+                    logger.debug(f"[WEEK_STREAK] Week has completed workout! Streak now = {streak}")
                 else:
-                    # No workout scheduled (rest day) - continue counting
-                    logger.debug(f"[CLIENT_STREAK] {date_str}: Rest day, continuing")
+                    # No completed workouts this week
+                    if week_start < today - timedelta(days=today.weekday()):
+                        # Past week with no completed workouts - break streak
+                        logger.debug(f"[WEEK_STREAK] Past week with no workouts, breaking streak")
+                        break
+                    else:
+                        # Current week - check if there's still time (don't break yet)
+                        logger.debug(f"[WEEK_STREAK] Current week, no workout yet but week not over")
 
-                # Move to previous day
-                current_date = current_date - timedelta(days=1)
+                # Move to previous week
+                current_week_start = current_week_start - timedelta(days=7)
 
-                # Safety limit: don't go back more than 365 days
-                if (today - current_date).days > 365:
-                    logger.debug(f"[CLIENT_STREAK] Reached 365 day limit, stopping. Final streak = {streak}")
+                # Safety limit: don't go back more than 52 weeks
+                if streak > 52:
+                    logger.debug(f"[WEEK_STREAK] Reached 52 week limit, stopping. Final streak = {streak}")
                     break
 
-            logger.debug(f"[CLIENT_STREAK] Final calculated streak = {streak}")
+            logger.debug(f"[WEEK_STREAK] Final calculated week streak = {streak}")
         except Exception as e:
-            logger.error(f"[CLIENT_STREAK] Error calculating client streak: {e}", exc_info=True)
+            logger.error(f"[WEEK_STREAK] Error calculating week streak: {e}", exc_info=True)
             streak = 0
 
         return streak
 
     def _generate_daily_quests(self, client_id: str, db, today_event, diet_settings, today_logs) -> list:
         """Generate dynamic daily quests based on client's actual progress."""
+        today_str = date.today().isoformat()
+
+        # Get any manual quest completions for today
+        manual_completions = db.query(DailyQuestCompletionORM).filter(
+            DailyQuestCompletionORM.client_id == client_id,
+            DailyQuestCompletionORM.date == today_str,
+            DailyQuestCompletionORM.completed == True
+        ).all()
+        manual_complete_indices = {mc.quest_index for mc in manual_completions}
+
         quests = []
 
-        # Quest 1: Complete Today's Workout
+        # Quest 0: Complete Today's Workout
         workout_completed = today_event and today_event.get("completed", False) if today_event else False
         quests.append({
             "text": "Complete today's workout",
             "xp": 50,
-            "completed": workout_completed
+            "completed": workout_completed or (0 in manual_complete_indices)
         })
 
-        # Quest 2: Log at least 3 meals
+        # Quest 1: Log at least 3 meals
         meals_logged = len(today_logs) if today_logs else 0
         quests.append({
             "text": f"Log 3 meals ({meals_logged}/3)",
             "xp": 30,
-            "completed": meals_logged >= 3
+            "completed": meals_logged >= 3 or (1 in manual_complete_indices)
         })
 
-        # Quest 3: Hit calorie target (within 10%)
+        # Quest 2: Hit calorie target (within 10%)
         if diet_settings:
             calories_current = diet_settings.calories_current
             calories_target = diet_settings.calories_target
@@ -392,20 +402,90 @@ class ClientService:
             quests.append({
                 "text": f"Hit calorie target ({calories_current}/{calories_target})",
                 "xp": 40,
-                "completed": within_range and calories_current > 0
+                "completed": (within_range and calories_current > 0) or (2 in manual_complete_indices)
             })
 
-        # Quest 4: Meet protein goal
+        # Quest 3: Meet protein goal
         if diet_settings:
             protein_current = diet_settings.protein_current
             protein_target = diet_settings.protein_target
             quests.append({
                 "text": f"Meet protein goal ({protein_current}g/{protein_target}g)",
                 "xp": 35,
-                "completed": protein_current >= protein_target
+                "completed": protein_current >= protein_target or (3 in manual_complete_indices)
             })
 
         return quests
+
+    def _get_weekly_health_scores(self, client_id: str, db, diet_settings) -> list:
+        """Calculate health scores for each day of the current week (Mon-Sun)."""
+        today = date.today()
+        # Get Monday of current week (weekday() returns 0 for Monday)
+        monday = today - timedelta(days=today.weekday())
+
+        weekly_scores = []
+
+        # Get targets from diet settings (or use defaults)
+        cal_target = diet_settings.calories_target if diet_settings else 2000
+        prot_target = diet_settings.protein_target if diet_settings else 150
+        carb_target = diet_settings.carbs_target if diet_settings else 200
+        fat_target = diet_settings.fat_target if diet_settings else 70
+
+        def calc_score(current, target):
+            if target == 0:
+                return 0
+            ratio = current / target
+            if ratio > 1:
+                # Penalize going over (mirror the deficit penalty)
+                return max(0, 100 - abs(ratio - 1) * 100)
+            return ratio * 100
+
+        for i in range(7):  # Monday to Sunday
+            day = monday + timedelta(days=i)
+            day_str = day.isoformat()
+
+            # Skip future days
+            if day > today:
+                weekly_scores.append(0)
+                continue
+
+            # For TODAY: use real-time values from diet_settings
+            if day == today and diet_settings:
+                cals = diet_settings.calories_current or 0
+                prot = diet_settings.protein_current or 0
+                carbs = diet_settings.carbs_current or 0
+                fat = diet_settings.fat_current or 0
+
+                if cals > 0:  # Only calculate if there's any data
+                    s_cals = calc_score(cals, cal_target)
+                    s_prot = calc_score(prot, prot_target)
+                    s_carb = calc_score(carbs, carb_target)
+                    s_fat = calc_score(fat, fat_target)
+                    health_score = (s_cals * 0.45) + (s_prot * 0.35) + (s_carb * 0.1) + (s_fat * 0.1)
+                    weekly_scores.append(int(health_score))
+                else:
+                    weekly_scores.append(0)
+                continue
+
+            # For PAST days: use daily summaries
+            summary = db.query(ClientDailyDietSummaryORM).filter(
+                ClientDailyDietSummaryORM.client_id == client_id,
+                ClientDailyDietSummaryORM.date == day_str
+            ).first()
+
+            if not summary or summary.total_calories == 0:
+                weekly_scores.append(0)
+                continue
+
+            s_cals = calc_score(summary.total_calories, cal_target)
+            s_prot = calc_score(summary.total_protein, prot_target)
+            s_carb = calc_score(summary.total_carbs, carb_target)
+            s_fat = calc_score(summary.total_fat, fat_target)
+
+            health_score = (s_cals * 0.45) + (s_prot * 0.35) + (s_carb * 0.1) + (s_fat * 0.1)
+            weekly_scores.append(int(health_score))
+
+        return weekly_scores
 
     def update_client_profile(self, profile_update: ClientProfileUpdate, client_id: str) -> dict:
         """Update a client's profile information."""
@@ -484,6 +564,64 @@ class ClientService:
             logger.error(f"ERROR toggling premium: {e}\n{error_details}")
             db.rollback()
             raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+        finally:
+            db.close()
+
+    def toggle_quest_completion(self, client_id: str, quest_index: int) -> dict:
+        """Toggle a daily quest's completion status."""
+        db = get_db_session()
+        try:
+            today_str = date.today().isoformat()
+
+            # Check if there's an existing completion record
+            existing = db.query(DailyQuestCompletionORM).filter(
+                DailyQuestCompletionORM.client_id == client_id,
+                DailyQuestCompletionORM.date == today_str,
+                DailyQuestCompletionORM.quest_index == quest_index
+            ).first()
+
+            if existing:
+                # Toggle the existing record
+                existing.completed = not existing.completed
+                existing.completed_at = datetime.now().isoformat() if existing.completed else None
+                new_status = existing.completed
+            else:
+                # Create new completion record
+                new_completion = DailyQuestCompletionORM(
+                    client_id=client_id,
+                    date=today_str,
+                    quest_index=quest_index,
+                    completed=True,
+                    completed_at=datetime.now().isoformat()
+                )
+                db.add(new_completion)
+                new_status = True
+
+            # Update gems based on completion status
+            profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
+            if profile:
+                # Gem rewards based on quest index (matching XP values)
+                xp_rewards = {0: 50, 1: 30, 2: 40, 3: 35}
+                gem_amount = xp_rewards.get(quest_index, 25)
+                if new_status:
+                    # Award gems when completing
+                    profile.gems = (profile.gems or 0) + gem_amount
+                else:
+                    # Remove gems when uncompleting (prevent exploit)
+                    profile.gems = max(0, (profile.gems or 0) - gem_amount)
+
+            db.commit()
+
+            return {
+                "success": True,
+                "quest_index": quest_index,
+                "completed": new_status,
+                "message": f"Quest {'completed' if new_status else 'uncompleted'}"
+            }
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error toggling quest: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to toggle quest: {str(e)}")
         finally:
             db.close()
 

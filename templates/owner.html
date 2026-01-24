@@ -3,17 +3,649 @@
 
 {% block content %}
 <div class="p-6 pt-10">
-    <h2 class="text-xl font-bold text-center mb-6" id="gym-name-owner">...</h2>
+    <h2 class="text-xl font-bold text-center mb-6" id="gym-name-owner">{{ 'Settings' if mode == 'settings' else ('Trainers' if mode == 'trainers' else 'Dashboard') }}</h2>
+
+    {% if mode == 'settings' %}
+    <!-- ==================== SETTINGS MODE ==================== -->
+
+    <!-- Gym Code Card - Prominent -->
+    {% call card(classes="p-6 mb-6") %}
+    <div class="text-center">
+        <p class="text-xs text-gray-400 uppercase tracking-wider mb-2">Your Gym Code</p>
+        <p class="text-4xl font-mono font-black text-primary tracking-widest mb-2" id="gym-code-display">------</p>
+        <p class="text-sm text-gray-500 mb-4">Share this code with trainers and clients to join your gym</p>
+        <button onclick="copyGymCode()" id="copy-gym-code-btn"
+            class="bg-primary hover:bg-primary/80 text-white px-6 py-3 rounded-xl transition flex items-center gap-2 mx-auto font-bold">
+            <span id="copy-icon">📋</span>
+            <span id="copy-text">Copy Code</span>
+        </button>
+    </div>
+    {% endcall %}
+
+    <!-- Account Info -->
+    {% call card(classes="p-4 mb-6") %}
+    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Account</h3>
+    <div class="space-y-3">
+        <div class="flex justify-between items-center">
+            <span class="text-gray-400">Role</span>
+            <span class="text-white font-semibold">Gym Owner</span>
+        </div>
+        <div class="flex justify-between items-center">
+            <span class="text-gray-400">Status</span>
+            <span class="text-green-400 font-semibold">Active</span>
+        </div>
+    </div>
+    {% endcall %}
+
+    <!-- Logout Button -->
+    <a href="/auth/logout" class="block w-full bg-red-500/20 hover:bg-red-500/30 text-red-400 text-center py-3 rounded-xl font-bold transition">
+        Logout
+    </a>
+
+    {% elif mode == 'trainers' %}
+    <!-- ==================== TRAINERS MODE ==================== -->
+
+    <!-- Pending Trainer Approvals -->
+    <div id="pending-trainers-section" class="mb-6">
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Pending Approvals</h3>
+        <div id="pending-trainers-list" class="space-y-2">
+            <div class="glass-card p-4 text-center text-gray-400 text-sm">
+                Loading...
+            </div>
+        </div>
+    </div>
+
+    <!-- Approved Trainers -->
+    <div class="mb-6">
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Active Trainers</h3>
+        <div id="approved-trainers-list" class="space-y-2">
+            <div class="glass-card p-4 text-center text-gray-400 text-sm">
+                Loading...
+            </div>
+        </div>
+    </div>
+
+    {% else %}
+    <!-- ==================== DASHBOARD MODE (default) ==================== -->
+
+    <!-- Pending Trainer Approvals - Only show if there are pending -->
+    <div id="pending-trainers-section" class="mb-6 hidden">
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Pending Trainer Approvals</h3>
+        <div id="pending-trainers-list" class="space-y-2">
+            <!-- Pending trainers will be loaded here -->
+        </div>
+    </div>
+
+    <!-- Revenue Card -->
     {% call card(classes="p-6 mb-6 relative overflow-hidden") %}
     <div class="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent"></div>
-    <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Today's Revenue</p>
-    <h1 class="text-4xl font-black text-green-400 mb-4" id="revenue-display">...</h1>
+    <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Monthly Recurring Revenue</p>
+    <h1 class="text-4xl font-black text-green-400 mb-4" id="revenue-display">$0</h1>
     <div class="flex space-x-4 text-xs text-gray-300">
+        <span><b id="active-subscriptions" class="text-white">0</b> Subscriptions</span>
         <span><b id="active-members" class="text-white">...</b> Active</span>
         <span><b id="staff-active" class="text-white">...</b> Staff</span>
     </div>
     {% endcall %}
+
+    <!-- Subscription Plans Section -->
+    <div class="mb-6">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1">Subscription Plans</h3>
+            <button onclick="openCreatePlanModal()" class="text-xs bg-primary px-3 py-2 rounded-lg hover:bg-primary/80 transition font-semibold">
+                + Create Plan
+            </button>
+        </div>
+        <div id="subscription-plans-list" class="space-y-3">
+            <!-- Plans will be loaded here -->
+            <div class="glass-card p-4 text-center text-gray-400 text-sm">
+                No subscription plans yet. Create your first plan to start accepting payments.
+            </div>
+        </div>
+    </div>
+
+    <!-- Live Feed Section -->
     <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Live Feed</h3>
     <div id="activity-feed" class="space-y-0 glass-card divide-y divide-white/5"></div>
+    {% endif %}
 </div>
+
+<!-- Create/Edit Plan Modal -->
+<div id="plan-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-card p-6 rounded-2xl max-w-md w-full">
+        <h3 class="text-xl font-bold mb-4" id="plan-modal-title">Create Subscription Plan</h3>
+
+        <form id="plan-form" class="space-y-4">
+            <input type="hidden" id="plan-id">
+
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Plan Name</label>
+                <input type="text" id="plan-name" required
+                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                    placeholder="e.g., Basic, Premium, VIP">
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Description</label>
+                <textarea id="plan-description" rows="2"
+                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                    placeholder="Brief description of this plan"></textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Price ($)</label>
+                    <input type="number" id="plan-price" required step="0.01" min="0"
+                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                        placeholder="29.99">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Billing</label>
+                    <select id="plan-interval"
+                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition">
+                        <option value="month">Monthly</option>
+                        <option value="year">Yearly</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Free Trial (days)</label>
+                <input type="number" id="plan-trial" min="0" value="0"
+                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                    placeholder="0">
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Features (one per line)</label>
+                <textarea id="plan-features" rows="3"
+                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                    placeholder="Unlimited workouts&#10;Meal plans&#10;1-on-1 coaching"></textarea>
+            </div>
+
+            <div class="flex space-x-3 pt-2">
+                <button type="button" onclick="closePlanModal()"
+                    class="flex-1 bg-white/10 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white/20 transition">
+                    Cancel
+                </button>
+                <button type="submit"
+                    class="flex-1 bg-primary px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/80 transition">
+                    <span id="plan-submit-btn">Create Plan</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Current mode from server
+const currentMode = "{{ mode }}";
+
+// Subscription Plan Management
+let currentPlanId = null;
+
+// Load subscription plans
+async function loadSubscriptionPlans() {
+    try {
+        const response = await fetch('/api/owner/subscription-plans', {
+            credentials: 'include'
+        });
+
+        if (!response.ok) throw new Error('Failed to load plans');
+
+        const plans = await response.json();
+        displayPlans(plans);
+        updateRevenue(plans);
+    } catch (error) {
+        console.error('Error loading plans:', error);
+    }
+}
+
+// Display plans in the UI
+function displayPlans(plans) {
+    const container = document.getElementById('subscription-plans-list');
+    if (!container) return;
+
+    if (!plans || plans.length === 0) {
+        container.innerHTML = `
+            <div class="glass-card p-4 text-center text-gray-400 text-sm">
+                No subscription plans yet. Create your first plan to start accepting payments.
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = plans.map(plan => `
+        <div class="glass-card p-4 rounded-xl ${plan.is_active ? '' : 'opacity-50'}">
+            <div class="flex justify-between items-start mb-3">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2">
+                        <h4 class="text-lg font-bold">${plan.name}</h4>
+                        ${!plan.is_active ? '<span class="text-xs bg-red-500/20 text-red-400 px-2 py-0.5 rounded">Inactive</span>' : ''}
+                    </div>
+                    <p class="text-sm text-gray-400 mt-1">${plan.description || 'No description'}</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="editPlan('${plan.id}')" class="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition">
+                        Edit
+                    </button>
+                    <button onclick="deletePlan('${plan.id}', '${plan.name}')" class="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded hover:bg-red-500/30 transition">
+                        Delete
+                    </button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-3 gap-4 mt-3 pt-3 border-t border-white/10">
+                <div>
+                    <p class="text-2xl font-bold text-primary">$${plan.price}</p>
+                    <p class="text-xs text-gray-400">${plan.billing_interval === 'year' ? 'per year' : 'per month'}</p>
+                </div>
+                <div>
+                    <p class="text-2xl font-bold">${plan.active_subscriptions || 0}</p>
+                    <p class="text-xs text-gray-400">Active subs</p>
+                </div>
+                <div>
+                    <p class="text-2xl font-bold text-green-400">$${(plan.monthly_revenue || 0).toFixed(0)}</p>
+                    <p class="text-xs text-gray-400">MRR</p>
+                </div>
+            </div>
+
+            ${plan.features && plan.features.length > 0 ? `
+                <div class="mt-3 pt-3 border-t border-white/10">
+                    <p class="text-xs text-gray-400 uppercase tracking-wider mb-2">Features</p>
+                    <ul class="text-sm space-y-1">
+                        ${plan.features.map(f => `<li class="text-gray-300">• ${f}</li>`).join('')}
+                    </ul>
+                </div>
+            ` : ''}
+        </div>
+    `).join('');
+}
+
+// Update revenue display
+function updateRevenue(plans) {
+    const revenueEl = document.getElementById('revenue-display');
+    const subsEl = document.getElementById('active-subscriptions');
+    if (!revenueEl || !subsEl) return;
+
+    const totalMRR = plans.reduce((sum, plan) => sum + (plan.monthly_revenue || 0), 0);
+    const totalSubs = plans.reduce((sum, plan) => sum + (plan.active_subscriptions || 0), 0);
+
+    revenueEl.textContent = `$${totalMRR.toFixed(0)}`;
+    subsEl.textContent = totalSubs;
+}
+
+// Modal functions
+function openCreatePlanModal() {
+    currentPlanId = null;
+    document.getElementById('plan-modal-title').textContent = 'Create Subscription Plan';
+    document.getElementById('plan-submit-btn').textContent = 'Create Plan';
+    document.getElementById('plan-form').reset();
+    document.getElementById('plan-id').value = '';
+    document.getElementById('plan-modal').classList.remove('hidden');
+}
+
+function closePlanModal() {
+    document.getElementById('plan-modal').classList.add('hidden');
+    currentPlanId = null;
+}
+
+async function editPlan(planId) {
+    try {
+        const response = await fetch('/api/owner/subscription-plans', {
+            credentials: 'include'
+        });
+        const plans = await response.json();
+        const plan = plans.find(p => p.id === planId);
+
+        if (!plan) throw new Error('Plan not found');
+
+        currentPlanId = planId;
+        document.getElementById('plan-id').value = planId;
+        document.getElementById('plan-modal-title').textContent = 'Edit Subscription Plan';
+        document.getElementById('plan-submit-btn').textContent = 'Update Plan';
+        document.getElementById('plan-name').value = plan.name;
+        document.getElementById('plan-description').value = plan.description || '';
+        document.getElementById('plan-price').value = plan.price;
+        document.getElementById('plan-interval').value = plan.billing_interval;
+        document.getElementById('plan-trial').value = plan.trial_period_days || 0;
+        document.getElementById('plan-features').value = plan.features ? plan.features.join('\n') : '';
+        document.getElementById('plan-modal').classList.remove('hidden');
+    } catch (error) {
+        console.error('Error loading plan:', error);
+        showToast('Failed to load plan details', 'error');
+    }
+}
+
+async function deletePlan(planId, planName) {
+    if (!confirm(`Are you sure you want to delete the "${planName}" plan? This action cannot be undone.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/owner/subscription-plans/${planId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to delete plan');
+        }
+
+        showToast('Plan deleted successfully', 'success');
+        loadSubscriptionPlans();
+    } catch (error) {
+        console.error('Error deleting plan:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+// Handle form submission
+const planForm = document.getElementById('plan-form');
+if (planForm) {
+    planForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const features = document.getElementById('plan-features').value
+            .split('\n')
+            .map(f => f.trim())
+            .filter(f => f.length > 0);
+
+        const planData = {
+            name: document.getElementById('plan-name').value,
+            description: document.getElementById('plan-description').value,
+            price: parseFloat(document.getElementById('plan-price').value),
+            features: features,
+            trial_period_days: parseInt(document.getElementById('plan-trial').value) || 0,
+            billing_interval: document.getElementById('plan-interval').value
+        };
+
+        try {
+            const url = currentPlanId
+                ? `/api/owner/subscription-plans/${currentPlanId}`
+                : '/api/owner/subscription-plans';
+
+            const method = currentPlanId ? 'PUT' : 'POST';
+
+            const response = await fetch(url, {
+                method: method,
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify(planData)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to save plan');
+            }
+
+            showToast(currentPlanId ? 'Plan updated successfully' : 'Plan created successfully', 'success');
+            closePlanModal();
+            loadSubscriptionPlans();
+        } catch (error) {
+            console.error('Error saving plan:', error);
+            showToast(error.message, 'error');
+        }
+    });
+}
+
+// Close modal on background click
+const planModal = document.getElementById('plan-modal');
+if (planModal) {
+    planModal.addEventListener('click', (e) => {
+        if (e.target.id === 'plan-modal') {
+            closePlanModal();
+        }
+    });
+}
+
+// --- GYM CODE FUNCTIONS ---
+
+async function loadGymCode() {
+    try {
+        const response = await fetch('/api/owner/gym-code', {
+            credentials: 'include'
+        });
+
+        if (!response.ok) throw new Error('Failed to load gym code');
+
+        const data = await response.json();
+        const gymCodeEl = document.getElementById('gym-code-display');
+        if (gymCodeEl) {
+            gymCodeEl.textContent = data.gym_code || '------';
+        }
+    } catch (error) {
+        console.error('Error loading gym code:', error);
+    }
+}
+
+function copyGymCode() {
+    const codeEl = document.getElementById('gym-code-display');
+    if (!codeEl) return;
+
+    const code = codeEl.textContent;
+    if (code === '------') return;
+
+    navigator.clipboard.writeText(code).then(() => {
+        // Show success feedback
+        const copyIcon = document.getElementById('copy-icon');
+        const copyText = document.getElementById('copy-text');
+        if (!copyIcon || !copyText) return;
+
+        const originalIcon = copyIcon.textContent;
+        const originalText = copyText.textContent;
+
+        copyIcon.textContent = '✓';
+        copyText.textContent = 'Copied!';
+
+        setTimeout(() => {
+            copyIcon.textContent = originalIcon;
+            copyText.textContent = originalText;
+        }, 2000);
+
+        if (typeof showToast === 'function') {
+            showToast('Gym code copied to clipboard!', 'success');
+        }
+    }).catch(err => {
+        console.error('Failed to copy:', err);
+        if (typeof showToast === 'function') {
+            showToast('Failed to copy code', 'error');
+        }
+    });
+}
+
+// --- TRAINER APPROVAL FUNCTIONS ---
+
+async function loadPendingTrainers() {
+    try {
+        const response = await fetch('/api/owner/pending-trainers', {
+            credentials: 'include'
+        });
+
+        if (!response.ok) throw new Error('Failed to load pending trainers');
+
+        const trainers = await response.json();
+        displayPendingTrainers(trainers);
+    } catch (error) {
+        console.error('Error loading pending trainers:', error);
+    }
+}
+
+function displayPendingTrainers(trainers) {
+    const section = document.getElementById('pending-trainers-section');
+    const list = document.getElementById('pending-trainers-list');
+    if (!list) return;
+
+    if (!trainers || trainers.length === 0) {
+        if (currentMode === 'trainers') {
+            // In trainers mode, show empty state
+            list.innerHTML = `
+                <div class="glass-card p-4 text-center text-gray-400 text-sm">
+                    No pending trainer approvals
+                </div>
+            `;
+        } else if (section) {
+            // In dashboard mode, hide the section
+            section.classList.add('hidden');
+        }
+        return;
+    }
+
+    if (section) {
+        section.classList.remove('hidden');
+    }
+
+    list.innerHTML = trainers.map(trainer => `
+        <div class="glass-card p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="font-bold text-white">${trainer.username}</p>
+                    <p class="text-xs text-gray-400">${trainer.email || 'No email'}</p>
+                    <p class="text-xs text-yellow-400 mt-1">Pending approval</p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="approveTrainer('${trainer.id}')"
+                        class="bg-green-500/20 hover:bg-green-500/30 text-green-400 px-4 py-2 rounded-lg text-sm font-bold transition">
+                        Approve
+                    </button>
+                    <button onclick="rejectTrainer('${trainer.id}', '${trainer.username}')"
+                        class="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 rounded-lg text-sm font-bold transition">
+                        Reject
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function loadApprovedTrainers() {
+    try {
+        const response = await fetch('/api/owner/approved-trainers', {
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            const list = document.getElementById('approved-trainers-list');
+            if (list) {
+                list.innerHTML = `
+                    <div class="glass-card p-4 text-center text-gray-400 text-sm">
+                        No active trainers yet
+                    </div>
+                `;
+            }
+            return;
+        }
+
+        const trainers = await response.json();
+        displayApprovedTrainers(trainers);
+    } catch (error) {
+        console.error('Error loading approved trainers:', error);
+        const list = document.getElementById('approved-trainers-list');
+        if (list) {
+            list.innerHTML = `
+                <div class="glass-card p-4 text-center text-gray-400 text-sm">
+                    No active trainers yet
+                </div>
+            `;
+        }
+    }
+}
+
+function displayApprovedTrainers(trainers) {
+    const list = document.getElementById('approved-trainers-list');
+    if (!list) return;
+
+    if (!trainers || trainers.length === 0) {
+        list.innerHTML = `
+            <div class="glass-card p-4 text-center text-gray-400 text-sm">
+                No active trainers yet
+            </div>
+        `;
+        return;
+    }
+
+    list.innerHTML = trainers.map(trainer => `
+        <div class="glass-card p-4 rounded-xl">
+            <div class="flex justify-between items-center">
+                <div>
+                    <p class="font-bold text-white">${trainer.username}</p>
+                    <p class="text-xs text-gray-400">${trainer.email || 'No email'}</p>
+                    <p class="text-xs text-green-400 mt-1">${trainer.client_count || 0} clients</p>
+                </div>
+                <span class="text-green-400 text-sm">Active</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function approveTrainer(trainerId) {
+    try {
+        const response = await fetch(`/api/owner/approve-trainer/${trainerId}`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to approve trainer');
+        }
+
+        if (typeof showToast === 'function') {
+            showToast('Trainer approved successfully!', 'success');
+        }
+        loadPendingTrainers();
+        if (currentMode === 'trainers') {
+            loadApprovedTrainers();
+        }
+    } catch (error) {
+        console.error('Error approving trainer:', error);
+        if (typeof showToast === 'function') {
+            showToast(error.message, 'error');
+        }
+    }
+}
+
+async function rejectTrainer(trainerId, username) {
+    if (!confirm(`Are you sure you want to reject ${username}? They will need to register again.`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/owner/reject-trainer/${trainerId}`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to reject trainer');
+        }
+
+        if (typeof showToast === 'function') {
+            showToast('Trainer rejected', 'success');
+        }
+        loadPendingTrainers();
+    } catch (error) {
+        console.error('Error rejecting trainer:', error);
+        if (typeof showToast === 'function') {
+            showToast(error.message, 'error');
+        }
+    }
+}
+
+// Initialize based on mode
+if (currentMode === 'settings') {
+    loadGymCode();
+} else if (currentMode === 'trainers') {
+    loadPendingTrainers();
+    loadApprovedTrainers();
+} else {
+    // Dashboard mode (default)
+    loadPendingTrainers();
+    loadSubscriptionPlans();
+}
+</script>
 {% endblock %}

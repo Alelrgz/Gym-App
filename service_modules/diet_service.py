@@ -3,7 +3,8 @@ Diet Service - handles meal scanning, logging, and diet assignment.
 """
 from .base import (
     HTTPException, json, logging, date, datetime,
-    get_db_session, ClientDietSettingsORM, ClientDietLogORM
+    get_db_session, ClientDietSettingsORM, ClientDietLogORM,
+    ClientDailyDietSummaryORM
 )
 from models import AssignDietRequest
 
@@ -17,6 +18,7 @@ class DietService:
         """Scan a meal image using hybrid AI approach (Clarifai + Nutritionix) for maximum accuracy."""
         import os
         import random
+        from mock_meals import MOCK_MEALS
 
         # Try Hybrid Approach first (most accurate)
         clarifai_key = os.environ.get("CLARIFAI_API_KEY")
@@ -56,16 +58,9 @@ class DietService:
             except Exception as e:
                 logger.error(f"Gemini scan failed: {e}")
 
-        # Final fallback: Mock data
-        print("Warning: No API keys found, using mock data.")
-        foods = [
-            {"name": "Grilled Chicken Salad", "cals": 450, "protein": 40, "carbs": 15, "fat": 20},
-            {"name": "Avocado Toast", "cals": 350, "protein": 12, "carbs": 45, "fat": 18},
-            {"name": "Protein Oatmeal", "cals": 380, "protein": 25, "carbs": 50, "fat": 6},
-            {"name": "Salmon & Rice", "cals": 550, "protein": 35, "carbs": 60, "fat": 22},
-            {"name": "Greek Yogurt Parfait", "cals": 280, "protein": 20, "carbs": 30, "fat": 5}
-        ]
-        result = random.choice(foods)
+        # Final fallback: Mock data from comprehensive database (120+ meals)
+        logger.warning("No API keys found, using mock meal database.")
+        result = random.choice(MOCK_MEALS)
         return {"status": "success", "data": result}
 
     def _scan_hybrid(self, file_bytes: bytes, clarifai_key: str, nutritionix_app_id: str, nutritionix_api_key: str) -> dict:
@@ -100,13 +95,25 @@ class DietService:
         clarifai_response = requests.post(clarifai_url, headers=headers, json=payload, timeout=10)
         clarifai_response.raise_for_status()
 
-        # Extract top food items
+        # Extract top food items with adaptive threshold
         clarifai_data = clarifai_response.json()
         concepts = clarifai_data['outputs'][0]['data']['concepts']
-        top_foods = [c['name'] for c in concepts[:3] if c['value'] > 0.7]  # Top 3 with >70% confidence
+
+        # Adaptive threshold: try 0.7, then 0.5, then 0.3
+        thresholds = [0.7, 0.5, 0.3]
+        top_foods = []
+        used_threshold = None
+
+        for threshold in thresholds:
+            top_foods = [c['name'] for c in concepts[:3] if c['value'] > threshold]
+            if top_foods:
+                used_threshold = threshold
+                break
 
         if not top_foods:
             raise Exception("No food items detected with sufficient confidence")
+
+        logger.info(f"Clarifai used threshold: {used_threshold} (detected: {top_foods})")
 
         logger.info(f"Clarifai identified: {top_foods}")
 
@@ -186,15 +193,25 @@ class DietService:
         clarifai_response = requests.post(clarifai_url, headers=headers, json=payload, timeout=10)
         clarifai_response.raise_for_status()
 
-        # Extract top food items
+        # Extract top food items with adaptive threshold
         clarifai_data = clarifai_response.json()
         concepts = clarifai_data['outputs'][0]['data']['concepts']
-        top_foods = [c['name'] for c in concepts[:3] if c['value'] > 0.7]
+
+        # Adaptive threshold: try 0.7, then 0.5, then 0.3
+        thresholds = [0.7, 0.5, 0.3]
+        top_foods = []
+        used_threshold = None
+
+        for threshold in thresholds:
+            top_foods = [c['name'] for c in concepts[:3] if c['value'] > threshold]
+            if top_foods:
+                used_threshold = threshold
+                break
 
         if not top_foods:
             raise Exception("No food items detected with sufficient confidence")
 
-        logger.info(f"Clarifai identified: {top_foods}")
+        logger.info(f"Clarifai identified: {top_foods} (threshold: {used_threshold})")
         food_list = ", ".join(top_foods)
 
         # Step 2: Use Groq Vision to analyze portions and estimate macros
@@ -214,10 +231,22 @@ Now analyze this image carefully and provide accurate nutritional estimates:
 2. Calculate nutritional values based on USDA standards
 3. Account for cooking methods and visible oils/sauces
 
+COMMON FOODS TO RECOGNIZE:
+- Burgers/Hamburgers: beef patty, bun, cheese, lettuce, tomato, condiments
+- Sandwiches: bread, deli meat, cheese, vegetables
+- Pizza: dough, cheese, sauce, toppings (pepperoni, vegetables, etc.)
+- Pasta dishes: spaghetti, penne, fettuccine with various sauces
+- Asian cuisine: rice bowls, noodles, sushi, stir-fry
+- Mexican: tacos, burritos, quesadillas, nachos
+- Breakfast: eggs, bacon, pancakes, waffles, toast
+- Salads: leafy greens with proteins, dressings, toppings
+- Fast food: fries, chicken nuggets, burgers, sandwiches
+
 IMPORTANT GUIDELINES:
 - Be conservative with estimates - if unsure, estimate higher calories
 - Restaurant portions are typically 1.5-2x home portions
 - Include hidden calories from oils, butter, sugar in sauces
+- Burgers typically: 300-800 calories (depending on size and toppings)
 - 1 palm = ~4oz protein (~120-180 calories)
 - 1 fist = ~1 cup carbs (~200-240 calories for rice/pasta)
 - 1 thumb = ~1 tbsp fat (~100-120 calories)
@@ -300,10 +329,22 @@ ANALYSIS STEPS:
 4. Consider cooking methods (fried adds ~30% fat, grilled is leaner)
 5. Account for visible oils, sauces, dressings, and toppings
 
+COMMON FOODS TO RECOGNIZE:
+- Burgers/Hamburgers: beef patty, bun, cheese, lettuce, tomato, condiments (300-800 cals)
+- Sandwiches: bread, deli meat, cheese, vegetables (250-600 cals)
+- Pizza: dough, cheese, sauce, toppings - 1 slice = 250-350 cals
+- Pasta dishes: spaghetti, penne, fettuccine with various sauces (400-800 cals per serving)
+- Asian cuisine: rice bowls, noodles, sushi, stir-fry (400-700 cals)
+- Mexican: tacos, burritos, quesadillas, nachos (350-900 cals)
+- Breakfast: eggs (70-90 each), bacon (40-50 per strip), pancakes (150-200 each)
+- Salads: leafy greens with proteins, dressings, toppings (200-600 cals)
+- Fast food: fries (300-500 cals), chicken nuggets (40-50 per nugget)
+
 IMPORTANT GUIDELINES:
 - Be conservative with estimates - if unsure, estimate higher calories
 - Restaurant portions are typically 1.5-2x home portions
 - Include hidden calories from oils, butter, sugar in sauces
+- Burgers typically: 300-800 calories (depending on size and toppings)
 - 1 palm = ~4oz protein (~120-180 calories)
 - 1 fist = ~1 cup carbs (~200-240 calories for rice/pasta)
 - 1 thumb = ~1 tbsp fat (~100-120 calories)
@@ -384,10 +425,22 @@ Example response:
             4. Consider cooking methods (fried adds ~30% fat, grilled is leaner)
             5. Account for visible oils, sauces, dressings, and toppings
 
+            COMMON FOODS TO RECOGNIZE:
+            - Burgers/Hamburgers: beef patty, bun, cheese, lettuce, tomato, condiments (300-800 cals)
+            - Sandwiches: bread, deli meat, cheese, vegetables (250-600 cals)
+            - Pizza: dough, cheese, sauce, toppings - 1 slice = 250-350 cals
+            - Pasta dishes: spaghetti, penne, fettuccine with various sauces (400-800 cals per serving)
+            - Asian cuisine: rice bowls, noodles, sushi, stir-fry (400-700 cals)
+            - Mexican: tacos, burritos, quesadillas, nachos (350-900 cals)
+            - Breakfast: eggs (70-90 each), bacon (40-50 per strip), pancakes (150-200 each)
+            - Salads: leafy greens with proteins, dressings, toppings (200-600 cals)
+            - Fast food: fries (300-500 cals), chicken nuggets (40-50 per nugget)
+
             IMPORTANT GUIDELINES:
             - Be conservative with estimates - if unsure, estimate higher calories
             - Restaurant portions are typically 1.5-2x home portions
             - Include hidden calories from oils, butter, sugar in sauces
+            - Burgers typically: 300-800 calories (depending on size and toppings)
             - 1 palm = ~4oz protein (~120-180 calories)
             - 1 fist = ~1 cup carbs (~200-240 calories for rice/pasta)
             - 1 thumb = ~1 tbsp fat (~100-120 calories)
@@ -435,9 +488,51 @@ Example response:
         """Log a meal for a client and update their current macros."""
         db = get_db_session()
         try:
+            today = date.today().isoformat()
+
+            # Get or create settings
+            settings = db.query(ClientDietSettingsORM).filter(ClientDietSettingsORM.id == client_id).first()
+            if not settings:
+                settings = ClientDietSettingsORM(id=client_id, last_reset_date=today)
+                db.add(settings)
+                db.flush()
+
+            # Check if it's a new day - if so, save yesterday's totals and reset
+            if settings.last_reset_date and settings.last_reset_date != today:
+                # Save yesterday's totals to daily summary
+                yesterday_summary = ClientDailyDietSummaryORM(
+                    client_id=client_id,
+                    date=settings.last_reset_date,
+                    total_calories=settings.calories_current,
+                    total_protein=settings.protein_current,
+                    total_carbs=settings.carbs_current,
+                    total_fat=settings.fat_current,
+                    total_hydration=settings.hydration_current,
+                    target_calories=settings.calories_target,
+                    target_protein=settings.protein_target,
+                    target_carbs=settings.carbs_target,
+                    target_fat=settings.fat_target,
+                    meal_count=db.query(ClientDietLogORM).filter(
+                        ClientDietLogORM.client_id == client_id,
+                        ClientDietLogORM.date == settings.last_reset_date
+                    ).count()
+                )
+                db.add(yesterday_summary)
+
+                # Reset current values for new day
+                settings.calories_current = 0
+                settings.protein_current = 0
+                settings.carbs_current = 0
+                settings.fat_current = 0
+                settings.hydration_current = 0
+                settings.last_reset_date = today
+
+                logger.info(f"Saved daily summary for {client_id} on {settings.last_reset_date} and reset for {today}")
+
+            # Log the meal
             log = ClientDietLogORM(
                 client_id=client_id,
-                date=date.today().isoformat(),
+                date=today,
                 meal_type=meal_data.get("meal_type", "Snack"),
                 meal_name=meal_data.get("name"),
                 calories=meal_data.get("cals"),
@@ -445,13 +540,11 @@ Example response:
             )
             db.add(log)
 
-            # Update current macros
-            settings = db.query(ClientDietSettingsORM).filter(ClientDietSettingsORM.id == client_id).first()
-            if settings:
-                settings.calories_current += meal_data.get("cals", 0)
-                settings.protein_current += meal_data.get("protein", 0)
-                settings.carbs_current += meal_data.get("carbs", 0)
-                settings.fat_current += meal_data.get("fat", 0)
+            # Update current day's macros
+            settings.calories_current += meal_data.get("cals", 0)
+            settings.protein_current += meal_data.get("protein", 0)
+            settings.carbs_current += meal_data.get("carbs", 0)
+            settings.fat_current += meal_data.get("fat", 0)
 
             db.commit()
             return {"status": "success", "message": "Meal logged"}

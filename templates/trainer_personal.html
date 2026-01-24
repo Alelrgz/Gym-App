@@ -9,9 +9,10 @@
             <h2 class="text-2xl font-bold" id="personal-name">Loading...</h2>
         </div>
         <div class="flex space-x-2">
-            <div data-action="showModal" data-target="notification-modal"
-                class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect cursor-pointer">
+            <div id="notification-bell" onclick="openNotificationsModal()"
+                class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect cursor-pointer relative">
                 🔔
+                <span id="notification-badge" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
             </div>
             <div data-action="showModal" data-target="profile-modal"
                 class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect cursor-pointer">
@@ -25,44 +26,60 @@
         </div>
     </div>
 
-    <!-- Personal Stats Grid -->
-    <div class="flex justify-center mb-6">
-        <div class="glass-card p-6 flex flex-col items-center justify-center w-48">
-            <span class="text-4xl font-bold text-green-400" id="personal-streak">0</span>
-            <span class="text-xs text-white/50 uppercase tracking-wider mt-2">Day Streak 🔥</span>
+    <!-- Quick Actions Row -->
+    <div class="grid grid-cols-4 gap-3 mb-6">
+        <!-- Day Streak -->
+        <div class="glass-card p-4 flex flex-col items-center justify-center">
+            <span class="text-3xl font-bold text-green-400" id="personal-streak">0</span>
+            <span class="text-[10px] text-white/50 uppercase tracking-wider mt-1">Streak 🔥</span>
         </div>
-    </div>
 
-    <!-- My Workout Section -->
-    <div class="mb-6">
+        <!-- My Workouts Button -->
         <button id="toggle-my-workout-btn"
-            class="w-full py-2 text-sm bg-red-600 text-white font-bold rounded-xl mb-4 hover:bg-red-700 transition shadow-lg shadow-red-600/20">
-            My Workouts
+            class="glass-card p-4 flex flex-col items-center justify-center hover:bg-white/10 transition group tap-effect">
+            <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">💪</span>
+            <span class="text-[10px] text-white/70 uppercase tracking-wider font-bold">Workouts</span>
         </button>
 
-        <div id="my-workout-section" class="hidden transition-all duration-300 ease-in-out mb-4">
-            <div id="my-workout-card-container">
-                <!-- Injected via JS -->
-                <div class="glass-card p-4 text-center">
-                    <p class="text-gray-400 text-sm mb-2">Loading...</p>
-                </div>
+        <!-- My Splits Button -->
+        <button id="toggle-my-split-btn"
+            class="glass-card p-4 flex flex-col items-center justify-center hover:bg-white/10 transition group tap-effect">
+            <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">📅</span>
+            <span class="text-[10px] text-white/70 uppercase tracking-wider font-bold">Splits</span>
+        </button>
+
+        <!-- Availability Settings Button -->
+        <button onclick="openAvailabilityModal()"
+            class="glass-card p-4 flex flex-col items-center justify-center hover:bg-white/10 transition group tap-effect">
+            <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">🕐</span>
+            <span class="text-[10px] text-white/70 uppercase tracking-wider font-bold">1-on-1</span>
+        </button>
+    </div>
+
+    <!-- My Workout Section (Hidden by default) -->
+    <div id="my-workout-section" class="hidden transition-all duration-300 ease-in-out mb-4">
+        <div class="flex justify-between items-center mb-2">
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">My Workouts</h3>
+            <button onclick="document.getElementById('my-workout-section').classList.add('hidden')"
+                class="text-white/40 hover:text-white text-sm">✕</button>
+        </div>
+        <div id="my-workout-card-container">
+            <div class="glass-card p-4 text-center">
+                <p class="text-gray-400 text-sm mb-2">Loading...</p>
             </div>
         </div>
     </div>
 
-    <!-- My Splits Section -->
-    <div class="mb-6">
-        <button id="toggle-my-split-btn"
-            class="w-full py-2 text-sm bg-orange-600 text-white font-bold rounded-xl mb-4 hover:bg-orange-700 transition shadow-lg shadow-orange-600/20">
-            My Splits
-        </button>
-
-        <div id="my-split-section" class="hidden transition-all duration-300 ease-in-out mb-4">
-            <div id="my-split-card-container">
-                <!-- Injected via JS -->
-                <div class="glass-card p-4 text-center">
-                    <p class="text-gray-400 text-sm mb-2">Loading...</p>
-                </div>
+    <!-- My Splits Section (Hidden by default) -->
+    <div id="my-split-section" class="hidden transition-all duration-300 ease-in-out mb-4">
+        <div class="flex justify-between items-center mb-2">
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">My Splits</h3>
+            <button onclick="document.getElementById('my-split-section').classList.add('hidden')"
+                class="text-white/40 hover:text-white text-sm">✕</button>
+        </div>
+        <div id="my-split-card-container">
+            <div class="glass-card p-4 text-center">
+                <p class="text-gray-400 text-sm mb-2">Loading...</p>
             </div>
         </div>
     </div>
@@ -185,6 +202,164 @@
     </div>
 </div>
 
+<!-- Availability Settings Modal -->
+<div id="availability-modal"
+    class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 backdrop-blur-sm z-[60]">
+    <div class="glass-card w-full max-w-md mx-4 p-6 rounded-2xl relative max-h-[90vh] overflow-y-auto">
+        <button onclick="closeAvailabilityModal()"
+            class="absolute top-4 right-4 text-white/50 hover:text-white">✕</button>
+        <h3 class="text-xl font-bold mb-2 text-center">1-on-1 Availability</h3>
+        <p class="text-xs text-gray-400 text-center mb-4">Set your weekly hours for client bookings</p>
+
+        <div id="availability-days" class="space-y-3">
+            <!-- Monday -->
+            <div class="bg-white/5 rounded-xl p-3">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" data-day="0" class="day-toggle w-5 h-5 rounded accent-orange-500">
+                        <span class="font-bold text-sm">Monday</span>
+                    </label>
+                </div>
+                <div class="day-times hidden grid grid-cols-2 gap-2" data-day="0">
+                    <div>
+                        <label class="text-[10px] text-gray-400">Start</label>
+                        <input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-gray-400">End</label>
+                        <input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tuesday -->
+            <div class="bg-white/5 rounded-xl p-3">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" data-day="1" class="day-toggle w-5 h-5 rounded accent-orange-500">
+                        <span class="font-bold text-sm">Tuesday</span>
+                    </label>
+                </div>
+                <div class="day-times hidden grid grid-cols-2 gap-2" data-day="1">
+                    <div>
+                        <label class="text-[10px] text-gray-400">Start</label>
+                        <input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-gray-400">End</label>
+                        <input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Wednesday -->
+            <div class="bg-white/5 rounded-xl p-3">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" data-day="2" class="day-toggle w-5 h-5 rounded accent-orange-500">
+                        <span class="font-bold text-sm">Wednesday</span>
+                    </label>
+                </div>
+                <div class="day-times hidden grid grid-cols-2 gap-2" data-day="2">
+                    <div>
+                        <label class="text-[10px] text-gray-400">Start</label>
+                        <input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-gray-400">End</label>
+                        <input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Thursday -->
+            <div class="bg-white/5 rounded-xl p-3">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" data-day="3" class="day-toggle w-5 h-5 rounded accent-orange-500">
+                        <span class="font-bold text-sm">Thursday</span>
+                    </label>
+                </div>
+                <div class="day-times hidden grid grid-cols-2 gap-2" data-day="3">
+                    <div>
+                        <label class="text-[10px] text-gray-400">Start</label>
+                        <input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-gray-400">End</label>
+                        <input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Friday -->
+            <div class="bg-white/5 rounded-xl p-3">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" data-day="4" class="day-toggle w-5 h-5 rounded accent-orange-500">
+                        <span class="font-bold text-sm">Friday</span>
+                    </label>
+                </div>
+                <div class="day-times hidden grid grid-cols-2 gap-2" data-day="4">
+                    <div>
+                        <label class="text-[10px] text-gray-400">Start</label>
+                        <input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-gray-400">End</label>
+                        <input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Saturday -->
+            <div class="bg-white/5 rounded-xl p-3">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" data-day="5" class="day-toggle w-5 h-5 rounded accent-orange-500">
+                        <span class="font-bold text-sm">Saturday</span>
+                    </label>
+                </div>
+                <div class="day-times hidden grid grid-cols-2 gap-2" data-day="5">
+                    <div>
+                        <label class="text-[10px] text-gray-400">Start</label>
+                        <input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="10:00">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-gray-400">End</label>
+                        <input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="14:00">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sunday -->
+            <div class="bg-white/5 rounded-xl p-3">
+                <div class="flex items-center justify-between mb-2">
+                    <label class="flex items-center space-x-2 cursor-pointer">
+                        <input type="checkbox" data-day="6" class="day-toggle w-5 h-5 rounded accent-orange-500">
+                        <span class="font-bold text-sm">Sunday</span>
+                    </label>
+                </div>
+                <div class="day-times hidden grid grid-cols-2 gap-2" data-day="6">
+                    <div>
+                        <label class="text-[10px] text-gray-400">Start</label>
+                        <input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="10:00">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-gray-400">End</label>
+                        <input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="14:00">
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <button onclick="saveAvailability()"
+            class="w-full mt-4 py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition">
+            Save Availability
+        </button>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
@@ -207,6 +382,132 @@
             if (el) el.classList.add('hidden');
         }
     }
+
+    // --- NOTIFICATION FUNCTIONS ---
+    async function loadNotificationCount() {
+        try {
+            const res = await fetch('/api/notifications/unread-count');
+            const data = await res.json();
+            const badge = document.getElementById('notification-badge');
+            if (badge) {
+                if (data.unread_count > 0) {
+                    badge.textContent = data.unread_count > 9 ? '9+' : data.unread_count;
+                    badge.classList.remove('hidden');
+                } else {
+                    badge.classList.add('hidden');
+                }
+            }
+        } catch (e) {
+            console.error('Error loading notification count:', e);
+        }
+    }
+
+    async function openNotificationsModal() {
+        window.showModal('notification-modal');
+        await loadNotifications();
+    }
+
+    function closeNotificationsModal() {
+        window.hideModal('notification-modal');
+    }
+
+    async function loadNotifications() {
+        const list = document.getElementById('notifications-list');
+        if (!list) return;
+
+        try {
+            const res = await fetch('/api/notifications?limit=20');
+            const notifications = await res.json();
+
+            if (notifications.length === 0) {
+                list.innerHTML = `
+                    <div class="text-center text-gray-400 py-8">
+                        <span class="text-4xl mb-2 block">🔔</span>
+                        <p class="text-sm">No notifications yet</p>
+                    </div>
+                `;
+                return;
+            }
+
+            list.innerHTML = notifications.map(n => {
+                const icon = getNotificationIcon(n.type);
+                const timeAgo = formatTimeAgo(n.created_at);
+                const unreadClass = n.read ? 'opacity-60' : 'border-l-2 border-orange-500';
+
+                return `
+                    <div class="flex items-start space-x-3 p-3 bg-white/5 rounded-xl ${unreadClass}"
+                         onclick="markNotificationRead(${n.id})">
+                        <span class="text-xl">${icon}</span>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-bold text-white">${n.title}</p>
+                            <p class="text-xs text-gray-400 truncate">${n.message}</p>
+                            <p class="text-[10px] text-gray-500 mt-1">${timeAgo}</p>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+        } catch (e) {
+            console.error('Error loading notifications:', e);
+            list.innerHTML = `
+                <div class="text-center text-red-400 py-4">
+                    <p class="text-sm">Failed to load notifications</p>
+                </div>
+            `;
+        }
+    }
+
+    function getNotificationIcon(type) {
+        const icons = {
+            'appointment_booked': '📅',
+            'appointment_canceled': '❌',
+            'message': '💬',
+            'streak': '🔥',
+            'achievement': '🏆',
+            'reminder': '⏰'
+        };
+        return icons[type] || '🔔';
+    }
+
+    function formatTimeAgo(dateStr) {
+        const date = new Date(dateStr);
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMs / 3600000);
+        const diffDays = Math.floor(diffMs / 86400000);
+
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays < 7) return `${diffDays}d ago`;
+        return date.toLocaleDateString();
+    }
+
+    async function markNotificationRead(notificationId) {
+        try {
+            await fetch(`/api/notifications/${notificationId}/read`, { method: 'POST' });
+            loadNotificationCount();
+            loadNotifications();
+        } catch (e) {
+            console.error('Error marking notification read:', e);
+        }
+    }
+
+    async function markAllNotificationsRead() {
+        try {
+            await fetch('/api/notifications/read-all', { method: 'POST' });
+            loadNotificationCount();
+            loadNotifications();
+        } catch (e) {
+            console.error('Error marking all notifications read:', e);
+        }
+    }
+
+    // Load notification count on page load
+    loadNotificationCount();
+    // Refresh every 30 seconds
+    setInterval(loadNotificationCount, 30000);
 
     // Calendar State
     let currentWeekMonday = new Date();
@@ -466,6 +767,7 @@
             let colorClass = "text-blue-400 bg-blue-500/20";
             if (s.type === 'personal') colorClass = "text-green-400 bg-green-500/20";
             if (s.type === 'class') colorClass = "text-yellow-400 bg-yellow-500/20";
+            if (s.type === '1on1_appointment') colorClass = "text-orange-400 bg-orange-500/20";
 
             let [h, m] = s.time.split(':');
             let ampm = h >= 12 ? 'PM' : 'AM';
@@ -596,6 +898,106 @@
         } catch (e) {
             console.error(e);
             alert("Error: " + e.message);
+        }
+    }
+
+    // --- AVAILABILITY MODAL ---
+    async function openAvailabilityModal() {
+        window.showModal('availability-modal');
+        await loadAvailability();
+        setupDayToggles();
+    }
+
+    function closeAvailabilityModal() {
+        window.hideModal('availability-modal');
+    }
+
+    function setupDayToggles() {
+        document.querySelectorAll('.day-toggle').forEach(checkbox => {
+            checkbox.addEventListener('change', function() {
+                const day = this.dataset.day;
+                const timesDiv = document.querySelector(`.day-times[data-day="${day}"]`);
+                if (timesDiv) {
+                    if (this.checked) {
+                        timesDiv.classList.remove('hidden');
+                    } else {
+                        timesDiv.classList.add('hidden');
+                    }
+                }
+            });
+        });
+    }
+
+    async function loadAvailability() {
+        try {
+            const res = await fetch('/api/trainer/availability');
+            const slots = await res.json();
+
+            // Reset all checkboxes and hide times
+            document.querySelectorAll('.day-toggle').forEach(cb => {
+                cb.checked = false;
+            });
+            document.querySelectorAll('.day-times').forEach(div => {
+                div.classList.add('hidden');
+            });
+
+            // Set from saved data
+            slots.forEach(slot => {
+                const checkbox = document.querySelector(`.day-toggle[data-day="${slot.day_of_week}"]`);
+                const timesDiv = document.querySelector(`.day-times[data-day="${slot.day_of_week}"]`);
+
+                if (checkbox && timesDiv) {
+                    checkbox.checked = true;
+                    timesDiv.classList.remove('hidden');
+
+                    const startInput = timesDiv.querySelector('.start-time');
+                    const endInput = timesDiv.querySelector('.end-time');
+                    if (startInput) startInput.value = slot.start_time;
+                    if (endInput) endInput.value = slot.end_time;
+                }
+            });
+
+        } catch (e) {
+            console.error('Error loading availability:', e);
+        }
+    }
+
+    async function saveAvailability() {
+        const availability = [];
+
+        document.querySelectorAll('.day-toggle:checked').forEach(checkbox => {
+            const day = parseInt(checkbox.dataset.day);
+            const timesDiv = document.querySelector(`.day-times[data-day="${day}"]`);
+
+            if (timesDiv) {
+                const startTime = timesDiv.querySelector('.start-time').value;
+                const endTime = timesDiv.querySelector('.end-time').value;
+
+                availability.push({
+                    day_of_week: day,
+                    start_time: startTime,
+                    end_time: endTime
+                });
+            }
+        });
+
+        try {
+            const res = await fetch('/api/trainer/availability', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ availability: availability })
+            });
+
+            if (res.ok) {
+                closeAvailabilityModal();
+                alert('Availability saved! Clients can now book 1-on-1 sessions during your available hours.');
+            } else {
+                const err = await res.json();
+                alert('Failed to save: ' + (err.detail || 'Unknown error'));
+            }
+        } catch (e) {
+            console.error('Error saving availability:', e);
+            alert('Error saving availability: ' + e.message);
         }
     }
 </script>

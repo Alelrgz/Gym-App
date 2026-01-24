@@ -16,11 +16,15 @@ broadcast = Broadcast(BROADCAST_URL)
 class ConnectionManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
+        self.user_connections: dict = {}  # user_id -> WebSocket mapping
         self.listening = False
 
-    async def connect(self, websocket: WebSocket):
+    async def connect(self, websocket: WebSocket, user_id: str = None):
         await websocket.accept()
         self.active_connections.append(websocket)
+        # Track user connection for targeted messaging
+        if user_id:
+            self.user_connections[user_id] = websocket
         # Verify listener is running (lazy start)
         if not self.listening:
             asyncio.create_task(self.listen_to_channel())
@@ -29,6 +33,25 @@ class ConnectionManager:
     def disconnect(self, websocket: WebSocket):
         if websocket in self.active_connections:
             self.active_connections.remove(websocket)
+        # Remove from user connections
+        for user_id, ws in list(self.user_connections.items()):
+            if ws == websocket:
+                del self.user_connections[user_id]
+                break
+
+    async def send_to_user(self, user_id: str, message: dict):
+        """Send a message to a specific user if they're connected."""
+        if user_id in self.user_connections:
+            try:
+                await self.user_connections[user_id].send_json(message)
+                return True
+            except Exception:
+                self.disconnect(self.user_connections[user_id])
+        return False
+
+    def is_user_online(self, user_id: str) -> bool:
+        """Check if a user is currently connected."""
+        return user_id in self.user_connections
 
     async def broadcast(self, message: dict):
         # Publish to Redic (or memory)

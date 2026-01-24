@@ -3,10 +3,21 @@
 
 {% block content %}
 {% if mode == "leaderboard" %}
-<div class="p-6 pt-10 flex items-center space-x-4 bg-black/50 z-10">
-    <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
-        class="text-2xl tap-effect">←</a>
-    <h2 class="font-bold text-xl">Weekly Leaderboard</h2>
+<div class="p-6 pt-10 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent z-10">
+    <div class="flex items-center space-x-3">
+        <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
+            class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect">←</a>
+        <h2 class="font-bold text-xl">Weekly Leaderboard</h2>
+    </div>
+    <div class="flex space-x-2">
+        <div onclick="openClientChatModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer">
+            💬
+        </div>
+        <div data-action="showModal" data-target="notification-modal"
+            class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect">
+            🔔
+        </div>
+    </div>
 </div>
 <div class="flex-1 p-4 space-y-4">
 
@@ -30,10 +41,10 @@
             </div>
             <div class="w-full h-3 bg-white/10 rounded-full overflow-hidden">
                 <div id="challenge-bar"
-                    class="h-full bg-gradient-to-r from-purple-600 to-pink-500 transition-all duration-500"
+                    class="h-full bg-gradient-to-r from-red-500 to-orange-500 transition-all duration-500"
                     style="width: 0%"></div>
             </div>
-            <p class="text-xs text-yellow-400 font-bold mt-2">Reward: <span id="challenge-reward">0</span> 💎</p>
+            <p class="text-xs text-yellow-400 font-bold mt-2">Reward: <span id="challenge-reward">0</span> 🔶</p>
         </div>
     </div>
     {% endcall %}
@@ -46,10 +57,21 @@
 </div>
 
 {% elif mode == "progress" %}
-<div class="p-6 pt-10 flex items-center space-x-4 bg-black/50 z-10">
-    <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
-        class="text-2xl tap-effect">←</a>
-    <h2 class="font-bold text-xl">My Nutrition</h2>
+<div class="p-6 pt-10 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent z-10">
+    <div class="flex items-center space-x-3">
+        <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
+            class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect">←</a>
+        <h2 class="font-bold text-xl">My Nutrition</h2>
+    </div>
+    <div class="flex space-x-2">
+        <div onclick="openClientChatModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer">
+            💬
+        </div>
+        <div data-action="showModal" data-target="notification-modal"
+            class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect">
+            🔔
+        </div>
+    </div>
 </div>
 <div class="flex-1 p-4 space-y-4">
 
@@ -74,18 +96,22 @@
     {% endcall %}
 
     <!-- Quick Actions -->
-    <div class="flex space-x-3 overflow-x-auto pb-2">
+    <div class="flex space-x-3 overflow-x-auto pb-2 -mx-1 px-1">
+        <button onclick="openManualMealModal()"
+            class="flex-shrink-0 bg-white/5 border border-white/10 backdrop-blur-sm px-4 py-3 rounded-2xl flex items-center space-x-2 tap-effect hover:bg-white/10 transition">
+            <span class="text-sm">✏️</span> <span class="text-xs font-medium text-white/90">Add Meal</span>
+        </button>
         <button data-action="quickAction" data-type="scan"
-            class="flex-shrink-0 bg-white/10 px-4 py-3 rounded-xl flex items-center space-x-2 tap-effect">
-            <span>📷</span> <span class="text-xs font-bold">Scan Meal</span>
+            class="flex-shrink-0 bg-white/5 border border-white/10 backdrop-blur-sm px-4 py-3 rounded-2xl flex items-center space-x-2 tap-effect hover:bg-white/10 transition">
+            <span class="text-sm">📷</span> <span class="text-xs font-medium text-white/90">Scan Meal</span>
         </button>
         <button data-action="quickAction" data-type="search"
-            class="flex-shrink-0 bg-white/10 px-4 py-3 rounded-xl flex items-center space-x-2 tap-effect">
-            <span>🔍</span> <span class="text-xs font-bold">Search</span>
+            class="flex-shrink-0 bg-white/5 border border-white/10 backdrop-blur-sm px-4 py-3 rounded-2xl flex items-center space-x-2 tap-effect hover:bg-white/10 transition">
+            <span class="text-sm">🔍</span> <span class="text-xs font-medium text-white/90">Search</span>
         </button>
         <button data-action="quickAction" data-type="copy"
-            class="flex-shrink-0 bg-white/10 px-4 py-3 rounded-xl flex items-center space-x-2 tap-effect">
-            <span>📋</span> <span class="text-xs font-bold">Copy Yesterday</span>
+            class="flex-shrink-0 bg-white/5 border border-white/10 backdrop-blur-sm px-4 py-3 rounded-2xl flex items-center space-x-2 tap-effect hover:bg-white/10 transition">
+            <span class="text-sm">📋</span> <span class="text-xs font-medium text-white/90">Copy Yesterday</span>
         </button>
     </div>
 
@@ -104,9 +130,21 @@
 
         <!-- Weekly Consistency -->
         {% call card(classes="p-4 flex flex-col justify-between") %}
-        <p class="text-xs text-gray-400 uppercase font-bold">Consistency</p>
-        <div class="flex items-end justify-between h-20 mt-2 space-x-1" id="weekly-chart">
+        <div class="flex justify-between items-center">
+            <p class="text-xs text-gray-400 uppercase font-bold">Consistency</p>
+            <p class="text-[10px] text-gray-500">This Week</p>
+        </div>
+        <div class="flex items-end justify-between h-16 mt-2 space-x-1" id="weekly-chart">
             <!-- Bars injected by JS -->
+        </div>
+        <div class="flex justify-between mt-1">
+            <span class="text-[8px] text-gray-500">M</span>
+            <span class="text-[8px] text-gray-500">T</span>
+            <span class="text-[8px] text-gray-500">W</span>
+            <span class="text-[8px] text-gray-500">T</span>
+            <span class="text-[8px] text-gray-500">F</span>
+            <span class="text-[8px] text-gray-500">S</span>
+            <span class="text-[8px] text-gray-500">S</span>
         </div>
         {% endcall %}
     </div>
@@ -146,17 +184,320 @@
     <div>
         <div class="flex justify-between items-center mb-3">
             <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Physique Update</h3>
-            <button data-action="addPhoto" class="text-xs bg-white/10 px-2 py-1 rounded text-white">+ Add</button>
+            <div class="flex gap-2">
+                <button onclick="openCompareModal()" class="text-xs bg-white/5 border border-white/10 backdrop-blur-sm px-3 py-1.5 rounded-xl text-white/80 hover:bg-white/10 hover:text-white transition tap-effect flex items-center gap-1">
+                    <span class="text-[10px]">⚖️</span> Compare
+                </button>
+                <button onclick="openPhysiqueModal()" class="text-xs bg-primary/20 border border-primary/30 backdrop-blur-sm px-3 py-1.5 rounded-xl text-white hover:bg-primary/30 transition tap-effect flex items-center gap-1">
+                    <span class="text-[10px]">➕</span> Add
+                </button>
+            </div>
         </div>
-        <div class="flex space-x-3 overflow-x-auto pb-2" id="photo-gallery"></div>
+        <div class="flex space-x-3 overflow-x-auto pb-2" id="photo-gallery">
+            <p class="text-gray-500 text-xs py-4">Loading photos...</p>
+        </div>
     </div>
 </div>
 
+<!-- Physique Photo Upload Modal -->
+<div id="physique-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Add Progress Photo</h3>
+            <button onclick="closePhysiqueModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+
+        <form id="physique-form" class="space-y-4">
+            <!-- Photo Preview -->
+            <div id="physique-preview-container" class="hidden">
+                <img id="physique-preview" class="w-full h-48 object-cover rounded-xl border border-white/10 mb-2">
+                <button type="button" onclick="clearPhysiquePhoto()" class="text-xs text-red-400 hover:text-red-300">Remove photo</button>
+            </div>
+
+            <!-- Upload Button -->
+            <div id="physique-upload-area" class="border-2 border-dashed border-white/20 rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 transition"
+                onclick="document.getElementById('physique-file-input').click()">
+                <span class="text-4xl mb-2 block">📷</span>
+                <p class="text-sm text-gray-400">Tap to select a photo</p>
+                <p class="text-xs text-gray-500 mt-1">JPG, PNG, WEBP (max 10MB)</p>
+            </div>
+            <input type="file" id="physique-file-input" accept="image/*" class="hidden" onchange="previewPhysiquePhoto(this)">
+
+            <!-- Pose Tags -->
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Pose Tag</label>
+                <div class="flex flex-wrap gap-2" id="physique-tags">
+                    <button type="button" onclick="selectPhysiqueTag(this, 'Front')" class="physique-tag px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 border border-white/20 hover:bg-white/20 transition">Front</button>
+                    <button type="button" onclick="selectPhysiqueTag(this, 'Back')" class="physique-tag px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 border border-white/20 hover:bg-white/20 transition">Back</button>
+                    <button type="button" onclick="selectPhysiqueTag(this, 'Side L')" class="physique-tag px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 border border-white/20 hover:bg-white/20 transition">Side L</button>
+                    <button type="button" onclick="selectPhysiqueTag(this, 'Side R')" class="physique-tag px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 border border-white/20 hover:bg-white/20 transition">Side R</button>
+                    <button type="button" onclick="selectPhysiqueTag(this, 'Flexed')" class="physique-tag px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 border border-white/20 hover:bg-white/20 transition">Flexed</button>
+                    <button type="button" onclick="selectPhysiqueTag(this, 'Relaxed')" class="physique-tag px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 border border-white/20 hover:bg-white/20 transition">Relaxed</button>
+                </div>
+            </div>
+
+            <!-- Title -->
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Title (optional)</label>
+                <input type="text" id="physique-title" placeholder="e.g., Week 4 Progress"
+                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-3 text-sm text-white outline-none focus:border-primary/50 transition">
+            </div>
+
+            <!-- Date -->
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Photo Date</label>
+                <input type="date" id="physique-date"
+                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-3 text-sm text-white outline-none focus:border-primary/50 transition">
+            </div>
+
+            <!-- Notes -->
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Notes (optional)</label>
+                <textarea id="physique-notes" rows="2" placeholder="Any notes about this photo..."
+                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-3 text-sm text-white outline-none focus:border-primary/50 transition resize-none"></textarea>
+            </div>
+
+            <!-- Submit -->
+            <button type="submit" id="physique-submit-btn"
+                class="w-full bg-primary text-white py-3 rounded-xl font-bold hover:bg-primary/80 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                Upload Photo
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Physique Comparison Modal (Carousel) -->
+<div id="compare-modal" class="fixed inset-0 bg-black/70 backdrop-blur-xl z-50 hidden flex flex-col">
+    <div class="p-4 flex justify-between items-center border-b border-white/10 bg-white/5">
+        <h3 class="text-lg font-bold">Compare Progress</h3>
+        <div class="flex items-center gap-2">
+            <!-- Animation Toggle Button -->
+            <button id="animation-toggle-btn" onclick="toggleCarouselAnimations()" title="Animations On"
+                class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/20 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </button>
+            <button onclick="closeCompareModal()" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/20 transition">&times;</button>
+        </div>
+    </div>
+
+    <!-- Carousel Container -->
+    <div class="flex-1 flex flex-col p-4 overflow-hidden min-h-0">
+        <!-- Carousel View -->
+        <div class="flex-1 relative flex items-center justify-center min-h-[200px]">
+            <!-- Navigation Arrow Left -->
+            <button id="carousel-prev" onclick="carouselPrev()"
+                class="absolute left-2 z-10 w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition tap-effect disabled:opacity-30 disabled:cursor-not-allowed">
+                ←
+            </button>
+
+            <!-- Photo Display -->
+            <div id="carousel-photo-container" class="flex-1 h-full mx-14 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex items-center justify-center overflow-hidden relative transition-all duration-300">
+                <p class="text-gray-400 text-sm" id="carousel-placeholder">Select photos below to compare</p>
+                <img id="carousel-img" class="hidden w-full h-full object-contain">
+            </div>
+
+            <!-- Navigation Arrow Right -->
+            <button id="carousel-next" onclick="carouselNext()"
+                class="absolute right-2 z-10 w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition tap-effect disabled:opacity-30 disabled:cursor-not-allowed">
+                →
+            </button>
+        </div>
+
+        <!-- Photo Label -->
+        <p id="carousel-label" class="text-center text-sm text-white mt-3 h-6 font-medium"></p>
+        <p id="carousel-date" class="text-center text-xs text-gray-400 h-5"></p>
+
+        <!-- Pagination Dots -->
+        <div id="carousel-dots" class="flex justify-center gap-2 mt-3 flex-wrap max-w-full px-4"></div>
+    </div>
+
+    <!-- Photo Selector with Filters (Collapsible) -->
+    <div id="photo-selector-panel" class="border-t border-white/10 bg-white/5 flex-shrink-0 overflow-hidden transition-all duration-300 ease-in-out" style="max-height: 260px;">
+        <!-- Drag Handle -->
+        <div onclick="togglePhotoSelector()" class="cursor-pointer py-3 flex justify-center hover:bg-white/5 transition">
+            <div id="selector-toggle-icon" class="w-10 h-1 bg-white/30 rounded-full transition-all duration-300 hover:bg-white/50"></div>
+        </div>
+        <div class="px-4 pb-4 pt-3">
+            <!-- Filter Bar -->
+            <div class="flex gap-2 mb-3 flex-wrap">
+                <input type="text" id="compare-search" placeholder="Search by title..."
+                    oninput="filterComparePhotos()"
+                    class="flex-1 min-w-[120px] bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 outline-none focus:border-primary/50 transition">
+                <select id="compare-date-filter" onchange="filterComparePhotos()"
+                    class="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition">
+                    <option value="all">All dates</option>
+                    <option value="week">This week</option>
+                    <option value="month">This month</option>
+                    <option value="3months">Last 3 months</option>
+                    <option value="year">This year</option>
+                </select>
+                <select id="compare-pose-filter" onchange="filterComparePhotos()"
+                    class="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition">
+                    <option value="all">All poses</option>
+                    <option value="Front">Front</option>
+                    <option value="Back">Back</option>
+                    <option value="Side">Side</option>
+                    <option value="Flexed">Flexed</option>
+                    <option value="Relaxed">Relaxed</option>
+                </select>
+            </div>
+            <p class="text-xs text-gray-400 mb-2">Tap photos to add/remove: <span id="compare-photo-count" class="text-white/60"></span></p>
+            <div id="compare-photo-list" class="flex gap-2 overflow-x-auto pb-2"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Manual Meal Entry Modal -->
+<div id="manual-meal-modal" class="fixed inset-0 bg-black/70 backdrop-blur-xl z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Add Meal Manually</h3>
+            <button onclick="closeManualMealModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+
+        <form id="manual-meal-form" class="space-y-4">
+            <!-- Meal Name -->
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Meal Name</label>
+                <input type="text" id="meal-name" required
+                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-3 text-sm text-white outline-none focus:border-primary/50 transition"
+                    placeholder="e.g., Grilled Chicken with Rice">
+            </div>
+
+            <!-- Meal Type -->
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Meal Type</label>
+                <select id="meal-type" required
+                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-3 text-sm text-white outline-none focus:border-primary/50 transition">
+                    <option value="Breakfast">Breakfast</option>
+                    <option value="Lunch">Lunch</option>
+                    <option value="Dinner">Dinner</option>
+                    <option value="Snack">Snack</option>
+                </select>
+            </div>
+
+            <!-- Macros Grid -->
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Calories</label>
+                    <input type="number" id="meal-calories" required min="0"
+                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-3 text-sm text-white outline-none focus:border-primary/50 transition"
+                        placeholder="0">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Protein (g)</label>
+                    <input type="number" id="meal-protein" required min="0"
+                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-3 text-sm text-white outline-none focus:border-primary/50 transition"
+                        placeholder="0">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Carbs (g)</label>
+                    <input type="number" id="meal-carbs" required min="0"
+                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-3 text-sm text-white outline-none focus:border-primary/50 transition"
+                        placeholder="0">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Fat (g)</label>
+                    <input type="number" id="meal-fat" required min="0"
+                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-3 text-sm text-white outline-none focus:border-primary/50 transition"
+                        placeholder="0">
+                </div>
+            </div>
+
+            <!-- Future AI Button (Disabled) -->
+            <div class="bg-white/5 border border-white/10 rounded-lg p-3 text-center">
+                <button type="button" disabled
+                    class="w-full bg-white/5 text-gray-500 px-4 py-2 rounded-lg text-sm font-bold cursor-not-allowed opacity-50">
+                    🤖 Calculate with AI (Coming Soon)
+                </button>
+                <p class="text-xs text-gray-500 mt-2">AI-powered macro calculation will be available in a future update</p>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit"
+                class="w-full bg-primary px-4 py-3 rounded-lg font-bold hover:bg-primary/80 transition">
+                Add Meal
+            </button>
+        </form>
+    </div>
+</div>
+
+<script>
+// --- MANUAL MEAL ENTRY (Progress/Nutrition Page) ---
+
+function openManualMealModal() {
+    document.getElementById('manual-meal-modal').classList.remove('hidden');
+    // Reset form
+    const form = document.getElementById('manual-meal-form');
+    if (form) form.reset();
+}
+
+function closeManualMealModal() {
+    document.getElementById('manual-meal-modal').classList.add('hidden');
+}
+
+// Handle manual meal form submission
+const mealForm = document.getElementById('manual-meal-form');
+if (mealForm) {
+    mealForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const mealData = {
+            name: document.getElementById('meal-name').value,
+            meal_type: document.getElementById('meal-type').value,
+            cals: parseInt(document.getElementById('meal-calories').value),
+            protein: parseInt(document.getElementById('meal-protein').value),
+            carbs: parseInt(document.getElementById('meal-carbs').value),
+            fat: parseInt(document.getElementById('meal-fat').value)
+        };
+
+        try {
+            const response = await fetch('/api/client/diet/log', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                },
+                body: JSON.stringify(mealData)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to log meal');
+            }
+
+            showToast(`${mealData.name} logged successfully! 🍽️`, 'success');
+            closeManualMealModal();
+
+            // Reload the page to show updated data
+            setTimeout(() => window.location.reload(), 500);
+        } catch (error) {
+            console.error('Error logging meal:', error);
+            showToast(error.message, 'error');
+        }
+    });
+}
+</script>
+
 {% elif mode == "calendar" %}
-<div class="p-6 pt-10 flex items-center space-x-4 bg-black/50 z-10">
-    <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
-        class="text-2xl tap-effect">←</a>
-    <h2 class="font-bold text-xl">Schedule</h2>
+<div class="p-6 pt-10 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent z-10">
+    <div class="flex items-center space-x-3">
+        <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
+            class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect">←</a>
+        <h2 class="font-bold text-xl">Schedule</h2>
+    </div>
+    <div class="flex space-x-2">
+        <div onclick="openClientChatModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer">
+            💬
+        </div>
+        <div data-action="showModal" data-target="notification-modal"
+            class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect">
+            🔔
+        </div>
+    </div>
 </div>
 <div class="flex-1 p-4 space-y-4">
     <!-- Calendar Header -->
@@ -198,7 +539,55 @@
     <h2 class="font-bold text-xl">Account Management</h2>
 </div>
 <div class="flex-1 p-4 space-y-6">
+    <!-- Gym & Trainer Section -->
     {% call card(classes="p-6 space-y-4") %}
+    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Gym & Trainer</h3>
+
+    <!-- Current Gym -->
+    <div id="gym-status-container">
+        <label class="text-xs text-gray-500 uppercase font-bold block mb-2">Current Gym</label>
+        <div id="current-gym-display" class="text-white mb-3">Loading...</div>
+    </div>
+
+    <!-- Leave Gym Button (shown if has gym) -->
+    <div id="leave-gym-section" class="hidden mb-4">
+        <button onclick="leaveGym()"
+            class="px-4 py-2 bg-red-500/20 text-red-400 border border-red-500/30 font-bold rounded-xl tap-effect hover:bg-red-500/30 transition">
+            LEAVE GYM
+        </button>
+    </div>
+
+    <!-- Join Gym (shown if no gym) -->
+    <div id="join-gym-section" class="hidden">
+        <label class="text-xs text-gray-500 uppercase font-bold block mb-2">Enter Gym Code</label>
+        <div class="flex gap-2">
+            <input type="text" id="gym-code-input" placeholder="Enter code from your gym"
+                class="flex-1 bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+            <button onclick="joinGym()"
+                class="px-6 py-3 bg-primary text-black font-bold rounded-xl tap-effect hover:bg-primary/90 transition">
+                JOIN
+            </button>
+        </div>
+    </div>
+
+    <!-- Current Trainer -->
+    <div id="trainer-status-container" class="mt-4">
+        <label class="text-xs text-gray-500 uppercase font-bold block mb-2">Your Trainer</label>
+        <div id="current-trainer-display" class="text-white mb-3">Loading...</div>
+    </div>
+
+    <!-- Select Trainer (shown if no trainer) -->
+    <div id="select-trainer-section" class="hidden">
+        <label class="text-xs text-gray-500 uppercase font-bold block mb-2">Choose Your Trainer</label>
+        <div id="trainer-list" class="space-y-2 mb-3">
+            <!-- Trainers will be loaded here -->
+        </div>
+    </div>
+    {% endcall %}
+
+    <!-- Profile Section -->
+    {% call card(classes="p-6 space-y-4") %}
+    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Profile</h3>
     <div>
         <label class="text-xs text-gray-500 uppercase font-bold block mb-2">Full Name</label>
         <input type="text" id="profile-name"
@@ -221,6 +610,196 @@
     {% endcall %}
 </div>
 
+<script>
+// --- GYM & TRAINER ASSIGNMENT (Account Settings Page) ---
+
+async function loadGymAndTrainerInfo() {
+    console.log('[GYM INFO] Loading gym and trainer info...');
+
+    try {
+        const response = await fetch('/api/client/gym-info', {
+            credentials: 'include'
+        });
+
+        console.log('[GYM INFO] Response status:', response.status);
+
+        if (!response.ok) {
+            console.error('[GYM INFO] Failed to load:', response.status, await response.text());
+            document.getElementById('current-gym-display').textContent = 'Error loading gym info';
+            document.getElementById('current-trainer-display').textContent = 'Error loading trainer info';
+            return;
+        }
+
+        const info = await response.json();
+        console.log('[GYM INFO] Data received:', info);
+
+        // Update gym display
+        const gymDisplay = document.getElementById('current-gym-display');
+        const joinGymSection = document.getElementById('join-gym-section');
+        const leaveGymSection = document.getElementById('leave-gym-section');
+
+        if (info.has_gym) {
+            gymDisplay.textContent = info.gym_name || 'Unknown Gym';
+            gymDisplay.classList.add('font-bold');
+            joinGymSection.classList.add('hidden');
+            if (leaveGymSection) leaveGymSection.classList.remove('hidden');
+        } else {
+            gymDisplay.textContent = 'No gym assigned';
+            gymDisplay.classList.remove('font-bold');
+            gymDisplay.classList.add('text-gray-400');
+            joinGymSection.classList.remove('hidden');
+            if (leaveGymSection) leaveGymSection.classList.add('hidden');
+        }
+
+        // Update trainer display
+        const trainerDisplay = document.getElementById('current-trainer-display');
+        const selectTrainerSection = document.getElementById('select-trainer-section');
+
+        if (info.has_trainer) {
+            trainerDisplay.textContent = info.trainer_name || 'Unknown Trainer';
+            trainerDisplay.classList.add('font-bold');
+            selectTrainerSection.classList.add('hidden');
+        } else {
+            trainerDisplay.textContent = 'No trainer selected';
+            trainerDisplay.classList.remove('font-bold');
+            trainerDisplay.classList.add('text-gray-400');
+
+            if (info.has_gym) {
+                selectTrainerSection.classList.remove('hidden');
+                await loadTrainersForSelection(info.gym_id);
+            }
+        }
+    } catch (error) {
+        console.error('[GYM INFO] Error:', error);
+    }
+}
+
+async function joinGym() {
+    const gymCode = document.getElementById('gym-code-input').value.trim();
+
+    if (!gymCode) {
+        alert('Please enter a gym code');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/client/join-gym', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ gym_code: gymCode })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to join gym');
+        }
+
+        const result = await response.json();
+        alert(`Joined ${result.gym_name} successfully!`);
+
+        setTimeout(() => loadGymAndTrainerInfo(), 500);
+    } catch (error) {
+        console.error('Error joining gym:', error);
+        alert(error.message);
+    }
+}
+
+async function leaveGym() {
+    if (!confirm('Are you sure you want to leave your current gym? This will also unassign your trainer.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/client/leave-gym', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to leave gym');
+        }
+
+        const result = await response.json();
+        alert('Successfully left gym');
+
+        setTimeout(() => loadGymAndTrainerInfo(), 500);
+    } catch (error) {
+        console.error('Error leaving gym:', error);
+        alert(error.message);
+    }
+}
+
+async function loadTrainersForSelection(gymId) {
+    try {
+        const response = await fetch(`/api/gym/${gymId}/trainers`, {
+            credentials: 'include'
+        });
+
+        if (!response.ok) return;
+
+        const trainers = await response.json();
+        const trainerList = document.getElementById('trainer-list');
+
+        if (trainers.length === 0) {
+            trainerList.innerHTML = '<p class="text-gray-400 text-sm">No trainers available</p>';
+            return;
+        }
+
+        trainerList.innerHTML = trainers.map(trainer => `
+            <button onclick="selectTrainer('${trainer.id}')"
+                class="w-full bg-white/10 hover:bg-primary/30 border border-white/10 hover:border-primary px-4 py-3 rounded-lg text-left transition tap-effect">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="font-bold text-white">${trainer.username}</p>
+                        <p class="text-xs text-gray-400">${trainer.client_count} clients</p>
+                    </div>
+                    <span class="text-primary text-xl">→</span>
+                </div>
+            </button>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading trainers:', error);
+    }
+}
+
+async function selectTrainer(trainerId) {
+    try {
+        const response = await fetch('/api/client/select-trainer', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ trainer_id: trainerId })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to select trainer');
+        }
+
+        const result = await response.json();
+        alert(`Assigned to ${result.trainer_name} successfully!`);
+
+        setTimeout(() => loadGymAndTrainerInfo(), 500);
+    } catch (error) {
+        console.error('Error selecting trainer:', error);
+        alert(error.message);
+    }
+}
+
+// Load gym/trainer info when page loads
+console.log('[INIT] Account settings page - loading gym/trainer info');
+setTimeout(() => loadGymAndTrainerInfo(), 100);
+</script>
+
 {% elif mode == "client_dashboard" %}
 <div class="p-6 pt-10 flex items-center space-x-4 bg-black/50 z-10">
     <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
@@ -231,14 +810,27 @@
     <!-- User Profile Card -->
     {% call card(classes="p-6 flex flex-col items-center relative overflow-hidden") %}
     <div class="absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-3xl rounded-full -mr-10 -mt-10"></div>
-    <div
-        class="w-24 h-24 rounded-full bg-gradient-to-tr from-gray-700 to-gray-600 border-2 border-primary mb-4 overflow-hidden relative z-10">
-        <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" class="w-full h-full">
+
+    <!-- Profile Picture with Upload -->
+    <div class="relative z-10 mb-4 group">
+        <div id="profile-avatar-container"
+            class="w-24 h-24 rounded-full bg-gradient-to-tr from-gray-700 to-gray-600 border-2 border-primary overflow-hidden cursor-pointer"
+            onclick="document.getElementById('profile-picture-input').click()">
+            <img id="profile-avatar-img" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" class="w-full h-full object-cover">
+        </div>
+        <!-- Edit overlay -->
+        <div class="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
+            onclick="document.getElementById('profile-picture-input').click()">
+            <span class="text-white text-2xl">📷</span>
+        </div>
+        <!-- Hidden file input -->
+        <input type="file" id="profile-picture-input" accept="image/*" class="hidden" onchange="uploadProfilePicture(this)">
     </div>
+
     <h2 class="text-2xl font-black text-white mb-1" id="client-display-name">Loading...</h2>
-    <p class="text-gray-400 text-sm mb-4">alex.fit@example.com</p>
+    <p class="text-gray-400 text-sm mb-4" id="client-display-email">Loading...</p>
     <div class="flex space-x-4 text-xs text-gray-500 uppercase tracking-wider font-bold">
-        <span>Member since Jan 2025</span>
+        <span id="member-since">Member since Jan 2025</span>
     </div>
     {% endcall %}
 
@@ -289,69 +881,209 @@
     </div>
 </div>
 
+<script>
+// --- PROFILE PICTURE FUNCTIONS (Client Dashboard) ---
+async function loadProfilePicture() {
+    try {
+        const res = await fetch('/api/profile/picture');
+        if (res.ok) {
+            const data = await res.json();
+            if (data.profile_picture) {
+                updateAllAvatars(data.profile_picture);
+            } else {
+                // Use dicebear with username as seed
+                const username = data.username || 'User';
+                const defaultAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(username)}`;
+                updateAllAvatars(defaultAvatar);
+            }
+        }
+    } catch (e) {
+        console.error('Error loading profile picture:', e);
+    }
+}
+
+function updateAllAvatars(url) {
+    const avatarIds = ['profile-avatar-img', 'header-profile-img'];
+    avatarIds.forEach(id => {
+        const img = document.getElementById(id);
+        if (img) {
+            img.src = url;
+        }
+    });
+}
+
+async function uploadProfilePicture(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+        showToast('Please select a valid image file (JPG, PNG, WEBP, GIF)', 'error');
+        return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+        showToast('Image too large. Maximum size is 5MB', 'error');
+        return;
+    }
+
+    // Show loading state
+    const container = document.getElementById('profile-avatar-container');
+    if (container) {
+        container.style.opacity = '0.5';
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await fetch('/api/profile/picture', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            updateAllAvatars(data.profile_picture);
+            showToast('Profile picture updated!', 'success');
+        } else {
+            showToast(data.detail || 'Failed to upload image', 'error');
+        }
+    } catch (e) {
+        console.error('Error uploading profile picture:', e);
+        showToast('Failed to upload image', 'error');
+    } finally {
+        if (container) {
+            container.style.opacity = '1';
+        }
+        input.value = '';
+    }
+}
+
+// Load profile picture on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadProfilePicture();
+});
+</script>
+
 {% else %}
 <div class="p-6 pt-10 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent z-10">
     <div class="flex items-center space-x-3">
-        <div data-action="showModal" data-target="profile-modal"
+        <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=client_dashboard' }}"
             class="w-10 h-10 rounded-full bg-gradient-to-tr from-gray-700 to-gray-600 border border-white/10 overflow-hidden tap-effect">
-            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" class="w-full h-full">
-        </div>
+            <img id="header-profile-img" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" class="w-full h-full object-cover">
+        </a>
         <div>
             <p class="text-xs text-gray-400 uppercase tracking-wider">Welcome back</p>
             <h2 class="font-bold text-lg" id="client-welcome-name">Loading...</h2>
         </div>
     </div>
-    <div data-action="showModal" data-target="notification-modal"
-        class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect">
-        🔔
+    <div class="flex space-x-2">
+        <!-- Messages Icon with Badge -->
+        <div onclick="openClientChatModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer">
+            💬
+            <span id="unread-messages-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center hidden">0</span>
+        </div>
+        <div data-action="showModal" data-target="notification-modal"
+            class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect">
+            🔔
+        </div>
     </div>
 </div>
-<div style="background:red; color:white; text-align:center; font-weight:bold; padding:5px;">DEBUG BUILD: V2</div>
-
-<div class="flex-1 p-4 pt-0 space-y-6">
-    <a href="{{ 'client_calendar.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=calendar' }}">
-        {% call card(classes="p-6 flex justify-between items-center relative overflow-hidden tap-effect slide-up")
-        %}
+<div class="flex-1 p-4 pt-0 space-y-4">
+    <!-- Streak Card with Gems -->
+    <a href="{{ 'client_calendar.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=calendar' }}"
+        class="block slide-up">
+        {% call card(classes="p-5 flex justify-between items-center relative overflow-hidden tap-effect") %}
         <div class="absolute top-0 right-0 w-32 h-32 bg-orange-500/20 blur-3xl rounded-full -mr-10 -mt-10"></div>
-        <div>
-            <h1 class="text-5xl font-black text-white mb-1">12</h1>
-            <p class="text-orange-400 font-bold uppercase tracking-wider text-xs">Day Streak 🔥</p>
+        <div class="flex items-center gap-6">
+            <div>
+                <h1 class="text-4xl font-black text-white" id="client-streak">0</h1>
+                <p class="text-orange-400 font-bold uppercase tracking-wider text-[10px]">Week Streak 🔥</p>
+            </div>
+            <div class="h-10 w-px bg-white/10"></div>
+            <div>
+                <p class="text-gray-400 text-[10px] mb-0.5">Next Goal</p>
+                <p class="font-bold text-lg" id="client-next-goal">4 Weeks</p>
+            </div>
         </div>
-        <div class="text-right">
-            <p class="text-gray-400 text-xs mb-1">Next Goal</p>
-            <p class="font-bold text-xl">14 Days</p>
+        <!-- Gems Badge -->
+        <div data-action="showModal" data-target="shop-modal"
+            class="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-full tap-effect hover:bg-white/20 transition"
+            onclick="event.preventDefault(); event.stopPropagation();">
+            <span class="text-sm">🔶</span>
+            <span class="text-sm font-bold" id="gem-count">0</span>
         </div>
         {% endcall %}
     </a>
 
-    <div class="bento-grid slide-up" style="animation-delay: 0.1s;">
-        {% call card(classes="bento-span-2 p-5 relative overflow-hidden group tap-effect") %}
-        <div class="absolute inset-0 bg-primary opacity-20 group-hover:opacity-30 transition"></div>
+    <!-- Today's Plan -->
+    <div class="slide-up" style="animation-delay: 0.1s;">
+        {% call card(classes="p-5 relative overflow-hidden group tap-effect") %}
+        <div class="absolute inset-0 bg-gradient-to-br from-red-500/20 to-orange-500/10 group-hover:from-red-500/30 group-hover:to-orange-500/20 transition-all duration-300"></div>
         <div class="relative z-10">
-            <div class="flex justify-between items-start mb-4"><span
-                    class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's
-                    Plan</span><span class="text-xl">💪</span></div>
+            <div class="flex justify-between items-start mb-3">
+                <span class="bg-gradient-to-r from-red-500/30 to-orange-500/30 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
+                <span class="text-xl">💪</span>
+            </div>
             <h3 class="text-2xl font-black italic uppercase mb-1" id="workout-title">...</h3>
-            <p class="text-sm text-gray-300 mb-4"><span id="workout-duration"></span> • <span
-                    id="workout-difficulty"></span></p>
+            <p class="text-sm text-gray-300 mb-4"><span id="workout-duration"></span> • <span id="workout-difficulty"></span></p>
             <a href="{{ 'workout.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=workout' }}"
-                class="block w-full py-3 bg-white text-black text-center font-bold rounded-xl hover:bg-gray-200 transition">START
-                SESSION</a>
+                class="block w-full py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white text-center font-bold rounded-xl hover:from-red-400 hover:to-orange-400 transition-all shadow-lg shadow-red-500/25">START SESSION</a>
         </div>
         {% endcall %}
+    </div>
 
-        <a href="{{ 'client_progress.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=progress' }}"
-            class="glass-card p-4 flex flex-col justify-center items-center tap-effect hover:bg-white/5 transition">
-            <span class="text-2xl mb-2">🥗</span>
-            <span class="text-sm font-bold">Diet</span>
-            <span class="text-[10px] text-gray-400 uppercase">Tracker</span>
-        </a>
+    <!-- Diet Tracker -->
+    <a href="{{ 'client_progress.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=progress' }}"
+        class="block slide-up" style="animation-delay: 0.15s;">
+        {% call card(classes="p-4 flex items-center justify-between tap-effect hover:bg-white/5 transition") %}
+        <div class="flex items-center gap-4">
+            <div class="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
+                <span class="text-2xl">🥗</span>
+            </div>
+            <div>
+                <p class="font-bold text-white">Diet Tracker</p>
+                <p class="text-xs text-gray-400">Track meals & macros</p>
+            </div>
+        </div>
+        <span class="text-white/40 text-lg">→</span>
+        {% endcall %}
+    </a>
 
-        <div data-action="showModal" data-target="shop-modal"
-            class="glass-card p-4 flex flex-col justify-center items-center tap-effect">
-            <span class="text-2xl mb-2">💎</span>
-            <span class="text-xl font-bold" id="gem-count">0</span>
-            <span class="text-[10px] text-gray-400 uppercase">Gems</span>
+    <!-- Trainer & Appointments Section -->
+    <div class="slide-up" style="animation-delay: 0.15s;">
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">My Trainer</h3>
+
+        <div id="trainer-section" class="space-y-3">
+            <!-- Trainer Card -->
+            <div class="glass-card p-4 flex items-center justify-between">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center">
+                        <span class="text-xl">👤</span>
+                    </div>
+                    <div>
+                        <p class="font-bold text-white" id="trainer-name">Loading...</p>
+                        <p class="text-xs text-gray-400">Personal Trainer</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="openClientChatModal()" class="bg-white/10 px-3 py-2 rounded-lg text-sm font-bold hover:bg-white/20 transition tap-effect" title="Message Trainer">
+                        💬
+                    </button>
+                    <button onclick="openBookingModal()" class="bg-orange-500 px-4 py-2 rounded-lg text-sm font-bold hover:bg-orange-400 transition tap-effect">
+                        Book Session
+                    </button>
+                </div>
+            </div>
+
+            <!-- Upcoming Appointments -->
+            <div id="appointments-list" class="space-y-2">
+                <!-- Appointments will be loaded here -->
+            </div>
         </div>
     </div>
 
@@ -360,5 +1092,748 @@
         <div class="space-y-3" id="quest-list"></div>
     </div>
 </div>
+
+<!-- Book Appointment Modal -->
+<div id="booking-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Book 1-on-1 Session</h3>
+            <button onclick="closeBookingModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+
+        <!-- Step 1: Select Date -->
+        <div id="booking-step-1">
+            <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Select Date</label>
+            <input type="date" id="appointment-date"
+                class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition mb-4"
+                min="">
+
+            <div id="no-slots-message" class="hidden text-center text-red-400 text-sm mb-3 p-2 bg-red-500/10 rounded-lg">
+                No available slots for this date. Try another day!
+            </div>
+
+            <button id="check-availability-btn" onclick="loadAvailableSlots()" class="w-full bg-orange-500 px-4 py-3 rounded-lg font-bold hover:bg-orange-600 transition">
+                Check Availability
+            </button>
+        </div>
+
+        <!-- Step 2: Select Time Slot -->
+        <div id="booking-step-2" class="hidden">
+            <button onclick="backToDateSelection()" class="text-sm text-gray-400 hover:text-white mb-3">&larr; Back</button>
+
+            <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Available Time Slots</label>
+            <div id="time-slots-list" class="space-y-2 mb-4 max-h-60 overflow-y-auto">
+                <!-- Time slots will be loaded here -->
+            </div>
+
+            <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Notes (Optional)</label>
+            <textarea id="appointment-notes" rows="3"
+                class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition mb-4"
+                placeholder="What would you like to work on?"></textarea>
+
+            <button onclick="confirmBooking()" class="w-full bg-orange-500 px-4 py-3 rounded-lg font-bold hover:bg-orange-600 transition">
+                Confirm Booking
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Trainer Selection Modal -->
+<div id="trainer-selection-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Select Your Trainer</h3>
+            <button onclick="closeTrainerSelectionModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+        <p class="text-gray-400 text-sm mb-4">Choose a trainer from your gym to guide your fitness journey</p>
+        <div id="home-trainer-list" class="space-y-3">
+            <!-- Trainers will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<script>
+let selectedTrainerId = null;
+let selectedDate = null;
+let selectedTime = null;
+
+// Load trainer info and appointments on page load
+async function loadTrainerAndAppointments() {
+    try {
+        // Get gym/trainer info from the dedicated endpoint
+        const response = await fetch('/api/client/gym-info', {
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            loadTrainerSelectionForHome();
+            return;
+        }
+
+        const info = await response.json();
+
+        if (info.has_trainer && info.trainer_id) {
+            selectedTrainerId = info.trainer_id;
+            document.getElementById('trainer-name').textContent = info.trainer_name || 'Your Trainer';
+            // Load upcoming appointments
+            loadAppointments();
+        } else {
+            // No trainer - show selection option if they have a gym
+            loadTrainerSelectionForHome();
+        }
+    } catch (error) {
+        console.error('Error loading trainer info:', error);
+        loadTrainerSelectionForHome();
+    }
+}
+
+async function loadAppointments() {
+    try {
+        const response = await fetch('/api/client/appointments', {
+            credentials: 'include'
+        });
+
+        if (!response.ok) return;
+
+        const appointments = await response.json();
+
+        if (appointments.length === 0) {
+            document.getElementById('appointments-list').innerHTML = `
+                <div class="glass-card p-3 text-center text-sm text-gray-400">
+                    No upcoming appointments
+                </div>
+            `;
+            return;
+        }
+
+        document.getElementById('appointments-list').innerHTML = appointments.slice(0, 3).map(appt => `
+            <div class="glass-card p-3">
+                <div class="flex justify-between items-start">
+                    <div>
+                        <p class="font-bold text-sm text-white">${new Date(appt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
+                        <p class="text-xs text-gray-400">${appt.start_time} • ${appt.duration} min</p>
+                        ${appt.notes ? `<p class="text-xs text-gray-500 mt-1">${appt.notes}</p>` : ''}
+                    </div>
+                    <div class="flex gap-2">
+                        ${appt.status === 'scheduled' ? `
+                            <button onclick="cancelAppointment('${appt.id}')" class="text-xs text-red-400 hover:text-red-300">Cancel</button>
+                        ` : `
+                            <span class="text-xs px-2 py-1 rounded bg-green-500/20 text-green-400">${appt.status}</span>
+                        `}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading appointments:', error);
+    }
+}
+
+function openBookingModal() {
+    if (!selectedTrainerId) {
+        showToast('No trainer assigned', 'error');
+        return;
+    }
+
+    // Set min date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('appointment-date').min = today;
+    document.getElementById('appointment-date').value = '';
+
+    document.getElementById('booking-modal').classList.remove('hidden');
+    document.getElementById('booking-step-1').classList.remove('hidden');
+    document.getElementById('booking-step-2').classList.add('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeBookingModal() {
+    document.getElementById('booking-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+    selectedDate = null;
+    selectedTime = null;
+}
+
+function backToDateSelection() {
+    document.getElementById('booking-step-1').classList.remove('hidden');
+    document.getElementById('booking-step-2').classList.add('hidden');
+}
+
+async function loadAvailableSlots() {
+    const dateInput = document.getElementById('appointment-date');
+    selectedDate = dateInput.value;
+    const checkBtn = document.getElementById('check-availability-btn');
+    const noSlotsMsg = document.getElementById('no-slots-message');
+
+    if (!selectedDate) {
+        showToast('Please select a date', 'error');
+        return;
+    }
+
+    // Hide previous no-slots message
+    noSlotsMsg.classList.add('hidden');
+
+    try {
+        const response = await fetch(`/api/client/trainers/${selectedTrainerId}/available-slots?date=${selectedDate}`, {
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to load available slots');
+        }
+
+        const slots = await response.json();
+
+        if (slots.length === 0) {
+            // Show the no-slots message
+            noSlotsMsg.classList.remove('hidden');
+
+            // Add wiggle animation to button
+            checkBtn.style.animation = 'wiggle 0.5s ease-in-out';
+            setTimeout(() => {
+                checkBtn.style.animation = '';
+            }, 500);
+
+            return;
+        }
+
+        const slotsList = document.getElementById('time-slots-list');
+        slotsList.innerHTML = slots.map(slot => `
+            <button onclick="selectTimeSlot('${slot.start_time}', this)"
+                class="time-slot-btn w-full bg-white/10 hover:bg-primary/30 border border-white/10 hover:border-primary px-4 py-3 rounded-lg text-sm font-bold transition tap-effect"
+                data-time="${slot.start_time}">
+                ${slot.start_time} - ${slot.end_time}
+            </button>
+        `).join('');
+
+        document.getElementById('booking-step-1').classList.add('hidden');
+        document.getElementById('booking-step-2').classList.remove('hidden');
+    } catch (error) {
+        console.error('Error loading slots:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+function selectTimeSlot(time, clickedBtn) {
+    selectedTime = time;
+    // Reset all slots to default state
+    document.querySelectorAll('.time-slot-btn').forEach(btn => {
+        btn.classList.remove('bg-orange-500', 'border-orange-500', 'text-white');
+        btn.classList.add('bg-white/10', 'border-white/10');
+    });
+    // Highlight selected slot with orange color
+    if (clickedBtn) {
+        clickedBtn.classList.remove('bg-white/10', 'border-white/10');
+        clickedBtn.classList.add('bg-orange-500', 'border-orange-500', 'text-white');
+    }
+}
+
+async function confirmBooking() {
+    if (!selectedTime) {
+        showToast('Please select a time slot', 'error');
+        return;
+    }
+
+    const notes = document.getElementById('appointment-notes').value;
+
+    try {
+        const response = await fetch('/api/client/appointments', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                trainer_id: selectedTrainerId,
+                date: selectedDate,
+                start_time: selectedTime,
+                duration: 60,
+                notes: notes
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to book appointment');
+        }
+
+        showToast('Appointment booked successfully! 🎉', 'success');
+        closeBookingModal();
+        loadAppointments();
+    } catch (error) {
+        console.error('Error booking appointment:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+async function cancelAppointment(appointmentId) {
+    if (!confirm('Are you sure you want to cancel this appointment?')) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/appointments/${appointmentId}/cancel`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                cancellation_reason: 'Canceled by client'
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to cancel appointment');
+        }
+
+        showToast('Appointment canceled', 'success');
+        loadAppointments();
+    } catch (error) {
+        console.error('Error canceling appointment:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+// --- GYM & TRAINER ASSIGNMENT ---
+
+async function loadGymAndTrainerInfo() {
+    console.log('[GYM INFO] Loading gym and trainer info...');
+
+    try {
+        const response = await fetch('/api/client/gym-info', {
+            credentials: 'include'
+        });
+
+        console.log('[GYM INFO] Response status:', response.status);
+
+        if (!response.ok) {
+            console.error('[GYM INFO] Failed to load:', response.status, await response.text());
+            // Show error state
+            document.getElementById('current-gym-display').textContent = 'Error loading gym info';
+            document.getElementById('current-trainer-display').textContent = 'Error loading trainer info';
+            return;
+        }
+
+        const info = await response.json();
+        console.log('[GYM INFO] Data received:', info);
+
+        // Update gym display
+        const gymDisplay = document.getElementById('current-gym-display');
+        const joinGymSection = document.getElementById('join-gym-section');
+        const leaveGymSection = document.getElementById('leave-gym-section');
+
+        if (info.has_gym) {
+            gymDisplay.textContent = info.gym_name || 'Unknown Gym';
+            gymDisplay.classList.add('font-bold');
+            joinGymSection.classList.add('hidden');
+            if (leaveGymSection) leaveGymSection.classList.remove('hidden');
+        } else {
+            gymDisplay.textContent = 'No gym assigned';
+            gymDisplay.classList.remove('font-bold');
+            gymDisplay.classList.add('text-gray-400');
+            joinGymSection.classList.remove('hidden');
+            if (leaveGymSection) leaveGymSection.classList.add('hidden');
+        }
+
+        // Update trainer display
+        const trainerDisplay = document.getElementById('current-trainer-display');
+        const selectTrainerSection = document.getElementById('select-trainer-section');
+
+        if (info.has_trainer) {
+            trainerDisplay.textContent = info.trainer_name || 'Unknown Trainer';
+            trainerDisplay.classList.add('font-bold');
+            selectTrainerSection.classList.add('hidden');
+        } else {
+            trainerDisplay.textContent = 'No trainer selected';
+            trainerDisplay.classList.remove('font-bold');
+            trainerDisplay.classList.add('text-gray-400');
+
+            if (info.has_gym) {
+                selectTrainerSection.classList.remove('hidden');
+                await loadTrainersForSelection(info.gym_id);
+            }
+        }
+    } catch (error) {
+        console.error('Error loading gym/trainer info:', error);
+    }
+}
+
+async function joinGym() {
+    const gymCode = document.getElementById('gym-code-input').value.trim();
+
+    if (!gymCode) {
+        showToast('Please enter a gym code', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/client/join-gym', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({ gym_code: gymCode })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to join gym');
+        }
+
+        const result = await response.json();
+        showToast(`Joined ${result.gym_name} successfully! 🎉`, 'success');
+
+        // Reload gym info to show trainers
+        setTimeout(() => loadGymAndTrainerInfo(), 500);
+    } catch (error) {
+        console.error('Error joining gym:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+async function leaveGym() {
+    if (!confirm('Are you sure you want to leave your current gym? This will also unassign your trainer.')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/client/leave-gym', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to leave gym');
+        }
+
+        const result = await response.json();
+        showToast('Successfully left gym', 'success');
+
+        setTimeout(() => loadGymAndTrainerInfo(), 500);
+    } catch (error) {
+        console.error('Error leaving gym:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+async function loadTrainersForSelection(gymId) {
+    try {
+        const response = await fetch(`/api/gym/${gymId}/trainers`, {
+            credentials: 'include'
+        });
+
+        if (!response.ok) return;
+
+        const trainers = await response.json();
+        const trainerList = document.getElementById('trainer-list');
+
+        if (trainers.length === 0) {
+            trainerList.innerHTML = '<p class="text-gray-400 text-sm">No trainers available</p>';
+            return;
+        }
+
+        trainerList.innerHTML = trainers.map(trainer => `
+            <button onclick="selectTrainer('${trainer.id}')"
+                class="w-full bg-white/10 hover:bg-primary/30 border border-white/10 hover:border-primary px-4 py-3 rounded-lg text-left transition tap-effect">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="font-bold text-white">${trainer.username}</p>
+                        <p class="text-xs text-gray-400">${trainer.client_count} clients</p>
+                    </div>
+                    <span class="text-primary text-xl">→</span>
+                </div>
+            </button>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading trainers:', error);
+    }
+}
+
+async function selectTrainer(trainerId) {
+    try {
+        const response = await fetch('/api/client/select-trainer', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ trainer_id: trainerId })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to select trainer');
+        }
+
+        const result = await response.json();
+        showToast(`Assigned to ${result.trainer_name} successfully! 🎉`, 'success');
+
+        // Reload gym info to update display
+        setTimeout(() => loadGymAndTrainerInfo(), 500);
+    } catch (error) {
+        console.error('Error selecting trainer:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+// --- TRAINER SELECTION FROM HOME PAGE ---
+
+async function loadTrainerSelectionForHome() {
+    try {
+        // First get gym info
+        const response = await fetch('/api/client/gym-info', {
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            document.getElementById('trainer-section').innerHTML = `
+                <div class="glass-card p-4 text-center text-gray-400">
+                    <p>No trainer assigned yet</p>
+                </div>
+            `;
+            return;
+        }
+
+        const info = await response.json();
+
+        if (!info.has_gym) {
+            // No gym - prompt to join one
+            document.getElementById('trainer-section').innerHTML = `
+                <div class="glass-card p-4 text-center">
+                    <p class="text-gray-400 mb-3">Join a gym to get started</p>
+                    <a href="/?gym_id={{ gym_id }}&role=client&mode=account_settings"
+                       class="inline-block bg-primary px-4 py-2 rounded-lg text-sm font-bold hover:bg-primary/80 transition tap-effect">
+                        Join Gym
+                    </a>
+                </div>
+            `;
+        } else {
+            // Has gym but no trainer - show selection button
+            window.clientGymId = info.gym_id;
+            document.getElementById('trainer-section').innerHTML = `
+                <div class="glass-card p-4 text-center">
+                    <p class="text-gray-400 mb-3">No trainer assigned yet</p>
+                    <button onclick="openTrainerSelectionModal()"
+                            class="bg-primary px-6 py-3 rounded-xl font-bold hover:bg-primary/80 transition tap-effect">
+                        Select Your Trainer
+                    </button>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading gym info for home:', error);
+        document.getElementById('trainer-section').innerHTML = `
+            <div class="glass-card p-4 text-center text-gray-400">
+                <p>No trainer assigned yet</p>
+            </div>
+        `;
+    }
+}
+
+async function openTrainerSelectionModal() {
+    const modal = document.getElementById('trainer-selection-modal');
+    const list = document.getElementById('home-trainer-list');
+
+    if (!modal || !list) return;
+
+    modal.classList.remove('hidden');
+    list.innerHTML = '<p class="text-center text-gray-400">Loading trainers...</p>';
+
+    try {
+        const response = await fetch(`/api/gym/${window.clientGymId}/trainers`, {
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            list.innerHTML = '<p class="text-center text-red-400">Failed to load trainers</p>';
+            return;
+        }
+
+        const trainers = await response.json();
+
+        if (trainers.length === 0) {
+            list.innerHTML = '<p class="text-center text-gray-400">No trainers available in this gym yet</p>';
+            return;
+        }
+
+        list.innerHTML = trainers.map(trainer => `
+            <button onclick="selectTrainerFromHome('${trainer.id}', '${trainer.username}')"
+                class="w-full bg-white/10 hover:bg-primary/30 border border-white/10 hover:border-primary p-4 rounded-xl text-left transition tap-effect">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center">
+                            <span class="text-xl">👤</span>
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">${trainer.username}</p>
+                            <p class="text-xs text-gray-400">${trainer.client_count} clients</p>
+                        </div>
+                    </div>
+                    <span class="text-primary text-xl">→</span>
+                </div>
+            </button>
+        `).join('');
+    } catch (error) {
+        console.error('Error loading trainers:', error);
+        list.innerHTML = '<p class="text-center text-red-400">Error loading trainers</p>';
+    }
+}
+
+function closeTrainerSelectionModal() {
+    document.getElementById('trainer-selection-modal').classList.add('hidden');
+}
+
+async function selectTrainerFromHome(trainerId, trainerName) {
+    try {
+        const response = await fetch('/api/client/select-trainer', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ trainer_id: trainerId })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to select trainer');
+        }
+
+        showToast(`Assigned to ${trainerName} successfully!`, 'success');
+        closeTrainerSelectionModal();
+
+        // Reload the page to show trainer info
+        setTimeout(() => window.location.reload(), 500);
+    } catch (error) {
+        console.error('Error selecting trainer:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+// --- CLIENT CHAT FUNCTIONS ---
+function openClientChatModal() {
+    if (!selectedTrainerId) {
+        showToast('No trainer assigned', 'error');
+        return;
+    }
+
+    const trainerName = document.getElementById('trainer-name')?.textContent || 'Your Trainer';
+
+    // Use the global openChatModal function from app.js
+    if (typeof window.openChatModal === 'function') {
+        window.openChatModal(selectedTrainerId, trainerName);
+    } else {
+        showToast('Chat not available', 'error');
+    }
+}
+
+// Load on page load
+if (window.location.search.includes('role=client') && !window.location.search.includes('mode=')) {
+    loadTrainerAndAppointments();
+}
+
+// Load gym/trainer info on settings page
+if (window.location.search.includes('mode=account_settings')) {
+    console.log('[INIT] Account settings page detected, loading gym/trainer info');
+    // Use setTimeout to ensure DOM is ready
+    setTimeout(() => loadGymAndTrainerInfo(), 100);
+} else {
+    console.log('[INIT] Not on account settings page, search:', window.location.search);
+}
+
+// --- PROFILE PICTURE FUNCTIONS ---
+async function loadProfilePicture() {
+    try {
+        const res = await fetch('/api/profile/picture');
+        if (res.ok) {
+            const data = await res.json();
+            if (data.profile_picture) {
+                updateAllAvatars(data.profile_picture);
+            } else {
+                // Use dicebear with username as seed
+                const username = data.username || 'User';
+                const defaultAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(username)}`;
+                updateAllAvatars(defaultAvatar);
+            }
+        }
+    } catch (e) {
+        console.error('Error loading profile picture:', e);
+    }
+}
+
+function updateAllAvatars(url) {
+    // Update all avatar images on the page
+    const avatarIds = ['profile-avatar-img', 'header-profile-img'];
+    avatarIds.forEach(id => {
+        const img = document.getElementById(id);
+        if (img) {
+            img.src = url;
+        }
+    });
+}
+
+async function uploadProfilePicture(input) {
+    const file = input.files?.[0];
+    if (!file) return;
+
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+    if (!validTypes.includes(file.type)) {
+        showToast('Please select a valid image file (JPG, PNG, WEBP, GIF)', 'error');
+        return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+        showToast('Image too large. Maximum size is 5MB', 'error');
+        return;
+    }
+
+    // Show loading state
+    const container = document.getElementById('profile-avatar-container');
+    if (container) {
+        container.style.opacity = '0.5';
+    }
+
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const res = await fetch('/api/profile/picture', {
+            method: 'POST',
+            body: formData
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+            updateAllAvatars(data.profile_picture);
+            showToast('Profile picture updated!', 'success');
+        } else {
+            showToast(data.detail || 'Failed to upload image', 'error');
+        }
+    } catch (e) {
+        console.error('Error uploading profile picture:', e);
+        showToast('Failed to upload image', 'error');
+    } finally {
+        if (container) {
+            container.style.opacity = '1';
+        }
+        // Clear input
+        input.value = '';
+    }
+}
+
+// Load profile picture on page load
+document.addEventListener('DOMContentLoaded', () => {
+    loadProfilePicture();
+});
+</script>
+
 {% endif %}
 {% endblock %}

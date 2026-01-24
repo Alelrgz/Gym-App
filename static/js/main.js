@@ -270,7 +270,7 @@ async function init() {
                     </div>
                 </div>
                 <div class="text-right">
-                    <p class="text-yellow-400 font-bold">💎 ${u.gems}</p>
+                    <p class="text-yellow-400 font-bold">🔶 ${u.gems}</p>
                 </div>
             `;
             leaderList.appendChild(div);

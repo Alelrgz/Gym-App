@@ -2,6 +2,7 @@
 Client Routes - API endpoints for client profile management and data retrieval.
 """
 from fastapi import APIRouter, Depends
+from pydantic import BaseModel
 from auth import get_current_user
 from models import ClientData, ClientProfileUpdate
 from models_orm import UserORM
@@ -9,6 +10,10 @@ from service_modules.client_service import ClientService, get_client_service
 from service_modules.workout_service import get_workout_service
 
 router = APIRouter()
+
+
+class QuestToggleRequest(BaseModel):
+    quest_index: int
 
 
 @router.get("/api/client/data", response_model=ClientData)
@@ -56,3 +61,13 @@ async def toggle_client_premium(
 ):
     """Toggle premium status for a client (trainer access)."""
     return service.toggle_premium_status(client_id)
+
+
+@router.post("/api/client/quest/toggle")
+async def toggle_quest_completion(
+    request: QuestToggleRequest,
+    service: ClientService = Depends(get_client_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Toggle a daily quest completion status."""
+    return service.toggle_quest_completion(current_user.id, request.quest_index)

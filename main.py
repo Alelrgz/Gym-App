@@ -5,7 +5,7 @@ import logging
 from dotenv import load_dotenv
 
 load_dotenv()
-# Trigger reload v6.3 - forcing reload for services
+# Trigger reload v6.4 - gym assignment routes added
 
 # Set up logging to see errors in the console
 logging.basicConfig(level=logging.INFO)
@@ -30,10 +30,11 @@ try:
     from jose import jwt, JWTError
     from database import engine, Base
     import models_orm # Register models
-    from models import TrainerData # Import TrainerData
+    from models import TrainerData, JoinGymRequest, SelectTrainerRequest # Import models
     from services import UserService, get_user_service
+    from service_modules.gym_assignment_service import get_gym_assignment_service, GymAssignmentService
     from auth import get_current_user
-    from fastapi import Depends
+    from fastapi import Depends, HTTPException
     from models_orm import UserORM
 except ImportError as e:
     logger.error(f"Missing dependency: {e}")
@@ -57,7 +58,9 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
 
-# --- OVERRIDE ROUTES BEFORE ROUTER INCLUSION ---
+# --- ROUTES DEFINED DIRECTLY ON APP ---
+# (Removed - now using gym_assignment_router included directly)
+
 @app.get("/api/trainer/data", response_model=TrainerData)
 async def get_trainer_data_direct(
     service: UserService = Depends(get_user_service),
@@ -73,6 +76,21 @@ async def get_trainer_data_direct(
 
 app.include_router(router)
 app.include_router(simple_auth_router, prefix="/auth")
+
+# Include gym assignment router directly
+from route_modules.gym_assignment_routes import router as gym_assignment_router
+app.include_router(gym_assignment_router)
+print("DEBUG: Gym assignment router included directly on app")
+
+# Include message routes
+from route_modules.message_routes import router as message_router
+app.include_router(message_router)
+print("DEBUG: Message router included")
+
+# Include profile routes
+from route_modules.profile_routes import router as profile_router
+app.include_router(profile_router)
+print("DEBUG: Profile router included")
 
 
 @app.on_event("startup")
@@ -102,10 +120,28 @@ async def startup_event():
 
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
-    await manager.connect(websocket)
+    # Try to authenticate user from cookie
+    user_id = None
+    try:
+        token = websocket.cookies.get("access_token")
+        if token:
+            payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+            user_id = payload.get("sub")
+            logger.info(f"WebSocket authenticated for user: {user_id}")
+    except Exception as e:
+        logger.debug(f"WebSocket auth failed (continuing anyway): {e}")
+
+    await manager.connect(websocket, user_id)
     try:
         while True:
-            await websocket.receive_text()
+            data = await websocket.receive_text()
+            # Handle incoming WebSocket messages (for future use)
+            try:
+                msg = json.loads(data)
+                if msg.get("type") == "ping":
+                    await websocket.send_json({"type": "pong"})
+            except:
+                pass
     except WebSocketDisconnect:
         manager.disconnect(websocket)
 
@@ -153,6 +189,13 @@ async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "cli
     except Exception as e:
         print(f"DEBUG: Could not extract role from token: {e}")
 
+    # CHECK FOR ACCOUNT SETTINGS MODE
+    if mode == "account_settings":
+        print("ITWORKS1! Account settings page accessed!")
+        logger.info("ITWORKS1! Account settings page accessed!")
+        with open("server_debug.log", "a") as f:
+            f.write("ITWORKS1! Account settings page accessed!\n")
+
     template_name = "client.html"
     if mode == "workout":
         template_name = "workout.html"
@@ -174,12 +217,6 @@ async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "cli
     return templates.TemplateResponse(template_name, context)
 
 
-
-# --- DIRECT INJECTION OF ROUTES TO FIX 404 ---
-from services import UserService, get_user_service # Import dependencies
-from models_orm import UserORM # Import UserORM
-from auth import get_current_user # Import auth dependency
-from fastapi import Depends
 
 @app.post("/api/trainer/events")
 async def add_trainer_event_direct(
@@ -217,9 +254,9 @@ async def read_trainer_personal(request: Request, gym_id: str = "default"):
     return templates.TemplateResponse("trainer_personal.html", {"request": request, "gym_id": gym_id, "role": "trainer", "mode": "personal", "cache_buster": CACHE_BUSTER})
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 9007))
+    port = int(os.environ.get("PORT", 9008))
     logger.info(f"Starting server on port {port}...")
     try:
-        uvicorn.run("main:app", host="0.0.0.0", port=port, log_level="info", reload=True)
+        uvicorn.run("main:app", host="0.0.0.0", port=port, log_level="info", reload=False)
     except Exception as e:
         logger.error(f"Failed to start uvicorn: {e}")

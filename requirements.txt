@@ -17,3 +17,5 @@ python-dotenv
 redis
 broadcaster
 google-generativeai
+stripe
+Pillow
