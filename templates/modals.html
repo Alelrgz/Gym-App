@@ -852,10 +852,26 @@
         <div class="space-y-4">
             <div>
                 <label class="text-xs text-gray-500 uppercase font-bold ml-1">Select Trainer</label>
-                <select id="client-book-trainer" onchange="clientTrainerSelected()"
-                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-blue-500 outline-none transition">
-                    <option value="">Choose a trainer...</option>
-                </select>
+
+                <!-- Collapsed Trainer Selector -->
+                <div id="client-trainer-collapsed" onclick="toggleTrainerList()"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:border-blue-500/50 transition">
+                    <div id="client-trainer-avatar" class="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+                        <span class="text-xl">👤</span>
+                    </div>
+                    <div class="flex-1">
+                        <div id="client-trainer-name" class="text-white font-medium">Choose a trainer...</div>
+                        <div id="client-trainer-status" class="text-xs text-gray-400"></div>
+                    </div>
+                    <div id="client-trainer-chevron" class="text-gray-400 transition-transform">▼</div>
+                </div>
+
+                <!-- Expanded Trainer List -->
+                <div id="client-trainer-list" class="hidden space-y-2 max-h-48 overflow-y-auto mt-2">
+                    <!-- Trainers will be injected here -->
+                </div>
+
+                <input type="hidden" id="client-book-trainer">
             </div>
 
             <div>

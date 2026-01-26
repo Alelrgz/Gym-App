@@ -5395,6 +5395,7 @@ async function confirmBookAppointment() {
 // --- CLIENT APPOINTMENT BOOKING ---
 
 let selectedTrainerForBooking = null;
+let availableTrainers = [];
 
 window.openClientBookAppointmentModal = async function() {
     try {
@@ -5413,18 +5414,70 @@ window.openClientBookAppointmentModal = async function() {
             return;
         }
 
-        // Populate trainer dropdown
-        const trainerSelect = document.getElementById('client-book-trainer');
-        trainerSelect.innerHTML = '<option value="">Choose a trainer...</option>';
+        // Store trainers globally for reference
+        availableTrainers = trainers;
+
+        // Populate trainer list with profile pictures
+        const trainerList = document.getElementById('client-trainer-list');
+        trainerList.innerHTML = '';
 
         trainers.forEach(trainer => {
-            const option = document.createElement('option');
-            option.value = trainer.id;
-            option.textContent = trainer.name + (trainer.has_availability ? '' : ' (No availability set)');
-            if (!trainer.has_availability) {
-                option.disabled = true;
+            const trainerCard = document.createElement('div');
+            const isDisabled = !trainer.has_availability;
+
+            trainerCard.className = `flex items-center gap-3 p-3 rounded-xl border transition cursor-pointer ${
+                isDisabled
+                    ? 'bg-white/5 border-white/10 opacity-50 cursor-not-allowed'
+                    : 'bg-white/5 border-white/10 hover:border-blue-500/50 hover:bg-blue-500/10'
+            }`;
+
+            if (!isDisabled) {
+                trainerCard.onclick = () => selectTrainerForBooking(trainer.id, trainer.name);
             }
-            trainerSelect.appendChild(option);
+
+            // Profile picture
+            const profilePic = document.createElement('div');
+            profilePic.className = 'w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center overflow-hidden flex-shrink-0';
+
+            if (trainer.profile_picture) {
+                const img = document.createElement('img');
+                img.src = trainer.profile_picture;
+                img.className = 'w-full h-full object-cover';
+                img.alt = trainer.name;
+                profilePic.appendChild(img);
+            } else {
+                const icon = document.createElement('span');
+                icon.textContent = '👤';
+                icon.className = 'text-2xl';
+                profilePic.appendChild(icon);
+            }
+
+            // Trainer info
+            const trainerInfo = document.createElement('div');
+            trainerInfo.className = 'flex-1';
+
+            const trainerName = document.createElement('div');
+            trainerName.className = 'font-bold text-white';
+            trainerName.textContent = trainer.name;
+
+            const trainerStatus = document.createElement('div');
+            trainerStatus.className = 'text-xs text-gray-400';
+            trainerStatus.textContent = trainer.has_availability ? 'Available for booking' : 'No availability set';
+
+            trainerInfo.appendChild(trainerName);
+            trainerInfo.appendChild(trainerStatus);
+
+            trainerCard.appendChild(profilePic);
+            trainerCard.appendChild(trainerInfo);
+
+            if (!isDisabled) {
+                const arrow = document.createElement('div');
+                arrow.className = 'text-blue-400';
+                arrow.textContent = '→';
+                trainerCard.appendChild(arrow);
+            }
+
+            trainerList.appendChild(trainerCard);
         });
 
         // Reset form
@@ -5446,13 +5499,81 @@ window.openClientBookAppointmentModal = async function() {
     }
 };
 
-function clientTrainerSelected() {
-    const trainerId = document.getElementById('client-book-trainer').value;
+function toggleTrainerList() {
+    const trainerList = document.getElementById('client-trainer-list');
+    const chevron = document.getElementById('client-trainer-chevron');
+
+    if (trainerList.classList.contains('hidden')) {
+        trainerList.classList.remove('hidden');
+        chevron.style.transform = 'rotate(180deg)';
+    } else {
+        trainerList.classList.add('hidden');
+        chevron.style.transform = 'rotate(0deg)';
+    }
+}
+
+function updateCollapsedTrainerView(trainerId, trainerName, trainerPicture) {
+    const nameEl = document.getElementById('client-trainer-name');
+    const statusEl = document.getElementById('client-trainer-status');
+    const avatarEl = document.getElementById('client-trainer-avatar');
+
+    nameEl.textContent = trainerName;
+    statusEl.textContent = 'Selected';
+
+    // Update avatar
+    avatarEl.innerHTML = '';
+    if (trainerPicture) {
+        const img = document.createElement('img');
+        img.src = trainerPicture;
+        img.className = 'w-full h-full object-cover';
+        img.alt = trainerName;
+        avatarEl.appendChild(img);
+    } else {
+        const icon = document.createElement('span');
+        icon.textContent = '👤';
+        icon.className = 'text-xl';
+        avatarEl.appendChild(icon);
+    }
+}
+
+function selectTrainerForBooking(trainerId, trainerName) {
     selectedTrainerForBooking = trainerId;
+    document.getElementById('client-book-trainer').value = trainerId;
+
+    // Find trainer data
+    const trainer = availableTrainers.find(t => t.id === trainerId);
+
+    // Update collapsed view
+    if (trainer) {
+        updateCollapsedTrainerView(trainerId, trainerName, trainer.profile_picture);
+    }
+
+    // Highlight selected trainer
+    const trainerCards = document.querySelectorAll('#client-trainer-list > div');
+    trainerCards.forEach(card => {
+        if (card.onclick && card.onclick.toString().includes(trainerId)) {
+            card.classList.remove('border-white/10', 'bg-white/5');
+            card.classList.add('border-blue-500', 'bg-blue-500/20');
+        } else {
+            card.classList.remove('border-blue-500', 'bg-blue-500/20');
+            card.classList.add('border-white/10', 'bg-white/5');
+        }
+    });
+
+    // Collapse the list
+    toggleTrainerList();
 
     // Reset date and time when trainer changes
     document.getElementById('client-book-date').value = '';
     document.getElementById('client-book-time').innerHTML = '<option value="">Select time...</option>';
+
+    showToast(`Selected ${trainerName}`);
+}
+
+function clientTrainerSelected() {
+    // This function is kept for compatibility but selection is now handled by selectTrainerForBooking
+    const trainerId = document.getElementById('client-book-trainer').value;
+    selectedTrainerForBooking = trainerId;
 }
 
 async function clientDateSelected() {
