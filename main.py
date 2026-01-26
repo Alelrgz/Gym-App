@@ -254,7 +254,12 @@ async def read_trainer_personal(request: Request, gym_id: str = "default"):
     return templates.TemplateResponse("trainer_personal.html", {"request": request, "gym_id": gym_id, "role": "trainer", "mode": "personal", "cache_buster": CACHE_BUSTER})
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 9008))
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--port", type=int, default=int(os.environ.get("PORT", 9008)), help="Port to run the server on")
+    args = parser.parse_args()
+
+    port = args.port
     logger.info(f"Starting server on port {port}...")
     try:
         uvicorn.run("main:app", host="0.0.0.0", port=port, log_level="info", reload=False)

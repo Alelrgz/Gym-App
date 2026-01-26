@@ -96,6 +96,18 @@ async def trainer_book_appointment(
 
 # --- CLIENT ENDPOINTS (Booking Management) ---
 
+@router.get("/api/client/gym-trainers")
+async def get_gym_trainers(
+    user = Depends(get_current_user),
+    service: AppointmentService = Depends(get_appointment_service)
+):
+    """Get all trainers in the client's gym."""
+    if user.role != "client":
+        raise HTTPException(status_code=403, detail="Only clients can view gym trainers")
+
+    return service.get_gym_trainers(user.id)
+
+
 @router.get("/api/client/trainers/{trainer_id}/availability")
 async def get_trainer_availability(
     trainer_id: str,

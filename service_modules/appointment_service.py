@@ -21,6 +21,47 @@ logger = logging.getLogger("gym_app")
 class AppointmentService:
     """Service for managing trainer availability and appointment booking."""
 
+    # --- GYM TRAINERS ---
+
+    def get_gym_trainers(self, client_id: str) -> List[dict]:
+        """Get all trainers in the client's gym."""
+        db = get_db_session()
+        try:
+            # Get client's gym_owner_id
+            client = db.query(UserORM).filter(UserORM.id == client_id).first()
+            if not client or not client.gym_owner_id:
+                return []
+
+            # Get all trainers in the same gym (approved trainers only)
+            trainers = db.query(UserORM).filter(
+                UserORM.role == "trainer",
+                UserORM.gym_owner_id == client.gym_owner_id,
+                UserORM.is_approved == True
+            ).all()
+
+            trainer_list = []
+            for trainer in trainers:
+                # Get trainer's availability count (to show if they have slots set up)
+                availability_count = db.query(TrainerAvailabilityORM).filter(
+                    TrainerAvailabilityORM.trainer_id == trainer.id
+                ).count()
+
+                trainer_list.append({
+                    "id": trainer.id,
+                    "name": trainer.username,
+                    "profile_picture": trainer.profile_picture,
+                    "has_availability": availability_count > 0
+                })
+
+            logger.info(f"Found {len(trainer_list)} trainers for client {client_id} in gym {client.gym_owner_id}")
+            return trainer_list
+
+        except Exception as e:
+            logger.error(f"Error getting gym trainers: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to get gym trainers: {str(e)}")
+        finally:
+            db.close()
+
     # --- TRAINER AVAILABILITY ---
 
     def set_trainer_availability(self, trainer_id: str, availability: List[SetAvailabilityRequest]) -> dict:
@@ -399,6 +440,7 @@ class AppointmentService:
                 completed=False
             )
             db.add(client_calendar_entry)
+            logger.info(f"Added client calendar entry for {client_id} on {request.date}")
 
             # Create notification for CLIENT (not trainer, since trainer is booking)
             notification = NotificationORM(
@@ -421,8 +463,11 @@ class AppointmentService:
 
             db.commit()
             db.refresh(appointment)
+            db.refresh(client_calendar_entry)
+            db.refresh(trainer_calendar_entry)
 
             logger.info(f"Appointment booked by trainer: {appointment_id} - Trainer: {trainer_id}, Client: {client_id}")
+            logger.info(f"Client calendar entry ID: {client_calendar_entry.id}, Trainer calendar entry ID: {trainer_calendar_entry.id}")
             logger.info(f"Added to both calendars and notified client")
 
             return {

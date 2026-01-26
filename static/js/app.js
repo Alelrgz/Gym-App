@@ -5216,10 +5216,14 @@ window.openBookAppointmentModal = function() {
     // Clear fields
     document.getElementById('book-appt-time').innerHTML = '<option value="">Select time...</option>';
     document.getElementById('book-appt-duration').value = '60';
+    document.getElementById('book-appt-workout').innerHTML = '<option value="">None - General session</option>';
     document.getElementById('book-appt-notes').value = '';
 
     // Load available slots for today
     loadAvailableSlots(today);
+
+    // Load workouts for selection
+    loadWorkoutsForAppointment();
 
     // Listen for date changes
     dateInput.onchange = function() {
@@ -5229,6 +5233,31 @@ window.openBookAppointmentModal = function() {
     hideModal('client-modal');
     showModal('book-appointment-modal');
 };
+
+async function loadWorkoutsForAppointment() {
+    const workoutSelect = document.getElementById('book-appt-workout');
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/workouts`);
+
+        if (!res.ok) {
+            throw new Error('Failed to load workouts');
+        }
+
+        const workouts = await res.json();
+
+        workoutSelect.innerHTML = '<option value="">None - General session</option>';
+
+        workouts.forEach(workout => {
+            const option = document.createElement('option');
+            option.value = workout.id;
+            option.textContent = `${workout.title} (${workout.exercises.length} exercises)`;
+            workoutSelect.appendChild(option);
+        });
+    } catch (e) {
+        console.error('Error loading workouts:', e);
+    }
+}
 
 async function loadAvailableSlots(date) {
     const timeSelect = document.getElementById('book-appt-time');
@@ -5275,7 +5304,8 @@ async function confirmBookAppointment() {
     const date = document.getElementById('book-appt-date').value;
     const time = document.getElementById('book-appt-time').value;
     const duration = parseInt(document.getElementById('book-appt-duration').value);
-    const notes = document.getElementById('book-appt-notes').value;
+    const workoutId = document.getElementById('book-appt-workout').value;
+    let notes = document.getElementById('book-appt-notes').value;
 
     if (!date || !time) {
         showToast('Please select date and time');
@@ -5288,6 +5318,19 @@ async function confirmBookAppointment() {
     }
 
     try {
+        // If workout is selected, add it to notes
+        let workoutTitle = '';
+        if (workoutId) {
+            const workoutSelect = document.getElementById('book-appt-workout');
+            workoutTitle = workoutSelect.options[workoutSelect.selectedIndex].text;
+            if (notes) {
+                notes = `Workout: ${workoutTitle}\n${notes}`;
+            } else {
+                notes = `Workout: ${workoutTitle}`;
+            }
+        }
+
+        // Book the appointment
         const res = await fetch(`${apiBase}/api/trainer/book-appointment`, {
             method: 'POST',
             headers: {
@@ -5308,8 +5351,193 @@ async function confirmBookAppointment() {
         }
 
         const result = await res.json();
-        showToast(`Appointment booked with ${currentBookingClientName}! 📅`);
+
+        // If a workout was selected, also assign it to the client
+        if (workoutId) {
+            try {
+                const assignRes = await fetch(`${apiBase}/api/trainer/assign_workout`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        workout_id: workoutId,
+                        client_id: currentBookingClientId,
+                        date: date
+                    })
+                });
+
+                if (assignRes.ok) {
+                    showToast(`Appointment & workout assigned to ${currentBookingClientName}! 💪📅`);
+                } else {
+                    showToast(`Appointment booked! Note: Workout assignment failed.`);
+                }
+            } catch (assignError) {
+                console.error('Error assigning workout:', assignError);
+                showToast(`Appointment booked with ${currentBookingClientName}! 📅`);
+            }
+        } else {
+            showToast(`Appointment booked with ${currentBookingClientName}! 📅`);
+        }
+
         hideModal('book-appointment-modal');
+
+        // Refresh calendar if open
+        if (window.location.href.includes('mode=calendar')) {
+            window.location.reload();
+        }
+    } catch (e) {
+        console.error('Error booking appointment:', e);
+        showToast('Failed to book appointment: ' + e.message);
+    }
+}
+
+// --- CLIENT APPOINTMENT BOOKING ---
+
+let selectedTrainerForBooking = null;
+
+window.openClientBookAppointmentModal = async function() {
+    try {
+        // Load gym trainers
+        const res = await fetch(`${apiBase}/api/client/gym-trainers`, {
+            credentials: 'include'
+        });
+        if (!res.ok) {
+            throw new Error('Failed to load trainers');
+        }
+
+        const trainers = await res.json();
+
+        if (trainers.length === 0) {
+            showToast('No trainers available in your gym');
+            return;
+        }
+
+        // Populate trainer dropdown
+        const trainerSelect = document.getElementById('client-book-trainer');
+        trainerSelect.innerHTML = '<option value="">Choose a trainer...</option>';
+
+        trainers.forEach(trainer => {
+            const option = document.createElement('option');
+            option.value = trainer.id;
+            option.textContent = trainer.name + (trainer.has_availability ? '' : ' (No availability set)');
+            if (!trainer.has_availability) {
+                option.disabled = true;
+            }
+            trainerSelect.appendChild(option);
+        });
+
+        // Reset form
+        document.getElementById('client-book-date').value = '';
+        document.getElementById('client-book-time').innerHTML = '<option value="">Select time...</option>';
+        document.getElementById('client-book-duration').value = '60';
+        document.getElementById('client-book-notes').value = '';
+        selectedTrainerForBooking = null;
+
+        // Set min date to today
+        const dateInput = document.getElementById('client-book-date');
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.min = today;
+
+        showModal('client-book-appointment-modal');
+    } catch (e) {
+        console.error('Error opening booking modal:', e);
+        showToast('Failed to load trainers: ' + e.message);
+    }
+};
+
+function clientTrainerSelected() {
+    const trainerId = document.getElementById('client-book-trainer').value;
+    selectedTrainerForBooking = trainerId;
+
+    // Reset date and time when trainer changes
+    document.getElementById('client-book-date').value = '';
+    document.getElementById('client-book-time').innerHTML = '<option value="">Select time...</option>';
+}
+
+async function clientDateSelected() {
+    const trainerId = selectedTrainerForBooking;
+    const date = document.getElementById('client-book-date').value;
+
+    if (!trainerId || !date) {
+        return;
+    }
+
+    try {
+        // Load available slots for selected trainer and date
+        const res = await fetch(`${apiBase}/api/client/trainers/${trainerId}/available-slots?date=${date}`, {
+            credentials: 'include'
+        });
+        if (!res.ok) {
+            throw new Error('Failed to load available slots');
+        }
+
+        const slots = await res.json();
+        const timeSelect = document.getElementById('client-book-time');
+        timeSelect.innerHTML = '<option value="">Select time...</option>';
+
+        if (slots.length === 0) {
+            timeSelect.innerHTML = '<option value="">No slots available</option>';
+            return;
+        }
+
+        slots.forEach(slot => {
+            const option = document.createElement('option');
+            option.value = slot.start_time;
+            option.textContent = slot.start_time;
+            timeSelect.appendChild(option);
+        });
+    } catch (e) {
+        console.error('Error loading slots:', e);
+        showToast('Failed to load available times: ' + e.message);
+    }
+}
+
+async function confirmClientBookAppointment() {
+    const trainerId = selectedTrainerForBooking;
+    const date = document.getElementById('client-book-date').value;
+    const time = document.getElementById('client-book-time').value;
+    const duration = parseInt(document.getElementById('client-book-duration').value);
+    const notes = document.getElementById('client-book-notes').value;
+
+    if (!trainerId) {
+        showToast('Please select a trainer');
+        return;
+    }
+
+    if (!date || !time) {
+        showToast('Please select date and time');
+        return;
+    }
+
+    try {
+        const res = await fetch(`${apiBase}/api/client/appointments`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                trainer_id: trainerId,
+                date: date,
+                start_time: time,
+                duration: duration,
+                notes: notes
+            })
+        });
+
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.detail || 'Failed to book appointment');
+        }
+
+        const result = await res.json();
+
+        // Get trainer name for toast
+        const trainerSelect = document.getElementById('client-book-trainer');
+        const trainerName = trainerSelect.options[trainerSelect.selectedIndex].text.split(' (')[0];
+
+        showToast(`Appointment booked with ${trainerName}! 📅`);
+        hideModal('client-book-appointment-modal');
 
         // Refresh calendar if open
         if (window.location.href.includes('mode=calendar')) {

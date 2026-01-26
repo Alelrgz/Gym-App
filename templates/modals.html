@@ -815,6 +815,15 @@
             </div>
 
             <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Workout (Optional)</label>
+                <select id="book-appt-workout"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-blue-500 outline-none transition">
+                    <option value="">None - General session</option>
+                </select>
+                <p class="text-xs text-gray-400 mt-1 ml-1">Assign a workout for this session</p>
+            </div>
+
+            <div>
                 <label class="text-xs text-gray-500 uppercase font-bold ml-1">Notes (Optional)</label>
                 <textarea id="book-appt-notes" rows="3"
                     class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-blue-500 outline-none transition resize-none"
@@ -822,6 +831,65 @@
             </div>
 
             <button onclick="confirmBookAppointment()"
+                class="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl transition">
+                Book Appointment
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Client Book Appointment Modal -->
+<div id="client-book-appointment-modal"
+    class="fixed inset-0 bg-black/90 z-[70] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-[#1a1a1a] w-full max-w-md rounded-3xl p-6 border border-white/10 relative slide-up max-h-[90vh] overflow-y-auto"
+        onclick="event.stopPropagation()">
+        <button onclick="hideModal('client-book-appointment-modal')"
+            class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
+
+        <h2 class="text-2xl font-bold mb-1 text-blue-400">📅 Book Appointment</h2>
+        <p class="text-sm text-gray-400 mb-6">Schedule a 1-on-1 session with a trainer</p>
+
+        <div class="space-y-4">
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Select Trainer</label>
+                <select id="client-book-trainer" onchange="clientTrainerSelected()"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-blue-500 outline-none transition">
+                    <option value="">Choose a trainer...</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Date</label>
+                <input type="date" id="client-book-date" onchange="clientDateSelected()"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-blue-500 outline-none transition">
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Time</label>
+                <select id="client-book-time"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-blue-500 outline-none transition">
+                    <option value="">Select time...</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Duration</label>
+                <select id="client-book-duration"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-blue-500 outline-none transition">
+                    <option value="60">1 hour</option>
+                    <option value="90">1.5 hours</option>
+                    <option value="120">2 hours</option>
+                </select>
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Notes (Optional)</label>
+                <textarea id="client-book-notes" rows="3"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-blue-500 outline-none transition resize-none"
+                    placeholder="What would you like to focus on in this session?"></textarea>
+            </div>
+
+            <button onclick="confirmClientBookAppointment()"
                 class="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl transition">
                 Book Appointment
             </button>
