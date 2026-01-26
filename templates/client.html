@@ -1160,8 +1160,13 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
 
         <!-- Bio Section -->
-        <div id="profile-trainer-bio-section" class="mb-6 hidden">
+        <div id="profile-trainer-bio-section" class="mb-4 hidden">
             <p id="profile-trainer-bio" class="text-sm text-gray-300 text-center italic"></p>
+        </div>
+
+        <!-- Specialties Section -->
+        <div id="profile-trainer-specialties" class="flex flex-wrap justify-center gap-2 mb-6 hidden">
+            <!-- Specialty tags will be populated by JS -->
         </div>
 
         <!-- Trainer Stats -->
@@ -1244,7 +1249,8 @@ async function loadTrainerAndAppointments() {
                 name: trainerName,
                 profile_picture: info.trainer_profile_picture,
                 has_availability: true,
-                bio: info.trainer_bio
+                bio: info.trainer_bio,
+                specialties: info.trainer_specialties || []
             };
 
             // Load upcoming appointments
@@ -1917,17 +1923,29 @@ let currentTrainerData = {
     name: null,
     profile_picture: null,
     has_availability: false,
-    bio: null
+    bio: null,
+    specialties: []
 };
 
-async function openTrainerProfileModal(trainerId = null, trainerName = null, trainerPicture = null, trainerBio = null) {
+async function openTrainerProfileModal(trainerId = null, trainerName = null, trainerPicture = null, trainerBio = null, trainerSpecialties = null) {
     // If no trainerId passed, use the selected trainer (my trainer) and stored data
     if (!trainerId) {
         trainerId = selectedTrainerId;
         trainerName = currentTrainerData.name || document.getElementById('trainer-name')?.textContent || 'Your Trainer';
         trainerPicture = currentTrainerData.profile_picture;
         trainerBio = currentTrainerData.bio;
+        trainerSpecialties = currentTrainerData.specialties || [];
     }
+
+    // Parse specialties if it's a JSON string
+    if (typeof trainerSpecialties === 'string') {
+        try {
+            trainerSpecialties = JSON.parse(trainerSpecialties);
+        } catch (e) {
+            trainerSpecialties = [];
+        }
+    }
+    trainerSpecialties = trainerSpecialties || [];
 
     if (!trainerId) {
         showToast('No trainer to show', 'error');
@@ -1959,6 +1977,19 @@ async function openTrainerProfileModal(trainerId = null, trainerName = null, tra
         bioSection.classList.remove('hidden');
     } else {
         bioSection.classList.add('hidden');
+    }
+
+    // Update specialties
+    const specialtiesContainer = document.getElementById('profile-trainer-specialties');
+    if (specialtiesContainer) {
+        if (trainerSpecialties.length > 0) {
+            specialtiesContainer.innerHTML = trainerSpecialties.map(s =>
+                `<span class="bg-white/10 text-white/80 px-3 py-1 rounded-full text-xs border border-white/10">${s}</span>`
+            ).join('');
+            specialtiesContainer.classList.remove('hidden');
+        } else {
+            specialtiesContainer.classList.add('hidden');
+        }
     }
 
     // Show "Your Trainer" badge if this is the user's trainer
@@ -2126,25 +2157,36 @@ async function loadAllGymTrainers() {
             const isMyTrainer = trainer.id === selectedTrainerId;
             const avatarHtml = trainer.profile_picture
                 ? `<img src="${trainer.profile_picture}" alt="${trainer.name}" class="w-full h-full object-cover">`
-                : `<span class="text-xl">👤</span>`;
+                : `<span class="text-2xl">👤</span>`;
             const bioEscaped = trainer.bio ? trainer.bio.replace(/'/g, "\\'").replace(/"/g, "&quot;") : '';
+            const specialtiesJson = trainer.specialties ? JSON.stringify(trainer.specialties).replace(/'/g, "\\'") : '[]';
+
+            // Render specialty tags
+            const specialtyTags = (trainer.specialties || []).map(s =>
+                `<span class="bg-white/10 text-white/70 px-2.5 py-1 rounded-full text-[10px] border border-white/10">${s}</span>`
+            ).join('');
 
             return `
-                <div onclick="openTrainerProfileModal('${trainer.id}', '${trainer.name}', ${trainer.profile_picture ? `'${trainer.profile_picture}'` : 'null'}, ${trainer.bio ? `'${bioEscaped}'` : 'null'})"
-                    class="glass-card p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition tap-effect ${isMyTrainer ? 'border border-orange-500/30' : ''}">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center overflow-hidden">
-                            ${avatarHtml}
+                <div onclick="openTrainerProfileModal('${trainer.id}', '${trainer.name}', ${trainer.profile_picture ? `'${trainer.profile_picture}'` : 'null'}, ${trainer.bio ? `'${bioEscaped}'` : 'null'}, '${specialtiesJson}')"
+                    class="glass-card p-4 cursor-pointer hover:bg-white/5 transition tap-effect ${isMyTrainer ? 'border border-orange-500/30' : ''}">
+                    <div class="flex space-x-4">
+                        <!-- Left column: Avatar + Available -->
+                        <div class="flex flex-col items-center flex-shrink-0">
+                            <div class="w-16 h-16 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center overflow-hidden">
+                                ${avatarHtml}
+                            </div>
+                            ${trainer.has_availability ? `<span class="text-[10px] text-blue-400 font-medium mt-2">Available</span>` : `<span class="text-[10px] text-red-400 font-medium mt-2">Unavailable</span>`}
                         </div>
-                        <div>
-                            <div class="flex items-center gap-2">
-                                <p class="font-bold text-white">${trainer.name}</p>
+                        <!-- Right column: Name + Bio + Tags -->
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <p class="font-bold text-white text-lg">${trainer.name}</p>
                                 ${isMyTrainer ? '<span class="text-[10px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full">Your Trainer</span>' : ''}
                             </div>
-                            <p class="text-xs text-gray-400">${trainer.has_availability ? 'Available for booking' : 'No availability set'}</p>
+                            ${trainer.bio ? `<p class="text-sm text-gray-400 mt-1 line-clamp-2">${trainer.bio}</p>` : '<p class="text-sm text-gray-500 italic mt-1">No bio</p>'}
+                            ${specialtyTags ? `<div class="flex flex-wrap gap-1.5 mt-2">${specialtyTags}</div>` : ''}
                         </div>
                     </div>
-                    <span class="text-white/40 text-lg">→</span>
                 </div>
             `;
         }).join('');

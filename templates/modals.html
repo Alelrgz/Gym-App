@@ -427,6 +427,30 @@
             </div>
         </div>
 
+        <!-- Specialties Section -->
+        <div onclick="event.stopPropagation()">
+            <h4 class="text-xs font-bold text-gray-500 uppercase mb-2 ml-1">Your Specialties</h4>
+            <div class="bg-white/5 p-3 rounded-xl border border-white/5">
+                <!-- Tags Display -->
+                <div id="specialties-tags" class="flex flex-wrap gap-2 mb-3 min-h-[32px]">
+                    <!-- Tags will be populated by JS -->
+                </div>
+                <!-- Add New Specialty -->
+                <div class="flex gap-2">
+                    <input type="text" id="new-specialty-input"
+                        class="flex-1 bg-black/20 text-sm text-white placeholder-gray-500 px-3 py-2 rounded-lg outline-none border border-white/10 focus:border-white/20"
+                        placeholder="Add specialty (e.g., Yoga, HIIT...)"
+                        maxlength="30"
+                        onclick="event.stopPropagation()"
+                        onkeypress="if(event.key==='Enter'){addSpecialty(); event.preventDefault();}">
+                    <button onclick="addSpecialty()" class="text-xs bg-orange-500 hover:bg-orange-400 px-3 py-2 rounded-lg font-medium transition tap-effect">
+                        Add
+                    </button>
+                </div>
+                <p class="text-[10px] text-gray-500 mt-2">Click a tag to remove it</p>
+            </div>
+        </div>
+
         <!-- Personal Workout -->
         <div>
             <h4 class="text-xs font-bold text-gray-500 uppercase mb-2 ml-1">My Training</h4>

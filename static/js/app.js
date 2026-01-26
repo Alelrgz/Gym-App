@@ -110,15 +110,113 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+// --- TRAINER SPECIALTIES ---
+let currentSpecialties = [];
+
+async function loadTrainerSpecialties() {
+    try {
+        const response = await fetch('/api/profile/specialties', {
+            credentials: 'include'
+        });
+        if (response.ok) {
+            const data = await response.json();
+            currentSpecialties = data.specialties || [];
+            renderSpecialtiesTags();
+        }
+    } catch (error) {
+        console.error('Error loading specialties:', error);
+    }
+}
+window.loadTrainerSpecialties = loadTrainerSpecialties;
+
+function renderSpecialtiesTags() {
+    const container = document.getElementById('specialties-tags');
+    if (!container) return;
+
+    if (currentSpecialties.length === 0) {
+        container.innerHTML = '<span class="text-xs text-gray-500 italic">No specialties added yet</span>';
+        return;
+    }
+
+    container.innerHTML = currentSpecialties.map(specialty =>
+        `<span onclick="removeSpecialty('${specialty.replace(/'/g, "\\'")}')"
+               class="inline-flex items-center gap-1 bg-orange-500/20 text-orange-400 px-3 py-1 rounded-full text-xs cursor-pointer hover:bg-red-500/20 hover:text-red-400 transition">
+            ${specialty}
+            <span class="text-[10px]">×</span>
+        </span>`
+    ).join('');
+}
+
+async function addSpecialty() {
+    const input = document.getElementById('new-specialty-input');
+    if (!input) return;
+
+    const specialty = input.value.trim();
+    if (!specialty) return;
+
+    // Check if already exists (case-insensitive)
+    if (currentSpecialties.some(s => s.toLowerCase() === specialty.toLowerCase())) {
+        showToast('Specialty already added', 'error');
+        return;
+    }
+
+    // Max 5 specialties
+    if (currentSpecialties.length >= 5) {
+        showToast('Maximum 5 specialties allowed', 'error');
+        return;
+    }
+
+    currentSpecialties.push(specialty);
+    input.value = '';
+    renderSpecialtiesTags();
+    await saveSpecialties();
+}
+window.addSpecialty = addSpecialty;
+
+async function removeSpecialty(specialty) {
+    currentSpecialties = currentSpecialties.filter(s => s !== specialty);
+    renderSpecialtiesTags();
+    await saveSpecialties();
+}
+window.removeSpecialty = removeSpecialty;
+
+async function saveSpecialties() {
+    try {
+        const formData = new FormData();
+        formData.append('specialties', currentSpecialties.join(','));
+
+        const response = await fetch('/api/profile/specialties', {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+
+        if (response.ok) {
+            showToast('Specialties updated!', 'success');
+        } else {
+            const error = await response.json();
+            showToast(error.detail || 'Failed to save specialties', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving specialties:', error);
+        showToast('Failed to save specialties', 'error');
+    }
+}
+
 // --- MODAL UTILS ---
 window.showModal = function (id) {
     const el = document.getElementById(id);
     if (el) {
         el.classList.remove('hidden');
 
-        // Load bio when profile-modal opens (for trainers)
-        if (id === 'profile-modal' && typeof loadTrainerBio === 'function') {
-            loadTrainerBio();
+        // Load bio and specialties when profile-modal opens (for trainers)
+        if (id === 'profile-modal') {
+            if (typeof loadTrainerBio === 'function') {
+                loadTrainerBio();
+            }
+            if (typeof loadTrainerSpecialties === 'function') {
+                loadTrainerSpecialties();
+            }
         }
     } else {
         console.error("Modal not found:", id);

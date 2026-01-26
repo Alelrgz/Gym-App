@@ -180,12 +180,15 @@ class GymAssignmentService:
             trainer_name = None
             trainer_profile_picture = None
             trainer_bio = None
+            trainer_specialties = []
             if profile.trainer_id:
                 trainer = db.query(UserORM).filter(UserORM.id == profile.trainer_id).first()
                 if trainer:
                     trainer_name = trainer.username
                     trainer_profile_picture = trainer.profile_picture
                     trainer_bio = trainer.bio
+                    if trainer.specialties:
+                        trainer_specialties = [s.strip() for s in trainer.specialties.split(",") if s.strip()]
 
             return {
                 "has_gym": profile.gym_id is not None,
@@ -195,7 +198,8 @@ class GymAssignmentService:
                 "trainer_id": profile.trainer_id,
                 "trainer_name": trainer_name,
                 "trainer_profile_picture": trainer_profile_picture,
-                "trainer_bio": trainer_bio
+                "trainer_bio": trainer_bio,
+                "trainer_specialties": trainer_specialties
             }
 
         finally:

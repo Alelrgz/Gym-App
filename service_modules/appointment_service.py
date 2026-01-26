@@ -46,11 +46,17 @@ class AppointmentService:
                     TrainerAvailabilityORM.trainer_id == trainer.id
                 ).count()
 
+                # Parse specialties from comma-separated string to list
+                specialties_list = []
+                if trainer.specialties:
+                    specialties_list = [s.strip() for s in trainer.specialties.split(",") if s.strip()]
+
                 trainer_list.append({
                     "id": trainer.id,
                     "name": trainer.username,
                     "profile_picture": trainer.profile_picture,
                     "bio": trainer.bio,
+                    "specialties": specialties_list,
                     "has_availability": availability_count > 0
                 })
 

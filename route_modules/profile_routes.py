@@ -195,6 +195,47 @@ async def update_bio(
         db.close()
 
 
+# ============ SPECIALTIES ============
+
+@router.get("/api/profile/specialties")
+async def get_specialties(user: UserORM = Depends(get_current_user)):
+    """Get current user's specialties."""
+    specialties_list = []
+    if user.specialties:
+        specialties_list = [s.strip() for s in user.specialties.split(",") if s.strip()]
+    return {
+        "specialties": specialties_list,
+        "username": user.username
+    }
+
+
+@router.post("/api/profile/specialties")
+async def update_specialties(
+    user: UserORM = Depends(get_current_user),
+    specialties: str = Form(...)
+):
+    """Update user's specialties (comma-separated list)."""
+    db = get_db_session()
+    try:
+        db_user = db.query(UserORM).filter(UserORM.id == user.id).first()
+        if db_user:
+            # Clean and validate specialties
+            specialties_cleaned = specialties.strip() if specialties.strip() else None
+            db_user.specialties = specialties_cleaned
+            db.commit()
+
+            # Return as list for frontend
+            specialties_list = []
+            if specialties_cleaned:
+                specialties_list = [s.strip() for s in specialties_cleaned.split(",") if s.strip()]
+
+            return {"success": True, "specialties": specialties_list, "message": "Specialties updated successfully"}
+        else:
+            raise HTTPException(status_code=404, detail="User not found")
+    finally:
+        db.close()
+
+
 # ============ PHYSIQUE PHOTOS ============
 # Visible only to the client and their assigned trainer/nutritionist
 

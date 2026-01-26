@@ -17,6 +17,7 @@ class UserORM(Base):
     settings = Column(String, nullable=True) # JSON string
     profile_picture = Column(String, nullable=True)  # Path to profile image
     bio = Column(String, nullable=True)  # User bio/description (mainly for trainers)
+    specialties = Column(String, nullable=True)  # Comma-separated trainer specialties (e.g., "Yoga,Calisthenics,Bodybuilding")
 
     # Gym code system
     gym_code = Column(String(6), unique=True, nullable=True, index=True)  # 6-char code for owners
