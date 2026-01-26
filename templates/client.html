@@ -64,6 +64,9 @@
         <h2 class="font-bold text-xl">My Nutrition</h2>
     </div>
     <div class="flex space-x-2">
+        <div onclick="openBookingModal()" class="relative w-10 h-10 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center tap-effect cursor-pointer" title="Book 1-on-1 Session">
+            📅
+        </div>
         <div onclick="openClientChatModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer">
             💬
         </div>
@@ -804,10 +807,24 @@ setTimeout(() => loadGymAndTrainerInfo(), 100);
 </script>
 
 {% elif mode == "client_dashboard" %}
-<div class="p-6 pt-10 flex items-center space-x-4 bg-black/50 z-10">
-    <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
-        class="text-2xl tap-effect">←</a>
-    <h2 class="font-bold text-xl">Client Dashboard</h2>
+<div class="p-6 pt-10 flex justify-between items-center bg-black/50 z-10">
+    <div class="flex items-center space-x-3">
+        <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
+            class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect">←</a>
+        <h2 class="font-bold text-xl">Client Dashboard</h2>
+    </div>
+    <div class="flex space-x-2">
+        <div onclick="openBookingModal()" class="relative w-10 h-10 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center tap-effect cursor-pointer" title="Book 1-on-1 Session">
+            📅
+        </div>
+        <div onclick="openClientChatModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer">
+            💬
+        </div>
+        <div data-action="showModal" data-target="notification-modal"
+            class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect">
+            🔔
+        </div>
+    </div>
 </div>
 <div class="flex-1 p-4 space-y-6">
     <!-- User Profile Card -->
@@ -985,6 +1002,10 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
     </div>
     <div class="flex space-x-2">
+        <!-- Booking Icon -->
+        <div onclick="openBookingModal()" class="relative w-10 h-10 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center tap-effect cursor-pointer" title="Book 1-on-1 Session">
+            📅
+        </div>
         <!-- Messages Icon with Badge -->
         <div onclick="openClientChatModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer">
             💬
@@ -1059,13 +1080,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     <!-- Trainer & Appointments Section -->
     <div class="slide-up" style="animation-delay: 0.15s;">
-        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">My Trainer</h3>
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1">My Trainer</h3>
+            <button onclick="openAllTrainersModal()" class="text-xs text-orange-400 hover:text-orange-300 transition tap-effect">
+                See others →
+            </button>
+        </div>
 
         <div id="trainer-section" class="space-y-3">
             <!-- Trainer Card -->
-            <div class="glass-card p-4 flex items-center justify-between">
+            <div onclick="openTrainerProfileModal()" class="glass-card p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition tap-effect">
                 <div class="flex items-center space-x-3">
-                    <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center">
+                    <div id="trainer-avatar" class="w-12 h-12 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center overflow-hidden">
                         <span class="text-xl">👤</span>
                     </div>
                     <div>
@@ -1073,7 +1099,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <p class="text-xs text-gray-400">Personal Trainer</p>
                     </div>
                 </div>
-                <div class="flex gap-2">
+                <div class="flex gap-2" onclick="event.stopPropagation()">
                     <button onclick="openClientChatModal()" class="bg-white/10 px-3 py-2 rounded-lg text-sm font-bold hover:bg-white/20 transition tap-effect" title="Message Trainer">
                         💬
                     </button>
@@ -1096,51 +1122,6 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
 </div>
 
-<!-- Book Appointment Modal -->
-<div id="booking-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold">Book 1-on-1 Session</h3>
-            <button onclick="closeBookingModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
-        </div>
-
-        <!-- Step 1: Select Date -->
-        <div id="booking-step-1">
-            <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Select Date</label>
-            <input type="date" id="appointment-date"
-                class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition mb-4"
-                min="">
-
-            <div id="no-slots-message" class="hidden text-center text-red-400 text-sm mb-3 p-2 bg-red-500/10 rounded-lg">
-                No available slots for this date. Try another day!
-            </div>
-
-            <button id="check-availability-btn" onclick="loadAvailableSlots()" class="w-full bg-orange-500 px-4 py-3 rounded-lg font-bold hover:bg-orange-600 transition">
-                Check Availability
-            </button>
-        </div>
-
-        <!-- Step 2: Select Time Slot -->
-        <div id="booking-step-2" class="hidden">
-            <button onclick="backToDateSelection()" class="text-sm text-gray-400 hover:text-white mb-3">&larr; Back</button>
-
-            <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Available Time Slots</label>
-            <div id="time-slots-list" class="space-y-2 mb-4 max-h-60 overflow-y-auto">
-                <!-- Time slots will be loaded here -->
-            </div>
-
-            <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Notes (Optional)</label>
-            <textarea id="appointment-notes" rows="3"
-                class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition mb-4"
-                placeholder="What would you like to work on?"></textarea>
-
-            <button onclick="confirmBooking()" class="w-full bg-orange-500 px-4 py-3 rounded-lg font-bold hover:bg-orange-600 transition">
-                Confirm Booking
-            </button>
-        </div>
-    </div>
-</div>
-
 <!-- Trainer Selection Modal -->
 <div id="trainer-selection-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
@@ -1151,6 +1132,80 @@ document.addEventListener('DOMContentLoaded', () => {
         <p class="text-gray-400 text-sm mb-4">Choose a trainer from your gym to guide your fitness journey</p>
         <div id="home-trainer-list" class="space-y-3">
             <!-- Trainers will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<!-- Trainer Profile Modal -->
+<div id="trainer-profile-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+    onclick="if(event.target === this) closeTrainerProfileModal()">
+    <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Trainer Profile</h3>
+            <button onclick="closeTrainerProfileModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+
+        <!-- Profile Header -->
+        <div class="text-center mb-6">
+            <div id="profile-trainer-avatar" class="w-24 h-24 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center mx-auto mb-4 overflow-hidden">
+                <span class="text-4xl">👤</span>
+            </div>
+            <h2 id="profile-trainer-name" class="text-2xl font-bold text-white">Trainer Name</h2>
+            <p class="text-orange-400 text-sm font-medium">Personal Trainer</p>
+            <div id="profile-trainer-badge" class="mt-2 hidden">
+                <span class="bg-green-500/20 text-green-400 text-xs px-3 py-1 rounded-full border border-green-500/30">
+                    ✓ Your Trainer
+                </span>
+            </div>
+        </div>
+
+        <!-- Bio Section -->
+        <div id="profile-trainer-bio-section" class="mb-6 hidden">
+            <p id="profile-trainer-bio" class="text-sm text-gray-300 text-center italic"></p>
+        </div>
+
+        <!-- Trainer Stats -->
+        <div class="grid grid-cols-2 gap-3 mb-6">
+            <div class="glass-card p-3 rounded-xl text-center">
+                <p id="profile-trainer-clients" class="text-2xl font-bold text-white">-</p>
+                <p class="text-xs text-gray-400">Active Clients</p>
+            </div>
+            <div class="glass-card p-3 rounded-xl text-center">
+                <p id="profile-trainer-availability" class="text-lg font-bold text-white">-</p>
+                <p class="text-xs text-gray-400">Availability</p>
+            </div>
+        </div>
+
+        <!-- Action Buttons -->
+        <div class="space-y-3">
+            <button id="profile-message-btn" onclick="messageTrainerFromProfile()" class="w-full bg-white/10 py-3 rounded-xl text-sm font-bold hover:bg-white/20 transition tap-effect flex items-center justify-center gap-2">
+                💬 Send Message
+            </button>
+            <button id="profile-book-btn" onclick="bookWithTrainerFromProfile()" class="w-full bg-orange-500 py-3 rounded-xl text-sm font-bold hover:bg-orange-400 transition tap-effect flex items-center justify-center gap-2">
+                📅 Book Session
+            </button>
+            <button id="profile-select-btn" onclick="selectTrainerFromProfile()" class="w-full bg-white/5 border border-white/20 py-3 rounded-xl text-sm font-bold hover:bg-white/10 transition tap-effect hidden">
+                ✓ Select as My Trainer
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- All Trainers Modal -->
+<div id="all-trainers-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+    onclick="if(event.target === this) closeAllTrainersModal()">
+    <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Gym Trainers</h3>
+            <button onclick="closeAllTrainersModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+        <p class="text-gray-400 text-sm mb-4">Browse all trainers available at your gym</p>
+
+        <div id="all-trainers-list" class="space-y-3">
+            <!-- Loading state -->
+            <div class="text-center py-8 text-gray-400">
+                <div class="animate-pulse">Loading trainers...</div>
+            </div>
         </div>
     </div>
 </div>
@@ -1177,7 +1232,21 @@ async function loadTrainerAndAppointments() {
 
         if (info.has_trainer && info.trainer_id) {
             selectedTrainerId = info.trainer_id;
-            document.getElementById('trainer-name').textContent = info.trainer_name || 'Your Trainer';
+            const trainerName = info.trainer_name || 'Your Trainer';
+            document.getElementById('trainer-name').textContent = trainerName;
+
+            // Update trainer avatar with profile picture
+            updateTrainerAvatar(info.trainer_profile_picture, trainerName);
+
+            // Store trainer data for profile modal
+            currentTrainerData = {
+                id: info.trainer_id,
+                name: trainerName,
+                profile_picture: info.trainer_profile_picture,
+                has_availability: true,
+                bio: info.trainer_bio
+            };
+
             // Load upcoming appointments
             loadAppointments();
         } else {
@@ -1836,6 +1905,275 @@ async function uploadProfilePicture(input) {
 document.addEventListener('DOMContentLoaded', () => {
     loadProfilePicture();
 });
+
+// --- TRAINER PROFILE & BROWSE FUNCTIONS ---
+let currentViewingTrainerId = null;
+let currentViewingTrainerName = null;
+let allGymTrainers = [];
+
+// Store trainer data for profile modal
+let currentTrainerData = {
+    id: null,
+    name: null,
+    profile_picture: null,
+    has_availability: false,
+    bio: null
+};
+
+async function openTrainerProfileModal(trainerId = null, trainerName = null, trainerPicture = null, trainerBio = null) {
+    // If no trainerId passed, use the selected trainer (my trainer) and stored data
+    if (!trainerId) {
+        trainerId = selectedTrainerId;
+        trainerName = currentTrainerData.name || document.getElementById('trainer-name')?.textContent || 'Your Trainer';
+        trainerPicture = currentTrainerData.profile_picture;
+        trainerBio = currentTrainerData.bio;
+    }
+
+    if (!trainerId) {
+        showToast('No trainer to show', 'error');
+        return;
+    }
+
+    // Close the all trainers modal if it's open
+    document.getElementById('all-trainers-modal').classList.add('hidden');
+
+    currentViewingTrainerId = trainerId;
+    currentViewingTrainerName = trainerName;
+
+    // Update modal content
+    document.getElementById('profile-trainer-name').textContent = trainerName;
+
+    // Update avatar
+    const avatarContainer = document.getElementById('profile-trainer-avatar');
+    if (trainerPicture) {
+        avatarContainer.innerHTML = `<img src="${trainerPicture}" alt="${trainerName}" class="w-full h-full object-cover">`;
+    } else {
+        avatarContainer.innerHTML = `<span class="text-4xl">👤</span>`;
+    }
+
+    // Update bio
+    const bioSection = document.getElementById('profile-trainer-bio-section');
+    const bioText = document.getElementById('profile-trainer-bio');
+    if (trainerBio && trainerBio.trim()) {
+        bioText.textContent = `"${trainerBio}"`;
+        bioSection.classList.remove('hidden');
+    } else {
+        bioSection.classList.add('hidden');
+    }
+
+    // Show "Your Trainer" badge if this is the user's trainer
+    const badge = document.getElementById('profile-trainer-badge');
+    const selectBtn = document.getElementById('profile-select-btn');
+
+    if (trainerId === selectedTrainerId) {
+        badge.classList.remove('hidden');
+        selectBtn.classList.add('hidden');
+    } else {
+        badge.classList.add('hidden');
+        selectBtn.classList.remove('hidden');
+    }
+
+    // Load trainer stats
+    await loadTrainerStats(trainerId);
+
+    // Show modal
+    document.getElementById('trainer-profile-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+}
+
+function closeTrainerProfileModal() {
+    document.getElementById('trainer-profile-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+    currentViewingTrainerId = null;
+    currentViewingTrainerName = null;
+}
+
+async function loadTrainerStats(trainerId) {
+    try {
+        // Check availability
+        const availResponse = await fetch(`/api/client/trainers/${trainerId}/availability`, {
+            credentials: 'include'
+        });
+
+        let availabilityText = 'Not set';
+        if (availResponse.ok) {
+            const availability = await availResponse.json();
+            if (availability && availability.length > 0) {
+                const daysWithAvailability = [...new Set(availability.map(a => a.day_of_week))];
+                availabilityText = `${daysWithAvailability.length} days/week`;
+            }
+        }
+
+        document.getElementById('profile-trainer-availability').textContent = availabilityText;
+        document.getElementById('profile-trainer-clients').textContent = '-'; // We don't have this info from client side
+
+    } catch (error) {
+        console.error('Error loading trainer stats:', error);
+        document.getElementById('profile-trainer-availability').textContent = '-';
+        document.getElementById('profile-trainer-clients').textContent = '-';
+    }
+}
+
+function messageTrainerFromProfile() {
+    if (!currentViewingTrainerId) return;
+
+    closeTrainerProfileModal();
+
+    // Open chat with the trainer
+    if (typeof openChatModalWith === 'function') {
+        openChatModalWith(currentViewingTrainerId, currentViewingTrainerName);
+    } else if (typeof openConversationsModal === 'function') {
+        openConversationsModal();
+    } else {
+        showToast('Messaging not available', 'error');
+    }
+}
+
+function bookWithTrainerFromProfile() {
+    if (!currentViewingTrainerId) return;
+
+    // Temporarily set the trainer for booking
+    const originalTrainerId = selectedTrainerId;
+    selectedTrainerId = currentViewingTrainerId;
+
+    closeTrainerProfileModal();
+
+    // Open booking modal
+    if (typeof openBookingModal === 'function') {
+        openBookingModal();
+    }
+
+    // Restore original trainer ID if different (after booking closes)
+    if (originalTrainerId !== currentViewingTrainerId) {
+        // The selectedTrainerId will be used for the booking
+    }
+}
+
+async function selectTrainerFromProfile() {
+    if (!currentViewingTrainerId) return;
+
+    try {
+        const response = await fetch('/api/client/select-trainer', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ trainer_id: currentViewingTrainerId })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to select trainer');
+        }
+
+        showToast(`${currentViewingTrainerName} is now your trainer!`, 'success');
+        closeTrainerProfileModal();
+        closeAllTrainersModal();
+
+        // Reload the page to update trainer info
+        setTimeout(() => window.location.reload(), 500);
+    } catch (error) {
+        console.error('Error selecting trainer:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+// --- ALL TRAINERS MODAL ---
+async function openAllTrainersModal() {
+    document.getElementById('all-trainers-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    // Load trainers
+    await loadAllGymTrainers();
+}
+
+function closeAllTrainersModal() {
+    document.getElementById('all-trainers-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+async function loadAllGymTrainers() {
+    const list = document.getElementById('all-trainers-list');
+    list.innerHTML = `
+        <div class="text-center py-8 text-gray-400">
+            <div class="animate-pulse">Loading trainers...</div>
+        </div>
+    `;
+
+    try {
+        const response = await fetch('/api/client/gym-trainers', {
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to load trainers');
+        }
+
+        allGymTrainers = await response.json();
+
+        if (allGymTrainers.length === 0) {
+            list.innerHTML = `
+                <div class="text-center py-8 text-gray-400">
+                    <p class="text-4xl mb-2">👤</p>
+                    <p>No trainers available in your gym yet</p>
+                </div>
+            `;
+            return;
+        }
+
+        list.innerHTML = allGymTrainers.map(trainer => {
+            const isMyTrainer = trainer.id === selectedTrainerId;
+            const avatarHtml = trainer.profile_picture
+                ? `<img src="${trainer.profile_picture}" alt="${trainer.name}" class="w-full h-full object-cover">`
+                : `<span class="text-xl">👤</span>`;
+            const bioEscaped = trainer.bio ? trainer.bio.replace(/'/g, "\\'").replace(/"/g, "&quot;") : '';
+
+            return `
+                <div onclick="openTrainerProfileModal('${trainer.id}', '${trainer.name}', ${trainer.profile_picture ? `'${trainer.profile_picture}'` : 'null'}, ${trainer.bio ? `'${bioEscaped}'` : 'null'})"
+                    class="glass-card p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition tap-effect ${isMyTrainer ? 'border border-orange-500/30' : ''}">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center overflow-hidden">
+                            ${avatarHtml}
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <p class="font-bold text-white">${trainer.name}</p>
+                                ${isMyTrainer ? '<span class="text-[10px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full">Your Trainer</span>' : ''}
+                            </div>
+                            <p class="text-xs text-gray-400">${trainer.has_availability ? 'Available for booking' : 'No availability set'}</p>
+                        </div>
+                    </div>
+                    <span class="text-white/40 text-lg">→</span>
+                </div>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error('Error loading gym trainers:', error);
+        list.innerHTML = `
+            <div class="text-center py-8 text-red-400">
+                <p>Failed to load trainers</p>
+                <button onclick="loadAllGymTrainers()" class="mt-2 text-sm text-orange-400 hover:text-orange-300">Try again</button>
+            </div>
+        `;
+    }
+}
+
+// Update trainer avatar when loading trainer info
+function updateTrainerAvatar(profilePicture, trainerName) {
+    const avatarContainer = document.getElementById('trainer-avatar');
+    if (avatarContainer) {
+        if (profilePicture) {
+            avatarContainer.innerHTML = `<img src="${profilePicture}" alt="${trainerName}" class="w-full h-full object-cover">`;
+        } else {
+            avatarContainer.innerHTML = `<span class="text-xl">👤</span>`;
+        }
+    }
+
+    // Store for profile modal
+    currentTrainerData.profile_picture = profilePicture;
+}
 </script>
 
 {% endif %}

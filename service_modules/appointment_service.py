@@ -5,7 +5,7 @@ from .base import (
     HTTPException, json, logging, date, datetime,
     get_db_session
 )
-from models_orm import TrainerAvailabilityORM, AppointmentORM, UserORM, TrainerScheduleORM, NotificationORM
+from models_orm import TrainerAvailabilityORM, AppointmentORM, UserORM, TrainerScheduleORM, NotificationORM, ClientProfileORM
 from models import (
     TrainerAvailability, Appointment, BookAppointmentRequest,
     SetAvailabilityRequest, UpdateAvailabilityRequest,
@@ -27,15 +27,15 @@ class AppointmentService:
         """Get all trainers in the client's gym."""
         db = get_db_session()
         try:
-            # Get client's gym_owner_id
-            client = db.query(UserORM).filter(UserORM.id == client_id).first()
-            if not client or not client.gym_owner_id:
+            # Get client's gym from their profile (not UserORM.gym_owner_id)
+            profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
+            if not profile or not profile.gym_id:
                 return []
 
             # Get all trainers in the same gym (approved trainers only)
             trainers = db.query(UserORM).filter(
                 UserORM.role == "trainer",
-                UserORM.gym_owner_id == client.gym_owner_id,
+                UserORM.gym_owner_id == profile.gym_id,
                 UserORM.is_approved == True
             ).all()
 
@@ -50,10 +50,11 @@ class AppointmentService:
                     "id": trainer.id,
                     "name": trainer.username,
                     "profile_picture": trainer.profile_picture,
+                    "bio": trainer.bio,
                     "has_availability": availability_count > 0
                 })
 
-            logger.info(f"Found {len(trainer_list)} trainers for client {client_id} in gym {client.gym_owner_id}")
+            logger.info(f"Found {len(trainer_list)} trainers for client {client_id} in gym {profile.gym_id}")
             return trainer_list
 
         except Exception as e:

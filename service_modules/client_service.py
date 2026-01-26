@@ -92,7 +92,8 @@ class ClientService:
                         protein_current=macros.get("protein", {}).get("current", 0),
                         carbs_current=macros.get("carbs", {}).get("current", 0),
                         fat_current=macros.get("fat", {}).get("current", 0),
-                        hydration_current=hydration.get("current", 0)
+                        hydration_current=hydration.get("current", 0),
+                        last_reset_date=date.today().isoformat()
                     )
                     db.add(diet)
 
@@ -118,11 +119,27 @@ class ClientService:
                     protein_current=0,
                     carbs_current=0,
                     fat_current=0,
-                    hydration_current=0
+                    hydration_current=0,
+                    last_reset_date=date.today().isoformat()
                 )
                 db.add(diet_settings)
                 db.commit()
                 db.refresh(diet_settings)
+
+            # --- DAILY RESET CHECK ---
+            # Reset current values if it's a new day
+            today_str = date.today().isoformat()
+            if diet_settings and hasattr(diet_settings, 'last_reset_date'):
+                if diet_settings.last_reset_date != today_str:
+                    logger.info(f"New day detected for {client_id}. Resetting daily macros. Last reset: {diet_settings.last_reset_date}, Today: {today_str}")
+                    diet_settings.calories_current = 0
+                    diet_settings.protein_current = 0
+                    diet_settings.carbs_current = 0
+                    diet_settings.fat_current = 0
+                    diet_settings.hydration_current = 0
+                    diet_settings.last_reset_date = today_str
+                    db.commit()
+                    db.refresh(diet_settings)
 
             # --- DYNAMIC HEALTH SCORE CALCULATION ---
             if diet_settings:

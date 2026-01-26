@@ -46,11 +46,80 @@ function logout() {
 }
 window.logout = logout;
 
+// --- BIO FUNCTIONS ---
+async function loadTrainerBio() {
+    try {
+        const response = await fetch('/api/profile/bio', {
+            credentials: 'include'
+        });
+        if (response.ok) {
+            const data = await response.json();
+            const bioInput = document.getElementById('trainer-bio-input');
+            const charCount = document.getElementById('bio-char-count');
+            if (bioInput && data.bio) {
+                bioInput.value = data.bio;
+                if (charCount) {
+                    charCount.textContent = `${data.bio.length}/300`;
+                }
+            }
+        }
+    } catch (error) {
+        console.error('Error loading bio:', error);
+    }
+}
+window.loadTrainerBio = loadTrainerBio;
+
+async function saveTrainerBio() {
+    const bioInput = document.getElementById('trainer-bio-input');
+    if (!bioInput) return;
+
+    const bio = bioInput.value.trim();
+
+    try {
+        const formData = new FormData();
+        formData.append('bio', bio);
+
+        const response = await fetch('/api/profile/bio', {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+
+        if (response.ok) {
+            showToast('Bio saved successfully!', 'success');
+        } else {
+            const error = await response.json();
+            showToast(error.detail || 'Failed to save bio', 'error');
+        }
+    } catch (error) {
+        console.error('Error saving bio:', error);
+        showToast('Failed to save bio', 'error');
+    }
+}
+window.saveTrainerBio = saveTrainerBio;
+
+// Bio character counter
+document.addEventListener('DOMContentLoaded', function() {
+    const bioInput = document.getElementById('trainer-bio-input');
+    const charCount = document.getElementById('bio-char-count');
+
+    if (bioInput && charCount) {
+        bioInput.addEventListener('input', function() {
+            charCount.textContent = `${this.value.length}/300`;
+        });
+    }
+});
+
 // --- MODAL UTILS ---
 window.showModal = function (id) {
     const el = document.getElementById(id);
     if (el) {
         el.classList.remove('hidden');
+
+        // Load bio when profile-modal opens (for trainers)
+        if (id === 'profile-modal' && typeof loadTrainerBio === 'function') {
+            loadTrainerBio();
+        }
     } else {
         console.error("Modal not found:", id);
     }

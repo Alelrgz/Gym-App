@@ -178,9 +178,14 @@ class GymAssignmentService:
                 gym_name = gym_owner.username if gym_owner else None
 
             trainer_name = None
+            trainer_profile_picture = None
+            trainer_bio = None
             if profile.trainer_id:
                 trainer = db.query(UserORM).filter(UserORM.id == profile.trainer_id).first()
-                trainer_name = trainer.username if trainer else None
+                if trainer:
+                    trainer_name = trainer.username
+                    trainer_profile_picture = trainer.profile_picture
+                    trainer_bio = trainer.bio
 
             return {
                 "has_gym": profile.gym_id is not None,
@@ -188,7 +193,9 @@ class GymAssignmentService:
                 "gym_id": profile.gym_id,
                 "gym_name": gym_name,
                 "trainer_id": profile.trainer_id,
-                "trainer_name": trainer_name
+                "trainer_name": trainer_name,
+                "trainer_profile_picture": trainer_profile_picture,
+                "trainer_bio": trainer_bio
             }
 
         finally:

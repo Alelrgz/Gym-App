@@ -161,6 +161,40 @@ async def get_profile_picture(user: UserORM = Depends(get_current_user)):
     }
 
 
+# ============ BIO ============
+
+@router.get("/api/profile/bio")
+async def get_bio(user: UserORM = Depends(get_current_user)):
+    """Get current user's bio."""
+    return {
+        "bio": user.bio,
+        "username": user.username
+    }
+
+
+@router.post("/api/profile/bio")
+async def update_bio(
+    user: UserORM = Depends(get_current_user),
+    bio: str = Form(...)
+):
+    """Update user's bio (max 300 characters)."""
+    # Validate bio length
+    if len(bio) > 300:
+        raise HTTPException(status_code=400, detail="Bio must be 300 characters or less")
+
+    db = get_db_session()
+    try:
+        db_user = db.query(UserORM).filter(UserORM.id == user.id).first()
+        if db_user:
+            db_user.bio = bio.strip() if bio.strip() else None
+            db.commit()
+            return {"success": True, "bio": db_user.bio, "message": "Bio updated successfully"}
+        else:
+            raise HTTPException(status_code=404, detail="User not found")
+    finally:
+        db.close()
+
+
 # ============ PHYSIQUE PHOTOS ============
 # Visible only to the client and their assigned trainer/nutritionist
 

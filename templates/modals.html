@@ -305,6 +305,52 @@
     {% endcall %}
 </div>
 
+<!-- Book Appointment Modal (Global) -->
+<div id="booking-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+    onclick="if(event.target === this) closeBookingModal()">
+    <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Book 1-on-1 Session</h3>
+            <button onclick="closeBookingModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+
+        <!-- Step 1: Select Date -->
+        <div id="booking-step-1">
+            <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Select Date</label>
+            <input type="date" id="appointment-date"
+                class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition mb-4"
+                min="">
+
+            <div id="no-slots-message" class="hidden text-center text-red-400 text-sm mb-3 p-2 bg-red-500/10 rounded-lg">
+                No available slots for this date. Try another day!
+            </div>
+
+            <button id="check-availability-btn" onclick="loadAvailableSlots()" class="w-full bg-orange-500 px-4 py-3 rounded-lg font-bold hover:bg-orange-600 transition">
+                Check Availability
+            </button>
+        </div>
+
+        <!-- Step 2: Select Time Slot -->
+        <div id="booking-step-2" class="hidden">
+            <button onclick="backToDateSelection()" class="text-sm text-gray-400 hover:text-white mb-3">&larr; Back</button>
+
+            <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Available Time Slots</label>
+            <div id="time-slots-list" class="space-y-2 mb-4 max-h-60 overflow-y-auto">
+                <!-- Time slots will be loaded here -->
+            </div>
+
+            <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Notes (Optional)</label>
+            <textarea id="appointment-notes" rows="3"
+                class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition mb-4"
+                placeholder="What would you like to work on?"></textarea>
+
+            <button onclick="confirmBooking()" class="w-full bg-orange-500 px-4 py-3 rounded-lg font-bold hover:bg-orange-600 transition">
+                Confirm Booking
+            </button>
+        </div>
+    </div>
+</div>
+
 <div id="shop-modal" class="fixed inset-0 bg-black/80 z-50 hidden flex items-center justify-center p-4"
     data-action="hideModal" data-target="shop-modal">
     {% call card(classes="w-full max-w-sm p-6 slide-up") %}
@@ -358,6 +404,25 @@
                 <div class="bg-black/20 p-2 rounded-lg text-center">
                     <p class="text-[10px] text-gray-500 uppercase">Role</p>
                     <p class="text-primary font-bold">Trainer</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Bio Section -->
+        <div onclick="event.stopPropagation()">
+            <h4 class="text-xs font-bold text-gray-500 uppercase mb-2 ml-1">Your Bio</h4>
+            <div class="bg-white/5 p-3 rounded-xl border border-white/5">
+                <textarea id="trainer-bio-input"
+                    class="w-full bg-transparent text-sm text-white placeholder-gray-500 resize-none outline-none"
+                    rows="3"
+                    placeholder="Tell clients about yourself, your specializations, certifications..."
+                    maxlength="300"
+                    onclick="event.stopPropagation()"></textarea>
+                <div class="flex justify-between items-center mt-2">
+                    <span id="bio-char-count" class="text-[10px] text-gray-500">0/300</span>
+                    <button onclick="saveTrainerBio()" class="text-xs bg-orange-500 hover:bg-orange-400 px-3 py-1 rounded-lg font-medium transition tap-effect">
+                        Save
+                    </button>
                 </div>
             </div>
         </div>

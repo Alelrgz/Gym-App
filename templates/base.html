@@ -233,6 +233,167 @@
                 observer.observe(notificationModal, { attributes: true });
             }
         });
+
+        // --- BOOKING MODAL FUNCTIONS (Global) ---
+        let globalSelectedTrainerId = null;
+        let globalSelectedDate = null;
+        let globalSelectedTime = null;
+
+        async function initBookingTrainerId() {
+            // Try to get trainer ID from client data
+            try {
+                const response = await fetch('/api/client/gym-info', { credentials: 'include' });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.trainer_id) {
+                        globalSelectedTrainerId = data.trainer_id;
+                    }
+                }
+            } catch (e) {
+                console.log('Could not load trainer ID for booking');
+            }
+        }
+
+        function openBookingModal() {
+            // Use global or page-specific trainer ID
+            const trainerId = globalSelectedTrainerId || (typeof selectedTrainerId !== 'undefined' ? selectedTrainerId : null);
+
+            if (!trainerId) {
+                showToast('No trainer assigned', 'error');
+                return;
+            }
+
+            globalSelectedTrainerId = trainerId;
+
+            // Set min date to today
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('appointment-date').min = today;
+            document.getElementById('appointment-date').value = '';
+
+            document.getElementById('booking-modal').classList.remove('hidden');
+            document.getElementById('booking-step-1').classList.remove('hidden');
+            document.getElementById('booking-step-2').classList.add('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeBookingModal() {
+            document.getElementById('booking-modal').classList.add('hidden');
+            document.body.style.overflow = '';
+            globalSelectedDate = null;
+            globalSelectedTime = null;
+        }
+
+        function backToDateSelection() {
+            document.getElementById('booking-step-1').classList.remove('hidden');
+            document.getElementById('booking-step-2').classList.add('hidden');
+        }
+
+        async function loadAvailableSlots() {
+            const dateInput = document.getElementById('appointment-date');
+            globalSelectedDate = dateInput.value;
+            const checkBtn = document.getElementById('check-availability-btn');
+            const noSlotsMsg = document.getElementById('no-slots-message');
+
+            if (!globalSelectedDate) {
+                showToast('Please select a date', 'error');
+                return;
+            }
+
+            noSlotsMsg.classList.add('hidden');
+
+            try {
+                const response = await fetch(`/api/client/trainers/${globalSelectedTrainerId}/available-slots?date=${globalSelectedDate}`, {
+                    credentials: 'include'
+                });
+
+                if (!response.ok) {
+                    throw new Error('Failed to load available slots');
+                }
+
+                const slots = await response.json();
+
+                if (slots.length === 0) {
+                    noSlotsMsg.classList.remove('hidden');
+                    checkBtn.style.animation = 'wiggle 0.5s ease-in-out';
+                    setTimeout(() => { checkBtn.style.animation = ''; }, 500);
+                    return;
+                }
+
+                const slotsList = document.getElementById('time-slots-list');
+                slotsList.innerHTML = slots.map(slot => `
+                    <button onclick="selectTimeSlot('${slot.start_time}', this)"
+                        class="time-slot-btn w-full bg-white/10 hover:bg-orange-500/30 border border-white/10 hover:border-orange-500 px-4 py-3 rounded-lg text-sm font-bold transition tap-effect"
+                        data-time="${slot.start_time}">
+                        ${slot.start_time} - ${slot.end_time}
+                    </button>
+                `).join('');
+
+                document.getElementById('booking-step-1').classList.add('hidden');
+                document.getElementById('booking-step-2').classList.remove('hidden');
+            } catch (error) {
+                console.error('Error loading slots:', error);
+                showToast(error.message, 'error');
+            }
+        }
+
+        function selectTimeSlot(time, clickedBtn) {
+            globalSelectedTime = time;
+            document.querySelectorAll('.time-slot-btn').forEach(btn => {
+                btn.classList.remove('bg-orange-500', 'border-orange-500', 'text-white');
+                btn.classList.add('bg-white/10', 'border-white/10');
+            });
+            if (clickedBtn) {
+                clickedBtn.classList.remove('bg-white/10', 'border-white/10');
+                clickedBtn.classList.add('bg-orange-500', 'border-orange-500', 'text-white');
+            }
+        }
+
+        async function confirmBooking() {
+            if (!globalSelectedTime) {
+                showToast('Please select a time slot', 'error');
+                return;
+            }
+
+            const notes = document.getElementById('appointment-notes').value;
+
+            try {
+                const response = await fetch('/api/client/appointments', {
+                    method: 'POST',
+                    credentials: 'include',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        trainer_id: globalSelectedTrainerId,
+                        date: globalSelectedDate,
+                        start_time: globalSelectedTime,
+                        duration: 60,
+                        notes: notes
+                    })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Failed to book appointment');
+                }
+
+                showToast('Appointment booked successfully! 🎉', 'success');
+                closeBookingModal();
+
+                // Reload appointments if the function exists
+                if (typeof loadAppointments === 'function') {
+                    loadAppointments();
+                }
+            } catch (error) {
+                console.error('Error booking appointment:', error);
+                showToast(error.message, 'error');
+            }
+        }
+
+        // Initialize trainer ID for booking on page load
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.APP_CONFIG && window.APP_CONFIG.role === 'client') {
+                initBookingTrainerId();
+            }
+        });
     </script>
     <script src="/static/js/app.js?v=COLLAPSIBLE_TRAINER_2026_01_27"></script>
     {% block scripts %}{% endblock %}

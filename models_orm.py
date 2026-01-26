@@ -16,6 +16,7 @@ class UserORM(Base):
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
     settings = Column(String, nullable=True) # JSON string
     profile_picture = Column(String, nullable=True)  # Path to profile image
+    bio = Column(String, nullable=True)  # User bio/description (mainly for trainers)
 
     # Gym code system
     gym_code = Column(String(6), unique=True, nullable=True, index=True)  # 6-char code for owners
