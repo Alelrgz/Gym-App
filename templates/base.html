@@ -86,7 +86,7 @@
                     class="fab-item" style="transition-delay: 0.15s">
                     🏆<span class="fab-label">Ranks</span>
                 </a>
-                <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=account_settings' }}"
+                <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=client_dashboard' }}"
                     class="fab-item" style="transition-delay: 0.2s">
                     ⚙️<span class="fab-label">Settings</span>
                 </a>
@@ -234,7 +234,7 @@
             }
         });
     </script>
-    <script src="/static/js/app.js?v=CAROUSEL_HANDLE_2026_01_24"></script>
+    <script src="/static/js/app.js?v=TRAINER_SLOTS_FIX_2026_01_27"></script>
     {% block scripts %}{% endblock %}
 </body>
 

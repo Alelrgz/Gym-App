@@ -196,8 +196,10 @@ window.showDayDetails = (dateStr, dayEvents, titleId, listId, isTrainer) => {
     dayEvents.forEach(e => {
         const div = document.createElement('div');
         div.className = "glass-card p-3 flex justify-between items-center slide-up";
-        const icon = e.type === 'workout' ? '💪' : '🧘';
-        const statusColor = e.completed ? 'text-green-400' : 'text-orange-400';
+        const icon = e.type === 'workout' ? '💪' : (e.type === 'appointment' ? '📅' : '🧘');
+        const statusColor = e.type === 'appointment'
+            ? (e.completed ? 'text-green-400' : 'text-blue-400')
+            : (e.completed ? 'text-green-400' : 'text-orange-400');
 
         div.innerHTML = `
             <div class="flex items-center">
@@ -276,7 +278,10 @@ window.renderCalendar = (month, year, events, gridId, titleId, detailTitleId, de
             dots.className = "flex space-x-1 mt-1";
             dayEvents.forEach(e => {
                 const dot = document.createElement('div');
-                dot.className = `w-1 h-1 rounded-full ${e.completed ? 'bg-green-400' : 'bg-orange-400'}`;
+                const dotColor = e.type === 'appointment'
+                    ? (e.completed ? 'bg-green-400' : 'bg-blue-400')
+                    : (e.completed ? 'bg-green-400' : 'bg-orange-400');
+                dot.className = `w-1 h-1 rounded-full ${dotColor}`;
                 dots.appendChild(dot);
             });
             div.appendChild(dots);
@@ -5180,3 +5185,138 @@ window.closeConversationsModal = function() {
         }, 250);
     }
 };
+
+// --- TRAINER BOOK APPOINTMENT FUNCTIONS ---
+
+let currentBookingClientId = null;
+let currentBookingClientName = null;
+
+window.openBookAppointmentModal = function() {
+    const clientModal = document.getElementById('client-modal');
+    const clientId = clientModal?.dataset?.clientId;
+    const clientName = document.getElementById('modal-client-name')?.innerText;
+
+    if (!clientId) {
+        showToast('No client selected');
+        return;
+    }
+
+    currentBookingClientId = clientId;
+    currentBookingClientName = clientName;
+
+    // Set client name in modal
+    document.getElementById('book-appt-client-name').innerText = clientName;
+
+    // Set min date to today
+    const dateInput = document.getElementById('book-appt-date');
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.min = today;
+    dateInput.value = today;
+
+    // Clear fields
+    document.getElementById('book-appt-time').innerHTML = '<option value="">Select time...</option>';
+    document.getElementById('book-appt-duration').value = '60';
+    document.getElementById('book-appt-notes').value = '';
+
+    // Load available slots for today
+    loadAvailableSlots(today);
+
+    // Listen for date changes
+    dateInput.onchange = function() {
+        loadAvailableSlots(this.value);
+    };
+
+    hideModal('client-modal');
+    showModal('book-appointment-modal');
+};
+
+async function loadAvailableSlots(date) {
+    const timeSelect = document.getElementById('book-appt-time');
+    timeSelect.innerHTML = '<option value="">Loading...</option>';
+
+    try {
+        // Use trainer's own endpoint to get their available slots
+        const res = await fetch(`${apiBase}/api/trainer/available-slots?date=${date}`);
+
+        if (!res.ok) {
+            throw new Error('Failed to load slots');
+        }
+
+        const slots = await res.json();
+
+        timeSelect.innerHTML = '<option value="">Select time...</option>';
+
+        if (slots.length === 0) {
+            timeSelect.innerHTML = '<option value="">No available slots</option>';
+            return;
+        }
+
+        slots.forEach(slot => {
+            const option = document.createElement('option');
+            option.value = slot.start_time;
+
+            // Convert 24h to 12h format for display
+            const [hour, min] = slot.start_time.split(':');
+            const hour12 = hour % 12 || 12;
+            const ampm = hour >= 12 ? 'PM' : 'AM';
+            const displayTime = `${hour12}:${min} ${ampm}`;
+
+            option.textContent = displayTime;
+            timeSelect.appendChild(option);
+        });
+    } catch (e) {
+        console.error('Error loading slots:', e);
+        timeSelect.innerHTML = '<option value="">Error loading slots</option>';
+        showToast('Failed to load available time slots');
+    }
+}
+
+async function confirmBookAppointment() {
+    const date = document.getElementById('book-appt-date').value;
+    const time = document.getElementById('book-appt-time').value;
+    const duration = parseInt(document.getElementById('book-appt-duration').value);
+    const notes = document.getElementById('book-appt-notes').value;
+
+    if (!date || !time) {
+        showToast('Please select date and time');
+        return;
+    }
+
+    if (!currentBookingClientId) {
+        showToast('No client selected');
+        return;
+    }
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/book-appointment`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                trainer_id: currentBookingClientId,
+                date: date,
+                start_time: time,
+                duration: duration,
+                notes: notes
+            })
+        });
+
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.detail || 'Failed to book appointment');
+        }
+
+        const result = await res.json();
+        showToast(`Appointment booked with ${currentBookingClientName}! 📅`);
+        hideModal('book-appointment-modal');
+
+        // Refresh calendar if open
+        if (window.location.href.includes('mode=calendar')) {
+            window.location.reload();
+        }
+    } catch (e) {
+        console.error('Error booking appointment:', e);
+        showToast('Failed to book appointment: ' + e.message);
+    }
+}

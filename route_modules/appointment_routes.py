@@ -39,6 +39,19 @@ async def get_my_availability(
     return service.get_trainer_availability(user.id)
 
 
+@router.get("/api/trainer/available-slots")
+async def get_my_available_slots(
+    date: str,
+    user = Depends(get_current_user),
+    service: AppointmentService = Depends(get_appointment_service)
+):
+    """Get trainer's own available slots for a specific date."""
+    if user.role != "trainer":
+        raise HTTPException(status_code=403, detail="Only trainers can view their slots")
+
+    return service.get_available_slots(user.id, date)
+
+
 @router.get("/api/trainer/appointments")
 async def get_trainer_appointments(
     include_past: bool = False,
@@ -64,6 +77,21 @@ async def complete_appointment(
         raise HTTPException(status_code=403, detail="Only trainers can complete appointments")
 
     return service.complete_appointment(appointment_id, user.id, trainer_notes)
+
+
+@router.post("/api/trainer/book-appointment")
+async def trainer_book_appointment(
+    request: BookAppointmentRequest,
+    user = Depends(get_current_user),
+    service: AppointmentService = Depends(get_appointment_service)
+):
+    """Allow trainer to book an appointment with a client."""
+    if user.role != "trainer":
+        raise HTTPException(status_code=403, detail="Only trainers can book appointments for clients")
+
+    # Use trainer's ID instead of client_id for the trainer_id field
+    # The request.trainer_id field will actually contain the client_id when called by trainer
+    return service.book_appointment_as_trainer(user.id, request)
 
 
 # --- CLIENT ENDPOINTS (Booking Management) ---

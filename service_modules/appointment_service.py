@@ -107,10 +107,12 @@ class AppointmentService:
             ).all()
 
             # Also get all trainer calendar events for this date (to avoid conflicts)
+            # NOTE: Exclude personal workouts (workout_id is not null) - they are flexible notes
             trainer_events = db.query(TrainerScheduleORM).filter(
                 TrainerScheduleORM.trainer_id == trainer_id,
                 TrainerScheduleORM.date == date_str,
-                TrainerScheduleORM.completed == False
+                TrainerScheduleORM.completed == False,
+                TrainerScheduleORM.workout_id == None  # Only block for non-workout events
             ).all()
 
             # Build list of available slots
@@ -256,6 +258,18 @@ class AppointmentService:
 
             db.add(trainer_calendar_entry)
 
+            # Also create an entry in the CLIENT's calendar so they can see it
+            from models_orm import ClientScheduleORM
+            trainer_name = trainer.username if trainer else "Trainer"
+            client_calendar_entry = ClientScheduleORM(
+                client_id=client_id,
+                date=request.date,
+                title=f"1-on-1 Session with {trainer_name}",
+                type="appointment",
+                completed=False
+            )
+            db.add(client_calendar_entry)
+
             # Create notification for trainer
             notification = NotificationORM(
                 user_id=request.trainer_id,
@@ -286,6 +300,135 @@ class AppointmentService:
                 "status": "success",
                 "appointment_id": appointment_id,
                 "message": "Appointment booked successfully"
+            }
+
+        except HTTPException:
+            db.rollback()
+            raise
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error booking appointment: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to book appointment: {str(e)}")
+        finally:
+            db.close()
+
+    def book_appointment_as_trainer(self, trainer_id: str, request: BookAppointmentRequest) -> dict:
+        """Book a 1-on-1 appointment for a client (trainer-initiated)."""
+        db = get_db_session()
+        try:
+            # In this case, request.trainer_id actually contains the client_id
+            client_id = request.trainer_id
+
+            # Verify client exists
+            client = db.query(UserORM).filter(
+                UserORM.id == client_id,
+                UserORM.role == "client"
+            ).first()
+
+            if not client:
+                raise HTTPException(status_code=404, detail="Client not found")
+
+            # Get trainer info
+            trainer = db.query(UserORM).filter(UserORM.id == trainer_id).first()
+            trainer_name = trainer.username if trainer else "Trainer"
+            client_name = client.username if client else "Client"
+
+            # Check if the slot is available for the trainer
+            available_slots = self.get_available_slots(trainer_id, request.date)
+
+            slot_available = False
+            for slot in available_slots:
+                if slot["start_time"] == request.start_time:
+                    slot_available = True
+                    break
+
+            if not slot_available:
+                raise HTTPException(status_code=400, detail="This time slot is not available")
+
+            # Calculate end time
+            start_time_parts = request.start_time.split(":")
+            start_datetime = datetime.combine(
+                datetime.fromisoformat(request.date).date(),
+                datetime.min.time().replace(hour=int(start_time_parts[0]), minute=int(start_time_parts[1]))
+            )
+            end_datetime = start_datetime + timedelta(minutes=request.duration)
+            end_time = end_datetime.strftime("%H:%M")
+
+            # Convert to 12-hour format for trainer calendar
+            time_12hr = start_datetime.strftime("%I:%M %p")
+
+            # Create appointment record
+            appointment_id = str(uuid.uuid4())
+            appointment = AppointmentORM(
+                id=appointment_id,
+                client_id=client_id,
+                trainer_id=trainer_id,
+                date=request.date,
+                start_time=request.start_time,
+                end_time=end_time,
+                duration=request.duration,
+                notes=request.notes,
+                status="scheduled"
+            )
+
+            db.add(appointment)
+
+            # Create entry in trainer's calendar
+            trainer_calendar_entry = TrainerScheduleORM(
+                trainer_id=trainer_id,
+                client_id=client_id,
+                appointment_id=appointment_id,
+                date=request.date,
+                time=time_12hr,
+                title=f"1-on-1 Session with {client_name}",
+                subtitle=request.notes if request.notes else "Personal training session",
+                type="1on1_appointment",
+                duration=request.duration,
+                completed=False
+            )
+
+            db.add(trainer_calendar_entry)
+
+            # Create entry in client's calendar
+            from models_orm import ClientScheduleORM
+            client_calendar_entry = ClientScheduleORM(
+                client_id=client_id,
+                date=request.date,
+                title=f"1-on-1 Session with {trainer_name}",
+                type="appointment",
+                completed=False
+            )
+            db.add(client_calendar_entry)
+
+            # Create notification for CLIENT (not trainer, since trainer is booking)
+            notification = NotificationORM(
+                user_id=client_id,
+                type="appointment_scheduled",
+                title="Appointment Scheduled",
+                message=f"{trainer_name} scheduled a session with you on {request.date} at {time_12hr}",
+                data=json.dumps({
+                    "appointment_id": appointment_id,
+                    "trainer_id": trainer_id,
+                    "trainer_name": trainer_name,
+                    "date": request.date,
+                    "time": time_12hr,
+                    "duration": request.duration
+                }),
+                read=False,
+                created_at=datetime.utcnow().isoformat()
+            )
+            db.add(notification)
+
+            db.commit()
+            db.refresh(appointment)
+
+            logger.info(f"Appointment booked by trainer: {appointment_id} - Trainer: {trainer_id}, Client: {client_id}")
+            logger.info(f"Added to both calendars and notified client")
+
+            return {
+                "status": "success",
+                "appointment_id": appointment_id,
+                "message": f"Appointment scheduled with {client_name}"
             }
 
         except HTTPException:
@@ -400,7 +543,22 @@ class AppointmentService:
 
             if calendar_entry:
                 db.delete(calendar_entry)
-                logger.info(f"Removed calendar entry for canceled appointment: {appointment_id}")
+                logger.info(f"Removed trainer calendar entry for canceled appointment: {appointment_id}")
+
+            # Also remove from client calendar
+            from models_orm import ClientScheduleORM
+            client_calendar_entries = db.query(ClientScheduleORM).filter(
+                ClientScheduleORM.client_id == appointment.client_id,
+                ClientScheduleORM.date == appointment.date,
+                ClientScheduleORM.type == "appointment"
+            ).all()
+
+            for entry in client_calendar_entries:
+                # Check if this is the appointment entry by matching the title
+                if "1-on-1 Session" in entry.title:
+                    db.delete(entry)
+                    logger.info(f"Removed client calendar entry for canceled appointment: {appointment_id}")
+                    break
 
             db.commit()
 
