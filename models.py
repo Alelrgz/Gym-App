@@ -54,8 +54,8 @@ class DailyQuest(BaseModel):
     completed: bool
 
 class Macro(BaseModel):
-    current: int
-    target: int
+    current: float
+    target: float
 
 class Macros(BaseModel):
     calories: Macro

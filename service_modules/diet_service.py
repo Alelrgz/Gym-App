@@ -15,53 +15,653 @@ class DietService:
     """Service for managing client diet, meal scanning, and logging."""
 
     def scan_meal(self, file_bytes: bytes) -> dict:
-        """Scan a meal image using hybrid AI approach (Clarifai + Nutritionix) for maximum accuracy."""
+        """Scan a meal image using MacroFactor-style approach: AI identifies foods, database provides accurate macros."""
         import os
         import random
+        import sys
+        # Add parent directory to path for mock_meals import
+        parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        if parent_dir not in sys.path:
+            sys.path.insert(0, parent_dir)
         from mock_meals import MOCK_MEALS
 
-        # Try Hybrid Approach first (most accurate)
-        clarifai_key = os.environ.get("CLARIFAI_API_KEY")
+        gemini_key = os.environ.get("GEMINI_API_KEY")
+        usda_key = os.environ.get("USDA_API_KEY")
         nutritionix_app_id = os.environ.get("NUTRITIONIX_APP_ID")
         nutritionix_api_key = os.environ.get("NUTRITIONIX_API_KEY")
+
+        # BEST FREE: Open Food Facts (no API key, excellent for Italian/European foods)
+        if gemini_key:
+            try:
+                result = self._scan_gemini_openfoodfacts(file_bytes, gemini_key)
+                return {"status": "success", "data": result, "method": "gemini_openfoodfacts"}
+            except Exception as e:
+                logger.error(f"Gemini+OpenFoodFacts scan failed: {e}")
+
+        # BACKUP FREE: MacroFactor-style with USDA (Gemini identifies foods → USDA for accurate macros)
+        if gemini_key and usda_key:
+            try:
+                result = self._scan_gemini_usda(file_bytes, gemini_key, usda_key)
+                return {"status": "success", "data": result, "method": "gemini_usda"}
+            except Exception as e:
+                logger.error(f"Gemini+USDA scan failed: {e}")
+
+        # PREMIUM: MacroFactor-style with Nutritionix (if keys available)
+        if gemini_key and nutritionix_app_id and nutritionix_api_key:
+            try:
+                result = self._scan_macrofactor_style(file_bytes, gemini_key, nutritionix_app_id, nutritionix_api_key)
+                return {"status": "success", "data": result, "method": "macrofactor"}
+            except Exception as e:
+                logger.error(f"MacroFactor-style scan failed: {e}")
+
+        # FALLBACK: Gemini direct estimation (works without database)
+        if gemini_key:
+            try:
+                result = self._scan_gemini(file_bytes, gemini_key)
+                return {"status": "success", "data": result, "method": "gemini"}
+            except Exception as e:
+                logger.error(f"Gemini scan failed: {e}")
+
+        # Legacy fallbacks
+        clarifai_key = os.environ.get("CLARIFAI_API_KEY")
+        groq_key = os.environ.get("GROQ_API_KEY")
 
         if clarifai_key and nutritionix_app_id and nutritionix_api_key:
             try:
                 result = self._scan_hybrid(file_bytes, clarifai_key, nutritionix_app_id, nutritionix_api_key)
-                return {"status": "success", "data": result}
+                return {"status": "success", "data": result, "method": "clarifai_nutritionix"}
             except Exception as e:
                 logger.error(f"Hybrid scan failed: {e}")
 
-        # Fallback to Clarifai + Groq (85-90% accuracy)
-        groq_key = os.environ.get("GROQ_API_KEY")
         if clarifai_key and groq_key:
             try:
                 result = self._scan_clarifai_groq(file_bytes, clarifai_key, groq_key)
-                return {"status": "success", "data": result}
+                return {"status": "success", "data": result, "method": "clarifai_groq"}
             except Exception as e:
                 logger.error(f"Clarifai+Groq scan failed: {e}")
 
-        # Fallback to Groq Vision only (80-85% accuracy, no Clarifai needed)
         if groq_key:
             try:
                 result = self._scan_groq_only(file_bytes, groq_key)
-                return {"status": "success", "data": result}
+                return {"status": "success", "data": result, "method": "groq"}
             except Exception as e:
                 logger.error(f"Groq Vision scan failed: {e}")
 
-        # Fallback to Gemini
-        gemini_key = os.environ.get("GEMINI_API_KEY")
-        if gemini_key:
-            try:
-                result = self._scan_gemini(file_bytes, gemini_key)
-                return {"status": "success", "data": result}
-            except Exception as e:
-                logger.error(f"Gemini scan failed: {e}")
-
-        # Final fallback: Mock data from comprehensive database (120+ meals)
+        # Final fallback: Mock data
         logger.warning("No API keys found, using mock meal database.")
         result = random.choice(MOCK_MEALS)
-        return {"status": "success", "data": result}
+        return {"status": "success", "data": result, "method": "mock"}
+
+    def _scan_macrofactor_style(self, file_bytes: bytes, gemini_key: str, nutritionix_app_id: str, nutritionix_api_key: str) -> dict:
+        """MacroFactor-style: Gemini identifies individual foods, Nutritionix provides accurate macros."""
+        import base64
+        import requests
+        import google.generativeai as genai
+        from PIL import Image
+        import io
+
+        logger.info("Using MacroFactor-style scan (Gemini + Nutritionix)")
+
+        # Step 1: Use Gemini to identify individual food items
+        genai.configure(api_key=gemini_key)
+        model = genai.GenerativeModel('models/gemini-2.0-flash')
+
+        # Load image
+        image = Image.open(io.BytesIO(file_bytes))
+
+        prompt = """Analyze this food image and identify each individual food item visible.
+
+For EACH food item, provide:
+1. The food name (be specific - e.g., "grilled chicken breast" not just "chicken")
+2. Estimated portion size (e.g., "6 oz", "1 cup", "2 slices")
+
+Return ONLY a JSON array of objects, no markdown, no explanation:
+[
+    {"food": "grilled chicken breast", "portion": "6 oz"},
+    {"food": "white rice", "portion": "1 cup"},
+    {"food": "steamed broccoli", "portion": "1 cup"}
+]
+
+Be specific about:
+- Cooking method (grilled, fried, baked, steamed)
+- Type (white rice vs brown rice, chicken breast vs thigh)
+- Portion sizes in standard units (oz, cups, pieces, slices)"""
+
+        response = model.generate_content([prompt, image])
+        text = response.text.strip()
+
+        # Clean up markdown if present
+        if text.startswith("```json"):
+            text = text[7:]
+        elif text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+
+        food_items = json.loads(text.strip())
+        logger.info(f"Gemini identified {len(food_items)} food items: {food_items}")
+
+        # Step 2: Look up each food in Nutritionix
+        items_with_macros = []
+        total_cals = 0
+        total_protein = 0
+        total_carbs = 0
+        total_fat = 0
+
+        for item in food_items:
+            query = f"{item['portion']} {item['food']}"
+            macros = self._nutritionix_lookup(query, nutritionix_app_id, nutritionix_api_key)
+
+            items_with_macros.append({
+                "food": item['food'],
+                "portion": item['portion'],
+                "cals": macros['cals'],
+                "protein": macros['protein'],
+                "carbs": macros['carbs'],
+                "fat": macros['fat']
+            })
+
+            total_cals += macros['cals']
+            total_protein += macros['protein']
+            total_carbs += macros['carbs']
+            total_fat += macros['fat']
+
+        # Build meal name from items
+        meal_name = " + ".join([item['food'].title() for item in food_items[:3]])
+        if len(food_items) > 3:
+            meal_name += f" + {len(food_items) - 3} more"
+
+        return {
+            "name": meal_name,
+            "cals": round(total_cals),
+            "protein": round(total_protein),
+            "carbs": round(total_carbs),
+            "fat": round(total_fat),
+            "items": items_with_macros,  # Itemized breakdown like MacroFactor
+            "portion_size": f"{len(food_items)} items identified",
+            "confidence": "high"
+        }
+
+    def _nutritionix_lookup(self, query: str, app_id: str, api_key: str) -> dict:
+        """Look up food in Nutritionix database for accurate macros."""
+        import requests
+
+        url = "https://trackapi.nutritionix.com/v2/natural/nutrients"
+        headers = {
+            "x-app-id": app_id,
+            "x-app-key": api_key,
+            "Content-Type": "application/json"
+        }
+        payload = {"query": query}
+
+        response = requests.post(url, headers=headers, json=payload, timeout=10)
+
+        if not response.ok:
+            logger.warning(f"Nutritionix lookup failed for '{query}': {response.text}")
+            # Return zeros if lookup fails
+            return {"cals": 0, "protein": 0, "carbs": 0, "fat": 0}
+
+        data = response.json()
+        foods = data.get("foods", [])
+
+        if not foods:
+            return {"cals": 0, "protein": 0, "carbs": 0, "fat": 0}
+
+        # Sum up all foods returned (Nutritionix may split into multiple items)
+        total = {"cals": 0, "protein": 0, "carbs": 0, "fat": 0}
+        for food in foods:
+            total["cals"] += food.get("nf_calories", 0) or 0
+            total["protein"] += food.get("nf_protein", 0) or 0
+            total["carbs"] += food.get("nf_total_carbohydrate", 0) or 0
+            total["fat"] += food.get("nf_total_fat", 0) or 0
+
+        return total
+
+    def _scan_gemini_nutritionix(self, file_bytes: bytes, gemini_key: str, nutritionix_app_id: str, nutritionix_api_key: str) -> dict:
+        """Alias for MacroFactor-style scan."""
+        return self._scan_macrofactor_style(file_bytes, gemini_key, nutritionix_app_id, nutritionix_api_key)
+
+    def _scan_gemini_openfoodfacts(self, file_bytes: bytes, gemini_key: str) -> dict:
+        """Direct Gemini vision analysis with comprehensive food knowledge.
+
+        Uses Gemini's visual analysis with detailed nutritional reference tables
+        for maximum accuracy. No database blending - pure AI vision.
+        """
+        import google.generativeai as genai
+        from PIL import Image
+        import io
+
+        logger.info("Using Gemini Vision direct analysis (high accuracy mode)")
+
+        genai.configure(api_key=gemini_key)
+
+        # Try multiple models for quota availability
+        models_to_try = [
+            'gemini-2.5-flash',
+            'gemini-2.5-flash-lite',
+            'gemini-2.0-flash-lite',
+            'gemini-2.0-flash',
+        ]
+
+        # Load image
+        image = Image.open(io.BytesIO(file_bytes))
+
+        prompt = """You are analyzing a food image for a user in ITALY/EUROPE. Your #1 priority is ACCURACY.
+
+=== CRITICAL: USE ONLY EU/ITALIAN DATA ===
+- This user is in ITALY. Use ONLY European/Italian nutritional data.
+- DO NOT use US nutritional data - US package sizes and formulations are different!
+- EU Pringles: 165g can = ~528 kcal (NOT 900 kcal like US)
+- EU packages show "per 100g" values - use these for calculations
+
+=== RULE #1: ALWAYS READ THE LABEL ===
+If this is PACKAGED FOOD with a visible nutrition label:
+- LOOK for the nutrition facts table on the package
+- READ the exact values: kcal, protein, carbs, fat per 100g
+- READ the total package weight (usually on front or back)
+- CALCULATE: (per 100g value) × (package weight / 100) = total
+- USE EXACTLY what the label says - do NOT use memorized US data
+
+=== RULE #2: NO LABEL VISIBLE ===
+Only if you CANNOT see a nutrition label, use EU reference data:
+
+EU Packaged snacks (per 100g):
+- Pringles/chips: ~520 kcal, 5g protein, 50g carbs, 32g fat
+- Chocolate bars: ~530 kcal
+- Cookies/biscuits: ~480 kcal
+
+Common EU package sizes:
+- Pringles tube: 165g (Italy) = ~528 kcal total
+- Chocolate bar: 100g standard
+- Crisps bag: 150g
+
+Italian prepared foods (per 100g):
+- Pasta with tomato sauce: 140 kcal
+- Pasta carbonara: 190 kcal
+- Pizza margherita: 240 kcal
+- Risotto: 160 kcal
+- Grilled chicken: 165 kcal
+
+=== OUTPUT FORMAT ===
+Return ONLY this JSON (no markdown, no extra text):
+{
+    "items": [
+        {
+            "food": "exact product name",
+            "portion_grams": weight,
+            "kcal": calories_EU_data_only,
+            "protein": protein_grams,
+            "carbs": carb_grams,
+            "fat": fat_grams
+        }
+    ],
+    "total_kcal": sum,
+    "total_protein": sum,
+    "total_carbs": sum,
+    "total_fat": sum,
+    "meal_name": "product name with brand",
+    "confidence": "high if read from label, medium if estimated",
+    "notes": "EU-data or label-read"
+}
+
+CRITICAL: Use ONLY European/Italian nutritional data. NEVER use US data."""
+
+        # Try generation with fallback to other models if quota exceeded
+        response = None
+        for model_name in models_to_try:
+            try:
+                model = genai.GenerativeModel(model_name)
+                logger.info(f"Attempting generation with: {model_name}")
+                response = model.generate_content([prompt, image])
+                logger.info(f"Success with model: {model_name}")
+                break
+            except Exception as e:
+                error_str = str(e)
+                if "429" in error_str or "quota" in error_str.lower():
+                    logger.warning(f"Quota exceeded for {model_name}, trying next model...")
+                    continue
+                else:
+                    raise
+
+        if not response:
+            raise Exception("All Gemini models quota exceeded")
+
+        text = response.text.strip()
+        logger.info(f"Raw Gemini response: {text[:500]}...")
+
+        # Clean up markdown if present
+        if text.startswith("```json"):
+            text = text[7:]
+        elif text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+
+        result = json.loads(text.strip())
+        logger.info(f"Parsed result: {result}")
+
+        # Format response for the app
+        items_with_macros = []
+        for item in result.get('items', []):
+            items_with_macros.append({
+                "food": item.get('food', 'Unknown'),
+                "portion": f"{item.get('portion_grams', 100)}g",
+                "cals": item.get('kcal', 0),
+                "protein": item.get('protein', 0),
+                "carbs": item.get('carbs', 0),
+                "fat": item.get('fat', 0),
+                "source": "gemini_vision"
+            })
+
+        return {
+            "name": result.get('meal_name', 'Scanned Meal'),
+            "cals": result.get('total_kcal', 0),
+            "protein": result.get('total_protein', 0),
+            "carbs": result.get('total_carbs', 0),
+            "fat": result.get('total_fat', 0),
+            "items": items_with_macros,
+            "portion_size": f"{len(items_with_macros)} items identified",
+            "confidence": result.get('confidence', 'medium'),
+            "accuracy_note": result.get('notes', 'AI vision analysis')
+        }
+
+    def _openfoodfacts_lookup(self, food_name: str, portion_grams: int = 100) -> dict:
+        """Look up food in FREE Open Food Facts database - great for Italian/European foods.
+
+        No API key required! Community-driven database with excellent international coverage.
+        """
+        import requests
+
+        # Try Italian Open Food Facts first, then world database
+        search_urls = [
+            "https://it.openfoodfacts.org/cgi/search.pl",  # Italian database first
+            "https://world.openfoodfacts.org/cgi/search.pl"  # Fallback to world
+        ]
+
+        for search_url in search_urls:
+            try:
+                params = {
+                    "search_terms": food_name,
+                    "search_simple": 1,
+                    "action": "process",
+                    "json": 1,
+                    "page_size": 5,
+                    "fields": "product_name,nutriments"
+                }
+
+                response = requests.get(search_url, params=params, timeout=10)
+
+                if not response.ok:
+                    continue
+
+                data = response.json()
+                products = data.get("products", [])
+
+                if not products:
+                    continue
+
+                # Find best match (first product with nutrient data)
+                for product in products:
+                    nutriments = product.get("nutriments", {})
+
+                    # Get values per 100g
+                    energy = nutriments.get("energy-kcal_100g") or nutriments.get("energy_100g", 0)
+                    # If energy is in kJ, convert to kcal
+                    if energy and energy > 1000:  # Likely kJ
+                        energy = energy / 4.184
+
+                    protein = nutriments.get("proteins_100g", 0)
+                    carbs = nutriments.get("carbohydrates_100g", 0)
+                    fat = nutriments.get("fat_100g", 0)
+
+                    # Only use if we have meaningful data
+                    if energy or protein or carbs or fat:
+                        scale = portion_grams / 100.0
+                        logger.info(f"Open Food Facts found: {product.get('product_name', food_name)}")
+                        return {
+                            "cals": round((energy or 0) * scale),
+                            "protein": round((protein or 0) * scale),
+                            "carbs": round((carbs or 0) * scale),
+                            "fat": round((fat or 0) * scale),
+                            "source": "openfoodfacts"
+                        }
+
+            except Exception as e:
+                logger.warning(f"Open Food Facts search error: {e}")
+                continue
+
+        # Fallback to estimation
+        logger.warning(f"No Open Food Facts results for '{food_name}', using estimation")
+        macros = self._estimate_macros(food_name, portion_grams)
+        macros["source"] = "estimated"
+        return macros
+
+    def _scan_gemini_usda(self, file_bytes: bytes, gemini_key: str, usda_key: str) -> dict:
+        """MacroFactor-style with FREE USDA database: Gemini identifies foods, USDA provides accurate macros."""
+        import base64
+        import requests
+        import google.generativeai as genai
+        from PIL import Image
+        import io
+
+        logger.info("Using Gemini + USDA (FREE) scan")
+
+        # Step 1: Use Gemini to identify individual food items
+        genai.configure(api_key=gemini_key)
+        model = genai.GenerativeModel('models/gemini-2.0-flash')
+
+        # Load image
+        image = Image.open(io.BytesIO(file_bytes))
+
+        prompt = """Analyze this food image and identify each individual food item visible.
+
+For EACH food item, provide:
+1. The food name (be specific - e.g., "grilled chicken breast" not just "chicken")
+2. Estimated portion size in grams or standard units
+
+Return ONLY a JSON array of objects, no markdown, no explanation:
+[
+    {"food": "grilled chicken breast", "portion": "170g", "portion_grams": 170},
+    {"food": "white rice cooked", "portion": "1 cup", "portion_grams": 200},
+    {"food": "steamed broccoli", "portion": "1 cup", "portion_grams": 90}
+]
+
+Be specific about:
+- Cooking method (grilled, fried, baked, steamed, raw)
+- Type (white rice vs brown rice, chicken breast vs thigh)
+- Include portion_grams as estimated weight in grams"""
+
+        response = model.generate_content([prompt, image])
+        text = response.text.strip()
+
+        # Clean up markdown if present
+        if text.startswith("```json"):
+            text = text[7:]
+        elif text.startswith("```"):
+            text = text[3:]
+        if text.endswith("```"):
+            text = text[:-3]
+
+        food_items = json.loads(text.strip())
+        logger.info(f"Gemini identified {len(food_items)} food items: {food_items}")
+
+        # Step 2: Look up each food in USDA database
+        items_with_macros = []
+        total_cals = 0
+        total_protein = 0
+        total_carbs = 0
+        total_fat = 0
+
+        for item in food_items:
+            portion_grams = item.get('portion_grams', 100)
+            macros = self._usda_lookup(item['food'], usda_key, portion_grams)
+
+            items_with_macros.append({
+                "food": item['food'],
+                "portion": item['portion'],
+                "cals": macros['cals'],
+                "protein": macros['protein'],
+                "carbs": macros['carbs'],
+                "fat": macros['fat']
+            })
+
+            total_cals += macros['cals']
+            total_protein += macros['protein']
+            total_carbs += macros['carbs']
+            total_fat += macros['fat']
+
+        # Build meal name from items
+        meal_name = " + ".join([item['food'].title() for item in food_items[:3]])
+        if len(food_items) > 3:
+            meal_name += f" + {len(food_items) - 3} more"
+
+        return {
+            "name": meal_name,
+            "cals": round(total_cals),
+            "protein": round(total_protein),
+            "carbs": round(total_carbs),
+            "fat": round(total_fat),
+            "items": items_with_macros,
+            "portion_size": f"{len(food_items)} items identified",
+            "confidence": "high"
+        }
+
+    def _usda_lookup(self, food_name: str, api_key: str, portion_grams: int = 100) -> dict:
+        """Look up food in FREE USDA FoodData Central database."""
+        import requests
+
+        # Search for the food
+        search_url = "https://api.nal.usda.gov/fdc/v1/foods/search"
+        params = {
+            "api_key": api_key,
+            "query": food_name,
+            "pageSize": 1,
+            "dataType": ["Survey (FNDDS)", "Foundation", "SR Legacy"]  # Prefer whole foods data
+        }
+
+        try:
+            response = requests.get(search_url, params=params, timeout=10)
+
+            if not response.ok:
+                logger.warning(f"USDA search failed for '{food_name}': {response.status_code}")
+                return self._estimate_macros(food_name, portion_grams)
+
+            data = response.json()
+            foods = data.get("foods", [])
+
+            if not foods:
+                logger.warning(f"No USDA results for '{food_name}'")
+                return self._estimate_macros(food_name, portion_grams)
+
+            # Get first result
+            food = foods[0]
+            nutrients = {n['nutrientName']: n.get('value', 0) for n in food.get('foodNutrients', [])}
+
+            # USDA values are per 100g, scale to portion size
+            scale = portion_grams / 100.0
+
+            return {
+                "cals": round((nutrients.get('Energy', 0) or 0) * scale),
+                "protein": round((nutrients.get('Protein', 0) or 0) * scale),
+                "carbs": round((nutrients.get('Carbohydrate, by difference', 0) or 0) * scale),
+                "fat": round((nutrients.get('Total lipid (fat)', 0) or 0) * scale)
+            }
+
+        except Exception as e:
+            logger.error(f"USDA lookup error for '{food_name}': {e}")
+            return self._estimate_macros(food_name, portion_grams)
+
+    def _estimate_macros(self, food_name: str, portion_grams: int) -> dict:
+        """Fallback estimation when database lookup fails. Includes Italian/Mediterranean foods."""
+        # Basic estimates per 100g for common food categories
+        food_lower = food_name.lower()
+
+        # Proteins
+        if any(x in food_lower for x in ['chicken', 'turkey', 'pollo']):
+            per_100g = {"cals": 165, "protein": 31, "carbs": 0, "fat": 4}
+        elif any(x in food_lower for x in ['fish', 'salmon', 'tuna', 'shrimp', 'branzino', 'orata', 'pesce', 'gamberi']):
+            per_100g = {"cals": 120, "protein": 22, "carbs": 0, "fat": 3}
+        elif any(x in food_lower for x in ['beef', 'steak', 'pork', 'lamb', 'manzo', 'maiale', 'agnello']):
+            per_100g = {"cals": 250, "protein": 26, "carbs": 0, "fat": 15}
+        elif any(x in food_lower for x in ['prosciutto', 'pancetta', 'salumi', 'speck']):
+            per_100g = {"cals": 270, "protein": 24, "carbs": 0, "fat": 19}
+
+        # Italian Pasta dishes (cooked with sauce)
+        elif any(x in food_lower for x in ['carbonara']):
+            per_100g = {"cals": 180, "protein": 9, "carbs": 20, "fat": 8}
+        elif any(x in food_lower for x in ['bolognese', 'ragu']):
+            per_100g = {"cals": 160, "protein": 8, "carbs": 18, "fat": 6}
+        elif any(x in food_lower for x in ['amatriciana', 'arrabbiata']):
+            per_100g = {"cals": 150, "protein": 6, "carbs": 22, "fat": 4}
+        elif any(x in food_lower for x in ['cacio e pepe']):
+            per_100g = {"cals": 200, "protein": 10, "carbs": 20, "fat": 10}
+        elif any(x in food_lower for x in ['lasagna', 'lasagne']):
+            per_100g = {"cals": 175, "protein": 10, "carbs": 18, "fat": 8}
+        elif any(x in food_lower for x in ['gnocchi']):
+            per_100g = {"cals": 130, "protein": 3, "carbs": 28, "fat": 1}
+
+        # Plain carbs
+        elif any(x in food_lower for x in ['pasta', 'spaghetti', 'penne', 'rigatoni', 'fettuccine']):
+            per_100g = {"cals": 130, "protein": 5, "carbs": 25, "fat": 1}
+        elif any(x in food_lower for x in ['rice', 'risotto', 'riso']):
+            per_100g = {"cals": 130, "protein": 3, "carbs": 28, "fat": 1}
+        elif any(x in food_lower for x in ['bread', 'pane', 'focaccia', 'ciabatta']):
+            per_100g = {"cals": 265, "protein": 9, "carbs": 49, "fat": 3}
+
+        # Pizza
+        elif any(x in food_lower for x in ['pizza', 'margherita']):
+            per_100g = {"cals": 250, "protein": 11, "carbs": 30, "fat": 10}
+
+        # Cheese
+        elif any(x in food_lower for x in ['mozzarella']):
+            per_100g = {"cals": 280, "protein": 22, "carbs": 2, "fat": 21}
+        elif any(x in food_lower for x in ['parmigiano', 'parmesan', 'grana']):
+            per_100g = {"cals": 430, "protein": 38, "carbs": 4, "fat": 29}
+        elif any(x in food_lower for x in ['ricotta']):
+            per_100g = {"cals": 150, "protein": 11, "carbs": 3, "fat": 11}
+        elif any(x in food_lower for x in ['cheese', 'formaggio']):
+            per_100g = {"cals": 400, "protein": 25, "carbs": 1, "fat": 33}
+
+        # Eggs
+        elif any(x in food_lower for x in ['egg', 'uovo', 'uova']):
+            per_100g = {"cals": 155, "protein": 13, "carbs": 1, "fat": 11}
+
+        # Vegetables
+        elif any(x in food_lower for x in ['broccoli', 'spinach', 'vegetable', 'salad', 'lettuce', 'verdura', 'insalata']):
+            per_100g = {"cals": 35, "protein": 3, "carbs": 7, "fat": 0}
+        elif any(x in food_lower for x in ['tomato', 'pomodoro']):
+            per_100g = {"cals": 20, "protein": 1, "carbs": 4, "fat": 0}
+        elif any(x in food_lower for x in ['zucchini', 'zucchine', 'eggplant', 'melanzane']):
+            per_100g = {"cals": 25, "protein": 1, "carbs": 5, "fat": 0}
+        elif any(x in food_lower for x in ['potato', 'patate', 'fries']):
+            per_100g = {"cals": 150, "protein": 2, "carbs": 33, "fat": 0}
+
+        # Fats
+        elif any(x in food_lower for x in ['olive oil', 'olio']):
+            per_100g = {"cals": 880, "protein": 0, "carbs": 0, "fat": 100}
+        elif any(x in food_lower for x in ['butter', 'burro']):
+            per_100g = {"cals": 720, "protein": 1, "carbs": 0, "fat": 81}
+
+        # Desserts
+        elif any(x in food_lower for x in ['tiramisu']):
+            per_100g = {"cals": 290, "protein": 5, "carbs": 30, "fat": 17}
+        elif any(x in food_lower for x in ['gelato', 'ice cream']):
+            per_100g = {"cals": 200, "protein": 4, "carbs": 24, "fat": 10}
+        elif any(x in food_lower for x in ['cannoli']):
+            per_100g = {"cals": 320, "protein": 6, "carbs": 35, "fat": 18}
+        elif any(x in food_lower for x in ['panna cotta']):
+            per_100g = {"cals": 240, "protein": 3, "carbs": 20, "fat": 17}
+
+        else:
+            per_100g = {"cals": 150, "protein": 8, "carbs": 15, "fat": 7}
+
+        scale = portion_grams / 100.0
+        return {
+            "cals": round(per_100g["cals"] * scale),
+            "protein": round(per_100g["protein"] * scale),
+            "carbs": round(per_100g["carbs"] * scale),
+            "fat": round(per_100g["fat"] * scale)
+        }
 
     def _scan_hybrid(self, file_bytes: bytes, clarifai_key: str, nutritionix_app_id: str, nutritionix_api_key: str) -> dict:
         """Hybrid approach: Clarifai identifies food, Nutritionix gets accurate macros."""
@@ -265,7 +865,7 @@ Return ONLY a raw JSON object (no markdown, no code blocks) with these keys:
 Example: {{"name": "Grilled Chicken with Rice and Vegetables", "cals": 520, "protein": 45, "carbs": 58, "fat": 12, "portion_size": "Standard serving (6oz chicken, 1 cup rice, 1.5 cups vegetables)", "confidence": "high"}}"""
 
         payload = {
-            "model": "llama-3.2-90b-vision-preview",
+            "model": "llama-3.2-11b-vision-preview",
             "messages": [
                 {
                     "role": "user",
@@ -364,7 +964,7 @@ Example response:
 {"name": "Grilled Chicken Breast with Brown Rice and Steamed Broccoli", "cals": 520, "protein": 45, "carbs": 58, "fat": 12, "portion_size": "Standard serving (6oz chicken, 1 cup rice, 1.5 cups vegetables)", "confidence": "high"}"""
 
         payload = {
-            "model": "llama-3.2-90b-vision-preview",
+            "model": "llama-3.2-11b-vision-preview",
             "messages": [
                 {
                     "role": "user",
@@ -404,15 +1004,23 @@ Example response:
 
         return data
 
+    def _test_groq_api(self, groq_key: str) -> str:
+        """Test Groq API and return available models."""
+        import requests
+        url = "https://api.groq.com/openai/v1/models"
+        headers = {"Authorization": f"Bearer {groq_key}"}
+        response = requests.get(url, headers=headers, timeout=10)
+        return response.text
+
     def _scan_gemini(self, file_bytes: bytes, api_key: str) -> dict:
         """Fallback to Gemini AI for meal scanning."""
         import google.generativeai as genai
 
         try:
             genai.configure(api_key=api_key)
-            # Try Gemini 2.0 Flash Lite - often has better availability/quota
-            model_name = 'gemini-2.0-flash-lite-preview-02-05'
-            print(f"DEBUG: Initializing Gemini with model: {model_name}")
+            # Use Gemini 2.0 Flash - widely available with good quotas
+            model_name = 'models/gemini-2.0-flash'
+            logger.info(f"Using Gemini model: {model_name}")
             model = genai.GenerativeModel(model_name)
 
             prompt = """

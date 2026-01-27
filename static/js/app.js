@@ -1497,72 +1497,295 @@ function showClientModal(name, plan, status, clientId, isPremium = false) {
 // Quick Actions
 function quickAction(action) {
     if (action === 'scan') {
-        const input = document.createElement('input');
-        input.type = 'file';
-        input.accept = 'image/*';
-        input.capture = 'environment'; // Directly open camera on mobile
-        input.onchange = async e => {
-            if (!e.target.files[0]) return;
-
-            const file = e.target.files[0];
-            const formData = new FormData();
-            formData.append('file', file);
-
-            showToast('Analyzing meal... 🍎');
-
-            try {
-                const res = await fetch(`${apiBase}/api/client/diet/scan`, {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${localStorage.getItem('token')}`
-                    },
-                    body: formData
-                });
-
-                if (!res.ok) throw new Error("Scan failed");
-                const result = await res.json();
-
-                if (result.status === 'success') {
-                    if (result.message) {
-                        showToast(result.message);
-                    }
-                    const food = result.data;
-                    const portionInfo = food.portion_size ? `\nPortion: ${food.portion_size}` : '';
-                    const confidenceInfo = food.confidence ? `\nConfidence: ${food.confidence}` : '';
-                    if (confirm(`Found: ${food.name}\n\n📊 Nutrition:\n${food.cals} kcal | P: ${food.protein}g | C: ${food.carbs}g | F: ${food.fat}g${portionInfo}${confidenceInfo}\n\nLog this meal?`)) {
-                        // Log it
-                        const logRes = await fetch(`${apiBase}/api/client/diet/log`, {
-                            method: 'POST',
-                            headers: {
-                                'Authorization': `Bearer ${localStorage.getItem('token')}`,
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify(food)
-                        });
-
-                        if (logRes.ok) {
-                            showToast('Meal logged successfully! ✅');
-                            // Refresh data to update macros
-                            init();
-                        } else {
-                            showToast('Failed to log meal ❌');
-                        }
-                    }
-                } else {
-                    alert("Scan Error: " + (result.message || "Unknown error"));
-                }
-            } catch (err) {
-                console.error(err);
-                showToast('Error analyzing meal ⚠️');
-            }
-        };
-        input.click();
+        // Open live camera scanner
+        openCameraScanner();
     } else if (action === 'search') {
         const food = prompt("Search for food:");
         if (food) showToast(`Found: ${food} (Loading details...)`);
     } else if (action === 'copy') {
         showToast('Copied yesterday\'s meals 📋');
     }
+}
+
+// ============ CAMERA MEAL SCANNER ============
+
+let cameraStream = null;
+let currentFacingMode = 'environment'; // 'environment' = back camera, 'user' = front camera
+let capturedImageBlob = null; // Store captured photo for analysis
+
+async function openCameraScanner() {
+    const modal = document.getElementById('camera-scanner-modal');
+    if (!modal) {
+        // Fallback to old behavior if modal doesn't exist
+        quickActionFallback();
+        return;
+    }
+
+    // Reset to capture mode
+    showCaptureMode();
+    modal.classList.remove('hidden');
+    await startCamera();
+}
+
+function closeCameraScanner() {
+    const modal = document.getElementById('camera-scanner-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    stopCamera();
+    capturedImageBlob = null;
+}
+
+function showCaptureMode() {
+    // Show live camera view, hide preview
+    const liveView = document.getElementById('camera-live-view');
+    const previewView = document.getElementById('camera-preview-view');
+    const captureControls = document.getElementById('capture-controls');
+    const reviewControls = document.getElementById('review-controls');
+    const flipBtn = document.getElementById('flip-btn');
+
+    if (liveView) liveView.classList.remove('hidden');
+    if (previewView) previewView.classList.add('hidden');
+    if (captureControls) captureControls.classList.remove('hidden');
+    if (reviewControls) reviewControls.classList.add('hidden');
+    if (flipBtn) flipBtn.classList.remove('hidden');
+}
+
+function showReviewMode(imageDataUrl) {
+    // Show captured photo preview, hide live camera
+    const liveView = document.getElementById('camera-live-view');
+    const previewView = document.getElementById('camera-preview-view');
+    const captureControls = document.getElementById('capture-controls');
+    const reviewControls = document.getElementById('review-controls');
+    const capturedPhoto = document.getElementById('captured-photo');
+    const flipBtn = document.getElementById('flip-btn');
+
+    if (liveView) liveView.classList.add('hidden');
+    if (previewView) previewView.classList.remove('hidden');
+    if (captureControls) captureControls.classList.add('hidden');
+    if (reviewControls) reviewControls.classList.remove('hidden');
+    if (capturedPhoto) capturedPhoto.src = imageDataUrl;
+    if (flipBtn) flipBtn.classList.add('hidden');
+
+    // Stop the camera since we have the photo
+    stopCamera();
+}
+
+async function startCamera() {
+    const video = document.getElementById('camera-preview');
+    if (!video) return;
+
+    try {
+        // Stop any existing stream
+        stopCamera();
+
+        // Request camera access
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: currentFacingMode,
+                width: { ideal: 1920 },
+                height: { ideal: 1080 }
+            },
+            audio: false
+        });
+
+        video.srcObject = cameraStream;
+        await video.play();
+    } catch (err) {
+        console.error('Camera access error:', err);
+        showToast('Could not access camera. Please check permissions.');
+        closeCameraScanner();
+        // Fallback to file picker
+        quickActionFallback();
+    }
+}
+
+function stopCamera() {
+    if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+        cameraStream = null;
+    }
+    const video = document.getElementById('camera-preview');
+    if (video) {
+        video.srcObject = null;
+    }
+}
+
+async function flipCamera() {
+    currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment';
+    await startCamera();
+}
+
+// Step 1: Take photo (just capture, don't analyze yet)
+async function takePhoto() {
+    const video = document.getElementById('camera-preview');
+    const canvas = document.getElementById('camera-canvas');
+
+    if (!video || !canvas) return;
+
+    // Set canvas size to video dimensions
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+
+    // Draw current frame to canvas
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(video, 0, 0);
+
+    // Get data URL for preview
+    const imageDataUrl = canvas.toDataURL('image/jpeg', 0.9);
+
+    // Store blob for later analysis
+    capturedImageBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+
+    // Show the review mode with captured photo
+    showReviewMode(imageDataUrl);
+}
+
+// Step 2: User wants to retake photo
+async function retakePhoto() {
+    capturedImageBlob = null;
+    showCaptureMode();
+    await startCamera();
+}
+
+// Step 3: User confirms and wants to analyze
+async function analyzePhoto() {
+    if (!capturedImageBlob) {
+        showToast('No photo captured');
+        return;
+    }
+
+    const loading = document.getElementById('camera-loading');
+    const analyzeBtn = document.getElementById('analyze-btn');
+
+    // Show loading state
+    if (loading) loading.classList.remove('hidden');
+    if (analyzeBtn) analyzeBtn.disabled = true;
+
+    try {
+        await analyzeMealImage(capturedImageBlob);
+    } catch (err) {
+        console.error('Analysis error:', err);
+        showToast('Failed to analyze photo');
+    } finally {
+        if (loading) loading.classList.add('hidden');
+        if (analyzeBtn) analyzeBtn.disabled = false;
+    }
+}
+
+function openGalleryForScan() {
+    const input = document.getElementById('gallery-input');
+    if (input) {
+        input.click();
+    }
+}
+
+async function handleGallerySelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const loading = document.getElementById('camera-loading');
+    if (loading) loading.classList.remove('hidden');
+
+    try {
+        await analyzeMealImage(file);
+    } finally {
+        if (loading) loading.classList.add('hidden');
+        // Reset input so same file can be selected again
+        event.target.value = '';
+    }
+}
+
+async function analyzeMealImage(imageBlob) {
+    const formData = new FormData();
+    formData.append('file', imageBlob, 'meal.jpg');
+
+    showToast('Analyzing meal... 🍎');
+
+    try {
+        const res = await fetch(`${apiBase}/api/client/diet/scan`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            credentials: 'include',
+            body: formData
+        });
+
+        if (!res.ok) throw new Error("Scan failed");
+        const result = await res.json();
+
+        if (result.status === 'success') {
+            if (result.message) {
+                showToast(result.message);
+            }
+            const food = result.data;
+
+            // Close camera modal
+            closeCameraScanner();
+
+            // Show result modal
+            showMealResultModal(food);
+        } else {
+            throw new Error(result.message || "Unknown error");
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('Error analyzing meal ⚠️');
+    }
+}
+
+function showMealResultModal(food) {
+    const portionInfo = food.portion_size ? `\nPortion: ${food.portion_size}` : '';
+    const confidenceInfo = food.confidence ? `\nConfidence: ${food.confidence}` : '';
+
+    if (confirm(`Found: ${food.name}\n\n📊 Nutrition:\n${food.cals} kcal | P: ${food.protein}g | C: ${food.carbs}g | F: ${food.fat}g${portionInfo}${confidenceInfo}\n\nLog this meal?`)) {
+        logScannedMeal(food);
+    }
+}
+
+async function logScannedMeal(food) {
+    try {
+        const logRes = await fetch(`${apiBase}/api/client/diet/log`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Content-Type': 'application/json'
+            },
+            credentials: 'include',
+            body: JSON.stringify(food)
+        });
+
+        if (logRes.ok) {
+            showToast('Meal logged successfully! ✅');
+            // Refresh data to update macros
+            init();
+        } else {
+            showToast('Failed to log meal ❌');
+        }
+    } catch (err) {
+        console.error(err);
+        showToast('Failed to log meal ❌');
+    }
+}
+
+// Fallback for when camera isn't available
+function quickActionFallback() {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = 'image/*';
+    input.capture = 'environment';
+    input.onchange = async e => {
+        if (!e.target.files[0]) return;
+        const loading = document.getElementById('camera-loading');
+        if (loading) loading.classList.remove('hidden');
+        try {
+            await analyzeMealImage(e.target.files[0]);
+        } finally {
+            if (loading) loading.classList.add('hidden');
+        }
+    };
+    input.click();
 }
 
 // ============ PHYSIQUE PHOTOS ============
@@ -5010,6 +5233,55 @@ window.openChatModal = async function(otherUserId, otherUserName) {
 
     // Load messages
     await loadChatMessages();
+};
+
+// Client chat modal - gets trainer info and opens chat
+window.openClientChatModal = async function() {
+    // Try to get trainer ID from various sources
+    let trainerId = null;
+    let trainerName = 'Your Trainer';
+
+    // Check if selectedTrainerId is available (from client.html script)
+    if (typeof selectedTrainerId !== 'undefined' && selectedTrainerId) {
+        trainerId = selectedTrainerId;
+    }
+
+    // Try to get from localStorage
+    if (!trainerId) {
+        trainerId = localStorage.getItem('trainerId');
+    }
+
+    // Try to get trainer name from DOM
+    const trainerNameEl = document.getElementById('trainer-name');
+    if (trainerNameEl && trainerNameEl.textContent) {
+        trainerName = trainerNameEl.textContent;
+    }
+
+    // If still no trainer, try to fetch from gym-info API
+    if (!trainerId) {
+        try {
+            const response = await fetch('/api/client/gym-info', {
+                credentials: 'include'
+            });
+            if (response.ok) {
+                const info = await response.json();
+                if (info.trainer_id) {
+                    trainerId = info.trainer_id;
+                    trainerName = info.trainer_name || 'Your Trainer';
+                }
+            }
+        } catch (e) {
+            console.error('Error fetching trainer info:', e);
+        }
+    }
+
+    if (!trainerId) {
+        showToast('No trainer assigned');
+        return;
+    }
+
+    // Open chat with trainer
+    window.openChatModal(trainerId, trainerName);
 };
 
 window.closeChatModal = function() {
