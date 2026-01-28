@@ -86,6 +86,17 @@ class ClientProfileORM(Base):
     # Privacy setting for client-to-client chat
     privacy_mode = Column(String, default="public")  # "public" or "private"
 
+    # Physical stats
+    weight = Column(Float, nullable=True)  # Weight in kg
+
+class WeightHistoryORM(Base):
+    __tablename__ = "weight_history"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    client_id = Column(String, ForeignKey("users.id"), index=True)
+    weight = Column(Float)
+    recorded_at = Column(String)  # ISO format datetime
+
 class ClientScheduleORM(Base):
     __tablename__ = "client_schedule"
 

@@ -665,12 +665,43 @@ async function init() {
                 setTxt('gem-count', user.gems);
                 setTxt('health-score', user.health_score);
 
-                // Animate Health Score Ring
-                const healthRing = document.querySelector('circle[stroke="#4ADE80"]');
-                if (healthRing) {
-                    // Circumference is ~251.2 (r=40)
-                    const offset = 251.2 - (251.2 * (user.health_score / 100));
-                    healthRing.style.strokeDashoffset = offset;
+                // Update weight display
+                currentClientWeight = user.weight;
+                updateWeightDisplay(user.weight);
+
+                // Load weight chart
+                if (document.getElementById('weight-chart')) {
+                    loadWeightChart('month');
+                }
+
+                // Animate Diet Score Ring
+                const dietRing = document.getElementById('diet-progress-ring') || document.querySelector('circle[stroke="#4ADE80"]');
+                if (dietRing) {
+                    // Circumference is ~213.6 (r=34)
+                    const offset = 213.6 - (213.6 * (user.health_score / 100));
+                    dietRing.style.strokeDashoffset = offset;
+                }
+
+                // Update diet status text based on score
+                const dietStatus = document.getElementById('diet-status');
+                if (dietStatus) {
+                    const score = user.health_score || 0;
+                    if (score >= 90) {
+                        dietStatus.textContent = 'Excellent! Top 5%';
+                        dietStatus.className = 'text-xs text-green-400 font-bold mt-1';
+                    } else if (score >= 75) {
+                        dietStatus.textContent = 'Great progress!';
+                        dietStatus.className = 'text-xs text-green-400 font-bold mt-1';
+                    } else if (score >= 50) {
+                        dietStatus.textContent = 'Keep going!';
+                        dietStatus.className = 'text-xs text-yellow-400 font-bold mt-1';
+                    } else if (score >= 25) {
+                        dietStatus.textContent = 'Room to improve';
+                        dietStatus.className = 'text-xs text-orange-400 font-bold mt-1';
+                    } else {
+                        dietStatus.textContent = 'Let\'s get started!';
+                        dietStatus.className = 'text-xs text-red-400 font-bold mt-1';
+                    }
                 }
 
                 if (user.todays_workout) {
@@ -776,14 +807,29 @@ async function init() {
                 // Macros
                 const m = user.progress.macros;
                 if (m && document.getElementById('cals-remaining')) {
-                    document.getElementById('cals-remaining').innerText = `${m.calories.target - m.calories.current} kcal left`;
+                    const calsLeft = Math.round(m.calories.target - m.calories.current);
+                    document.getElementById('cals-remaining').innerText = `${calsLeft} kcal left`;
+                    // Also update hero carousel calories tag
+                    const heroCurrent = document.getElementById('hero-cals-current');
+                    const heroTarget = document.getElementById('hero-cals-target');
+                    if (heroCurrent) heroCurrent.innerText = Math.round(m.calories.current);
+                    if (heroTarget) heroTarget.innerText = Math.round(m.calories.target);
 
                     const updateRing = (id, cur, max, color) => {
-                        const pct = (cur / max) * 100;
+                        const pct = Math.min((cur / max) * 100, 100);
+                        // Round to integer for display
+                        const displayVal = Math.round(cur);
                         const el = document.getElementById(id);
                         if (el) {
                             el.style.background = `conic-gradient(${color} ${pct}%, #333 0%)`;
-                            document.getElementById('val-' + id.split('-')[1]).innerText = `${cur}g`;
+                            document.getElementById('val-' + id.split('-')[1]).innerText = `${displayVal}g`;
+                        }
+                        // Also update hero carousel rings
+                        const heroEl = document.getElementById('hero-' + id);
+                        if (heroEl) {
+                            heroEl.style.background = `conic-gradient(${color} ${pct}%, #333 0%)`;
+                            const heroValEl = document.getElementById('hero-val-' + id.split('-')[1]);
+                            if (heroValEl) heroValEl.innerText = `${displayVal}g`;
                         }
                     };
                     updateRing('ring-protein', m.protein.current, m.protein.target, '#4ADE80');
@@ -2143,6 +2189,350 @@ function quickActionFallback() {
 // Selected file for upload
 let selectedPhysiqueFile = null;
 let selectedPhysiqueTag = null;
+let currentClientWeight = null;
+
+// --- WEIGHT FUNCTIONS ---
+function openWeightModal() {
+    const modal = document.getElementById('weight-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        const input = document.getElementById('weight-input');
+        if (input && currentClientWeight) {
+            input.value = currentClientWeight;
+        }
+        input?.focus();
+    }
+}
+
+function closeWeightModal() {
+    const modal = document.getElementById('weight-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+async function saveWeight() {
+    const input = document.getElementById('weight-input');
+    const weight = parseFloat(input?.value);
+
+    if (!weight || weight < 20 || weight > 300) {
+        showToast('Please enter a valid weight (20-300 kg)', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/client/profile', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+            },
+            credentials: 'include',
+            body: JSON.stringify({ weight: weight })
+        });
+
+        if (response.ok) {
+            currentClientWeight = weight;
+            updateWeightDisplay(weight);
+            closeWeightModal();
+            showToast('Weight updated!', 'success');
+            // Reload the weight chart
+            loadWeightChart(currentWeightPeriod);
+        } else {
+            showToast('Failed to update weight', 'error');
+        }
+    } catch (error) {
+        console.error('Error updating weight:', error);
+        showToast('Failed to update weight', 'error');
+    }
+}
+
+function updateWeightDisplay(weight) {
+    const el = document.getElementById('client-weight');
+    if (el) {
+        el.textContent = weight ? weight.toFixed(1) : '--';
+    }
+    // Also update hero weight
+    const heroWeight = document.getElementById('hero-weight');
+    if (heroWeight) {
+        heroWeight.textContent = weight ? weight.toFixed(1) : '--';
+    }
+}
+
+// --- STATS CAROUSEL ---
+let currentCarouselSlide = 0;
+
+function scrollToSlide(index) {
+    const carousel = document.getElementById('stats-carousel');
+    if (!carousel) return;
+
+    const slides = carousel.children;
+    if (index < 0 || index >= slides.length) return;
+
+    currentCarouselSlide = index;
+    const slideWidth = slides[0].offsetWidth + 12; // width + gap
+    carousel.scrollTo({ left: slideWidth * index, behavior: 'smooth' });
+
+    updateCarouselDots(index);
+}
+
+function updateCarouselDots(activeIndex) {
+    for (let i = 0; i < 2; i++) {
+        const dot = document.getElementById(`carousel-dot-${i}`);
+        if (dot) {
+            dot.className = `w-2 h-2 rounded-full transition ${i === activeIndex ? 'bg-white/60' : 'bg-white/20'}`;
+        }
+    }
+}
+
+// Initialize carousel scroll listener
+function initCarousel() {
+    const carousel = document.getElementById('stats-carousel');
+    if (!carousel) return;
+
+    carousel.addEventListener('scroll', () => {
+        const slideWidth = carousel.children[0]?.offsetWidth + 12 || 1;
+        const newIndex = Math.round(carousel.scrollLeft / slideWidth);
+        if (newIndex !== currentCarouselSlide) {
+            currentCarouselSlide = newIndex;
+            updateCarouselDots(newIndex);
+        }
+    });
+}
+
+// Call on page load
+document.addEventListener('DOMContentLoaded', initCarousel);
+
+let weightChartInstance = null;
+let currentWeightPeriod = 'month';
+
+async function loadWeightChart(period = 'month') {
+    currentWeightPeriod = period;
+
+    // Update period buttons
+    ['week', 'month', 'year'].forEach(p => {
+        const btn = document.getElementById(`weight-period-${p}`);
+        if (btn) {
+            if (p === period) {
+                btn.className = 'text-[10px] px-2 py-1 rounded-lg bg-blue-500/20 text-blue-400 font-bold';
+            } else {
+                btn.className = 'text-[10px] px-2 py-1 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition';
+            }
+        }
+    });
+
+    const loadingEl = document.getElementById('weight-chart-loading');
+    if (loadingEl) loadingEl.style.display = 'flex';
+
+    try {
+        const response = await fetch(`/api/client/weight-history?period=${period}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` },
+            credentials: 'include'
+        });
+
+        if (!response.ok) throw new Error('Failed to load weight history');
+
+        const result = await response.json();
+        renderWeightChart(result.data, result.stats);
+        // Also render mini hero chart
+        renderHeroWeightChart(result.data, result.stats);
+    } catch (error) {
+        console.error('Error loading weight chart:', error);
+    } finally {
+        if (loadingEl) loadingEl.style.display = 'none';
+    }
+}
+
+function renderHeroWeightChart(data, stats) {
+    const canvas = document.getElementById('hero-weight-chart');
+    if (!canvas || !data || data.length === 0) return;
+
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * 2;
+    canvas.height = rect.height * 2;
+    ctx.scale(2, 2);
+
+    const width = rect.width;
+    const height = rect.height;
+    const padding = { top: 5, right: 5, bottom: 5, left: 5 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+
+    ctx.clearRect(0, 0, width, height);
+
+    const weights = data.map(d => d.weight);
+    const minWeight = Math.min(...weights) - 0.5;
+    const maxWeight = Math.max(...weights) + 0.5;
+    const weightRange = maxWeight - minWeight;
+
+    const points = data.map((d, i) => ({
+        x: padding.left + (chartWidth * i / (data.length - 1 || 1)),
+        y: padding.top + chartHeight - ((d.weight - minWeight) / weightRange * chartHeight)
+    }));
+
+    // Draw gradient fill
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.4)');
+    gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, height - padding.bottom);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(points[points.length - 1].x, height - padding.bottom);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    // Draw line
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.strokeStyle = '#3B82F6';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Update hero trend badge
+    const trendBadge = document.getElementById('hero-weight-trend');
+    if (trendBadge && stats) {
+        if (stats.trend === 'down') {
+            trendBadge.textContent = `↓ ${Math.abs(stats.change)}`;
+            trendBadge.className = 'text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold ml-2';
+        } else if (stats.trend === 'up') {
+            trendBadge.textContent = `↑ ${stats.change}`;
+            trendBadge.className = 'text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-bold ml-2';
+        } else {
+            trendBadge.textContent = '→ Stable';
+            trendBadge.className = 'text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold ml-2';
+        }
+    }
+}
+
+function renderWeightChart(data, stats) {
+    const canvas = document.getElementById('weight-chart');
+    if (!canvas || !data || data.length === 0) return;
+
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * 2;
+    canvas.height = rect.height * 2;
+    ctx.scale(2, 2);
+
+    const width = rect.width;
+    const height = rect.height;
+    const padding = { top: 10, right: 10, bottom: 20, left: 35 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
+    // Get min/max for scaling
+    const weights = data.map(d => d.weight);
+    const minWeight = Math.min(...weights) - 1;
+    const maxWeight = Math.max(...weights) + 1;
+    const weightRange = maxWeight - minWeight;
+
+    // Draw grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+        const y = padding.top + (chartHeight * i / 4);
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(width - padding.right, y);
+        ctx.stroke();
+    }
+
+    // Draw Y-axis labels
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = '9px system-ui';
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= 4; i++) {
+        const weight = maxWeight - (weightRange * i / 4);
+        const y = padding.top + (chartHeight * i / 4);
+        ctx.fillText(weight.toFixed(1), padding.left - 5, y + 3);
+    }
+
+    // Calculate points
+    const points = data.map((d, i) => ({
+        x: padding.left + (chartWidth * i / (data.length - 1 || 1)),
+        y: padding.top + chartHeight - ((d.weight - minWeight) / weightRange * chartHeight),
+        label: d.label,
+        weight: d.weight
+    }));
+
+    // Draw gradient fill
+    const gradient = ctx.createLinearGradient(0, padding.top, 0, height - padding.bottom);
+    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
+    gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, height - padding.bottom);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(points[points.length - 1].x, height - padding.bottom);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    // Draw line
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.strokeStyle = '#3B82F6';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Draw points
+    points.forEach((p, i) => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#3B82F6';
+        ctx.fill();
+        ctx.strokeStyle = '#1E3A5F';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+    });
+
+    // Draw X-axis labels (only a few)
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = '8px system-ui';
+    ctx.textAlign = 'center';
+    const labelStep = Math.ceil(data.length / 5);
+    data.forEach((d, i) => {
+        if (i % labelStep === 0 || i === data.length - 1) {
+            const x = padding.left + (chartWidth * i / (data.length - 1 || 1));
+            ctx.fillText(d.label, x, height - 5);
+        }
+    });
+
+    // Update stats
+    document.getElementById('weight-stat-start').textContent = stats.start ? `${stats.start} kg` : '--';
+    document.getElementById('weight-stat-min').textContent = stats.min ? `${stats.min} kg` : '--';
+    document.getElementById('weight-stat-max').textContent = stats.max ? `${stats.max} kg` : '--';
+
+    const changeEl = document.getElementById('weight-stat-change');
+    if (changeEl && stats.change !== undefined) {
+        const sign = stats.change > 0 ? '+' : '';
+        changeEl.textContent = `${sign}${stats.change} kg`;
+        changeEl.className = `text-sm font-bold ${stats.change < 0 ? 'text-green-400' : stats.change > 0 ? 'text-red-400' : 'text-gray-400'}`;
+    }
+
+    // Update trend badge
+    const trendBadge = document.getElementById('weight-trend-badge');
+    if (trendBadge) {
+        if (stats.trend === 'down') {
+            trendBadge.textContent = `↓ ${Math.abs(stats.change)} kg`;
+            trendBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold';
+        } else if (stats.trend === 'up') {
+            trendBadge.textContent = `↑ ${stats.change} kg`;
+            trendBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-bold';
+        } else {
+            trendBadge.textContent = '→ Stable';
+            trendBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold';
+        }
+    }
+}
 
 function openPhysiqueModal() {
     const modal = document.getElementById('physique-modal');

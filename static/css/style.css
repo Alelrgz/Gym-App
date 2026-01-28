@@ -168,6 +168,26 @@ select option {
     overscroll-behavior-y: contain;
 }
 
+/* Stats Carousel */
+#stats-carousel {
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+
+#stats-carousel::-webkit-scrollbar {
+    display: none;
+}
+
+.scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+    display: none;
+}
+
 .animate-fade-in {
     animation: fadeIn 0.4s ease-in-out;
 }

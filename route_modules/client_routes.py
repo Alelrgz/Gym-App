@@ -70,6 +70,16 @@ async def update_client_profile(
     return service.update_client_profile(profile_update, current_user.id)
 
 
+@router.get("/api/client/weight-history")
+async def get_weight_history(
+    period: str = "month",  # "week", "month", "year"
+    service: ClientService = Depends(get_client_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Get client's weight history for charting."""
+    return service.get_weight_history(current_user.id, period)
+
+
 @router.post("/api/trainer/client/{client_id}/toggle_premium")
 async def toggle_client_premium(
     client_id: str,

@@ -5,7 +5,7 @@ from .base import (
     HTTPException, uuid, json, logging, date, datetime, timedelta,
     get_db_session, UserORM, ClientProfileORM, ClientScheduleORM,
     ClientDietSettingsORM, ClientDietLogORM, ClientExerciseLogORM,
-    DailyQuestCompletionORM, ClientDailyDietSummaryORM
+    DailyQuestCompletionORM, ClientDailyDietSummaryORM, WeightHistoryORM
 )
 from models import ClientData, ClientProfileUpdate
 from data import CLIENT_DATA
@@ -317,6 +317,7 @@ class ClientService:
                 streak=streak,
                 gems=profile.gems,
                 health_score=profile.health_score,
+                weight=profile.weight,
                 todays_workout=todays_workout,
                 daily_quests=daily_quests,
                 progress=progress_data if progress_data else None,
@@ -516,12 +517,81 @@ class ClientService:
                 profile.name = profile_update.name
             if profile_update.email is not None:
                 profile.email = profile_update.email
+            if profile_update.weight is not None:
+                profile.weight = profile_update.weight
+                # Also log to weight history
+                weight_entry = WeightHistoryORM(
+                    client_id=client_id,
+                    weight=profile_update.weight,
+                    recorded_at=datetime.now().isoformat()
+                )
+                db.add(weight_entry)
 
             db.commit()
             return {"status": "success", "message": "Profile updated"}
         except Exception as e:
             db.rollback()
             raise HTTPException(status_code=500, detail=f"Failed to update profile: {str(e)}")
+        finally:
+            db.close()
+
+    def get_weight_history(self, client_id: str, period: str = "month") -> dict:
+        """Get client's weight history for charting."""
+        db = get_db_session()
+        try:
+            # Determine date range based on period
+            now = datetime.now()
+            if period == "week":
+                start_date = now - timedelta(days=7)
+            elif period == "month":
+                start_date = now - timedelta(days=30)
+            elif period == "year":
+                start_date = now - timedelta(days=365)
+            else:
+                start_date = now - timedelta(days=30)
+
+            # Get weight entries
+            entries = db.query(WeightHistoryORM).filter(
+                WeightHistoryORM.client_id == client_id,
+                WeightHistoryORM.recorded_at >= start_date.isoformat()
+            ).order_by(WeightHistoryORM.recorded_at.asc()).all()
+
+            # Format for chart
+            data = []
+            for entry in entries:
+                recorded = datetime.fromisoformat(entry.recorded_at)
+                data.append({
+                    "date": recorded.strftime("%Y-%m-%d"),
+                    "weight": round(entry.weight, 1),
+                    "label": recorded.strftime("%d %b") if period != "year" else recorded.strftime("%b %y")
+                })
+
+            # Calculate stats
+            if data:
+                weights = [d["weight"] for d in data]
+                start_weight = weights[0]
+                current_weight = weights[-1]
+                change = round(current_weight - start_weight, 1)
+                min_weight = min(weights)
+                max_weight = max(weights)
+            else:
+                start_weight = current_weight = change = min_weight = max_weight = 0
+
+            return {
+                "period": period,
+                "data": data,
+                "stats": {
+                    "start": start_weight,
+                    "current": current_weight,
+                    "change": change,
+                    "trend": "up" if change > 0 else "down" if change < 0 else "stable",
+                    "min": min_weight,
+                    "max": max_weight
+                }
+            }
+        except Exception as e:
+            logger.error(f"Error getting weight history: {e}")
+            return {"period": period, "data": [], "stats": {}}
         finally:
             db.close()
 

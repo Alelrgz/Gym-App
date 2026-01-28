@@ -101,6 +101,7 @@ class ClientData(BaseModel):
     streak: int
     gems: int
     health_score: int
+    weight: Optional[float] = None  # Weight in kg
     todays_workout: Optional[Workout] = None
     daily_quests: List[DailyQuest]
     progress: Optional[Progress] = None
@@ -110,6 +111,7 @@ class ClientProfileUpdate(BaseModel):
     name: Optional[str] = None
     email: Optional[str] = None
     password: Optional[str] = None
+    weight: Optional[float] = None  # Weight in kg
 
 # --- TRAINER ---
 

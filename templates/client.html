@@ -78,25 +78,102 @@
 </div>
 <div class="flex-1 p-4 space-y-4">
 
-    <!-- Health Score Hero -->
-    {% call card(classes="p-6 relative overflow-hidden") %}
-    <div class="absolute top-0 right-0 w-40 h-40 bg-green-500/10 blur-3xl rounded-full -mr-10 -mt-10"></div>
-    <div class="flex justify-between items-center relative z-10">
-        <div>
-            <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Daily Health Score</p>
-            <h1 class="text-5xl font-black text-white" id="health-score">...</h1>
-            <p class="text-xs text-green-400 font-bold mt-1">Excellent! Top 5%</p>
+    <!-- Stats Carousel -->
+    <div class="relative">
+        <div id="stats-carousel" class="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4 gap-3" style="scroll-behavior: smooth;">
+            <!-- Slide 1: Diet + Macros Combined -->
+            <div class="snap-center flex-shrink-0 w-full">
+                {% call card(classes="p-4 relative overflow-hidden h-[137px]") %}
+                <div class="absolute top-0 right-0 w-32 h-32 bg-green-500/10 blur-3xl rounded-full -mr-8 -mt-8"></div>
+                <div class="flex items-center gap-4 relative z-10 h-full">
+                    <!-- Diet Score - Large Circle -->
+                    <div class="flex items-center gap-3 flex-shrink-0">
+                        <div class="w-20 h-20 relative flex items-center justify-center">
+                            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
+                                <circle cx="40" cy="40" r="34" stroke="rgba(255,255,255,0.1)" stroke-width="6" fill="none" />
+                                <circle cx="40" cy="40" r="34" stroke="#4ADE80" stroke-width="6" fill="none" stroke-dasharray="213.6"
+                                    stroke-dashoffset="42" stroke-linecap="round" id="diet-progress-ring" />
+                            </svg>
+                            <span class="absolute text-xl">🥗</span>
+                        </div>
+                        <div>
+                            <p class="text-[10px] text-gray-400 uppercase tracking-wider">Diet</p>
+                            <p class="text-3xl font-black text-white leading-none"><span id="health-score">...</span><span class="text-xl text-green-400">%</span></p>
+                            <p class="text-[10px] text-green-400 font-bold" id="diet-status">Keep going!</p>
+                            <div class="mt-1 inline-flex items-center bg-white/10 rounded-full px-2 py-0.5">
+                                <span class="text-[9px] text-white font-medium" id="hero-cals-current">--</span>
+                                <span class="text-[9px] text-gray-400 mx-0.5">/</span>
+                                <span class="text-[9px] text-gray-400" id="hero-cals-target">--</span>
+                                <span class="text-[9px] text-gray-400 ml-0.5">kcal</span>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- Divider -->
+                    <div class="w-px h-16 bg-white/10 flex-shrink-0"></div>
+                    <!-- Macros - Horizontal Layout -->
+                    <div class="flex-1 flex items-center justify-evenly">
+                        <div class="text-center">
+                            <div id="hero-ring-protein" class="w-11 h-11 mx-auto rounded-full flex items-center justify-center" style="background: conic-gradient(#4ADE80 0%, #333 0%);">
+                                <div class="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center">
+                                    <span class="text-[10px] font-bold text-green-400" id="hero-val-protein">0g</span>
+                                </div>
+                            </div>
+                            <p class="text-[9px] text-gray-400 font-medium mt-1">Pro</p>
+                        </div>
+                        <div class="text-center">
+                            <div id="hero-ring-carbs" class="w-11 h-11 mx-auto rounded-full flex items-center justify-center" style="background: conic-gradient(#60A5FA 0%, #333 0%);">
+                                <div class="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center">
+                                    <span class="text-[10px] font-bold text-blue-400" id="hero-val-carbs">0g</span>
+                                </div>
+                            </div>
+                            <p class="text-[9px] text-gray-400 font-medium mt-1">Carb</p>
+                        </div>
+                        <div class="text-center">
+                            <div id="hero-ring-fat" class="w-11 h-11 mx-auto rounded-full flex items-center justify-center" style="background: conic-gradient(#F472B6 0%, #333 0%);">
+                                <div class="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center">
+                                    <span class="text-[10px] font-bold text-pink-400" id="hero-val-fat">0g</span>
+                                </div>
+                            </div>
+                            <p class="text-[9px] text-gray-400 font-medium mt-1">Fat</p>
+                        </div>
+                    </div>
+                </div>
+                {% endcall %}
+            </div>
+
+            <!-- Slide 2: Weight Stats -->
+            <div class="snap-center flex-shrink-0 w-full">
+                {% call card(classes="p-4 relative overflow-hidden h-[137px]") %}
+                <div class="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 blur-3xl rounded-full -mr-8 -mt-8"></div>
+                <div class="relative z-10">
+                    <div class="flex justify-between items-center mb-2">
+                        <div>
+                            <p class="text-[10px] text-gray-400 uppercase tracking-wider">Weight</p>
+                            <div class="flex items-baseline gap-1">
+                                <span class="text-2xl font-black text-white" id="hero-weight">--</span>
+                                <span class="text-sm text-blue-400">kg</span>
+                                <span id="hero-weight-trend" class="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold ml-1">--</span>
+                            </div>
+                        </div>
+                        <button onclick="openWeightModal()" class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center hover:bg-blue-500/30 transition tap-effect">
+                            <span class="text-lg">⚖️</span>
+                        </button>
+                    </div>
+                    <!-- Mini Chart -->
+                    <div class="h-12">
+                        <canvas id="hero-weight-chart" class="w-full h-full"></canvas>
+                    </div>
+                </div>
+                {% endcall %}
+            </div>
         </div>
-        <div class="w-24 h-24 relative flex items-center justify-center">
-            <svg class="w-full h-full transform -rotate-90">
-                <circle cx="48" cy="48" r="40" stroke="rgba(255,255,255,0.1)" stroke-width="8" fill="none" />
-                <circle cx="48" cy="48" r="40" stroke="#4ADE80" stroke-width="8" fill="none" stroke-dasharray="251.2"
-                    stroke-dashoffset="30" stroke-linecap="round" />
-            </svg>
-            <span class="absolute text-xl">🥗</span>
+
+        <!-- Carousel Dots -->
+        <div class="flex justify-center gap-1.5 mt-2">
+            <button onclick="scrollToSlide(0)" id="carousel-dot-0" class="w-2 h-2 rounded-full bg-white/60 transition"></button>
+            <button onclick="scrollToSlide(1)" id="carousel-dot-1" class="w-2 h-2 rounded-full bg-white/20 transition"></button>
         </div>
     </div>
-    {% endcall %}
 
     <!-- Quick Actions -->
     <div class="flex space-x-3 overflow-x-auto pb-2 -mx-1 px-1">
@@ -186,7 +263,14 @@
     <!-- Physique Photos -->
     <div>
         <div class="flex justify-between items-center mb-3">
-            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Physique Update</h3>
+            <div class="flex items-center gap-3">
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Physique Update</h3>
+                <button onclick="openWeightModal()" class="flex items-center gap-1.5 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-500/30 px-3 py-1 rounded-full hover:from-blue-500/30 hover:to-cyan-500/30 transition tap-effect">
+                    <span class="text-xs">⚖️</span>
+                    <span id="client-weight" class="text-sm font-bold text-blue-400">--</span>
+                    <span class="text-xs text-blue-400/70">kg</span>
+                </button>
+            </div>
             <div class="flex gap-2">
                 <button onclick="openCompareModal()" class="text-xs bg-white/5 border border-white/10 backdrop-blur-sm px-3 py-1.5 rounded-xl text-white/80 hover:bg-white/10 hover:text-white transition tap-effect flex items-center gap-1">
                     <span class="text-[10px]">⚖️</span> Compare
@@ -196,9 +280,72 @@
                 </button>
             </div>
         </div>
+        <!-- Weight Chart -->
+        <div id="weight-chart-container" class="bg-white/5 rounded-xl p-4 mb-4">
+            <div class="flex justify-between items-center mb-3">
+                <div class="flex items-center gap-2">
+                    <span class="text-xs text-gray-400 font-medium">Weight Trend</span>
+                    <span id="weight-trend-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold">--</span>
+                </div>
+                <div class="flex gap-1">
+                    <button onclick="loadWeightChart('week')" id="weight-period-week" class="text-[10px] px-2 py-1 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition">Week</button>
+                    <button onclick="loadWeightChart('month')" id="weight-period-month" class="text-[10px] px-2 py-1 rounded-lg bg-blue-500/20 text-blue-400 font-bold">Month</button>
+                    <button onclick="loadWeightChart('year')" id="weight-period-year" class="text-[10px] px-2 py-1 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition">Year</button>
+                </div>
+            </div>
+            <!-- Chart Area -->
+            <div class="relative h-32">
+                <canvas id="weight-chart" class="w-full h-full"></canvas>
+                <div id="weight-chart-loading" class="absolute inset-0 flex items-center justify-center">
+                    <span class="text-gray-500 text-xs">Loading chart...</span>
+                </div>
+            </div>
+            <!-- Stats Row -->
+            <div class="flex justify-between mt-3 text-center">
+                <div>
+                    <p class="text-[10px] text-gray-500">Start</p>
+                    <p id="weight-stat-start" class="text-sm font-bold text-gray-400">--</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-500">Min</p>
+                    <p id="weight-stat-min" class="text-sm font-bold text-green-400">--</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-500">Max</p>
+                    <p id="weight-stat-max" class="text-sm font-bold text-red-400">--</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-500">Change</p>
+                    <p id="weight-stat-change" class="text-sm font-bold text-blue-400">--</p>
+                </div>
+            </div>
+        </div>
+
         <div class="flex space-x-3 overflow-x-auto pb-2" id="photo-gallery">
             <p class="text-gray-500 text-xs py-4">Loading photos...</p>
         </div>
+    </div>
+</div>
+
+<!-- Weight Update Modal -->
+<div id="weight-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+    onclick="if(event.target === this) closeWeightModal()">
+    <div class="glass-card p-6 rounded-2xl max-w-xs w-full">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Update Weight</h3>
+            <button onclick="closeWeightModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+        <div class="text-center mb-6">
+            <div class="relative inline-block">
+                <input type="number" id="weight-input" step="0.1" min="20" max="300"
+                    class="text-5xl font-black text-center bg-transparent border-b-2 border-blue-500 w-32 focus:outline-none text-blue-400"
+                    placeholder="--">
+                <span class="text-2xl text-blue-400/70 ml-2">kg</span>
+            </div>
+        </div>
+        <button onclick="saveWeight()" class="w-full py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold rounded-xl hover:from-blue-400 hover:to-cyan-400 transition tap-effect">
+            Save Weight
+        </button>
     </div>
 </div>
 
@@ -1424,11 +1571,15 @@ document.addEventListener('DOMContentLoaded', () => {
     <a href="{{ 'client_calendar.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=calendar' }}"
         class="block slide-up">
         {% call card(classes="p-5 flex justify-between items-center relative overflow-hidden tap-effect") %}
-        <div class="absolute top-0 right-0 w-32 h-32 bg-orange-500/20 blur-3xl rounded-full -mr-10 -mt-10"></div>
-        <div class="flex items-center gap-6">
-            <div>
-                <h1 class="text-4xl font-black text-white" id="client-streak">0</h1>
-                <p class="text-orange-400 font-bold uppercase tracking-wider text-[10px]">Week Streak 🔥</p>
+        <div class="absolute top-0 right-0 w-32 h-32 bg-orange-500/30 blur-3xl rounded-full -mr-10 -mt-10 animate-pulse"></div>
+        <div class="absolute bottom-0 left-0 w-24 h-24 bg-red-500/20 blur-2xl rounded-full -ml-8 -mb-8"></div>
+        <div class="flex items-center gap-6 relative z-10">
+            <div class="flex items-center gap-3">
+                <div class="text-3xl animate-bounce" style="animation-duration: 2s;">🔥</div>
+                <div>
+                    <h1 class="text-4xl font-black bg-gradient-to-r from-orange-400 via-red-400 to-orange-500 bg-clip-text text-transparent" id="client-streak">0</h1>
+                    <p class="text-orange-400 font-bold uppercase tracking-wider text-[10px]">Week Streak</p>
+                </div>
             </div>
             <div class="h-10 w-px bg-white/10"></div>
             <div>
@@ -1438,10 +1589,10 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
         <!-- Gems Badge -->
         <div data-action="showModal" data-target="shop-modal"
-            class="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-full tap-effect hover:bg-white/20 transition"
+            class="flex items-center gap-2 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-yellow-500/30 px-4 py-2 rounded-full tap-effect hover:from-yellow-500/30 hover:to-amber-500/30 transition shadow-lg shadow-yellow-500/10 relative z-10"
             onclick="event.preventDefault(); event.stopPropagation();">
-            <span class="text-sm">🔶</span>
-            <span class="text-sm font-bold" id="gem-count">0</span>
+            <span class="text-lg">💎</span>
+            <span class="text-sm font-bold bg-gradient-to-r from-yellow-300 to-amber-400 bg-clip-text text-transparent" id="gem-count">0</span>
         </div>
         {% endcall %}
     </a>
@@ -1657,40 +1808,93 @@ document.addEventListener('DOMContentLoaded', () => {
 <!-- Member Profile Modal -->
 <div id="member-profile-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
     onclick="if(event.target === this) closeMemberProfileModal()">
-    <div class="glass-card p-6 rounded-2xl max-w-sm w-full">
-        <!-- Header with close button -->
-        <div class="flex justify-end mb-2">
-            <button onclick="closeMemberProfileModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+    <div class="glass-card p-5 rounded-2xl max-w-sm w-full relative overflow-hidden">
+        <!-- Background glow -->
+        <div class="absolute top-0 left-0 w-32 h-32 bg-purple-500/20 blur-3xl rounded-full -ml-10 -mt-10"></div>
+        <div class="absolute bottom-0 right-0 w-32 h-32 bg-blue-500/20 blur-3xl rounded-full -mr-10 -mb-10"></div>
+
+        <!-- Close button -->
+        <button onclick="closeMemberProfileModal()" class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center text-2xl text-gray-400 hover:text-white z-20 bg-white/10 rounded-full hover:bg-white/20 transition">&times;</button>
+
+        <!-- Header: Profile Picture + Name on left, Stats on right -->
+        <div class="flex items-start gap-4 mb-5 relative z-10">
+            <!-- Left: Avatar & Name -->
+            <div class="flex-shrink-0">
+                <div id="member-profile-avatar" class="w-16 h-16 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center overflow-hidden ring-2 ring-purple-500/50">
+                    <span class="text-2xl">👤</span>
+                </div>
+                <h3 id="member-profile-name" class="text-lg font-bold text-white mt-2 max-w-[100px] truncate">Username</h3>
+                <p id="member-profile-bio" class="text-gray-400 text-[10px] italic max-w-[100px] truncate"></p>
+            </div>
+
+            <!-- Right: Stats -->
+            <div class="flex-1 grid grid-cols-3 gap-2">
+                <div class="bg-gradient-to-br from-orange-500/20 to-red-500/10 rounded-xl p-2 text-center relative overflow-hidden">
+                    <div class="flex items-center justify-center gap-0.5">
+                        <span class="text-sm">🔥</span>
+                        <p id="member-profile-streak" class="text-lg font-bold bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">0</p>
+                    </div>
+                    <p class="text-[8px] text-orange-400 uppercase font-bold">Streak</p>
+                </div>
+                <div class="bg-gradient-to-br from-yellow-500/20 to-amber-500/10 rounded-xl p-2 text-center relative overflow-hidden">
+                    <div class="flex items-center justify-center gap-0.5">
+                        <span class="text-sm">💎</span>
+                        <p id="member-profile-gems" class="text-lg font-bold bg-gradient-to-r from-yellow-300 to-amber-400 bg-clip-text text-transparent">0</p>
+                    </div>
+                    <p class="text-[8px] text-yellow-400 uppercase font-bold">Gems</p>
+                </div>
+                <div class="bg-gradient-to-br from-green-500/20 to-emerald-500/10 rounded-xl p-2 text-center relative overflow-hidden">
+                    <div class="flex items-center justify-center gap-0.5">
+                        <p id="member-profile-health" class="text-lg font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">0</p>
+                        <span class="text-[10px] text-green-400 font-bold">%</span>
+                    </div>
+                    <p class="text-[8px] text-green-400 uppercase font-bold">Diet</p>
+                </div>
+            </div>
         </div>
 
-        <!-- Profile Picture & Name -->
-        <div class="text-center mb-6">
-            <div id="member-profile-avatar" class="w-24 h-24 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center mx-auto mb-3 overflow-hidden">
-                <span class="text-4xl">👤</span>
+        <!-- Progress Chart -->
+        <div class="bg-white/5 rounded-xl p-4 mb-4 relative z-10">
+            <div class="flex justify-between items-center mb-3">
+                <span class="text-xs text-gray-400 font-medium">Weekly Progress</span>
+                <span class="text-[10px] text-purple-400 font-bold">Last 7 days</span>
             </div>
-            <h3 id="member-profile-name" class="text-2xl font-bold text-white">Username</h3>
-            <p id="member-profile-bio" class="text-gray-400 text-sm mt-2 italic"></p>
-        </div>
-
-        <!-- Stats -->
-        <div class="grid grid-cols-3 gap-3 mb-6">
-            <div class="bg-white/5 rounded-xl p-3 text-center">
-                <p id="member-profile-streak" class="text-2xl font-bold text-orange-400">0</p>
-                <p class="text-[10px] text-gray-400 uppercase">Streak</p>
-            </div>
-            <div class="bg-white/5 rounded-xl p-3 text-center">
-                <p id="member-profile-gems" class="text-2xl font-bold text-yellow-400">0</p>
-                <p class="text-[10px] text-gray-400 uppercase">Gems</p>
-            </div>
-            <div class="bg-white/5 rounded-xl p-3 text-center">
-                <p id="member-profile-health" class="text-2xl font-bold text-green-400">0</p>
-                <p class="text-[10px] text-gray-400 uppercase">Health</p>
+            <!-- Bar Chart -->
+            <div id="member-progress-chart" class="flex items-end justify-between gap-1 h-20">
+                <div class="flex-1 flex flex-col items-center">
+                    <div class="w-full bg-gradient-to-t from-purple-500 to-blue-500 rounded-t-sm transition-all duration-500" style="height: 40%"></div>
+                    <span class="text-[8px] text-gray-500 mt-1">M</span>
+                </div>
+                <div class="flex-1 flex flex-col items-center">
+                    <div class="w-full bg-gradient-to-t from-purple-500 to-blue-500 rounded-t-sm transition-all duration-500" style="height: 65%"></div>
+                    <span class="text-[8px] text-gray-500 mt-1">T</span>
+                </div>
+                <div class="flex-1 flex flex-col items-center">
+                    <div class="w-full bg-gradient-to-t from-purple-500 to-blue-500 rounded-t-sm transition-all duration-500" style="height: 45%"></div>
+                    <span class="text-[8px] text-gray-500 mt-1">W</span>
+                </div>
+                <div class="flex-1 flex flex-col items-center">
+                    <div class="w-full bg-gradient-to-t from-purple-500 to-blue-500 rounded-t-sm transition-all duration-500" style="height: 80%"></div>
+                    <span class="text-[8px] text-gray-500 mt-1">T</span>
+                </div>
+                <div class="flex-1 flex flex-col items-center">
+                    <div class="w-full bg-gradient-to-t from-purple-500 to-blue-500 rounded-t-sm transition-all duration-500" style="height: 55%"></div>
+                    <span class="text-[8px] text-gray-500 mt-1">F</span>
+                </div>
+                <div class="flex-1 flex flex-col items-center">
+                    <div class="w-full bg-gradient-to-t from-purple-500 to-blue-500 rounded-t-sm transition-all duration-500" style="height: 90%"></div>
+                    <span class="text-[8px] text-gray-500 mt-1">S</span>
+                </div>
+                <div class="flex-1 flex flex-col items-center">
+                    <div class="w-full bg-gradient-to-t from-purple-500/50 to-blue-500/50 rounded-t-sm transition-all duration-500" style="height: 30%"></div>
+                    <span class="text-[8px] text-purple-400 mt-1">S</span>
+                </div>
             </div>
         </div>
 
         <!-- Message Button -->
         <button id="member-profile-message-btn" onclick="messageFromProfile()"
-            class="w-full py-3 bg-blue-500 text-white font-bold rounded-xl hover:bg-blue-400 transition tap-effect">
+            class="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold rounded-xl hover:from-blue-400 hover:to-purple-400 transition tap-effect relative z-10">
             Message
         </button>
     </div>
@@ -2949,8 +3153,11 @@ async function openMemberProfile(memberId) {
         if (member.profile_picture) {
             avatarEl.innerHTML = `<img src="${member.profile_picture}" class="w-full h-full object-cover">`;
         } else {
-            avatarEl.innerHTML = '<span class="text-4xl">👤</span>';
+            avatarEl.innerHTML = '<span class="text-2xl">👤</span>';
         }
+
+        // Update progress chart based on member's health score
+        updateMemberProgressChart(member.health_score || 0, member.streak || 0);
 
         // Show modal
         document.getElementById('member-profile-modal').classList.remove('hidden');
@@ -2964,6 +3171,48 @@ async function openMemberProfile(memberId) {
 function closeMemberProfileModal() {
     document.getElementById('member-profile-modal').classList.add('hidden');
     currentProfileMember = null;
+}
+
+function updateMemberProgressChart(healthScore, streak) {
+    const chartEl = document.getElementById('member-progress-chart');
+    if (!chartEl) return;
+
+    const days = ['M', 'T', 'W', 'T', 'F', 'S', 'S'];
+    const today = new Date().getDay(); // 0=Sunday, 1=Monday, etc
+    const todayIndex = today === 0 ? 6 : today - 1; // Convert to 0=Monday
+
+    // Generate progress bars based on health score with some variance
+    const baseProgress = Math.min(healthScore, 100);
+    let html = '';
+
+    days.forEach((day, index) => {
+        // Create variance: past days have actual values, future days are dimmed
+        const isPast = index < todayIndex;
+        const isToday = index === todayIndex;
+        const isFuture = index > todayIndex;
+
+        // Generate height based on health score with random variance
+        let height;
+        if (isFuture) {
+            height = 15; // Minimal for future days
+        } else {
+            // Vary between 40-100% of health score for past days
+            const variance = Math.random() * 0.4 + 0.6;
+            height = Math.max(20, Math.min(95, baseProgress * variance));
+        }
+
+        const opacity = isFuture ? '0.3' : '1';
+        const textColor = isToday ? 'text-purple-400' : 'text-gray-500';
+
+        html += `
+            <div class="flex-1 flex flex-col items-center">
+                <div class="w-full bg-gradient-to-t from-purple-500 to-blue-500 rounded-t-sm transition-all duration-500" style="height: ${height}%; opacity: ${opacity}"></div>
+                <span class="text-[8px] ${textColor} mt-1">${day}</span>
+            </div>
+        `;
+    });
+
+    chartEl.innerHTML = html;
 }
 
 async function messageFromProfile() {
