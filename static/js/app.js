@@ -1512,6 +1512,10 @@ function quickAction(action) {
 let cameraStream = null;
 let currentFacingMode = 'environment'; // 'environment' = back camera, 'user' = front camera
 let capturedImageBlob = null; // Store captured photo for analysis
+let currentScanMode = 'photo'; // 'photo' or 'barcode'
+let scannedFoodData = null; // Store scanned result for editing
+let barcodeScanning = false; // Track if barcode scanner is active
+let per100gData = null; // Store per-100g values for recalculation
 
 async function openCameraScanner() {
     const modal = document.getElementById('camera-scanner-modal');
@@ -1521,8 +1525,11 @@ async function openCameraScanner() {
         return;
     }
 
-    // Reset to capture mode
+    // Reset to photo capture mode
+    currentScanMode = 'photo';
+    scannedFoodData = null;
     showCaptureMode();
+    updateScanModeTabs();
     modal.classList.remove('hidden');
     await startCamera();
 }
@@ -1533,42 +1540,345 @@ function closeCameraScanner() {
         modal.classList.add('hidden');
     }
     stopCamera();
+    stopBarcodeScanner();
     capturedImageBlob = null;
+    scannedFoodData = null;
+}
+
+function setScanMode(mode) {
+    if (currentScanMode === mode) return;
+    currentScanMode = mode;
+    updateScanModeTabs();
+
+    // Reset to appropriate view
+    if (mode === 'photo') {
+        stopBarcodeScanner();
+        showCaptureMode();
+        startCamera();
+    } else if (mode === 'barcode') {
+        showBarcodeMode();
+        startBarcodeScanner();
+    }
+}
+
+function updateScanModeTabs() {
+    const photoBtn = document.getElementById('photo-mode-btn');
+    const barcodeBtn = document.getElementById('barcode-mode-btn');
+    const photoOverlay = document.getElementById('photo-overlay');
+    const barcodeOverlay = document.getElementById('barcode-overlay');
+
+    if (currentScanMode === 'photo') {
+        if (photoBtn) {
+            photoBtn.classList.add('bg-primary', 'text-white');
+            photoBtn.classList.remove('text-white/60');
+        }
+        if (barcodeBtn) {
+            barcodeBtn.classList.remove('bg-primary', 'text-white');
+            barcodeBtn.classList.add('text-white/60');
+        }
+        if (photoOverlay) photoOverlay.classList.remove('hidden');
+        if (barcodeOverlay) barcodeOverlay.classList.add('hidden');
+    } else {
+        if (photoBtn) {
+            photoBtn.classList.remove('bg-primary', 'text-white');
+            photoBtn.classList.add('text-white/60');
+        }
+        if (barcodeBtn) {
+            barcodeBtn.classList.add('bg-primary', 'text-white');
+            barcodeBtn.classList.remove('text-white/60');
+        }
+        if (photoOverlay) photoOverlay.classList.add('hidden');
+        if (barcodeOverlay) barcodeOverlay.classList.remove('hidden');
+    }
 }
 
 function showCaptureMode() {
-    // Show live camera view, hide preview
+    // Show live camera view, hide other views
     const liveView = document.getElementById('camera-live-view');
+    const barcodeView = document.getElementById('barcode-scanner-view');
     const previewView = document.getElementById('camera-preview-view');
+    const resultsView = document.getElementById('results-edit-view');
     const captureControls = document.getElementById('capture-controls');
+    const barcodeControls = document.getElementById('barcode-controls');
     const reviewControls = document.getElementById('review-controls');
+    const resultsControls = document.getElementById('results-controls');
     const flipBtn = document.getElementById('flip-btn');
+    const modeTabs = document.getElementById('scan-mode-tabs');
 
     if (liveView) liveView.classList.remove('hidden');
+    if (barcodeView) barcodeView.classList.add('hidden');
     if (previewView) previewView.classList.add('hidden');
+    if (resultsView) resultsView.classList.add('hidden');
     if (captureControls) captureControls.classList.remove('hidden');
+    if (barcodeControls) barcodeControls.classList.add('hidden');
     if (reviewControls) reviewControls.classList.add('hidden');
+    if (resultsControls) resultsControls.classList.add('hidden');
     if (flipBtn) flipBtn.classList.remove('hidden');
+    if (modeTabs) modeTabs.classList.remove('hidden');
+}
+
+function showBarcodeMode() {
+    const liveView = document.getElementById('camera-live-view');
+    const barcodeView = document.getElementById('barcode-scanner-view');
+    const previewView = document.getElementById('camera-preview-view');
+    const resultsView = document.getElementById('results-edit-view');
+    const captureControls = document.getElementById('capture-controls');
+    const barcodeControls = document.getElementById('barcode-controls');
+    const reviewControls = document.getElementById('review-controls');
+    const resultsControls = document.getElementById('results-controls');
+    const flipBtn = document.getElementById('flip-btn');
+    const modeTabs = document.getElementById('scan-mode-tabs');
+
+    if (liveView) liveView.classList.add('hidden');
+    if (barcodeView) barcodeView.classList.remove('hidden');
+    if (previewView) previewView.classList.add('hidden');
+    if (resultsView) resultsView.classList.add('hidden');
+    if (captureControls) captureControls.classList.add('hidden');
+    if (barcodeControls) barcodeControls.classList.remove('hidden');
+    if (reviewControls) reviewControls.classList.add('hidden');
+    if (resultsControls) resultsControls.classList.add('hidden');
+    if (flipBtn) flipBtn.classList.add('hidden');
+    if (modeTabs) modeTabs.classList.remove('hidden');
+
+    // Stop regular camera when switching to barcode mode
+    stopCamera();
 }
 
 function showReviewMode(imageDataUrl) {
     // Show captured photo preview, hide live camera
     const liveView = document.getElementById('camera-live-view');
     const previewView = document.getElementById('camera-preview-view');
+    const resultsView = document.getElementById('results-edit-view');
     const captureControls = document.getElementById('capture-controls');
+    const barcodeControls = document.getElementById('barcode-controls');
     const reviewControls = document.getElementById('review-controls');
+    const resultsControls = document.getElementById('results-controls');
     const capturedPhoto = document.getElementById('captured-photo');
     const flipBtn = document.getElementById('flip-btn');
+    const modeTabs = document.getElementById('scan-mode-tabs');
 
     if (liveView) liveView.classList.add('hidden');
     if (previewView) previewView.classList.remove('hidden');
+    if (resultsView) resultsView.classList.add('hidden');
     if (captureControls) captureControls.classList.add('hidden');
+    if (barcodeControls) barcodeControls.classList.add('hidden');
     if (reviewControls) reviewControls.classList.remove('hidden');
+    if (resultsControls) resultsControls.classList.add('hidden');
     if (capturedPhoto) capturedPhoto.src = imageDataUrl;
     if (flipBtn) flipBtn.classList.add('hidden');
+    if (modeTabs) modeTabs.classList.add('hidden');
 
     // Stop the camera since we have the photo
     stopCamera();
+}
+
+function showResultsEditView(food, source = 'AI Vision') {
+    scannedFoodData = { ...food };
+
+    // Store per-100g values for recalculation (if available from barcode scan)
+    if (food.per_100g) {
+        per100gData = { ...food.per_100g };
+    } else {
+        // Calculate per-100g from current values if not provided
+        const currentGrams = parsePortionGrams(food.portion_size) || 100;
+        per100gData = {
+            cals: Math.round((food.cals || 0) / currentGrams * 100),
+            protein: Math.round(((food.protein || 0) / currentGrams * 100) * 10) / 10,
+            carbs: Math.round(((food.carbs || 0) / currentGrams * 100) * 10) / 10,
+            fat: Math.round(((food.fat || 0) / currentGrams * 100) * 10) / 10
+        };
+    }
+
+    const liveView = document.getElementById('camera-live-view');
+    const barcodeView = document.getElementById('barcode-scanner-view');
+    const previewView = document.getElementById('camera-preview-view');
+    const resultsView = document.getElementById('results-edit-view');
+    const captureControls = document.getElementById('capture-controls');
+    const barcodeControls = document.getElementById('barcode-controls');
+    const reviewControls = document.getElementById('review-controls');
+    const resultsControls = document.getElementById('results-controls');
+    const flipBtn = document.getElementById('flip-btn');
+    const modeTabs = document.getElementById('scan-mode-tabs');
+
+    if (liveView) liveView.classList.add('hidden');
+    if (barcodeView) barcodeView.classList.add('hidden');
+    if (previewView) previewView.classList.add('hidden');
+    if (resultsView) resultsView.classList.remove('hidden');
+    if (captureControls) captureControls.classList.add('hidden');
+    if (barcodeControls) barcodeControls.classList.add('hidden');
+    if (reviewControls) reviewControls.classList.add('hidden');
+    if (resultsControls) resultsControls.classList.remove('hidden');
+    if (flipBtn) flipBtn.classList.add('hidden');
+    if (modeTabs) modeTabs.classList.add('hidden');
+
+    // Populate edit fields
+    document.getElementById('result-food-name').textContent = food.name || 'Scanned Food';
+    document.getElementById('edit-food-name').value = food.name || '';
+    document.getElementById('edit-calories').value = food.cals || 0;
+    document.getElementById('edit-protein').value = food.protein || 0;
+    document.getElementById('edit-carbs').value = food.carbs || 0;
+    document.getElementById('edit-fat').value = food.fat || 0;
+    document.getElementById('edit-portion').value = food.portion_size || '';
+    document.getElementById('result-source').textContent = `Source: ${source}`;
+
+    // Set up portion change listener for auto-recalculation
+    const portionInput = document.getElementById('edit-portion');
+    portionInput.removeEventListener('input', recalculateMacrosFromPortion);
+    portionInput.addEventListener('input', recalculateMacrosFromPortion);
+
+    stopCamera();
+    stopBarcodeScanner();
+}
+
+// Parse portion size string to get grams (e.g., "480g" -> 480, "100" -> 100)
+function parsePortionGrams(portionStr) {
+    if (!portionStr) return null;
+    const match = String(portionStr).match(/(\d+\.?\d*)/);
+    return match ? parseFloat(match[1]) : null;
+}
+
+// Recalculate macros when portion size changes
+function recalculateMacrosFromPortion() {
+    if (!per100gData) return;
+
+    const portionInput = document.getElementById('edit-portion');
+    const grams = parsePortionGrams(portionInput.value);
+
+    if (!grams || grams <= 0) return;
+
+    const scale = grams / 100;
+
+    document.getElementById('edit-calories').value = Math.round(per100gData.cals * scale);
+    document.getElementById('edit-protein').value = Math.round(per100gData.protein * scale * 10) / 10;
+    document.getElementById('edit-carbs').value = Math.round(per100gData.carbs * scale * 10) / 10;
+    document.getElementById('edit-fat').value = Math.round(per100gData.fat * scale * 10) / 10;
+}
+
+// ============ BARCODE SCANNER (QuaggaJS) ============
+
+function startBarcodeScanner() {
+    if (barcodeScanning) return;
+    if (typeof Quagga === 'undefined') {
+        showToast('Barcode scanner not available');
+        setScanMode('photo');
+        return;
+    }
+
+    barcodeScanning = true;
+    stopCamera(); // Stop regular camera
+
+    const container = document.getElementById('barcode-scanner-container');
+    if (container) {
+        container.innerHTML = ''; // Clear any previous content
+    }
+
+    Quagga.init({
+        inputStream: {
+            name: "Live",
+            type: "LiveStream",
+            target: container,
+            constraints: {
+                facingMode: "environment",
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+            }
+        },
+        decoder: {
+            readers: [
+                "ean_reader",
+                "ean_8_reader",
+                "upc_reader",
+                "upc_e_reader"
+            ]
+        },
+        locate: true,
+        frequency: 10
+    }, function(err) {
+        if (err) {
+            console.error('Quagga init error:', err);
+            showToast('Could not start barcode scanner');
+            barcodeScanning = false;
+            setScanMode('photo');
+            return;
+        }
+        Quagga.start();
+
+        // Style the Quagga video element to fill container
+        const video = container.querySelector('video');
+        if (video) {
+            video.style.width = '100%';
+            video.style.height = '100%';
+            video.style.objectFit = 'cover';
+        }
+    });
+
+    Quagga.onDetected(onBarcodeDetected);
+}
+
+function stopBarcodeScanner() {
+    if (!barcodeScanning) return;
+    barcodeScanning = false;
+
+    if (typeof Quagga !== 'undefined') {
+        Quagga.offDetected(onBarcodeDetected);
+        Quagga.stop();
+    }
+}
+
+async function onBarcodeDetected(result) {
+    const code = result.codeResult.code;
+    console.log('Barcode detected:', code);
+
+    // Stop scanning immediately to prevent multiple detections
+    stopBarcodeScanner();
+
+    // Show loading
+    const loadingText = document.getElementById('loading-text');
+    const loading = document.getElementById('camera-loading');
+    const previewView = document.getElementById('camera-preview-view');
+    const barcodeView = document.getElementById('barcode-scanner-view');
+    const barcodeControls = document.getElementById('barcode-controls');
+
+    if (loadingText) loadingText.textContent = 'Looking up product...';
+    if (loading) loading.classList.remove('hidden');
+    if (previewView) previewView.classList.remove('hidden');
+    if (barcodeView) barcodeView.classList.add('hidden');
+    if (barcodeControls) barcodeControls.classList.add('hidden');
+
+    showToast(`Barcode: ${code}`);
+
+    try {
+        const res = await fetch(`${apiBase}/api/client/diet/barcode/${code}`, {
+            headers: {
+                'Authorization': `Bearer ${localStorage.getItem('token')}`
+            }
+        });
+
+        const data = await res.json();
+
+        if (loading) loading.classList.add('hidden');
+        if (previewView) previewView.classList.add('hidden');
+
+        if (data.status === 'success') {
+            showToast(`Found: ${data.data.name}`);
+            showResultsEditView(data.data, 'Open Food Facts (Barcode)');
+        } else {
+            showToast('Product not found. Try photo mode.');
+            currentScanMode = 'photo';
+            updateScanModeTabs();
+            showCaptureMode();
+            startCamera();
+        }
+    } catch (err) {
+        console.error('Barcode lookup error:', err);
+        if (loading) loading.classList.add('hidden');
+        if (previewView) previewView.classList.add('hidden');
+        showToast('Error looking up barcode');
+        currentScanMode = 'photo';
+        updateScanModeTabs();
+        showCaptureMode();
+        startCamera();
+    }
 }
 
 async function startCamera() {
@@ -1700,6 +2010,9 @@ async function analyzeMealImage(imageBlob) {
     const formData = new FormData();
     formData.append('file', imageBlob, 'meal.jpg');
 
+    const loadingText = document.getElementById('loading-text');
+    if (loadingText) loadingText.textContent = 'Analyzing meal...';
+
     showToast('Analyzing meal... 🍎');
 
     try {
@@ -1721,30 +2034,39 @@ async function analyzeMealImage(imageBlob) {
             }
             const food = result.data;
 
-            // Close camera modal
-            closeCameraScanner();
-
-            // Show result modal
-            showMealResultModal(food);
+            // Show results in edit view (instead of closing modal)
+            showResultsEditView(food, 'AI Vision');
         } else {
             throw new Error(result.message || "Unknown error");
         }
     } catch (err) {
         console.error(err);
         showToast('Error analyzing meal ⚠️');
+        // Go back to capture mode on error
+        showCaptureMode();
+        startCamera();
     }
 }
 
-function showMealResultModal(food) {
-    const portionInfo = food.portion_size ? `\nPortion: ${food.portion_size}` : '';
-    const confidenceInfo = food.confidence ? `\nConfidence: ${food.confidence}` : '';
-
-    if (confirm(`Found: ${food.name}\n\n📊 Nutrition:\n${food.cals} kcal | P: ${food.protein}g | C: ${food.carbs}g | F: ${food.fat}g${portionInfo}${confidenceInfo}\n\nLog this meal?`)) {
-        logScannedMeal(food);
-    }
+function cancelScanResult() {
+    scannedFoodData = null;
+    currentScanMode = 'photo';
+    updateScanModeTabs();
+    showCaptureMode();
+    startCamera();
 }
 
-async function logScannedMeal(food) {
+async function logScannedMeal() {
+    // Get values from edit fields
+    const food = {
+        name: document.getElementById('edit-food-name').value || 'Scanned Meal',
+        cals: parseFloat(document.getElementById('edit-calories').value) || 0,
+        protein: parseFloat(document.getElementById('edit-protein').value) || 0,
+        carbs: parseFloat(document.getElementById('edit-carbs').value) || 0,
+        fat: parseFloat(document.getElementById('edit-fat').value) || 0,
+        portion_size: document.getElementById('edit-portion').value || ''
+    };
+
     try {
         const logRes = await fetch(`${apiBase}/api/client/diet/log`, {
             method: 'POST',
@@ -1758,7 +2080,8 @@ async function logScannedMeal(food) {
 
         if (logRes.ok) {
             showToast('Meal logged successfully! ✅');
-            // Refresh data to update macros
+            // Close modal and refresh data
+            closeCameraScanner();
             init();
         } else {
             showToast('Failed to log meal ❌');

@@ -22,6 +22,16 @@ async def scan_meal(
     return service.scan_meal(content)
 
 
+@router.get("/api/client/diet/barcode/{barcode}")
+async def lookup_barcode(
+    barcode: str,
+    service: DietService = Depends(get_diet_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Look up a product by barcode using Open Food Facts."""
+    return service.lookup_barcode(barcode)
+
+
 @router.post("/api/client/diet/log")
 async def log_meal(
     meal_data: dict,

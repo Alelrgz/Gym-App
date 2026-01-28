@@ -92,6 +92,107 @@ class DietService:
         result = random.choice(MOCK_MEALS)
         return {"status": "success", "data": result, "method": "mock"}
 
+    def lookup_barcode(self, barcode: str) -> dict:
+        """Look up a product by barcode using Open Food Facts API.
+
+        This provides accurate nutritional data for packaged foods.
+        Open Food Facts has excellent coverage for EU/Italian products.
+        """
+        import requests
+
+        logger.info(f"Looking up barcode: {barcode}")
+
+        # Try Italian Open Food Facts first, then world database
+        api_urls = [
+            f"https://it.openfoodfacts.org/api/v0/product/{barcode}.json",
+            f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
+        ]
+
+        for api_url in api_urls:
+            try:
+                response = requests.get(api_url, timeout=10)
+
+                if not response.ok:
+                    continue
+
+                data = response.json()
+
+                if data.get("status") != 1:
+                    continue
+
+                product = data.get("product", {})
+                nutriments = product.get("nutriments", {})
+
+                # Get product info
+                product_name = product.get("product_name") or product.get("product_name_it") or product.get("product_name_en") or "Unknown Product"
+                brands = product.get("brands", "")
+                quantity = product.get("quantity", "")
+
+                # Parse quantity to get package weight
+                package_weight = 100  # default to 100g
+                if quantity:
+                    import re
+                    match = re.search(r'(\d+)\s*g', quantity.lower())
+                    if match:
+                        package_weight = int(match.group(1))
+
+                # Get nutritional values per 100g
+                energy_100g = nutriments.get("energy-kcal_100g") or 0
+                if not energy_100g:
+                    # Try energy in kJ and convert
+                    energy_kj = nutriments.get("energy_100g", 0)
+                    if energy_kj:
+                        energy_100g = energy_kj / 4.184
+
+                protein_100g = nutriments.get("proteins_100g", 0) or 0
+                carbs_100g = nutriments.get("carbohydrates_100g", 0) or 0
+                fat_100g = nutriments.get("fat_100g", 0) or 0
+
+                # Calculate per package (full product)
+                scale = package_weight / 100.0
+                total_calories = round(energy_100g * scale)
+                total_protein = round(protein_100g * scale, 1)
+                total_carbs = round(carbs_100g * scale, 1)
+                total_fat = round(fat_100g * scale, 1)
+
+                full_name = f"{brands} {product_name}".strip() if brands else product_name
+
+                logger.info(f"Found product: {full_name}, {package_weight}g, {total_calories} kcal")
+
+                return {
+                    "status": "success",
+                    "data": {
+                        "name": full_name,
+                        "cals": total_calories,
+                        "protein": total_protein,
+                        "carbs": total_carbs,
+                        "fat": total_fat,
+                        "portion_size": f"{package_weight}g",
+                        "package_weight": package_weight,
+                        "per_100g": {
+                            "cals": round(energy_100g),
+                            "protein": round(protein_100g, 1),
+                            "carbs": round(carbs_100g, 1),
+                            "fat": round(fat_100g, 1)
+                        },
+                        "confidence": "high",
+                        "source": "openfoodfacts_barcode"
+                    },
+                    "method": "barcode"
+                }
+
+            except Exception as e:
+                logger.warning(f"Open Food Facts barcode lookup error: {e}")
+                continue
+
+        # Product not found
+        logger.warning(f"Barcode {barcode} not found in Open Food Facts")
+        return {
+            "status": "not_found",
+            "message": f"Product with barcode {barcode} not found. Try taking a photo instead.",
+            "barcode": barcode
+        }
+
     def _scan_macrofactor_style(self, file_bytes: bytes, gemini_key: str, nutritionix_app_id: str, nutritionix_api_key: str) -> dict:
         """MacroFactor-style: Gemini identifies individual foods, Nutritionix provides accurate macros."""
         import base64
