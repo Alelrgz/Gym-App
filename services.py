@@ -482,8 +482,93 @@ class UserService:
         return _notes_service.delete_trainer_note(note_id, trainer_id)
 
 class LeaderboardService:
-    def get_leaderboard(self) -> LeaderboardData:
-        return LeaderboardData(**LEADERBOARD_DATA)
+    def get_leaderboard(self, current_user_id: str) -> LeaderboardData:
+        """Get leaderboard data for users in the same gym as the current user."""
+        db = get_db_session()
+        try:
+            # Get current user's profile to find their gym
+            current_profile = db.query(ClientProfileORM).filter(
+                ClientProfileORM.id == current_user_id
+            ).first()
+
+            if not current_profile or not current_profile.gym_id:
+                # Return empty leaderboard if user has no gym
+                return LeaderboardData(
+                    users=[],
+                    weekly_challenge={
+                        "title": "Weekly Workout Challenge",
+                        "description": "Complete 5 workouts this week",
+                        "progress": 0,
+                        "target": 5,
+                        "reward_gems": 200
+                    }
+                )
+
+            gym_id = current_profile.gym_id
+
+            # Get all clients in the same gym
+            gym_profiles = db.query(ClientProfileORM).filter(
+                ClientProfileORM.gym_id == gym_id
+            ).all()
+
+            # Build user list with their data
+            users_data = []
+            for profile in gym_profiles:
+                user = db.query(UserORM).filter(UserORM.id == profile.id).first()
+                if user:
+                    users_data.append({
+                        "user_id": profile.id,
+                        "name": user.username,
+                        "streak": profile.streak or 0,
+                        "gems": profile.gems or 0,
+                        "health_score": profile.health_score or 0,
+                        "isCurrentUser": profile.id == current_user_id,
+                        "profile_picture": user.profile_picture,
+                        "privacy_mode": profile.privacy_mode or "public"
+                    })
+
+            # Sort by gems (descending) and assign ranks
+            users_data.sort(key=lambda x: x["gems"], reverse=True)
+
+            leaderboard_users = []
+            for i, user_data in enumerate(users_data):
+                leaderboard_users.append({
+                    "name": user_data["name"],
+                    "streak": user_data["streak"],
+                    "gems": user_data["gems"],
+                    "health_score": user_data["health_score"],
+                    "rank": i + 1,
+                    "isCurrentUser": user_data["isCurrentUser"],
+                    "user_id": user_data["user_id"],
+                    "profile_picture": user_data["profile_picture"],
+                    "privacy_mode": user_data["privacy_mode"]
+                })
+
+            # Calculate weekly challenge progress (completed workouts this week)
+            today = date.today()
+            week_start = today - timedelta(days=today.weekday())  # Monday
+
+            weekly_workouts = db.query(ClientScheduleORM).filter(
+                ClientScheduleORM.client_id == current_user_id,
+                ClientScheduleORM.date >= week_start.isoformat(),
+                ClientScheduleORM.completed == True
+            ).count()
+
+            weekly_challenge = {
+                "title": "Weekly Workout Challenge",
+                "description": "Complete 5 workouts this week",
+                "progress": weekly_workouts,
+                "target": 5,
+                "reward_gems": 200
+            }
+
+            return LeaderboardData(
+                users=leaderboard_users,
+                weekly_challenge=weekly_challenge
+            )
+
+        finally:
+            db.close()
 
 def get_user_service():
     return UserService()

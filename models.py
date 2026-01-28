@@ -169,12 +169,17 @@ class LeaderboardUser(BaseModel):
     health_score: int
     rank: int
     isCurrentUser: Optional[bool] = False
+    user_id: Optional[str] = None
+    profile_picture: Optional[str] = None
+    privacy_mode: Optional[str] = "public"
 
 class WeeklyChallenge(BaseModel):
     title: str
     description: str
     progress: int
     target: int
+    reward_gems: Optional[int] = 200
+
 class WorkoutAssignment(BaseModel):
     client_name: str
     workout_type: str

@@ -114,7 +114,7 @@ async def get_leaderboard_data(
     service: LeaderboardService = Depends(get_leaderboard_service),
     current_user: UserORM = Depends(get_current_user)
 ):
-    return service.get_leaderboard()
+    return service.get_leaderboard(current_user.id)
 
 
 

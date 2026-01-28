@@ -526,6 +526,9 @@
     <div class="flex items-center justify-between p-4 border-b border-white/10">
         <div class="flex items-center space-x-3">
             <button onclick="closeChatModal()" class="text-gray-400 hover:text-white text-2xl">&larr;</button>
+            <div class="w-10 h-10 rounded-full bg-white/10 overflow-hidden">
+                <img id="chat-user-avatar" src="https://api.dicebear.com/7.x/avataaars/svg?seed=default" class="w-full h-full object-cover" />
+            </div>
             <div>
                 <h3 class="font-bold text-white" id="chat-user-name">Chat</h3>
                 <p class="text-xs text-gray-400" id="chat-user-status">Online</p>
@@ -555,7 +558,11 @@
 <div id="conversations-modal" class="fixed inset-0 bg-black/95 backdrop-blur-xl z-[75] hidden flex flex-col">
     <div class="flex items-center justify-between p-4 border-b border-white/10">
         <h3 class="font-bold text-white text-lg">Messages</h3>
-        <button onclick="closeConversationsModal()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+        <div class="flex items-center gap-3">
+            <button onclick="closeConversationsModal(); if(typeof openGymMembersModal === 'function') openGymMembersModal();"
+                class="text-orange-400 hover:text-orange-300 text-sm font-bold">+ New</button>
+            <button onclick="closeConversationsModal()" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+        </div>
     </div>
     <div id="conversations-list" class="flex-1 overflow-y-auto p-4 space-y-2">
         <div class="text-center text-gray-500 py-8">Loading conversations...</div>

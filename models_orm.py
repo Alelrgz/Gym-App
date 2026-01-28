@@ -83,6 +83,9 @@ class ClientProfileORM(Base):
 
     is_premium = Column(Boolean, default=False)
 
+    # Privacy setting for client-to-client chat
+    privacy_mode = Column(String, default="public")  # "public" or "private"
+
 class ClientScheduleORM(Base):
     __tablename__ = "client_schedule"
 
@@ -345,22 +348,31 @@ class AppointmentORM(Base):
 # --- MESSAGING MODELS ---
 
 class ConversationORM(Base):
-    """Conversation thread between two users (trainer <-> client)"""
+    """Conversation thread between two users"""
     __tablename__ = "conversations"
 
     id = Column(String, primary_key=True, index=True)
 
-    # Participants (trainer and client)
-    trainer_id = Column(String, ForeignKey("users.id"), index=True)
-    client_id = Column(String, ForeignKey("users.id"), index=True)
+    # Legacy fields for trainer <-> client (kept for backwards compatibility)
+    trainer_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)
+    client_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)
+
+    # Generic participant fields for any conversation type
+    user1_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)
+    user2_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)
+
+    # Conversation type: "trainer_client" or "client_client"
+    conversation_type = Column(String, default="trainer_client")
 
     # Last activity for sorting
     last_message_at = Column(String, nullable=True)
     last_message_preview = Column(String, nullable=True)  # First 50 chars of last message
 
-    # Unread counts
+    # Unread counts (user1 and user2 for generic, trainer/client for legacy)
     trainer_unread_count = Column(Integer, default=0)
     client_unread_count = Column(Integer, default=0)
+    user1_unread_count = Column(Integer, default=0)
+    user2_unread_count = Column(Integer, default=0)
 
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
 
@@ -433,3 +445,18 @@ class NotificationORM(Base):
     data = Column(Text, nullable=True)  # JSON data for additional context
     read = Column(Boolean, default=False)
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
+class ChatRequestORM(Base):
+    """Chat requests for private users - must be accepted before messaging."""
+    __tablename__ = "chat_requests"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    from_user_id = Column(String, ForeignKey("users.id"), index=True)  # Who sent the request
+    to_user_id = Column(String, ForeignKey("users.id"), index=True)  # Who receives the request
+
+    status = Column(String, default="pending")  # pending, accepted, rejected
+    message = Column(String, nullable=True)  # Optional intro message
+
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    responded_at = Column(String, nullable=True)  # When accepted/rejected

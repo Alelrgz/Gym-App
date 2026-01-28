@@ -785,9 +785,240 @@ if (mealForm) {
         SAVE CHANGES
     </button>
     {% endcall %}
+
+    <!-- Privacy Section -->
+    {% call card(classes="p-6 space-y-4") %}
+    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Privacy</h3>
+    <p class="text-sm text-gray-400 mb-4">Control who can message you in the gym</p>
+
+    <!-- Privacy Mode Selector -->
+    <div class="space-y-3">
+        <!-- Public Option -->
+        <button onclick="setPrivacyMode('public')" id="privacy-opt-public"
+            class="w-full p-4 rounded-xl border-2 transition-all duration-200 text-left privacy-option">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <span class="text-xl">🌍</span>
+                </div>
+                <div class="flex-1">
+                    <p class="font-bold text-white">Public</p>
+                    <p class="text-xs text-gray-400">Anyone in your gym can message you</p>
+                </div>
+                <div id="privacy-check-public" class="w-6 h-6 rounded-full bg-green-500 hidden items-center justify-center">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+            </div>
+        </button>
+
+        <!-- Private Option -->
+        <button onclick="setPrivacyMode('private')" id="privacy-opt-private"
+            class="w-full p-4 rounded-xl border-2 transition-all duration-200 text-left privacy-option">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                    <span class="text-xl">🔒</span>
+                </div>
+                <div class="flex-1">
+                    <p class="font-bold text-white">Private</p>
+                    <p class="text-xs text-gray-400">Requires approval before clients can message you</p>
+                </div>
+                <div id="privacy-check-private" class="w-6 h-6 rounded-full bg-yellow-500 hidden items-center justify-center">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+            </div>
+        </button>
+
+        <!-- Staff Only Option -->
+        <button onclick="setPrivacyMode('staff_only')" id="privacy-opt-staff_only"
+            class="w-full p-4 rounded-xl border-2 transition-all duration-200 text-left privacy-option">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
+                    <span class="text-xl">🛡️</span>
+                </div>
+                <div class="flex-1">
+                    <p class="font-bold text-white">Staff Only</p>
+                    <p class="text-xs text-gray-400">Only trainers and gym staff can message you</p>
+                </div>
+                <div id="privacy-check-staff_only" class="w-6 h-6 rounded-full bg-red-500 hidden items-center justify-center">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                </div>
+            </div>
+        </button>
+    </div>
+
+    <!-- Pending Chat Requests -->
+    <div id="chat-requests-section" class="mt-6 hidden">
+        <h4 class="text-xs font-bold text-gray-500 uppercase mb-3">Pending Chat Requests</h4>
+        <div id="pending-requests-list" class="space-y-2">
+            <!-- Requests will be loaded here -->
+        </div>
+    </div>
+    {% endcall %}
 </div>
 
 <script>
+// --- PRIVACY SETTINGS ---
+
+let currentPrivacyMode = 'public';
+
+async function loadPrivacySettings() {
+    try {
+        const response = await fetch('/api/client/privacy', { credentials: 'include' });
+        if (response.ok) {
+            const data = await response.json();
+            currentPrivacyMode = data.privacy_mode || 'public';
+            updatePrivacyUI();
+            loadPendingChatRequests();
+        }
+    } catch (error) {
+        console.error('Error loading privacy settings:', error);
+    }
+}
+
+function updatePrivacyUI() {
+    const requestsSection = document.getElementById('chat-requests-section');
+    const modes = ['public', 'private', 'staff_only'];
+
+    // Update all option buttons
+    modes.forEach(mode => {
+        const opt = document.getElementById(`privacy-opt-${mode}`);
+        const check = document.getElementById(`privacy-check-${mode}`);
+
+        if (mode === currentPrivacyMode) {
+            // Selected state
+            opt.classList.add('border-white/30', 'bg-white/10');
+            opt.classList.remove('border-white/10', 'bg-white/5');
+            check.classList.remove('hidden');
+            check.classList.add('flex');
+        } else {
+            // Unselected state
+            opt.classList.remove('border-white/30', 'bg-white/10');
+            opt.classList.add('border-white/10', 'bg-white/5');
+            check.classList.add('hidden');
+            check.classList.remove('flex');
+        }
+    });
+
+    // Show pending requests section only for private mode
+    if (currentPrivacyMode === 'private') {
+        requestsSection.classList.remove('hidden');
+    } else {
+        requestsSection.classList.add('hidden');
+    }
+}
+
+async function setPrivacyMode(newMode) {
+    if (newMode === currentPrivacyMode) return;
+
+    try {
+        const response = await fetch('/api/client/privacy', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ mode: newMode })
+        });
+
+        if (response.ok) {
+            currentPrivacyMode = newMode;
+            updatePrivacyUI();
+            const modeLabels = {
+                'public': 'PUBLIC',
+                'private': 'PRIVATE',
+                'staff_only': 'STAFF ONLY'
+            };
+            showToast(`Profile set to ${modeLabels[newMode]}`, 'success');
+
+            // Load pending requests if switching to private mode
+            if (newMode === 'private') {
+                loadPendingChatRequests();
+            }
+        } else {
+            showToast('Failed to update privacy', 'error');
+        }
+    } catch (error) {
+        console.error('Error updating privacy:', error);
+        showToast('Failed to update privacy', 'error');
+    }
+}
+
+async function loadPendingChatRequests() {
+    if (currentPrivacyMode !== 'private') return;
+
+    try {
+        const response = await fetch('/api/client/chat-requests/pending', { credentials: 'include' });
+        if (response.ok) {
+            const requests = await response.json();
+            renderPendingRequests(requests);
+        }
+    } catch (error) {
+        console.error('Error loading chat requests:', error);
+    }
+}
+
+function renderPendingRequests(requests) {
+    const container = document.getElementById('pending-requests-list');
+
+    if (requests.length === 0) {
+        container.innerHTML = '<p class="text-gray-500 text-sm text-center py-4">No pending requests</p>';
+        return;
+    }
+
+    container.innerHTML = requests.map(req => `
+        <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center overflow-hidden">
+                    ${req.from_profile_picture
+                        ? `<img src="${req.from_profile_picture}" class="w-full h-full object-cover">`
+                        : '<span class="text-lg">👤</span>'}
+                </div>
+                <div>
+                    <p class="font-bold text-white text-sm">${req.from_username}</p>
+                    ${req.message ? `<p class="text-xs text-gray-400 truncate max-w-[150px]">"${req.message}"</p>` : ''}
+                </div>
+            </div>
+            <div class="flex gap-2">
+                <button onclick="respondToRequest(${req.id}, true)"
+                    class="px-3 py-1.5 bg-green-500/20 text-green-400 text-xs font-bold rounded-lg hover:bg-green-500/30 transition">
+                    Accept
+                </button>
+                <button onclick="respondToRequest(${req.id}, false)"
+                    class="px-3 py-1.5 bg-red-500/20 text-red-400 text-xs font-bold rounded-lg hover:bg-red-500/30 transition">
+                    Reject
+                </button>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function respondToRequest(requestId, accept) {
+    try {
+        const response = await fetch('/api/client/chat-requests/respond', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ request_id: requestId, accept: accept })
+        });
+
+        if (response.ok) {
+            showToast(accept ? 'Request accepted!' : 'Request rejected', 'success');
+            loadPendingChatRequests();
+        } else {
+            showToast('Failed to respond to request', 'error');
+        }
+    } catch (error) {
+        console.error('Error responding to request:', error);
+        showToast('Failed to respond to request', 'error');
+    }
+}
+
+// Load privacy settings on page load
+loadPrivacySettings();
+
 // --- GYM & TRAINER ASSIGNMENT (Account Settings Page) ---
 
 async function loadGymAndTrainerInfo() {
@@ -1287,6 +1518,24 @@ document.addEventListener('DOMContentLoaded', () => {
         </div>
     </div>
 
+    <!-- Gym Members Section -->
+    <div class="slide-up" style="animation-delay: 0.18s;">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1">Gym Members</h3>
+            <button onclick="openGymMembersModal()" class="text-xs text-orange-400 hover:text-orange-300 transition tap-effect">
+                See all →
+            </button>
+        </div>
+        <div class="glass-card p-4">
+            <div id="gym-members-preview" class="flex items-center space-x-2">
+                <div class="flex -space-x-2" id="members-avatars">
+                    <!-- Member avatars will be loaded here -->
+                </div>
+                <span id="members-count" class="text-sm text-gray-400 ml-2">Loading...</span>
+            </div>
+        </div>
+    </div>
+
     <div class="slide-up" style="animation-delay: 0.2s;">
         <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Daily Quests</h3>
         <div class="space-y-3" id="quest-list"></div>
@@ -1386,6 +1635,94 @@ document.addEventListener('DOMContentLoaded', () => {
     </div>
 </div>
 
+<!-- Gym Members Modal -->
+<div id="gym-members-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+    onclick="if(event.target === this) closeGymMembersModal()">
+    <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Gym Members</h3>
+            <button onclick="closeGymMembersModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+        <p class="text-gray-400 text-sm mb-4">Connect with other members at your gym</p>
+
+        <div id="gym-members-list" class="space-y-3">
+            <!-- Loading state -->
+            <div class="text-center py-8 text-gray-400">
+                <div class="animate-pulse">Loading members...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Member Profile Modal -->
+<div id="member-profile-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+    onclick="if(event.target === this) closeMemberProfileModal()">
+    <div class="glass-card p-6 rounded-2xl max-w-sm w-full">
+        <!-- Header with close button -->
+        <div class="flex justify-end mb-2">
+            <button onclick="closeMemberProfileModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+
+        <!-- Profile Picture & Name -->
+        <div class="text-center mb-6">
+            <div id="member-profile-avatar" class="w-24 h-24 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center mx-auto mb-3 overflow-hidden">
+                <span class="text-4xl">👤</span>
+            </div>
+            <h3 id="member-profile-name" class="text-2xl font-bold text-white">Username</h3>
+            <p id="member-profile-bio" class="text-gray-400 text-sm mt-2 italic"></p>
+        </div>
+
+        <!-- Stats -->
+        <div class="grid grid-cols-3 gap-3 mb-6">
+            <div class="bg-white/5 rounded-xl p-3 text-center">
+                <p id="member-profile-streak" class="text-2xl font-bold text-orange-400">0</p>
+                <p class="text-[10px] text-gray-400 uppercase">Streak</p>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3 text-center">
+                <p id="member-profile-gems" class="text-2xl font-bold text-yellow-400">0</p>
+                <p class="text-[10px] text-gray-400 uppercase">Gems</p>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3 text-center">
+                <p id="member-profile-health" class="text-2xl font-bold text-green-400">0</p>
+                <p class="text-[10px] text-gray-400 uppercase">Health</p>
+            </div>
+        </div>
+
+        <!-- Message Button -->
+        <button id="member-profile-message-btn" onclick="messageFromProfile()"
+            class="w-full py-3 bg-blue-500 text-white font-bold rounded-xl hover:bg-blue-400 transition tap-effect">
+            Message
+        </button>
+    </div>
+</div>
+
+<!-- Chat Request Modal -->
+<div id="chat-request-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+    onclick="if(event.target === this) closeChatRequestModal()">
+    <div class="glass-card p-6 rounded-2xl max-w-sm w-full">
+        <div class="text-center mb-4">
+            <div id="chat-request-avatar" class="w-20 h-20 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center mx-auto mb-3 overflow-hidden">
+                <span class="text-3xl">👤</span>
+            </div>
+            <h3 id="chat-request-name" class="text-xl font-bold">Username</h3>
+            <p class="text-gray-400 text-sm mt-1">This user has a private profile</p>
+        </div>
+
+        <div class="space-y-3">
+            <textarea id="chat-request-message" rows="3"
+                class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white placeholder-gray-500 resize-none outline-none focus:border-blue-500"
+                placeholder="Write a short intro message (optional)..."></textarea>
+
+            <button onclick="sendChatRequest()" class="w-full py-3 bg-blue-500 text-white font-bold rounded-xl hover:bg-blue-400 transition tap-effect">
+                Send Chat Request
+            </button>
+            <button onclick="closeChatRequestModal()" class="w-full py-3 bg-white/10 text-gray-300 font-bold rounded-xl hover:bg-white/20 transition tap-effect">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
 let selectedTrainerId = null;
 let selectedDate = null;
@@ -1457,15 +1794,15 @@ async function loadAppointments() {
 
         document.getElementById('appointments-list').innerHTML = appointments.slice(0, 3).map(appt => `
             <div class="glass-card p-3">
-                <div class="flex justify-between items-start">
+                <div class="flex justify-between items-center">
                     <div>
                         <p class="font-bold text-sm text-white">${new Date(appt.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</p>
                         <p class="text-xs text-gray-400">${appt.start_time} • ${appt.duration} min</p>
                         ${appt.notes ? `<p class="text-xs text-gray-500 mt-1">${appt.notes}</p>` : ''}
                     </div>
-                    <div class="flex gap-2">
+                    <div class="flex items-center gap-2">
                         ${appt.status === 'scheduled' ? `
-                            <button onclick="cancelAppointment('${appt.id}')" class="text-xs text-red-400 hover:text-red-300">Cancel</button>
+                            <button onclick="cancelAppointment('${appt.id}')" class="text-xs text-orange-400 hover:text-orange-300 font-medium">Cancel</button>
                         ` : `
                             <span class="text-xs px-2 py-1 rounded bg-green-500/20 text-green-400">${appt.status}</span>
                         `}
@@ -1966,16 +2303,9 @@ async function selectTrainerFromHome(trainerId, trainerName) {
 
 // --- CLIENT CHAT FUNCTIONS ---
 function openClientChatModal() {
-    if (!selectedTrainerId) {
-        showToast('No trainer assigned', 'error');
-        return;
-    }
-
-    const trainerName = document.getElementById('trainer-name')?.textContent || 'Your Trainer';
-
-    // Use the global openChatModal function from app.js
-    if (typeof window.openChatModal === 'function') {
-        window.openChatModal(selectedTrainerId, trainerName);
+    // Open the conversations list modal (shows all conversations: trainer + gym members)
+    if (typeof window.openConversationsModal === 'function') {
+        window.openConversationsModal();
     } else {
         showToast('Chat not available', 'error');
     }
@@ -2222,8 +2552,8 @@ function messageTrainerFromProfile() {
     closeTrainerProfileModal();
 
     // Open chat with the trainer
-    if (typeof openChatModalWith === 'function') {
-        openChatModalWith(currentViewingTrainerId, currentViewingTrainerName);
+    if (typeof openChatModal === 'function') {
+        openChatModal(currentViewingTrainerId, currentViewingTrainerName);
     } else if (typeof openConversationsModal === 'function') {
         openConversationsModal();
     } else {
@@ -2387,6 +2717,299 @@ function updateTrainerAvatar(profilePicture, trainerName) {
     // Store for profile modal
     currentTrainerData.profile_picture = profilePicture;
 }
+
+// --- GYM MEMBERS ---
+let gymMembers = [];
+let chatRequestTarget = null;
+
+async function loadGymMembersPreview() {
+    try {
+        const response = await fetch('/api/client/gym-members', { credentials: 'include' });
+        if (response.ok) {
+            gymMembers = await response.json();
+            renderMembersPreview();
+        }
+    } catch (error) {
+        console.error('Error loading gym members:', error);
+    }
+}
+
+function renderMembersPreview() {
+    const avatarsContainer = document.getElementById('members-avatars');
+    const countSpan = document.getElementById('members-count');
+
+    if (!avatarsContainer || !countSpan) return;
+
+    if (gymMembers.length === 0) {
+        avatarsContainer.innerHTML = '';
+        countSpan.textContent = 'No other members yet';
+        return;
+    }
+
+    // Show up to 5 avatars
+    const displayMembers = gymMembers.slice(0, 5);
+    avatarsContainer.innerHTML = displayMembers.map(member => `
+        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center overflow-hidden border-2 border-black">
+            ${member.profile_picture
+                ? `<img src="${member.profile_picture}" class="w-full h-full object-cover">`
+                : '<span class="text-xs">👤</span>'}
+        </div>
+    `).join('');
+
+    const remaining = gymMembers.length - 5;
+    if (gymMembers.length === 1) {
+        countSpan.textContent = '1 member';
+    } else if (remaining > 0) {
+        countSpan.textContent = `+${remaining} more`;
+    } else {
+        countSpan.textContent = `${gymMembers.length} members`;
+    }
+}
+
+function openGymMembersModal() {
+    document.getElementById('gym-members-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    loadGymMembersList();
+}
+
+function closeGymMembersModal() {
+    document.getElementById('gym-members-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+}
+
+async function loadGymMembersList() {
+    const list = document.getElementById('gym-members-list');
+    list.innerHTML = `
+        <div class="text-center py-8 text-gray-400">
+            <div class="animate-pulse">Loading members...</div>
+        </div>
+    `;
+
+    try {
+        const response = await fetch('/api/client/gym-members', { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to load members');
+
+        gymMembers = await response.json();
+
+        if (gymMembers.length === 0) {
+            list.innerHTML = `
+                <div class="text-center py-8 text-gray-400">
+                    <p class="text-4xl mb-2">👥</p>
+                    <p>No other members in your gym yet</p>
+                </div>
+            `;
+            return;
+        }
+
+        list.innerHTML = gymMembers.map(member => {
+            const avatarHtml = member.profile_picture
+                ? `<img src="${member.profile_picture}" class="w-full h-full object-cover">`
+                : '<span class="text-xl">👤</span>';
+
+            return `
+                <div class="glass-card p-4 flex items-center justify-between cursor-pointer hover:bg-white/10 transition"
+                    onclick="openMemberProfile('${member.id}')">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center overflow-hidden">
+                            ${avatarHtml}
+                        </div>
+                        <div>
+                            <p class="font-bold text-white">${member.username}</p>
+                        </div>
+                    </div>
+                    <span class="text-gray-400 text-sm">View &rarr;</span>
+                </div>
+            `;
+        }).join('');
+
+    } catch (error) {
+        console.error('Error loading gym members:', error);
+        list.innerHTML = `
+            <div class="text-center py-8 text-red-400">
+                <p>Failed to load members</p>
+                <button onclick="loadGymMembersList()" class="mt-2 text-sm text-blue-400 hover:text-blue-300">Try again</button>
+            </div>
+        `;
+    }
+}
+
+async function initiateChat(userId, username, profilePicture) {
+    try {
+        // Check if we can message this user
+        const response = await fetch(`/api/client/can-message/${userId}`, { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to check messaging status');
+
+        const result = await response.json();
+
+        if (result.can_message) {
+            // Can message directly - open chat
+            closeGymMembersModal();
+            if (typeof openChatModal === 'function') {
+                openChatModal(userId, username);
+            } else if (typeof openConversationsModal === 'function') {
+                openConversationsModal();
+            } else {
+                showToast('Messaging not available', 'error');
+            }
+        } else if (result.reason === 'request_pending') {
+            showToast('Your chat request is still pending', 'info');
+        } else if (result.needs_request) {
+            // Need to send chat request - show modal
+            openChatRequestModal(userId, username, profilePicture);
+        } else {
+            showToast('Cannot message this user', 'error');
+        }
+    } catch (error) {
+        console.error('Error initiating chat:', error);
+        showToast('Failed to start chat', 'error');
+    }
+}
+
+function openChatRequestModal(userId, username, profilePicture) {
+    chatRequestTarget = { userId, username, profilePicture };
+
+    // Update modal content
+    document.getElementById('chat-request-name').textContent = username;
+    const avatarEl = document.getElementById('chat-request-avatar');
+    if (profilePicture) {
+        avatarEl.innerHTML = `<img src="${profilePicture}" class="w-full h-full object-cover">`;
+    } else {
+        avatarEl.innerHTML = '<span class="text-3xl">👤</span>';
+    }
+    document.getElementById('chat-request-message').value = '';
+
+    document.getElementById('chat-request-modal').classList.remove('hidden');
+}
+
+function closeChatRequestModal() {
+    document.getElementById('chat-request-modal').classList.add('hidden');
+    chatRequestTarget = null;
+}
+
+async function sendChatRequest() {
+    if (!chatRequestTarget) return;
+
+    const message = document.getElementById('chat-request-message').value.trim();
+
+    try {
+        const response = await fetch('/api/client/chat-requests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                to_user_id: chatRequestTarget.userId,
+                message: message || null
+            })
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            if (result.status === 'public' || result.status === 'already_accepted') {
+                showToast('You can message them directly!', 'success');
+                closeChatRequestModal();
+                closeGymMembersModal();
+                if (typeof openChatModal === 'function') {
+                    openChatModal(chatRequestTarget.userId, chatRequestTarget.username);
+                }
+            } else {
+                showToast('Chat request sent!', 'success');
+                closeChatRequestModal();
+            }
+        } else {
+            const error = await response.json();
+            showToast(error.detail || 'Failed to send request', 'error');
+        }
+    } catch (error) {
+        console.error('Error sending chat request:', error);
+        showToast('Failed to send request', 'error');
+    }
+}
+
+// --- MEMBER PROFILE FUNCTIONS ---
+
+let currentProfileMember = null;
+
+async function openMemberProfile(memberId) {
+    try {
+        const response = await fetch(`/api/client/member/${memberId}`, { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to load profile');
+
+        const member = await response.json();
+        currentProfileMember = member;
+
+        // Update modal content
+        document.getElementById('member-profile-name').textContent = member.username;
+        document.getElementById('member-profile-bio').textContent = member.bio || '';
+        document.getElementById('member-profile-streak').textContent = member.streak || 0;
+        document.getElementById('member-profile-gems').textContent = member.gems || 0;
+        document.getElementById('member-profile-health').textContent = member.health_score || 0;
+
+        // Update avatar
+        const avatarEl = document.getElementById('member-profile-avatar');
+        if (member.profile_picture) {
+            avatarEl.innerHTML = `<img src="${member.profile_picture}" class="w-full h-full object-cover">`;
+        } else {
+            avatarEl.innerHTML = '<span class="text-4xl">👤</span>';
+        }
+
+        // Show modal
+        document.getElementById('member-profile-modal').classList.remove('hidden');
+
+    } catch (error) {
+        console.error('Error loading member profile:', error);
+        showToast('Failed to load profile', 'error');
+    }
+}
+
+function closeMemberProfileModal() {
+    document.getElementById('member-profile-modal').classList.add('hidden');
+    currentProfileMember = null;
+}
+
+async function messageFromProfile() {
+    if (!currentProfileMember) return;
+
+    const userId = currentProfileMember.id;
+    const username = currentProfileMember.username;
+    const profilePicture = currentProfileMember.profile_picture;
+
+    try {
+        // Check if we can message this user
+        const response = await fetch(`/api/client/can-message/${userId}`, { credentials: 'include' });
+        if (!response.ok) throw new Error('Failed to check messaging status');
+
+        const result = await response.json();
+
+        if (result.can_message) {
+            // Can message directly - open chat
+            closeMemberProfileModal();
+            closeGymMembersModal();
+            if (typeof openChatModal === 'function') {
+                openChatModal(userId, username);
+            } else if (typeof window.openChatWithUser === 'function') {
+                window.openChatWithUser(userId, username, profilePicture);
+            } else {
+                showToast('Messaging not available', 'error');
+            }
+        } else if (result.reason === 'staff_only') {
+            showToast('This user only accepts messages from gym staff', 'info');
+        } else if (result.reason === 'request_pending') {
+            showToast('Your chat request is still pending', 'info');
+        } else if (result.needs_request) {
+            // Need to send chat request - show modal
+            closeMemberProfileModal();
+            openChatRequestModal(userId, username, profilePicture);
+        } else {
+            showToast('Cannot message this user', 'error');
+        }
+    } catch (error) {
+        console.error('Error initiating chat:', error);
+        showToast('Failed to start chat', 'error');
+    }
+}
+
+// Load gym members preview on page load
+loadGymMembersPreview();
 </script>
 
 {% endif %}

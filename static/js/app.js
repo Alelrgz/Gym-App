@@ -1200,7 +1200,8 @@ async function init() {
             leaderboard.users.forEach((u, idx) => {
                 const div = document.createElement('div');
                 const isUser = u.isCurrentUser || false;
-                div.className = `glass-card p-4 flex items-center justify-between tap-effect ${isUser ? 'border-2 border-primary bg-primary/10' : ''}`;
+                // Add cursor-pointer for clickable entries (not yourself)
+                div.className = `glass-card p-4 flex items-center justify-between tap-effect ${isUser ? 'border-2 border-primary bg-primary/10' : 'cursor-pointer hover:bg-white/5'}`;
 
                 const getRankEmoji = (rank) => {
                     if (rank === 1) return '🥇';
@@ -1209,21 +1210,47 @@ async function init() {
                     return `#${rank}`;
                 };
 
+                // Use actual profile picture if available, otherwise use DiceBear
+                const avatarUrl = u.profile_picture
+                    ? u.profile_picture
+                    : `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name}`;
+
+                // Determine privacy indicator
+                const privacyMode = u.privacy_mode || 'public';
+                let chatIcon = '💬';
+                let privacyIndicator = '';
+                if (privacyMode === 'private') {
+                    chatIcon = '🔒';
+                    privacyIndicator = ' <span class="text-xs text-gray-500">🔒</span>';
+                } else if (privacyMode === 'staff_only') {
+                    chatIcon = '🛡️';
+                    privacyIndicator = ' <span class="text-xs text-gray-500">🛡️</span>';
+                }
+
                 div.innerHTML = `
                     <div class="flex items-center space-x-3">
                         <span class="text-2xl font-black w-10">${getRankEmoji(u.rank)}</span>
                         <div class="w-10 h-10 rounded-full bg-white/10 overflow-hidden">
-                            <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name}" />
+                            <img src="${avatarUrl}" class="w-full h-full object-cover" />
                         </div>
                         <div>
-                            <p class="font-bold text-sm text-white">${u.name}${isUser ? ' (You)' : ''}</p>
+                            <p class="font-bold text-sm text-white">${u.name}${isUser ? ' (You)' : ''}${!isUser ? privacyIndicator : ''}</p>
                             <p class="text-[10px] text-gray-400">${u.streak} day streak • ${u.health_score} health</p>
                         </div>
                     </div>
-                    <div class="text-right">
+                    <div class="text-right flex items-center space-x-2">
+                        ${!isUser ? `<span class="text-xs text-gray-400">${chatIcon}</span>` : ''}
                         <p class="text-yellow-400 font-bold">🔶 ${u.gems}</p>
                     </div>
                 `;
+
+                // Add click handler to open chat (if not yourself)
+                if (!isUser && u.user_id) {
+                    div.addEventListener('click', () => {
+                        window.openChatWithUser(u.user_id, u.name, avatarUrl);
+                    });
+                }
+
                 leaderList.appendChild(div);
             });
         }
@@ -5515,6 +5542,61 @@ let currentChatState = {
     messages: []
 };
 
+// Open chat with a user from leaderboard or other places
+window.openChatWithUser = async function(userId, userName, avatarUrl) {
+    try {
+        // First check if we can message this user
+        const checkRes = await fetch(`${apiBase}/api/client/can-message/${userId}`, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        });
+        const checkData = await checkRes.json();
+
+        if (!checkData.can_message) {
+            // Can't message - handle different reasons
+            if (checkData.reason === 'staff_only') {
+                showToast('This user only accepts messages from gym staff', 'info');
+                return;
+            } else if (checkData.reason === 'private' && checkData.needs_request) {
+                // Show option to send chat request
+                if (confirm(`${userName} has a private profile. Send them a chat request?`)) {
+                    const reqRes = await fetch(`${apiBase}/api/client/chat-requests`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ to_user_id: userId })
+                    });
+                    const reqData = await reqRes.json();
+                    if (reqData.success) {
+                        showToast('Chat request sent!', 'success');
+                    } else {
+                        showToast(reqData.detail || 'Failed to send request', 'error');
+                    }
+                }
+                return;
+            } else if (checkData.reason === 'request_pending') {
+                showToast('Your chat request is pending approval', 'info');
+                return;
+            } else {
+                showToast('Cannot message this user', 'error');
+                return;
+            }
+        }
+
+        // Can message - open the chat
+        const chatUserAvatar = document.getElementById('chat-user-avatar');
+        if (chatUserAvatar && avatarUrl) {
+            chatUserAvatar.src = avatarUrl;
+            chatUserAvatar.dataset.customSet = 'true';
+        }
+        window.openChatModal(userId, userName);
+    } catch (err) {
+        console.error('Error checking message permission:', err);
+        showToast('Error opening chat', 'error');
+    }
+};
+
 window.openChatModal = async function(otherUserId, otherUserName) {
     // If called from client modal, get info from there
     if (!otherUserId) {
@@ -5539,6 +5621,14 @@ window.openChatModal = async function(otherUserId, otherUserName) {
     const chatUserName = document.getElementById('chat-user-name');
     if (chatUserName) chatUserName.innerText = currentChatState.otherUserName;
 
+    // Set default avatar if not already set by openChatWithUser
+    const chatUserAvatar = document.getElementById('chat-user-avatar');
+    if (chatUserAvatar && !chatUserAvatar.dataset.customSet) {
+        chatUserAvatar.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentChatState.otherUserName}`;
+    }
+    // Reset the custom flag
+    if (chatUserAvatar) chatUserAvatar.dataset.customSet = '';
+
     // Clear messages container
     const messagesContainer = document.getElementById('chat-messages');
     if (messagesContainer) {
@@ -5558,53 +5648,10 @@ window.openChatModal = async function(otherUserId, otherUserName) {
     await loadChatMessages();
 };
 
-// Client chat modal - gets trainer info and opens chat
+// Client chat modal - opens the conversations list
 window.openClientChatModal = async function() {
-    // Try to get trainer ID from various sources
-    let trainerId = null;
-    let trainerName = 'Your Trainer';
-
-    // Check if selectedTrainerId is available (from client.html script)
-    if (typeof selectedTrainerId !== 'undefined' && selectedTrainerId) {
-        trainerId = selectedTrainerId;
-    }
-
-    // Try to get from localStorage
-    if (!trainerId) {
-        trainerId = localStorage.getItem('trainerId');
-    }
-
-    // Try to get trainer name from DOM
-    const trainerNameEl = document.getElementById('trainer-name');
-    if (trainerNameEl && trainerNameEl.textContent) {
-        trainerName = trainerNameEl.textContent;
-    }
-
-    // If still no trainer, try to fetch from gym-info API
-    if (!trainerId) {
-        try {
-            const response = await fetch('/api/client/gym-info', {
-                credentials: 'include'
-            });
-            if (response.ok) {
-                const info = await response.json();
-                if (info.trainer_id) {
-                    trainerId = info.trainer_id;
-                    trainerName = info.trainer_name || 'Your Trainer';
-                }
-            }
-        } catch (e) {
-            console.error('Error fetching trainer info:', e);
-        }
-    }
-
-    if (!trainerId) {
-        showToast('No trainer assigned');
-        return;
-    }
-
-    // Open chat with trainer
-    window.openChatModal(trainerId, trainerName);
+    // Open the conversations list modal (shows all conversations: trainer + gym members)
+    window.openConversationsModal();
 };
 
 window.closeChatModal = function() {
@@ -5696,7 +5743,9 @@ function renderChatMessages() {
     container.innerHTML = '';
 
     currentChatState.messages.forEach(msg => {
-        const isMe = msg.sender_role === APP_CONFIG.role;
+        // If sender is not the other user, it must be from me
+        // Also handle temp messages with sender_id === 'me'
+        const isMe = msg.sender_id === 'me' || msg.sender_id !== currentChatState.otherUserId;
         const div = document.createElement('div');
         div.className = `flex ${isMe ? 'justify-end' : 'justify-start'}`;
 
@@ -5888,7 +5937,11 @@ window.openConversationsModal = async function() {
                 <div class="text-center text-gray-500 py-8">
                     <div class="text-4xl mb-2">💬</div>
                     <p>No conversations yet</p>
-                    <p class="text-xs mt-1">Start chatting with a client from their profile</p>
+                    <p class="text-xs mt-1 mb-4">Start chatting with someone!</p>
+                    <button onclick="closeConversationsModal(); if(typeof openGymMembersModal === 'function') openGymMembersModal();"
+                        class="px-4 py-2 bg-orange-500 text-white text-sm font-bold rounded-xl hover:bg-orange-400 transition">
+                        Find Gym Members
+                    </button>
                 </div>
             `;
             return;
