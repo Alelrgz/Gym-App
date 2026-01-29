@@ -1052,11 +1052,9 @@
 
         <!-- Header with gradient accent -->
         <div id="course-modal-header" class="p-6 pb-4 flex-none relative overflow-hidden">
-            <div id="course-header-gradient" class="absolute inset-0 opacity-20 bg-gradient-to-br from-purple-500 to-pink-500 transition-all duration-300"></div>
+            <div id="course-header-gradient" class="absolute inset-0 opacity-20 bg-gradient-to-br from-purple-500 to-pink-500 transition-all duration-300 pointer-events-none"></div>
             <button onclick="hideModal('create-course-modal')"
-                class="absolute top-4 right-4 w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-gray-400 hover:text-white hover:bg-white/20 transition z-10">
-                <span class="text-sm">X</span>
-            </button>
+                class="absolute top-4 right-4 z-20 w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-gray-400 hover:text-white hover:bg-white/20 transition text-2xl">&times;</button>
             <div class="relative z-10">
                 <h2 id="modal-course-title" class="text-2xl font-bold mb-1 text-white">New Course</h2>
                 <p class="text-sm text-gray-400">Design your group fitness class</p>
