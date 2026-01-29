@@ -242,7 +242,7 @@ class UserService:
                     "name": profile.name if profile and profile.name else c.username,
                     "status": status,
                     "last_seen": f"{days_inactive} days ago" if days_inactive < 99 else "Never",
-                    "plan": profile.plan if profile else "Standard",
+                    "plan": profile.plan if profile and profile.plan else "Standard",
                     "is_premium": is_my_client  # PRO tag shown only if this client selected this trainer
                 })
             

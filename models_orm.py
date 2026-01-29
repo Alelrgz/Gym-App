@@ -471,3 +471,63 @@ class ChatRequestORM(Base):
 
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
     responded_at = Column(String, nullable=True)  # When accepted/rejected
+
+
+# --- GROUP COURSES & LESSONS ---
+
+class CourseORM(Base):
+    """Group fitness courses/classes that trainers can create and schedule."""
+    __tablename__ = "courses"
+
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String, index=True)
+    description = Column(String, nullable=True)
+
+    # Exercises planned for this course (reuse existing Exercise structure)
+    exercises_json = Column(String, nullable=True)  # JSON: List of exercise dicts
+
+    # Music integration - store array of links
+    music_links_json = Column(String, nullable=True)  # JSON: [{"title": "...", "url": "...", "type": "spotify|youtube"}]
+
+    # Recurring schedule (e.g., "Monday 9:00 AM")
+    day_of_week = Column(Integer, nullable=True)  # 0=Monday, 6=Sunday
+    time_slot = Column(String, nullable=True)  # "9:00 AM"
+    duration = Column(Integer, default=60)  # Duration in minutes
+
+    # Ownership and visibility
+    owner_id = Column(String, ForeignKey("users.id"), index=True)  # Trainer who created it
+    gym_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)  # Gym owner ID
+    is_shared = Column(Boolean, default=False)  # If True, visible to all trainers in gym
+
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    updated_at = Column(String, nullable=True)
+
+
+class CourseLessonORM(Base):
+    """Individual lesson/session of a course with engagement tracking."""
+    __tablename__ = "course_lessons"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    course_id = Column(String, ForeignKey("courses.id"), index=True)
+
+    # Scheduling
+    date = Column(String, index=True)  # YYYY-MM-DD
+    time = Column(String)  # "9:00 AM"
+    duration = Column(Integer, default=60)
+
+    trainer_id = Column(String, ForeignKey("users.id"), index=True)
+
+    # Lesson content (can override course defaults)
+    exercises_json = Column(String, nullable=True)  # Optional override
+    music_links_json = Column(String, nullable=True)  # Optional override
+
+    # Completion tracking
+    completed = Column(Boolean, default=False)
+    completed_at = Column(String, nullable=True)
+
+    # Engagement tracking (1-5 scale)
+    engagement_level = Column(Integer, nullable=True)  # 1=Low, 5=Excellent
+    notes = Column(String, nullable=True)  # Trainer notes after lesson
+    attendee_count = Column(Integer, nullable=True)
+
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())

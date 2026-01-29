@@ -69,10 +69,10 @@
                     class="fab-item" style="transition-delay: 0.1s">
                     👤<span class="fab-label">Me</span>
                 </a>
-                <!-- Placeholder for Quick Client Add or similar -->
-                <a href="#" onclick="showModal('create-workout-modal')" class="fab-item"
-                    style="transition-delay: 0.15s">
-                    💪<span class="fab-label">Workout</span>
+                <!-- Group Courses Page -->
+                <a href="{{ 'trainer_courses.html' if static_build else '/trainer/courses?gym_id=' + gym_id }}"
+                    class="fab-item" style="transition-delay: 0.15s">
+                    📚<span class="fab-label">Courses</span>
                 </a>
                 {% else %}
                 <!-- Client Menu -->

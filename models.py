@@ -339,3 +339,75 @@ class TrainerInfo(BaseModel):
     username: str
     email: Optional[str] = None
     client_count: int = 0
+
+
+# --- GROUP COURSES ---
+
+class MusicLink(BaseModel):
+    title: str
+    url: str
+    type: str  # "spotify" or "youtube"
+
+class Course(BaseModel):
+    id: Optional[str] = None
+    name: str
+    description: Optional[str] = None
+    exercises: Optional[List[Exercise]] = []
+    music_links: Optional[List[MusicLink]] = []
+    day_of_week: Optional[int] = None  # 0=Monday, 6=Sunday
+    time_slot: Optional[str] = None
+    duration: int = 60
+    owner_id: Optional[str] = None
+    gym_id: Optional[str] = None
+    is_shared: bool = False
+    created_at: Optional[str] = None
+    updated_at: Optional[str] = None
+
+class CreateCourseRequest(BaseModel):
+    name: str
+    description: Optional[str] = None
+    exercises: Optional[List[Exercise]] = []
+    music_links: Optional[List[MusicLink]] = []
+    day_of_week: Optional[int] = None
+    time_slot: Optional[str] = None
+    duration: int = 60
+    is_shared: bool = False
+
+class UpdateCourseRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    exercises: Optional[List[Exercise]] = None
+    music_links: Optional[List[MusicLink]] = None
+    day_of_week: Optional[int] = None
+    time_slot: Optional[str] = None
+    duration: Optional[int] = None
+    is_shared: Optional[bool] = None
+
+class CourseLesson(BaseModel):
+    id: Optional[int] = None
+    course_id: str
+    course_name: Optional[str] = None
+    date: str  # YYYY-MM-DD
+    time: str
+    duration: int = 60
+    trainer_id: Optional[str] = None
+    exercises: Optional[List[Exercise]] = []
+    music_links: Optional[List[MusicLink]] = []
+    completed: bool = False
+    completed_at: Optional[str] = None
+    engagement_level: Optional[int] = None  # 1-5
+    notes: Optional[str] = None
+    attendee_count: Optional[int] = None
+    created_at: Optional[str] = None
+
+class ScheduleLessonRequest(BaseModel):
+    date: str  # YYYY-MM-DD
+    time: Optional[str] = None  # Override course default
+    duration: Optional[int] = None  # Override course default
+    exercises: Optional[List[Exercise]] = None  # Optional override
+    music_links: Optional[List[MusicLink]] = None  # Optional override
+
+class CompleteLessonRequest(BaseModel):
+    engagement_level: int  # 1-5 required
+    notes: Optional[str] = None
+    attendee_count: Optional[int] = None

@@ -1008,3 +1008,411 @@
         </div>
     </div>
 </div>
+
+<!-- ==================== GROUP COURSES MODALS ==================== -->
+
+<!-- Create/Edit Course Modal -->
+<div id="create-course-modal"
+    class="fixed inset-0 bg-black/90 z-50 hidden flex items-center justify-center p-0 md:p-4 backdrop-blur-sm"
+    data-action="hideModal" data-target="create-course-modal">
+    <div class="bg-[#1a1a1a] w-full md:max-w-lg h-full md:h-auto md:max-h-[90vh] md:rounded-3xl border-0 md:border border-white/10 relative slide-up flex flex-col"
+        onclick="event.stopPropagation()">
+
+        <!-- Header -->
+        <div class="p-6 pb-2 flex-none">
+            <button onclick="hideModal('create-course-modal')"
+                class="absolute top-6 right-6 text-gray-400 hover:text-white">X</button>
+            <h2 id="modal-course-title" class="text-2xl font-bold mb-1 text-white">New Course</h2>
+            <p class="text-sm text-gray-400">Create a group fitness class template.</p>
+        </div>
+
+        <!-- Scrollable Content -->
+        <div class="flex-1 overflow-y-auto p-6 pt-2 space-y-4">
+            <input type="hidden" id="edit-course-id">
+
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Course Name</label>
+                <input type="text" id="course-name"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                    placeholder="e.g. Monday Morning Yoga">
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Description</label>
+                <textarea id="course-description" rows="2"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition resize-none"
+                    placeholder="What's this class about?"></textarea>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Day</label>
+                    <select id="course-day"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+                        <option value="">Not Set</option>
+                        <option value="0">Monday</option>
+                        <option value="1">Tuesday</option>
+                        <option value="2">Wednesday</option>
+                        <option value="3">Thursday</option>
+                        <option value="4">Friday</option>
+                        <option value="5">Saturday</option>
+                        <option value="6">Sunday</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Time</label>
+                    <input type="text" id="course-time"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                        placeholder="9:00 AM">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Duration (min)</label>
+                    <input type="number" id="course-duration"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                        value="60">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Visibility</label>
+                    <select id="course-shared"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+                        <option value="false">Private</option>
+                        <option value="true">Shared with Gym</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Music Links Section -->
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Music Playlists</label>
+                <div id="music-links-container" class="space-y-2 mt-2 mb-2">
+                    <p class="text-xs text-gray-500 italic">No playlists added</p>
+                </div>
+                <button onclick="addMusicLinkInput()" type="button"
+                    class="text-xs bg-white/10 px-3 py-2 rounded-lg hover:bg-white/20 transition">
+                    + Add Playlist Link
+                </button>
+            </div>
+
+            <!-- Exercises Section -->
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Exercises</label>
+                </div>
+                <div id="course-selected-exercises" class="space-y-2 min-h-[50px]">
+                    <p class="text-xs text-gray-500 text-center py-4 italic">No exercises selected.</p>
+                </div>
+                <button onclick="showModal('course-exercise-picker')" type="button"
+                    class="w-full mt-2 py-2 bg-white/10 rounded-lg text-sm hover:bg-white/20 transition">
+                    + Add Exercises
+                </button>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="p-4 border-t border-white/10 bg-[#1a1a1a] md:rounded-b-3xl">
+            <button onclick="saveCourse()" id="btn-save-course"
+                class="w-full bg-primary text-black font-bold py-4 rounded-xl hover:bg-primary/90 transition shadow-lg shadow-primary/20">
+                Create Course
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Course Exercise Picker Modal -->
+<div id="course-exercise-picker"
+    class="fixed inset-0 bg-black/90 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-[#1a1a1a] w-full max-w-md h-[80vh] rounded-3xl border border-white/10 flex flex-col"
+        onclick="event.stopPropagation()">
+        <div class="p-4 border-b border-white/10 flex justify-between items-center">
+            <h3 class="text-lg font-bold text-white">Select Exercises</h3>
+            <button onclick="hideModal('course-exercise-picker')" class="text-gray-400 hover:text-white">X</button>
+        </div>
+        <div class="p-4">
+            <input type="text" id="course-ex-search" placeholder="Search exercises..."
+                class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white focus:border-primary outline-none">
+        </div>
+        <div id="course-exercise-list" class="flex-1 overflow-y-auto p-4 space-y-2">
+            <!-- Exercises populated here -->
+        </div>
+        <div class="p-4 border-t border-white/10">
+            <button onclick="confirmCourseExercises()"
+                class="w-full py-3 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition">
+                Done
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Course Detail Modal -->
+<div id="course-detail-modal"
+    class="fixed inset-0 bg-black/90 z-[60] hidden flex items-center justify-center p-0 backdrop-blur-sm">
+    <div class="bg-[#1a1a1a] w-full h-full p-6 relative slide-up overflow-y-auto"
+        onclick="event.stopPropagation()">
+        <button onclick="hideModal('course-detail-modal')"
+            class="absolute top-4 right-4 text-gray-400 hover:text-white text-xl">X</button>
+
+        <div class="max-w-2xl mx-auto pt-8">
+            <h2 id="detail-course-name" class="text-2xl font-bold mb-1 text-white">Course Name</h2>
+            <p id="detail-course-schedule" class="text-sm text-primary mb-2">Monday 9:00 AM</p>
+            <p id="detail-course-description" class="text-sm text-gray-400 mb-6"></p>
+
+            <!-- Actions -->
+            <div class="flex gap-2 mb-6">
+                <button onclick="startLiveClass()" class="flex-1 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/80 transition flex items-center justify-center gap-2">
+                    <span class="text-lg">▶</span> Start Class
+                </button>
+                <button onclick="openScheduleLessonModal()" class="py-3 px-4 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition">
+                    Schedule
+                </button>
+                <button onclick="openEditCourseFromDetail()" class="py-3 px-4 bg-white/10 text-white font-bold rounded-xl hover:bg-white/20 transition">
+                    Edit
+                </button>
+            </div>
+
+            <!-- Music Playlists -->
+            <div class="mb-6">
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Playlists</h3>
+                <div id="detail-music-links" class="space-y-2">
+                    <p class="text-xs text-gray-500 italic">No playlists</p>
+                </div>
+            </div>
+
+            <!-- Exercises -->
+            <div class="mb-6">
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Exercises</h3>
+                <div id="detail-exercises" class="space-y-2">
+                    <p class="text-xs text-gray-500 italic">No exercises</p>
+                </div>
+            </div>
+
+            <!-- Lesson History -->
+            <div>
+                <h3 class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Lesson History</h3>
+                <div id="lesson-history-list" class="space-y-3">
+                    <p class="text-xs text-gray-500 italic">No lessons scheduled yet</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Schedule Lesson Modal -->
+<div id="schedule-lesson-modal"
+    class="fixed inset-0 bg-black/90 z-[70] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-[#1a1a1a] w-full max-w-sm rounded-3xl p-6 border border-white/10 relative slide-up"
+        onclick="event.stopPropagation()">
+        <button onclick="hideModal('schedule-lesson-modal')"
+            class="absolute top-4 right-4 text-gray-400 hover:text-white">X</button>
+
+        <h2 class="text-xl font-bold mb-1 text-white">Schedule Lesson</h2>
+        <p class="text-sm text-gray-400 mb-6" id="schedule-lesson-course-name">Course Name</p>
+
+        <input type="hidden" id="schedule-lesson-course-id">
+
+        <div class="space-y-4">
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Date</label>
+                <input type="date" id="schedule-lesson-date"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Time</label>
+                    <input type="text" id="schedule-lesson-time"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                        placeholder="9:00 AM">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Duration</label>
+                    <input type="number" id="schedule-lesson-duration"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                        value="60">
+                </div>
+            </div>
+
+            <button onclick="confirmScheduleLesson()"
+                class="w-full bg-green-600 text-white font-bold py-4 rounded-xl hover:bg-green-700 transition mt-2">
+                Schedule
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Complete Lesson Modal -->
+<div id="complete-lesson-modal"
+    class="fixed inset-0 bg-black/90 z-[70] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-[#1a1a1a] w-full max-w-sm rounded-3xl p-6 border border-white/10 relative slide-up"
+        onclick="event.stopPropagation()">
+        <button onclick="hideModal('complete-lesson-modal')"
+            class="absolute top-4 right-4 text-gray-400 hover:text-white">X</button>
+
+        <h2 class="text-xl font-bold mb-1 text-white">Complete Lesson</h2>
+        <p class="text-sm text-gray-400 mb-6" id="complete-lesson-title">How did it go?</p>
+
+        <input type="hidden" id="complete-lesson-id">
+
+        <div class="space-y-4">
+            <!-- Engagement Rating -->
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Class Engagement</label>
+                <div id="engagement-stars" class="flex gap-2 mt-2 justify-center">
+                    <button onclick="setEngagement(1)" data-rating="1" class="engagement-star w-12 h-12 rounded-full bg-white/10 text-xl opacity-50 hover:opacity-100 transition flex items-center justify-center">1</button>
+                    <button onclick="setEngagement(2)" data-rating="2" class="engagement-star w-12 h-12 rounded-full bg-white/10 text-xl opacity-50 hover:opacity-100 transition flex items-center justify-center">2</button>
+                    <button onclick="setEngagement(3)" data-rating="3" class="engagement-star w-12 h-12 rounded-full bg-white/10 text-xl opacity-50 hover:opacity-100 transition flex items-center justify-center">3</button>
+                    <button onclick="setEngagement(4)" data-rating="4" class="engagement-star w-12 h-12 rounded-full bg-white/10 text-xl opacity-50 hover:opacity-100 transition flex items-center justify-center">4</button>
+                    <button onclick="setEngagement(5)" data-rating="5" class="engagement-star w-12 h-12 rounded-full bg-white/10 text-xl opacity-50 hover:opacity-100 transition flex items-center justify-center">5</button>
+                </div>
+                <p class="text-xs text-gray-500 mt-2 text-center">1 = Low energy, 5 = Excellent</p>
+            </div>
+
+            <!-- Attendee Count -->
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Attendees (Optional)</label>
+                <input type="number" id="complete-attendees"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition"
+                    placeholder="How many attended?">
+            </div>
+
+            <!-- Notes -->
+            <div>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Notes (Optional)</label>
+                <textarea id="complete-notes" rows="3"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition resize-none"
+                    placeholder="Any observations or feedback..."></textarea>
+            </div>
+
+            <button onclick="submitLessonCompletion()"
+                class="w-full bg-green-600 text-white font-bold py-4 rounded-xl hover:bg-green-700 transition mt-2">
+                Complete Lesson
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Live Class Modal - Full Screen Class Runner -->
+<div id="live-class-modal"
+    class="fixed inset-0 bg-black z-[80] hidden flex flex-col">
+
+    <!-- Top Bar -->
+    <div class="flex justify-between items-center p-4 bg-black/50 backdrop-blur-sm border-b border-white/10">
+        <div>
+            <h2 id="live-class-name" class="text-lg font-bold text-white">Course Name</h2>
+            <p id="live-class-exercise-count" class="text-xs text-gray-400">Exercise 1 of 5</p>
+        </div>
+        <div class="flex items-center gap-3">
+            <button onclick="toggleLiveMusic()" id="live-music-toggle" class="p-2 rounded-full bg-white/10 hover:bg-white/20 transition" title="Toggle Music">
+                🎵
+            </button>
+            <button onclick="endLiveClass()" class="px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-xl hover:bg-red-700 transition">
+                End Class
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <div class="flex-1 flex flex-col lg:flex-row overflow-hidden">
+
+        <!-- Exercise Display (Main Area) -->
+        <div class="flex-1 flex flex-col items-center justify-center p-4 relative">
+            <!-- Video/Image Display -->
+            <div id="live-exercise-media" class="w-full max-w-2xl aspect-video bg-gray-900 rounded-2xl overflow-hidden mb-4 flex items-center justify-center">
+                <div class="text-gray-500 text-center">
+                    <span class="text-6xl block mb-2">🏋️</span>
+                    <p class="text-sm">No video available</p>
+                </div>
+            </div>
+
+            <!-- Exercise Info -->
+            <div class="text-center mb-4">
+                <h3 id="live-exercise-name" class="text-3xl font-bold text-white mb-2">Exercise Name</h3>
+                <div class="flex items-center justify-center gap-6 text-lg text-gray-300">
+                    <span id="live-exercise-sets"><span class="text-primary font-bold">3</span> Sets</span>
+                    <span id="live-exercise-reps"><span class="text-primary font-bold">12</span> Reps</span>
+                    <span id="live-exercise-rest"><span class="text-primary font-bold">60</span>s Rest</span>
+                </div>
+            </div>
+
+            <!-- Timer Display -->
+            <div id="live-timer-section" class="bg-white/5 rounded-2xl p-6 mb-4 min-w-[300px]">
+                <div id="live-timer-display" class="text-7xl font-mono font-bold text-center text-white mb-4">00:00</div>
+                <div class="flex justify-center gap-3">
+                    <button onclick="setQuickTimer(30)" class="px-4 py-2 bg-white/10 rounded-xl text-white hover:bg-white/20 transition text-sm font-medium">30s</button>
+                    <button onclick="setQuickTimer(45)" class="px-4 py-2 bg-white/10 rounded-xl text-white hover:bg-white/20 transition text-sm font-medium">45s</button>
+                    <button onclick="setQuickTimer(60)" class="px-4 py-2 bg-white/10 rounded-xl text-white hover:bg-white/20 transition text-sm font-medium">60s</button>
+                    <button onclick="setQuickTimer(90)" class="px-4 py-2 bg-white/10 rounded-xl text-white hover:bg-white/20 transition text-sm font-medium">90s</button>
+                    <button onclick="openCustomTimer()" class="px-4 py-2 bg-white/10 rounded-xl text-white hover:bg-white/20 transition text-sm font-medium">Custom</button>
+                </div>
+                <div class="flex justify-center gap-3 mt-3">
+                    <button onclick="toggleTimer()" id="timer-toggle-btn" class="px-8 py-3 bg-green-600 rounded-xl text-white font-bold hover:bg-green-700 transition">
+                        ▶ Start
+                    </button>
+                    <button onclick="resetTimer()" class="px-6 py-3 bg-white/10 rounded-xl text-white font-bold hover:bg-white/20 transition">
+                        Reset
+                    </button>
+                </div>
+            </div>
+
+            <!-- Exercise Navigation -->
+            <div class="flex items-center gap-4">
+                <button onclick="prevExercise()" id="prev-exercise-btn" class="p-4 bg-white/10 rounded-full text-white hover:bg-white/20 transition disabled:opacity-30 disabled:cursor-not-allowed">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                </button>
+                <button onclick="nextExercise()" id="next-exercise-btn" class="p-4 bg-primary rounded-full text-white hover:bg-primary/80 transition">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                </button>
+            </div>
+        </div>
+
+        <!-- Sidebar - Music & Exercise List -->
+        <div id="live-sidebar" class="w-full lg:w-80 bg-white/5 border-t lg:border-t-0 lg:border-l border-white/10 flex flex-col max-h-[40vh] lg:max-h-full overflow-hidden">
+            <!-- Music Player Section -->
+            <div class="p-4 border-b border-white/10">
+                <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Music</h4>
+                <div id="live-music-container" class="space-y-2">
+                    <p class="text-xs text-gray-500 italic">No playlists added</p>
+                </div>
+            </div>
+
+            <!-- Exercise List -->
+            <div class="flex-1 overflow-y-auto p-4">
+                <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Exercises</h4>
+                <div id="live-exercise-list" class="space-y-2">
+                    <!-- Exercise items populated by JS -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Custom Timer Input Modal -->
+<div id="custom-timer-modal"
+    class="fixed inset-0 bg-black/80 z-[90] hidden flex items-center justify-center p-4 backdrop-blur-sm">
+    <div class="bg-[#1a1a1a] w-full max-w-xs rounded-2xl p-6 border border-white/10"
+        onclick="event.stopPropagation()">
+        <h3 class="text-lg font-bold text-white mb-4">Set Timer</h3>
+        <div class="flex gap-2 mb-4">
+            <div class="flex-1">
+                <label class="text-xs text-gray-500 uppercase font-bold">Minutes</label>
+                <input type="number" id="custom-timer-minutes" value="1" min="0" max="60"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white text-center text-xl focus:border-primary outline-none">
+            </div>
+            <div class="flex-1">
+                <label class="text-xs text-gray-500 uppercase font-bold">Seconds</label>
+                <input type="number" id="custom-timer-seconds" value="0" min="0" max="59"
+                    class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white text-center text-xl focus:border-primary outline-none">
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <button onclick="hideModal('custom-timer-modal')" class="flex-1 py-3 bg-white/10 text-white font-bold rounded-xl hover:bg-white/20 transition">
+                Cancel
+            </button>
+            <button onclick="applyCustomTimer()" class="flex-1 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/80 transition">
+                Set Timer
+            </button>
+        </div>
+    </div>
+</div>

@@ -1336,6 +1336,8 @@ document.body.addEventListener('click', e => {
         openCreateWorkoutModal();
     } else if (action === 'openCreateSplit') {
         openCreateSplitModal();
+    } else if (action === 'openCreateCourse') {
+        openCreateCourseModal();
     }
 });
 
@@ -1553,6 +1555,7 @@ function showClientModal(name, plan, status, clientId, isPremium = false) {
     document.getElementById('modal-client-status').innerText = status;
     document.getElementById('modal-client-status').className = `text-lg font-bold ${status === 'At Risk' ? 'text-red-400' : 'text-green-400'}`;
     document.getElementById('client-modal').dataset.clientId = clientId;
+    document.getElementById('client-modal').dataset.clientName = name;
 
     // Show/hide PRO-only buttons based on whether this client selected this trainer
     const btnManageDiet = document.getElementById('btn-manage-diet');
@@ -5557,12 +5560,13 @@ window.updateSplit = async function () {
     }
 }
 
-// Initialize splits on load if trainer
+// Initialize splits and courses on load if trainer
 document.addEventListener('DOMContentLoaded', () => {
     if (APP_CONFIG.role === 'trainer') {
         // Small delay to ensure auth is ready
         setTimeout(() => {
             if (window.fetchAndRenderSplits) window.fetchAndRenderSplits();
+            if (window.loadCourses) window.loadCourses();
         }, 500);
     }
 });
@@ -6874,3 +6878,1019 @@ async function confirmClientBookAppointment() {
         showToast('Failed to book appointment: ' + e.message);
     }
 }
+
+// ==================== GROUP COURSES MANAGEMENT ====================
+
+let currentCourseId = null;
+let courseExercisesList = [];
+let courseMusicLinks = [];
+let selectedEngagement = 0;
+let allCoursesData = [];
+
+// Day name helper
+function getDayName(dayNum) {
+    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    return days[dayNum] || '';
+}
+
+// Load and render courses
+window.loadCourses = async function() {
+    // Check for courses page first
+    if (document.getElementById('courses-page-list')) {
+        return loadCoursesPage();
+    }
+
+    const container = document.getElementById('course-library');
+    if (!container) return;
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/courses`, { credentials: 'include' });
+        const courses = await res.json();
+        allCoursesData = courses;
+
+        if (courses.length === 0) {
+            container.innerHTML = `
+                <button data-action="openCreateCourse"
+                    class="w-full py-6 border-2 border-dashed border-white/10 rounded-xl text-white/40 hover:text-white/70 hover:border-white/20 transition flex flex-col items-center justify-center gap-2 group">
+                    <span class="text-2xl group-hover:scale-110 transition-transform">📚</span>
+                    <span class="text-xs uppercase tracking-wider font-medium">Create Your First Course</span>
+                </button>
+            `;
+            return;
+        }
+
+        container.innerHTML = courses.map(c => `
+            <div class="glass-card p-3 flex justify-between items-center cursor-pointer hover:bg-white/5 transition"
+                 onclick="openCourseDetail('${c.id}')">
+                <div>
+                    <p class="font-bold text-sm text-white">${c.name}</p>
+                    <p class="text-[10px] text-gray-400">
+                        ${c.day_of_week !== null ? getDayName(c.day_of_week) + ' ' + (c.time_slot || '') : 'Not scheduled'}
+                        ${c.is_shared ? ' <span class="text-primary">• Shared</span>' : ''}
+                    </p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="event.stopPropagation(); openEditCourse('${c.id}')"
+                        class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition">Edit</button>
+                    <button onclick="event.stopPropagation(); deleteCourse('${c.id}')"
+                        class="text-xs bg-red-500/20 hover:bg-red-500/40 px-2 py-1 rounded text-red-400 transition">Delete</button>
+                </div>
+            </div>
+        `).join('');
+    } catch (e) {
+        console.error('Error loading courses:', e);
+    }
+}
+
+// Load courses for dedicated page (with stats and better cards)
+window.loadCoursesPage = async function() {
+    const ownCoursesContainer = document.getElementById('courses-page-list');
+    const sharedCoursesContainer = document.getElementById('shared-courses-list');
+
+    if (!ownCoursesContainer) return;
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/courses`, { credentials: 'include' });
+        const courses = await res.json();
+        allCoursesData = courses;
+
+        // Separate own courses from shared courses by other trainers
+        const ownCourses = [];
+        const sharedCourses = [];
+
+        // Get current user ID from JWT
+        let currentUserId = null;
+        const token = localStorage.getItem('jwt_token');
+        if (token) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                currentUserId = payload.user_id;
+            } catch (e) {}
+        }
+
+        courses.forEach(c => {
+            // Check if this is the user's own course or a shared one from another trainer
+            if (c.owner_id === currentUserId || !c.is_shared) {
+                ownCourses.push(c);
+            } else {
+                sharedCourses.push(c);
+            }
+        });
+
+        // Update stats
+        document.getElementById('total-courses-count').textContent = ownCourses.length;
+
+        // Calculate lessons this week (would need lessons data)
+        // For now show course count
+        const thisWeekLessons = 0; // TODO: fetch from API
+        document.getElementById('lessons-this-week').textContent = thisWeekLessons;
+
+        // Calculate average engagement
+        document.getElementById('avg-engagement').textContent = '-';
+
+        // Render own courses
+        if (ownCourses.length === 0) {
+            ownCoursesContainer.innerHTML = `
+                <div class="glass-card p-8 text-center">
+                    <span class="text-4xl mb-3 block">📚</span>
+                    <p class="text-gray-400 text-sm mb-2">No courses yet</p>
+                    <p class="text-gray-500 text-xs">Create your first group fitness course to get started</p>
+                </div>
+            `;
+        } else {
+            ownCoursesContainer.innerHTML = ownCourses.map(c => renderCourseCard(c, true)).join('');
+        }
+
+        // Render shared courses
+        if (sharedCoursesContainer) {
+            if (sharedCourses.length === 0) {
+                sharedCoursesContainer.innerHTML = `
+                    <div class="glass-card p-4 text-center">
+                        <p class="text-gray-400/50 text-xs">No shared courses from other trainers</p>
+                    </div>
+                `;
+            } else {
+                sharedCoursesContainer.innerHTML = sharedCourses.map(c => renderCourseCard(c, false)).join('');
+            }
+        }
+    } catch (e) {
+        console.error('Error loading courses:', e);
+        ownCoursesContainer.innerHTML = `
+            <div class="glass-card p-4 text-center text-red-400">
+                <p class="text-sm">Failed to load courses</p>
+            </div>
+        `;
+    }
+};
+
+// Render a course card for the courses page
+function renderCourseCard(course, isOwner) {
+    const scheduleText = course.day_of_week !== null
+        ? `${getDayName(course.day_of_week)}${course.time_slot ? ' @ ' + course.time_slot : ''}`
+        : 'Not scheduled';
+
+    const exerciseCount = (course.exercises || []).length;
+    const musicCount = (course.music_links || []).length;
+
+    return `
+        <div class="glass-card p-4 cursor-pointer hover:bg-white/5 transition group"
+             onclick="openCourseDetail('${course.id}')">
+            <div class="flex justify-between items-start mb-3">
+                <div class="flex-1">
+                    <h4 class="font-bold text-white text-base mb-1">${course.name}</h4>
+                    <p class="text-xs text-gray-400">${scheduleText}</p>
+                </div>
+                ${course.is_shared ? '<span class="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full uppercase font-bold">Shared</span>' : ''}
+            </div>
+
+            ${course.description ? `<p class="text-xs text-gray-500 mb-3 line-clamp-2">${course.description}</p>` : ''}
+
+            <div class="flex items-center gap-4 text-[11px] text-gray-400 mb-3">
+                <span>⏱️ ${course.duration || 60} min</span>
+                <span>💪 ${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''}</span>
+                <span>🎵 ${musicCount} playlist${musicCount !== 1 ? 's' : ''}</span>
+            </div>
+
+            ${isOwner ? `
+            <div class="flex gap-2 pt-2 border-t border-white/5">
+                <button onclick="event.stopPropagation(); openScheduleLessonModal('${course.id}')"
+                    class="flex-1 text-xs bg-primary/20 hover:bg-primary/30 px-3 py-2 rounded-lg text-primary font-medium transition">
+                    Schedule Lesson
+                </button>
+                <button onclick="event.stopPropagation(); openEditCourse('${course.id}')"
+                    class="text-xs bg-white/5 hover:bg-white/10 px-3 py-2 rounded-lg text-gray-300 transition">
+                    Edit
+                </button>
+                <button onclick="event.stopPropagation(); deleteCourse('${course.id}')"
+                    class="text-xs bg-red-500/10 hover:bg-red-500/20 px-3 py-2 rounded-lg text-red-400 transition">
+                    Delete
+                </button>
+            </div>
+            ` : `
+            <div class="flex gap-2 pt-2 border-t border-white/5">
+                <button onclick="event.stopPropagation(); openCourseDetail('${course.id}')"
+                    class="flex-1 text-xs bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg text-white font-medium transition">
+                    View Details
+                </button>
+            </div>
+            `}
+        </div>
+    `;
+}
+
+// Open create course modal
+window.openCreateCourseModal = function() {
+    document.getElementById('edit-course-id').value = '';
+    document.getElementById('modal-course-title').innerText = 'New Course';
+    document.getElementById('btn-save-course').innerText = 'Create Course';
+
+    document.getElementById('course-name').value = '';
+    document.getElementById('course-description').value = '';
+    document.getElementById('course-day').value = '';
+    document.getElementById('course-time').value = '';
+    document.getElementById('course-duration').value = '60';
+    document.getElementById('course-shared').value = 'false';
+
+    courseExercisesList = [];
+    courseMusicLinks = [];
+    renderCourseExercises();
+    renderMusicLinks();
+
+    showModal('create-course-modal');
+};
+
+// Open edit course modal
+window.openEditCourse = async function(courseId) {
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/courses/${courseId}`, { credentials: 'include' });
+        const course = await res.json();
+
+        document.getElementById('edit-course-id').value = course.id;
+        document.getElementById('modal-course-title').innerText = 'Edit Course';
+        document.getElementById('btn-save-course').innerText = 'Save Changes';
+
+        document.getElementById('course-name').value = course.name || '';
+        document.getElementById('course-description').value = course.description || '';
+        document.getElementById('course-day').value = course.day_of_week !== null ? course.day_of_week : '';
+        document.getElementById('course-time').value = course.time_slot || '';
+        document.getElementById('course-duration').value = course.duration || 60;
+        document.getElementById('course-shared').value = course.is_shared ? 'true' : 'false';
+
+        courseExercisesList = course.exercises || [];
+        courseMusicLinks = course.music_links || [];
+        renderCourseExercises();
+        renderMusicLinks();
+
+        showModal('create-course-modal');
+    } catch (e) {
+        console.error('Error loading course:', e);
+        showToast('Failed to load course');
+    }
+};
+
+// Save course (create or update)
+window.saveCourse = async function() {
+    const id = document.getElementById('edit-course-id').value;
+    const name = document.getElementById('course-name').value;
+    const description = document.getElementById('course-description').value;
+    const day = document.getElementById('course-day').value;
+    const time = document.getElementById('course-time').value;
+    const duration = parseInt(document.getElementById('course-duration').value) || 60;
+    const isShared = document.getElementById('course-shared').value === 'true';
+
+    if (!name) {
+        showToast('Please enter a course name');
+        return;
+    }
+
+    const payload = {
+        name,
+        description: description || null,
+        day_of_week: day !== '' ? parseInt(day) : null,
+        time_slot: time || null,
+        duration,
+        is_shared: isShared,
+        exercises: courseExercisesList,
+        music_links: courseMusicLinks
+    };
+
+    try {
+        const method = id ? 'PUT' : 'POST';
+        const url = id ? `${apiBase}/api/trainer/courses/${id}` : `${apiBase}/api/trainer/courses`;
+
+        const res = await fetch(url, {
+            method,
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload)
+        });
+
+        if (!res.ok) throw new Error('Failed to save course');
+
+        showToast(id ? 'Course updated!' : 'Course created!');
+        hideModal('create-course-modal');
+        loadCourses();
+        if (document.getElementById('courses-page-list')) loadCoursesPage();
+    } catch (e) {
+        console.error('Error saving course:', e);
+        showToast('Failed to save course');
+    }
+};
+
+// Delete course
+window.deleteCourse = async function(courseId) {
+    if (!confirm('Delete this course and all its lessons?')) return;
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/courses/${courseId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+
+        if (!res.ok) throw new Error('Failed to delete course');
+
+        showToast('Course deleted');
+        loadCourses();
+        if (document.getElementById('courses-page-list')) loadCoursesPage();
+    } catch (e) {
+        console.error('Error deleting course:', e);
+        showToast('Failed to delete course');
+    }
+};
+
+// Music link management
+window.addMusicLinkInput = function() {
+    courseMusicLinks.push({ title: '', url: '', type: 'spotify' });
+    renderMusicLinks();
+};
+
+function renderMusicLinks() {
+    const container = document.getElementById('music-links-container');
+    if (!container) return;
+
+    if (courseMusicLinks.length === 0) {
+        container.innerHTML = '<p class="text-xs text-gray-500 italic">No playlists added</p>';
+        return;
+    }
+
+    container.innerHTML = courseMusicLinks.map((link, i) => `
+        <div class="flex gap-2 items-center">
+            <select onchange="updateMusicLink(${i}, 'type', this.value)"
+                class="bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white w-20">
+                <option value="spotify" ${link.type === 'spotify' ? 'selected' : ''}>Spotify</option>
+                <option value="youtube" ${link.type === 'youtube' ? 'selected' : ''}>YouTube</option>
+            </select>
+            <input type="text" value="${link.title || ''}" placeholder="Title"
+                onchange="updateMusicLink(${i}, 'title', this.value)"
+                class="flex-1 bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white min-w-0">
+            <input type="text" value="${link.url || ''}" placeholder="Paste URL"
+                onchange="updateMusicLink(${i}, 'url', this.value)"
+                class="flex-1 bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white min-w-0">
+            <button onclick="removeMusicLink(${i})" class="text-red-400 hover:text-red-300 px-2">X</button>
+        </div>
+    `).join('');
+}
+
+window.updateMusicLink = function(index, field, value) {
+    if (courseMusicLinks[index]) {
+        courseMusicLinks[index][field] = value;
+    }
+};
+
+window.removeMusicLink = function(index) {
+    courseMusicLinks.splice(index, 1);
+    renderMusicLinks();
+};
+
+// Course exercises management
+function renderCourseExercises() {
+    const container = document.getElementById('course-selected-exercises');
+    if (!container) return;
+
+    if (courseExercisesList.length === 0) {
+        container.innerHTML = '<p class="text-xs text-gray-500 text-center py-4 italic">No exercises selected.</p>';
+        return;
+    }
+
+    container.innerHTML = courseExercisesList.map((ex, i) => `
+        <div class="glass-card p-2 flex justify-between items-center">
+            <div>
+                <p class="text-sm font-medium text-white">${ex.name}</p>
+                <p class="text-[10px] text-gray-400">${ex.sets} sets x ${ex.reps} reps</p>
+            </div>
+            <button onclick="removeCourseExercise(${i})" class="text-red-400 hover:text-red-300 px-2">X</button>
+        </div>
+    `).join('');
+}
+
+window.removeCourseExercise = function(index) {
+    courseExercisesList.splice(index, 1);
+    renderCourseExercises();
+};
+
+// Exercise picker for courses
+window.openCourseExercisePicker = function() {
+    populateCourseExerciseList();
+    showModal('course-exercise-picker');
+};
+
+function populateCourseExerciseList() {
+    const container = document.getElementById('course-exercise-list');
+    if (!container || !window.APP_STATE?.exercises) return;
+
+    container.innerHTML = window.APP_STATE?.exercises.map(ex => `
+        <div class="glass-card p-3 flex justify-between items-center cursor-pointer hover:bg-white/10 transition"
+             onclick="selectCourseExercise('${ex.id}', '${ex.name}', '${ex.video_id || ''}')">
+            <div>
+                <p class="text-sm font-medium text-white">${ex.name}</p>
+                <p class="text-[10px] text-gray-400">${ex.muscle} • ${ex.type}</p>
+            </div>
+            <span class="text-primary">+</span>
+        </div>
+    `).join('');
+}
+
+window.selectCourseExercise = function(id, name, videoId) {
+    // Add to list with default values
+    courseExercisesList.push({
+        name: name,
+        sets: 3,
+        reps: 10,
+        rest: 60,
+        video_id: videoId || ''
+    });
+    renderCourseExercises();
+    showToast(`Added ${name}`);
+};
+
+window.confirmCourseExercises = function() {
+    hideModal('course-exercise-picker');
+};
+
+// Course detail view
+window.openCourseDetail = async function(courseId) {
+    currentCourseId = courseId;
+
+    try {
+        const [courseRes, lessonsRes] = await Promise.all([
+            fetch(`${apiBase}/api/trainer/courses/${courseId}`, { credentials: 'include' }),
+            fetch(`${apiBase}/api/trainer/courses/${courseId}/lessons`, { credentials: 'include' })
+        ]);
+
+        const course = await courseRes.json();
+        const lessons = await lessonsRes.json();
+
+        // Populate course info
+        document.getElementById('detail-course-name').innerText = course.name;
+        document.getElementById('detail-course-schedule').innerText =
+            course.day_of_week !== null ? `${getDayName(course.day_of_week)} ${course.time_slot || ''}` : 'No schedule set';
+        document.getElementById('detail-course-description').innerText = course.description || '';
+
+        // Music links
+        const musicContainer = document.getElementById('detail-music-links');
+        if (course.music_links && course.music_links.length > 0) {
+            musicContainer.innerHTML = course.music_links.map(link => `
+                <a href="${link.url}" target="_blank" rel="noopener"
+                   class="glass-card p-2 flex items-center gap-2 hover:bg-white/10 transition">
+                    <span class="text-lg">${link.type === 'spotify' ? '🎵' : '▶️'}</span>
+                    <span class="text-sm text-white">${link.title || link.url}</span>
+                </a>
+            `).join('');
+        } else {
+            musicContainer.innerHTML = '<p class="text-xs text-gray-500 italic">No playlists</p>';
+        }
+
+        // Exercises
+        const exercisesContainer = document.getElementById('detail-exercises');
+        if (course.exercises && course.exercises.length > 0) {
+            exercisesContainer.innerHTML = course.exercises.map(ex => `
+                <div class="glass-card p-2 flex justify-between items-center">
+                    <span class="text-sm text-white">${ex.name}</span>
+                    <span class="text-xs text-gray-400">${ex.sets}x${ex.reps}</span>
+                </div>
+            `).join('');
+        } else {
+            exercisesContainer.innerHTML = '<p class="text-xs text-gray-500 italic">No exercises</p>';
+        }
+
+        // Lessons history
+        const lessonsContainer = document.getElementById('lesson-history-list');
+        if (lessons.length > 0) {
+            lessonsContainer.innerHTML = lessons.map(l => `
+                <div class="glass-card p-3 flex justify-between items-center">
+                    <div>
+                        <p class="text-sm text-white">${l.date} at ${l.time}</p>
+                        <p class="text-[10px] text-gray-400">
+                            ${l.completed ? `Completed • Engagement: ${l.engagement_level}/5` : 'Scheduled'}
+                            ${l.attendee_count ? ` • ${l.attendee_count} attendees` : ''}
+                        </p>
+                    </div>
+                    <div class="flex gap-2">
+                        ${!l.completed ? `
+                            <button onclick="openCompleteLessonModal(${l.id}, '${l.date}')"
+                                class="text-xs bg-green-600/20 hover:bg-green-600/40 px-2 py-1 rounded text-green-400 transition">Complete</button>
+                            <button onclick="deleteLesson(${l.id})"
+                                class="text-xs bg-red-500/20 hover:bg-red-500/40 px-2 py-1 rounded text-red-400 transition">Delete</button>
+                        ` : `
+                            <span class="text-xs text-green-400">✓</span>
+                        `}
+                    </div>
+                </div>
+            `).join('');
+        } else {
+            lessonsContainer.innerHTML = '<p class="text-xs text-gray-500 italic">No lessons scheduled yet</p>';
+        }
+
+        showModal('course-detail-modal');
+    } catch (e) {
+        console.error('Error loading course detail:', e);
+        showToast('Failed to load course');
+    }
+};
+
+window.openEditCourseFromDetail = function() {
+    hideModal('course-detail-modal');
+    openEditCourse(currentCourseId);
+};
+
+// Schedule lesson
+window.openScheduleLessonModal = function(courseId = null) {
+    // Use provided courseId or fallback to currentCourseId
+    const targetCourseId = courseId || currentCourseId;
+    const course = allCoursesData.find(c => c.id === targetCourseId);
+    if (!course) return;
+
+    // Update currentCourseId for other functions
+    currentCourseId = targetCourseId;
+
+    document.getElementById('schedule-lesson-course-id').value = currentCourseId;
+    document.getElementById('schedule-lesson-course-name').innerText = course.name;
+    document.getElementById('schedule-lesson-time').value = course.time_slot || '';
+    document.getElementById('schedule-lesson-duration').value = course.duration || 60;
+
+    // Default to today's date
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('schedule-lesson-date').value = today;
+
+    showModal('schedule-lesson-modal');
+};
+
+window.confirmScheduleLesson = async function() {
+    const courseId = document.getElementById('schedule-lesson-course-id').value;
+    const date = document.getElementById('schedule-lesson-date').value;
+    const time = document.getElementById('schedule-lesson-time').value;
+    const duration = parseInt(document.getElementById('schedule-lesson-duration').value) || 60;
+
+    if (!date) {
+        showToast('Please select a date');
+        return;
+    }
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/courses/${courseId}/schedule`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ date, time: time || null, duration })
+        });
+
+        if (!res.ok) throw new Error('Failed to schedule lesson');
+
+        showToast('Lesson scheduled!');
+        hideModal('schedule-lesson-modal');
+        openCourseDetail(courseId); // Refresh detail view
+    } catch (e) {
+        console.error('Error scheduling lesson:', e);
+        showToast('Failed to schedule lesson');
+    }
+};
+
+// Complete lesson with engagement
+window.openCompleteLessonModal = function(lessonId, dateStr) {
+    document.getElementById('complete-lesson-id').value = lessonId;
+    document.getElementById('complete-lesson-title').innerText = `Lesson on ${dateStr}`;
+    document.getElementById('complete-attendees').value = '';
+    document.getElementById('complete-notes').value = '';
+
+    selectedEngagement = 0;
+    document.querySelectorAll('.engagement-star').forEach(btn => {
+        btn.classList.remove('opacity-100', 'bg-green-600');
+        btn.classList.add('opacity-50');
+    });
+
+    showModal('complete-lesson-modal');
+};
+
+window.setEngagement = function(level) {
+    selectedEngagement = level;
+    document.querySelectorAll('.engagement-star').forEach(btn => {
+        const rating = parseInt(btn.dataset.rating);
+        if (rating <= level) {
+            btn.classList.remove('opacity-50');
+            btn.classList.add('opacity-100', 'bg-green-600');
+        } else {
+            btn.classList.remove('opacity-100', 'bg-green-600');
+            btn.classList.add('opacity-50');
+        }
+    });
+};
+
+window.submitLessonCompletion = async function() {
+    const lessonId = document.getElementById('complete-lesson-id').value;
+    const notes = document.getElementById('complete-notes').value;
+    const attendees = document.getElementById('complete-attendees').value;
+
+    if (selectedEngagement < 1 || selectedEngagement > 5) {
+        showToast('Please rate the class engagement');
+        return;
+    }
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/courses/lessons/${lessonId}/complete`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                engagement_level: selectedEngagement,
+                notes: notes || null,
+                attendee_count: attendees ? parseInt(attendees) : null
+            })
+        });
+
+        if (!res.ok) throw new Error('Failed to complete lesson');
+
+        showToast('Lesson completed!');
+        hideModal('complete-lesson-modal');
+        if (currentCourseId) {
+            openCourseDetail(currentCourseId); // Refresh detail view
+        }
+    } catch (e) {
+        console.error('Error completing lesson:', e);
+        showToast('Failed to complete lesson');
+    }
+};
+
+// Delete lesson
+window.deleteLesson = async function(lessonId) {
+    if (!confirm('Delete this scheduled lesson?')) return;
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/courses/lessons/${lessonId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+
+        if (!res.ok) throw new Error('Failed to delete lesson');
+
+        showToast('Lesson deleted');
+        if (currentCourseId) {
+            openCourseDetail(currentCourseId); // Refresh detail view
+        }
+    } catch (e) {
+        console.error('Error deleting lesson:', e);
+        showToast('Failed to delete lesson');
+    }
+};
+
+// Exercise search for course picker
+document.addEventListener('DOMContentLoaded', () => {
+    const courseExSearch = document.getElementById('course-ex-search');
+    if (courseExSearch) {
+        courseExSearch.addEventListener('input', (e) => {
+            const query = e.target.value.toLowerCase();
+            const container = document.getElementById('course-exercise-list');
+            if (!container || !window.APP_STATE?.exercises) return;
+
+            const filtered = window.APP_STATE?.exercises.filter(ex =>
+                ex.name.toLowerCase().includes(query) ||
+                ex.muscle.toLowerCase().includes(query)
+            );
+
+            container.innerHTML = filtered.map(ex => `
+                <div class="glass-card p-3 flex justify-between items-center cursor-pointer hover:bg-white/10 transition"
+                     onclick="selectCourseExercise('${ex.id}', '${ex.name}', '${ex.video_id || ''}')">
+                    <div>
+                        <p class="text-sm font-medium text-white">${ex.name}</p>
+                        <p class="text-[10px] text-gray-400">${ex.muscle} • ${ex.type}</p>
+                    </div>
+                    <span class="text-primary">+</span>
+                </div>
+            `).join('');
+        });
+    }
+});
+
+// ============================================
+// LIVE CLASS MODE
+// ============================================
+
+let liveClassData = {
+    course: null,
+    exercises: [],
+    currentExerciseIndex: 0,
+    musicLinks: [],
+    timerSeconds: 0,
+    timerInterval: null,
+    timerRunning: false,
+    musicPlaying: false
+};
+
+// Start live class from course detail
+window.startLiveClass = function() {
+    const course = allCoursesData.find(c => c.id === currentCourseId);
+    if (!course) {
+        showToast('Course not found');
+        return;
+    }
+
+    liveClassData.course = course;
+    liveClassData.exercises = course.exercises || [];
+    liveClassData.musicLinks = course.music_links || [];
+    liveClassData.currentExerciseIndex = 0;
+    liveClassData.timerSeconds = 0;
+    liveClassData.timerRunning = false;
+
+    if (liveClassData.exercises.length === 0) {
+        showToast('Add exercises to this course first');
+        return;
+    }
+
+    // Update UI
+    document.getElementById('live-class-name').textContent = course.name;
+
+    // Render music links
+    renderLiveMusicLinks();
+
+    // Render exercise list
+    renderLiveExerciseList();
+
+    // Show first exercise
+    showLiveExercise(0);
+
+    // Hide course detail and show live class
+    hideModal('course-detail-modal');
+    showModal('live-class-modal');
+
+    // Reset timer display
+    updateTimerDisplay();
+};
+
+// Render music links in sidebar
+function renderLiveMusicLinks() {
+    const container = document.getElementById('live-music-container');
+    if (!container) return;
+
+    if (liveClassData.musicLinks.length === 0) {
+        container.innerHTML = '<p class="text-xs text-gray-500 italic">No playlists added</p>';
+        return;
+    }
+
+    container.innerHTML = liveClassData.musicLinks.map((link, i) => {
+        const icon = link.type === 'spotify' ? '🟢' : '🔴';
+        const embedUrl = getMusicEmbedUrl(link.url, link.type);
+
+        return `
+            <div class="bg-white/5 rounded-lg p-2">
+                <div class="flex items-center justify-between mb-2">
+                    <span class="text-xs text-white font-medium truncate">${icon} ${link.title || 'Playlist ' + (i+1)}</span>
+                    <a href="${link.url}" target="_blank" class="text-xs text-primary hover:underline">Open</a>
+                </div>
+                ${embedUrl ? `
+                    <iframe src="${embedUrl}" width="100%" height="80" frameborder="0"
+                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                        loading="lazy" class="rounded"></iframe>
+                ` : ''}
+            </div>
+        `;
+    }).join('');
+}
+
+// Get embed URL for music services
+function getMusicEmbedUrl(url, type) {
+    if (!url) return null;
+
+    if (type === 'spotify') {
+        // Convert spotify URL to embed
+        // https://open.spotify.com/playlist/xxx -> https://open.spotify.com/embed/playlist/xxx
+        const match = url.match(/spotify\.com\/(playlist|album|track)\/([a-zA-Z0-9]+)/);
+        if (match) {
+            return `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=generator&theme=0`;
+        }
+    } else if (type === 'youtube') {
+        // Convert youtube URL to embed
+        // https://www.youtube.com/watch?v=xxx -> https://www.youtube.com/embed/xxx
+        // https://youtu.be/xxx -> https://www.youtube.com/embed/xxx
+        // https://www.youtube.com/playlist?list=xxx -> https://www.youtube.com/embed/videoseries?list=xxx
+        let videoId = null;
+        let playlistId = null;
+
+        if (url.includes('list=')) {
+            const match = url.match(/list=([a-zA-Z0-9_-]+)/);
+            if (match) playlistId = match[1];
+        }
+
+        if (url.includes('v=')) {
+            const match = url.match(/v=([a-zA-Z0-9_-]+)/);
+            if (match) videoId = match[1];
+        } else if (url.includes('youtu.be/')) {
+            const match = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
+            if (match) videoId = match[1];
+        }
+
+        if (playlistId) {
+            return `https://www.youtube.com/embed/videoseries?list=${playlistId}`;
+        } else if (videoId) {
+            return `https://www.youtube.com/embed/${videoId}`;
+        }
+    }
+
+    return null;
+}
+
+// Render exercise list in sidebar
+function renderLiveExerciseList() {
+    const container = document.getElementById('live-exercise-list');
+    if (!container) return;
+
+    container.innerHTML = liveClassData.exercises.map((ex, i) => `
+        <div onclick="showLiveExercise(${i})" data-exercise-index="${i}"
+            class="live-exercise-item p-3 rounded-xl cursor-pointer transition ${i === liveClassData.currentExerciseIndex ? 'bg-primary/20 border border-primary/50' : 'bg-white/5 hover:bg-white/10'}">
+            <p class="text-sm font-medium text-white">${ex.name}</p>
+            <p class="text-[10px] text-gray-400">${ex.sets} sets × ${ex.reps} reps</p>
+        </div>
+    `).join('');
+}
+
+// Show specific exercise
+window.showLiveExercise = function(index) {
+    if (index < 0 || index >= liveClassData.exercises.length) return;
+
+    liveClassData.currentExerciseIndex = index;
+    const exercise = liveClassData.exercises[index];
+
+    // Update exercise count
+    document.getElementById('live-class-exercise-count').textContent =
+        `Exercise ${index + 1} of ${liveClassData.exercises.length}`;
+
+    // Update exercise info
+    document.getElementById('live-exercise-name').textContent = exercise.name;
+    document.getElementById('live-exercise-sets').innerHTML = `<span class="text-primary font-bold">${exercise.sets}</span> Sets`;
+    document.getElementById('live-exercise-reps').innerHTML = `<span class="text-primary font-bold">${exercise.reps}</span> Reps`;
+    document.getElementById('live-exercise-rest').innerHTML = `<span class="text-primary font-bold">${exercise.rest || 60}</span>s Rest`;
+
+    // Update video/media display
+    const mediaContainer = document.getElementById('live-exercise-media');
+    if (exercise.video_id) {
+        mediaContainer.innerHTML = `
+            <iframe src="https://www.youtube.com/embed/${exercise.video_id}?rel=0"
+                class="w-full h-full" frameborder="0"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                allowfullscreen></iframe>
+        `;
+    } else {
+        mediaContainer.innerHTML = `
+            <div class="text-gray-500 text-center">
+                <span class="text-6xl block mb-2">🏋️</span>
+                <p class="text-sm">No video for this exercise</p>
+            </div>
+        `;
+    }
+
+    // Update navigation buttons
+    document.getElementById('prev-exercise-btn').disabled = index === 0;
+    document.getElementById('next-exercise-btn').disabled = index === liveClassData.exercises.length - 1;
+
+    // Update exercise list highlighting
+    renderLiveExerciseList();
+
+    // Set default timer to rest time
+    liveClassData.timerSeconds = exercise.rest || 60;
+    updateTimerDisplay();
+    stopTimer();
+};
+
+// Navigation
+window.prevExercise = function() {
+    if (liveClassData.currentExerciseIndex > 0) {
+        showLiveExercise(liveClassData.currentExerciseIndex - 1);
+    }
+};
+
+window.nextExercise = function() {
+    if (liveClassData.currentExerciseIndex < liveClassData.exercises.length - 1) {
+        showLiveExercise(liveClassData.currentExerciseIndex + 1);
+    }
+};
+
+// Timer functions
+window.setQuickTimer = function(seconds) {
+    liveClassData.timerSeconds = seconds;
+    updateTimerDisplay();
+    stopTimer();
+};
+
+window.openCustomTimer = function() {
+    document.getElementById('custom-timer-minutes').value = Math.floor(liveClassData.timerSeconds / 60);
+    document.getElementById('custom-timer-seconds').value = liveClassData.timerSeconds % 60;
+    showModal('custom-timer-modal');
+};
+
+window.applyCustomTimer = function() {
+    const minutes = parseInt(document.getElementById('custom-timer-minutes').value) || 0;
+    const seconds = parseInt(document.getElementById('custom-timer-seconds').value) || 0;
+    liveClassData.timerSeconds = (minutes * 60) + seconds;
+    updateTimerDisplay();
+    hideModal('custom-timer-modal');
+};
+
+window.toggleTimer = function() {
+    if (liveClassData.timerRunning) {
+        stopTimer();
+    } else {
+        startTimer();
+    }
+};
+
+function startTimer() {
+    if (liveClassData.timerSeconds <= 0) return;
+
+    liveClassData.timerRunning = true;
+    document.getElementById('timer-toggle-btn').innerHTML = '⏸ Pause';
+    document.getElementById('timer-toggle-btn').classList.remove('bg-green-600', 'hover:bg-green-700');
+    document.getElementById('timer-toggle-btn').classList.add('bg-yellow-600', 'hover:bg-yellow-700');
+
+    liveClassData.timerInterval = setInterval(() => {
+        liveClassData.timerSeconds--;
+        updateTimerDisplay();
+
+        if (liveClassData.timerSeconds <= 0) {
+            stopTimer();
+            playTimerEndSound();
+            showToast('Timer complete!');
+        }
+    }, 1000);
+}
+
+function stopTimer() {
+    liveClassData.timerRunning = false;
+    if (liveClassData.timerInterval) {
+        clearInterval(liveClassData.timerInterval);
+        liveClassData.timerInterval = null;
+    }
+    document.getElementById('timer-toggle-btn').innerHTML = '▶ Start';
+    document.getElementById('timer-toggle-btn').classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
+    document.getElementById('timer-toggle-btn').classList.add('bg-green-600', 'hover:bg-green-700');
+}
+
+window.resetTimer = function() {
+    stopTimer();
+    const exercise = liveClassData.exercises[liveClassData.currentExerciseIndex];
+    liveClassData.timerSeconds = exercise?.rest || 60;
+    updateTimerDisplay();
+};
+
+function updateTimerDisplay() {
+    const minutes = Math.floor(liveClassData.timerSeconds / 60);
+    const seconds = liveClassData.timerSeconds % 60;
+    document.getElementById('live-timer-display').textContent =
+        `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+}
+
+function playTimerEndSound() {
+    // Create a simple beep sound using Web Audio API
+    try {
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+        gainNode.gain.value = 0.3;
+
+        oscillator.start();
+        oscillator.stop(audioContext.currentTime + 0.3);
+
+        // Play three beeps
+        setTimeout(() => {
+            const osc2 = audioContext.createOscillator();
+            osc2.connect(gainNode);
+            osc2.frequency.value = 800;
+            osc2.type = 'sine';
+            osc2.start();
+            osc2.stop(audioContext.currentTime + 0.3);
+        }, 400);
+
+        setTimeout(() => {
+            const osc3 = audioContext.createOscillator();
+            osc3.connect(gainNode);
+            osc3.frequency.value = 1000;
+            osc3.type = 'sine';
+            osc3.start();
+            osc3.stop(audioContext.currentTime + 0.5);
+        }, 800);
+    } catch (e) {
+        console.log('Could not play timer sound:', e);
+    }
+}
+
+// Music toggle (just shows/hides sidebar on mobile)
+window.toggleLiveMusic = function() {
+    const sidebar = document.getElementById('live-sidebar');
+    sidebar.classList.toggle('hidden');
+    sidebar.classList.toggle('lg:flex');
+};
+
+// End class
+window.endLiveClass = function() {
+    if (!confirm('End this class?')) return;
+
+    stopTimer();
+    hideModal('live-class-modal');
+
+    // Ask if they want to mark a scheduled lesson as complete
+    // For now just close
+    showToast('Class ended');
+};

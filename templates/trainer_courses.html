@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="p-4 pb-24">
+    <!-- Header -->
+    <div class="flex justify-between items-start mb-6">
+        <div>
+            <p class="text-xs text-white/60 uppercase tracking-wider">Trainer Dashboard</p>
+            <h2 class="text-2xl font-bold">Group Courses</h2>
+        </div>
+        <div class="flex space-x-2">
+            <div id="notification-bell" onclick="openNotificationsModal()"
+                class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect cursor-pointer relative">
+                🔔
+                <span id="notification-badge" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
+            </div>
+            <!-- Back Button -->
+            <a href="{{ 'trainer.html' if static_build else '/?gym_id=' + gym_id + '&role=trainer' }}"
+                class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect cursor-pointer">
+                ←
+            </a>
+        </div>
+    </div>
+
+    <!-- Stats Row -->
+    <div class="grid grid-cols-3 gap-3 mb-6">
+        <div class="glass-card p-4 flex flex-col items-center justify-center">
+            <span class="text-2xl font-bold text-primary" id="total-courses-count">0</span>
+            <span class="text-[10px] text-white/50 uppercase tracking-wider mt-1">Courses</span>
+        </div>
+        <div class="glass-card p-4 flex flex-col items-center justify-center">
+            <span class="text-2xl font-bold text-green-400" id="lessons-this-week">0</span>
+            <span class="text-[10px] text-white/50 uppercase tracking-wider mt-1">This Week</span>
+        </div>
+        <div class="glass-card p-4 flex flex-col items-center justify-center">
+            <span class="text-2xl font-bold text-yellow-400" id="avg-engagement">-</span>
+            <span class="text-[10px] text-white/50 uppercase tracking-wider mt-1">Avg Rating</span>
+        </div>
+    </div>
+
+    <!-- Create Course Button -->
+    <button data-action="openCreateCourse"
+        class="w-full glass-card p-4 mb-6 flex items-center justify-center space-x-2 hover:bg-white/10 transition tap-effect border-2 border-dashed border-white/20 hover:border-primary/50">
+        <span class="text-2xl">+</span>
+        <span class="text-sm font-bold uppercase tracking-wider">Create New Course</span>
+    </button>
+
+    <!-- Courses List -->
+    <div class="space-y-4">
+        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Your Courses</h3>
+        <div id="courses-page-list" class="space-y-3">
+            <!-- Courses will be populated here -->
+            <div class="glass-card p-6 text-center">
+                <p class="text-gray-400 text-sm">Loading courses...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Shared Courses Section -->
+    <div class="mt-8 space-y-4">
+        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Shared by Gym</h3>
+        <div id="shared-courses-list" class="space-y-3">
+            <!-- Shared courses will be populated here -->
+            <div class="glass-card p-4 text-center">
+                <p class="text-gray-400/50 text-xs">No shared courses from other trainers</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', () => {
+    // Load courses when page loads
+    if (typeof window.loadCoursesPage === 'function') {
+        window.loadCoursesPage();
+    } else {
+        // Fallback: wait for app.js to load
+        setTimeout(() => {
+            if (typeof window.loadCoursesPage === 'function') {
+                window.loadCoursesPage();
+            }
+        }, 500);
+    }
+});
+</script>
+{% endblock %}

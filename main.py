@@ -253,6 +253,10 @@ async def complete_trainer_schedule_direct(
 async def read_trainer_personal(request: Request, gym_id: str = "default"):
     return templates.TemplateResponse("trainer_personal.html", {"request": request, "gym_id": gym_id, "role": "trainer", "mode": "personal", "cache_buster": CACHE_BUSTER})
 
+@app.get("/trainer/courses", response_class=HTMLResponse)
+async def read_trainer_courses(request: Request, gym_id: str = "default"):
+    return templates.TemplateResponse("trainer_courses.html", {"request": request, "gym_id": gym_id, "role": "trainer", "mode": "courses", "cache_buster": CACHE_BUSTER})
+
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser()
