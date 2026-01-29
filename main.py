@@ -93,6 +93,82 @@ app.include_router(profile_router)
 print("DEBUG: Profile router included")
 
 
+def run_migrations(engine):
+    """Run database migrations to add new columns."""
+    from sqlalchemy import text, inspect
+
+    inspector = inspect(engine)
+
+    # Check if exercises table exists and add new columns if needed
+    if 'exercises' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('exercises')]
+
+        new_columns = [
+            ('description', 'TEXT'),
+            ('default_duration', 'INTEGER'),
+            ('difficulty', 'TEXT'),
+            ('thumbnail_url', 'TEXT'),
+            ('video_url', 'TEXT'),
+            ('steps_json', 'TEXT')
+        ]
+
+        with engine.connect() as conn:
+            for col_name, col_type in new_columns:
+                if col_name not in columns:
+                    try:
+                        conn.execute(text(f'ALTER TABLE exercises ADD COLUMN {col_name} {col_type}'))
+                        conn.commit()
+                        logger.info(f"Added column {col_name} to exercises table")
+                    except Exception as e:
+                        logger.debug(f"Column {col_name} may already exist: {e}")
+
+    # Check if courses table exists and add new columns if needed
+    if 'courses' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('courses')]
+
+        course_columns = [
+            ('days_of_week_json', 'TEXT'),
+            ('course_type', 'TEXT'),
+            ('cover_image_url', 'TEXT'),
+            ('trailer_url', 'TEXT'),
+        ]
+
+        with engine.connect() as conn:
+            for col_name, col_type in course_columns:
+                if col_name not in columns:
+                    try:
+                        conn.execute(text(f'ALTER TABLE courses ADD COLUMN {col_name} {col_type}'))
+                        conn.commit()
+                        logger.info(f"Added column {col_name} to courses table")
+                    except Exception as e:
+                        logger.debug(f"Column {col_name} may already exist: {e}")
+
+    # Check if trainer_schedule table exists and add course_id column if needed
+    if 'trainer_schedule' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('trainer_schedule')]
+
+        if 'course_id' not in columns:
+            with engine.connect() as conn:
+                try:
+                    conn.execute(text('ALTER TABLE trainer_schedule ADD COLUMN course_id TEXT'))
+                    conn.commit()
+                    logger.info("Added column course_id to trainer_schedule table")
+                except Exception as e:
+                    logger.debug(f"Column course_id may already exist: {e}")
+
+    # Check if client_schedule table exists and add course_id column if needed
+    if 'client_schedule' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('client_schedule')]
+
+        if 'course_id' not in columns:
+            with engine.connect() as conn:
+                try:
+                    conn.execute(text('ALTER TABLE client_schedule ADD COLUMN course_id TEXT'))
+                    conn.commit()
+                    logger.info("Added column course_id to client_schedule table")
+                except Exception as e:
+                    logger.debug(f"Column course_id may already exist: {e}")
+
 @app.on_event("startup")
 async def startup_event():
     logger.info("Initializing Database...")
@@ -100,7 +176,10 @@ async def startup_event():
         # Create tables if they don't exist
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables verified/created.")
-        
+
+        # Run migrations for new columns
+        run_migrations(engine)
+
         # Log DB info (safe to log dialect)
         db_url = str(engine.url)
         if "sqlite" in db_url:

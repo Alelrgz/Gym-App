@@ -49,6 +49,85 @@ def seed_global_database():
 
 seed_global_database()
 
+# Seed course exercises for group fitness classes
+def seed_course_exercises():
+    db = get_db_session()
+    try:
+        # Check if we already have course exercises
+        existing_course_exercises = db.query(ExerciseORM).filter(ExerciseORM.type == "Course").count()
+        if existing_course_exercises > 0:
+            return  # Already seeded
+
+        print("Seeding course exercises...")
+
+        COURSE_EXERCISES = [
+            # YOGA (5 exercises)
+            {"name": "Sun Salutation", "category": "yoga", "description": "Classic flowing sequence connecting breath with movement", "duration": 120, "difficulty": "beginner", "steps": ["Mountain pose", "Reach arms overhead", "Forward fold", "Halfway lift", "Plank", "Chaturanga", "Upward dog", "Downward dog", "Step forward", "Return to mountain"]},
+            {"name": "Warrior I", "category": "yoga", "description": "Standing pose building strength and focus", "duration": 60, "difficulty": "beginner", "steps": ["Start in mountain pose", "Step one foot back", "Bend front knee to 90°", "Raise arms overhead", "Square hips forward", "Hold and breathe"]},
+            {"name": "Warrior II", "category": "yoga", "description": "Open hip standing pose for leg strength", "duration": 60, "difficulty": "beginner", "steps": ["From Warrior I, open hips to side", "Extend arms parallel to floor", "Gaze over front hand", "Keep front knee over ankle", "Hold and breathe"]},
+            {"name": "Tree Pose", "category": "yoga", "description": "Balance pose improving focus and stability", "duration": 45, "difficulty": "beginner", "steps": ["Stand on one leg", "Place other foot on inner thigh or calf", "Bring hands to heart center", "Optional: raise arms overhead", "Focus gaze on fixed point"]},
+            {"name": "Child's Pose", "category": "yoga", "description": "Restorative resting pose", "duration": 60, "difficulty": "beginner", "steps": ["Kneel on floor", "Sit back on heels", "Fold forward, arms extended", "Rest forehead on mat", "Breathe deeply and relax"]},
+
+            # PILATES (5 exercises)
+            {"name": "The Hundred", "category": "pilates", "description": "Core activation exercise pumping arms while holding position", "duration": 90, "difficulty": "intermediate", "steps": ["Lie on back", "Lift head and shoulders", "Extend legs to 45°", "Pump arms up and down", "Breathe in for 5 pumps, out for 5", "Complete 100 pumps"]},
+            {"name": "Roll Up", "category": "pilates", "description": "Articulating spine roll from lying to sitting", "duration": 60, "difficulty": "intermediate", "steps": ["Lie flat, arms overhead", "Inhale, lift arms to ceiling", "Exhale, curl up vertebra by vertebra", "Reach toward toes", "Inhale at top", "Exhale, roll back down slowly"]},
+            {"name": "Single Leg Circle", "category": "pilates", "description": "Hip mobility while stabilizing the core", "duration": 60, "difficulty": "beginner", "steps": ["Lie on back", "Extend one leg to ceiling", "Circle leg across body", "Down, around, and back up", "Keep hips stable", "5 circles each direction"]},
+            {"name": "Plank to Pike", "category": "pilates", "description": "Dynamic core exercise transitioning between positions", "duration": 45, "difficulty": "intermediate", "steps": ["Start in plank position", "Engage core strongly", "Pike hips up toward ceiling", "Keep legs straight", "Return to plank", "Repeat with control"]},
+            {"name": "Swimming", "category": "pilates", "description": "Back extension with alternating arm and leg lifts", "duration": 60, "difficulty": "intermediate", "steps": ["Lie face down", "Extend arms forward", "Lift chest slightly", "Flutter opposite arm and leg", "Keep core engaged", "Breathe steadily"]},
+
+            # STRETCH (5 exercises)
+            {"name": "Standing Quad Stretch", "category": "stretch", "description": "Stretches front of thigh", "duration": 30, "difficulty": "beginner", "steps": ["Stand on one leg", "Grab opposite ankle behind you", "Pull heel toward glute", "Keep knees together", "Hold, then switch sides"]},
+            {"name": "Seated Forward Fold", "category": "stretch", "description": "Hamstring and lower back stretch", "duration": 45, "difficulty": "beginner", "steps": ["Sit with legs extended", "Inhale, lengthen spine", "Exhale, fold forward from hips", "Reach for toes or shins", "Relax head and neck"]},
+            {"name": "Figure Four Stretch", "category": "stretch", "description": "Deep hip and glute stretch", "duration": 45, "difficulty": "beginner", "steps": ["Lie on back", "Cross ankle over opposite knee", "Thread hands behind thigh", "Pull toward chest", "Keep head relaxed on floor"]},
+            {"name": "Cat-Cow Stretch", "category": "stretch", "description": "Spinal mobility and flexibility", "duration": 60, "difficulty": "beginner", "steps": ["Start on hands and knees", "Inhale, arch back (cow)", "Look up, drop belly", "Exhale, round spine (cat)", "Tuck chin to chest", "Flow between positions"]},
+            {"name": "Chest Opener Stretch", "category": "stretch", "description": "Opens chest and shoulders", "duration": 30, "difficulty": "beginner", "steps": ["Stand or sit tall", "Clasp hands behind back", "Straighten arms", "Lift hands away from body", "Open chest, squeeze shoulder blades"]},
+
+            # CARDIO (5 exercises)
+            {"name": "High Knees", "category": "cardio", "description": "Running in place with exaggerated knee lift", "duration": 45, "difficulty": "beginner", "steps": ["Stand with feet hip-width", "Run in place", "Drive knees up to hip height", "Pump arms in opposition", "Stay on balls of feet"]},
+            {"name": "Jumping Jacks", "category": "cardio", "description": "Classic full-body cardio movement", "duration": 45, "difficulty": "beginner", "steps": ["Stand with feet together", "Jump feet out wide", "Simultaneously raise arms overhead", "Jump feet back together", "Lower arms to sides", "Repeat rhythmically"]},
+            {"name": "Burpees", "category": "cardio", "description": "Full-body explosive exercise", "duration": 60, "difficulty": "advanced", "steps": ["Stand tall", "Squat down, hands to floor", "Jump feet back to plank", "Optional: add push-up", "Jump feet to hands", "Explode up with jump"]},
+            {"name": "Mountain Climbers", "category": "cardio", "description": "Plank-based cardio targeting core", "duration": 45, "difficulty": "intermediate", "steps": ["Start in plank position", "Drive one knee to chest", "Quickly switch legs", "Keep hips level", "Maintain fast pace", "Keep core tight"]},
+            {"name": "Star Jumps", "category": "cardio", "description": "Explosive jumping forming star shape", "duration": 45, "difficulty": "intermediate", "steps": ["Start in squat position", "Explode upward", "Spread arms and legs wide", "Form star shape at peak", "Land softly in squat", "Repeat immediately"]},
+
+            # WARMUP (5 exercises)
+            {"name": "Arm Circles", "category": "warmup", "description": "Shoulder mobility warmup", "duration": 30, "difficulty": "beginner", "steps": ["Stand with arms extended", "Make small circles forward", "Gradually increase size", "Reverse direction", "Continue for 30 seconds"]},
+            {"name": "Leg Swings", "category": "warmup", "description": "Dynamic hip mobility", "duration": 30, "difficulty": "beginner", "steps": ["Hold wall for balance", "Swing leg forward and back", "Keep leg straight", "Control the movement", "10 swings each leg"]},
+            {"name": "Torso Twists", "category": "warmup", "description": "Spinal rotation warmup", "duration": 30, "difficulty": "beginner", "steps": ["Stand with feet shoulder-width", "Place hands on hips", "Rotate torso left and right", "Keep hips facing forward", "Move smoothly"]},
+            {"name": "Ankle Rotations", "category": "warmup", "description": "Ankle mobility and warmup", "duration": 20, "difficulty": "beginner", "steps": ["Lift one foot off ground", "Rotate ankle clockwise", "Then counterclockwise", "10 rotations each direction", "Switch feet"]},
+            {"name": "Hip Circles", "category": "warmup", "description": "Hip joint mobility warmup", "duration": 30, "difficulty": "beginner", "steps": ["Stand on one leg", "Lift knee to hip height", "Draw circles with knee", "5 circles each direction", "Switch legs"]},
+
+            # COOLDOWN (5 exercises)
+            {"name": "Standing Side Stretch", "category": "cooldown", "description": "Gentle lateral body stretch", "duration": 30, "difficulty": "beginner", "steps": ["Stand with feet together", "Raise one arm overhead", "Lean to opposite side", "Feel stretch along side body", "Hold and breathe, switch sides"]},
+            {"name": "Neck Rolls", "category": "cooldown", "description": "Gentle neck tension release", "duration": 30, "difficulty": "beginner", "steps": ["Drop chin to chest", "Slowly roll head to one side", "Continue around to back", "Complete full circle", "Reverse direction"]},
+            {"name": "Supine Twist", "category": "cooldown", "description": "Lying spinal twist for relaxation", "duration": 45, "difficulty": "beginner", "steps": ["Lie on back", "Hug one knee to chest", "Guide knee across body", "Extend opposite arm", "Look away from knee", "Breathe and relax"]},
+            {"name": "Corpse Pose", "category": "cooldown", "description": "Final relaxation pose", "duration": 120, "difficulty": "beginner", "steps": ["Lie flat on back", "Arms at sides, palms up", "Feet fall open naturally", "Close eyes", "Release all tension", "Focus on breath"]},
+            {"name": "Seated Meditation", "category": "cooldown", "description": "Mindful breathing to end session", "duration": 90, "difficulty": "beginner", "steps": ["Sit comfortably", "Close eyes or soft gaze down", "Rest hands on knees", "Focus on natural breath", "Let thoughts pass", "Return to breath"]},
+        ]
+
+        for ex in COURSE_EXERCISES:
+            db_ex = ExerciseORM(
+                id=str(uuid.uuid4()),
+                name=ex["name"],
+                muscle=ex["category"],  # Category stored in muscle field
+                type="Course",
+                video_id=None,
+                owner_id=None,  # Global course exercises
+                description=ex["description"],
+                default_duration=ex["duration"],
+                difficulty=ex["difficulty"],
+                steps_json=json.dumps(ex["steps"])
+            )
+            db.add(db_ex)
+
+        db.commit()
+        print(f"Seeded {len(COURSE_EXERCISES)} course exercises")
+    except Exception as e:
+        print(f"Course exercises seeding warning: {e}")
+    finally:
+        db.close()
+
+seed_course_exercises()
+
 class GymService:
     def get_gym(self, gym_id: str) -> GymConfig:
         gym = GYMS_DB.get(gym_id)
@@ -191,7 +270,8 @@ class UserService:
                     "subtitle": s.subtitle or "",
                     "type": s.type,
                     "duration": s.duration if s.duration else 60,  # Include duration
-                    "completed": s.completed
+                    "completed": s.completed,
+                    "course_id": s.course_id  # Link to course for group classes
                 })
 
             for c in clients_orm:
@@ -354,6 +434,9 @@ class UserService:
             video_library = TRAINER_DATA["video_library"]
             return TrainerData(
                 id=trainer_id,
+                name=trainer.username if trainer else None,
+                profile_picture=trainer.profile_picture if trainer else None,
+                specialties=trainer.specialties if trainer else None,
                 clients=clients,
                 video_library=video_library,
                 active_clients=active_count,

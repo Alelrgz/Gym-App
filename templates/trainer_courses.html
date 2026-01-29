@@ -66,6 +66,77 @@
             </div>
         </div>
     </div>
+
+    <!-- Course Exercise Library Section -->
+    <div class="mt-8">
+        <button id="toggle-course-exercises-btn"
+            class="w-full glass-card p-4 flex items-center justify-between hover:bg-white/10 transition tap-effect">
+            <div class="flex items-center space-x-3">
+                <span class="text-xl">🏃</span>
+                <div class="text-left">
+                    <span class="text-sm font-bold uppercase tracking-wider">Exercise Library</span>
+                    <p class="text-[10px] text-white/50">Create & manage exercises for your courses</p>
+                </div>
+            </div>
+            <span id="course-exercises-chevron" class="text-white/40 text-sm transition-transform duration-300">▼</span>
+        </button>
+
+        <div id="course-exercises-section" class="overflow-hidden transition-all duration-300 ease-out mt-3" style="max-height: 0; opacity: 0;">
+            <!-- Create Exercise Button -->
+            <button onclick="openCourseExerciseModal()"
+                class="w-full glass-card p-3 mb-4 flex items-center justify-center space-x-2 hover:bg-white/10 transition tap-effect border-2 border-dashed border-white/20 hover:border-green-500/50">
+                <span class="text-lg">+</span>
+                <span class="text-xs font-bold uppercase tracking-wider">Create New Exercise</span>
+            </button>
+
+            <!-- Category Filter -->
+            <div class="flex flex-wrap gap-2 mb-4">
+                <button onclick="filterCourseExercises('all')" data-filter="all"
+                    class="course-ex-filter-btn active px-3 py-1.5 text-xs rounded-full bg-primary/20 text-primary border border-primary/30 transition">
+                    All
+                </button>
+                <button onclick="filterCourseExercises('yoga')" data-filter="yoga"
+                    class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">
+                    🧘 Yoga
+                </button>
+                <button onclick="filterCourseExercises('pilates')" data-filter="pilates"
+                    class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">
+                    🤸 Pilates
+                </button>
+                <button onclick="filterCourseExercises('stretch')" data-filter="stretch"
+                    class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">
+                    🙆 Stretch
+                </button>
+                <button onclick="filterCourseExercises('cardio')" data-filter="cardio"
+                    class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">
+                    🏃 Cardio
+                </button>
+                <button onclick="filterCourseExercises('warmup')" data-filter="warmup"
+                    class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">
+                    🔥 Warmup
+                </button>
+                <button onclick="filterCourseExercises('cooldown')" data-filter="cooldown"
+                    class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">
+                    ❄️ Cooldown
+                </button>
+            </div>
+
+            <!-- Search -->
+            <div class="relative mb-4">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">🔍</span>
+                <input type="text" id="course-exercise-search" placeholder="Search exercises..."
+                    class="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white outline-none focus:border-white/25 focus:bg-white/10 transition placeholder-white/30">
+            </div>
+
+            <!-- Exercise Grid -->
+            <div id="course-exercise-library" class="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
+                <!-- Exercises will be populated here -->
+                <div class="col-span-2 glass-card p-6 text-center">
+                    <p class="text-gray-400/50 text-xs">Loading exercises...</p>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -80,6 +151,40 @@ document.addEventListener('DOMContentLoaded', () => {
                 window.loadCoursesPage();
             }
         }, 500);
+    }
+
+    // Toggle exercise library section
+    const toggleBtn = document.getElementById('toggle-course-exercises-btn');
+    const exercisesSection = document.getElementById('course-exercises-section');
+    const chevron = document.getElementById('course-exercises-chevron');
+
+    if (toggleBtn && exercisesSection) {
+        toggleBtn.addEventListener('click', () => {
+            const isOpen = exercisesSection.style.maxHeight !== '0px';
+            if (isOpen) {
+                exercisesSection.style.maxHeight = '0';
+                exercisesSection.style.opacity = '0';
+                chevron.style.transform = 'rotate(0deg)';
+            } else {
+                exercisesSection.style.maxHeight = '2000px';
+                exercisesSection.style.opacity = '1';
+                chevron.style.transform = 'rotate(180deg)';
+                // Load exercises when opened
+                if (typeof window.loadCourseExercises === 'function') {
+                    window.loadCourseExercises();
+                }
+            }
+        });
+    }
+
+    // Exercise search
+    const searchInput = document.getElementById('course-exercise-search');
+    if (searchInput) {
+        searchInput.addEventListener('input', (e) => {
+            if (typeof window.filterCourseExercisesBySearch === 'function') {
+                window.filterCourseExercisesBySearch(e.target.value);
+            }
+        });
     }
 });
 </script>

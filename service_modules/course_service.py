@@ -1,12 +1,17 @@
 """
 Course Service - handles group fitness course management.
 """
+from datetime import timedelta
 from .base import (
     HTTPException, uuid, json, logging, datetime,
-    get_db_session, CourseORM, CourseLessonORM, UserORM
+    get_db_session, CourseORM, CourseLessonORM, UserORM, TrainerScheduleORM,
+    ClientScheduleORM, ClientProfileORM
 )
 
 logger = logging.getLogger("gym_app")
+
+# How many weeks ahead to auto-generate schedule entries
+COURSE_SCHEDULE_WEEKS_AHEAD = 4
 
 
 class CourseService:
@@ -63,24 +68,44 @@ class CourseService:
             gym_id = trainer.gym_owner_id if trainer else None
 
             new_id = str(uuid.uuid4())
+
+            # Handle days_of_week array (new) with backwards compat for day_of_week (old)
+            days_of_week = course_data.get("days_of_week")
+            day_of_week = course_data.get("day_of_week")
+            days_json = json.dumps(days_of_week) if days_of_week else None
+
             course = CourseORM(
                 id=new_id,
                 name=course_data["name"],
                 description=course_data.get("description"),
                 exercises_json=json.dumps(course_data.get("exercises", [])),
                 music_links_json=json.dumps(course_data.get("music_links", [])),
-                day_of_week=course_data.get("day_of_week"),
+                day_of_week=day_of_week,
+                days_of_week_json=days_json,
                 time_slot=course_data.get("time_slot"),
                 duration=course_data.get("duration", 60),
                 owner_id=trainer_id,
                 gym_id=gym_id,
-                is_shared=course_data.get("is_shared", False)
+                is_shared=course_data.get("is_shared", False),
+                course_type=course_data.get("course_type"),
+                cover_image_url=course_data.get("cover_image_url"),
+                trailer_url=course_data.get("trailer_url")
             )
             db.add(course)
             db.commit()
             db.refresh(course)
             logger.info(f"Course created: {new_id} by trainer {trainer_id}")
-            return self._course_to_dict(course)
+
+            # Auto-generate schedule entries if days/time are set
+            course_dict = self._course_to_dict(course)
+            if course_data.get("days_of_week") or course_data.get("day_of_week"):
+                try:
+                    schedule_result = self.generate_course_schedule(new_id, trainer_id)
+                    course_dict["schedule_entries_created"] = schedule_result.get("created", 0)
+                except Exception as e:
+                    logger.warning(f"Failed to auto-generate schedule for course {new_id}: {e}")
+
+            return course_dict
         except Exception as e:
             db.rollback()
             logger.error(f"Failed to create course: {e}")
@@ -107,6 +132,8 @@ class CourseService:
                 course.exercises_json = json.dumps(updates["exercises"])
             if "music_links" in updates and updates["music_links"] is not None:
                 course.music_links_json = json.dumps(updates["music_links"])
+            if "days_of_week" in updates:
+                course.days_of_week_json = json.dumps(updates["days_of_week"]) if updates["days_of_week"] else None
             if "day_of_week" in updates:
                 course.day_of_week = updates["day_of_week"]
             if "time_slot" in updates:
@@ -115,12 +142,33 @@ class CourseService:
                 course.duration = updates["duration"]
             if "is_shared" in updates and updates["is_shared"] is not None:
                 course.is_shared = updates["is_shared"]
+            if "course_type" in updates:
+                course.course_type = updates["course_type"]
+            if "cover_image_url" in updates:
+                course.cover_image_url = updates["cover_image_url"]
+            if "trailer_url" in updates:
+                course.trailer_url = updates["trailer_url"]
+
+            # Track if schedule-related fields changed
+            schedule_changed = any(k in updates for k in ["days_of_week", "day_of_week", "time_slot", "duration", "name"])
 
             course.updated_at = datetime.utcnow().isoformat()
             db.commit()
             db.refresh(course)
             logger.info(f"Course updated: {course_id}")
-            return self._course_to_dict(course)
+
+            # Regenerate schedule if schedule-related fields changed
+            course_dict = self._course_to_dict(course)
+            if schedule_changed:
+                try:
+                    schedule_result = self.update_course_schedule(course_id, trainer_id)
+                    course_dict["schedule_updated"] = True
+                    course_dict["schedule_deleted"] = schedule_result.get("deleted", 0)
+                    course_dict["schedule_created"] = schedule_result.get("created", 0)
+                except Exception as e:
+                    logger.warning(f"Failed to update schedule for course {course_id}: {e}")
+
+            return course_dict
         except HTTPException:
             raise
         except Exception as e:
@@ -131,7 +179,7 @@ class CourseService:
             db.close()
 
     def delete_course(self, course_id: str, trainer_id: str) -> dict:
-        """Delete a course and its lessons (owner only)."""
+        """Delete a course, its lessons, and associated schedule entries (owner only)."""
         db = get_db_session()
         try:
             course = db.query(CourseORM).filter(CourseORM.id == course_id).first()
@@ -141,12 +189,22 @@ class CourseService:
             if course.owner_id != trainer_id:
                 raise HTTPException(status_code=403, detail="Only course owner can delete")
 
+            # Delete associated trainer schedule entries
+            trainer_schedule_deleted = db.query(TrainerScheduleORM).filter(
+                TrainerScheduleORM.course_id == course_id
+            ).delete()
+
+            # Delete associated client schedule entries
+            client_schedule_deleted = db.query(ClientScheduleORM).filter(
+                ClientScheduleORM.course_id == course_id
+            ).delete()
+
             # Delete associated lessons
             db.query(CourseLessonORM).filter(CourseLessonORM.course_id == course_id).delete()
             db.delete(course)
             db.commit()
-            logger.info(f"Course deleted: {course_id}")
-            return {"status": "success", "message": "Course deleted"}
+            logger.info(f"Course deleted: {course_id} (removed {trainer_schedule_deleted} trainer + {client_schedule_deleted} client entries)")
+            return {"status": "success", "message": "Course deleted", "schedule_entries_removed": trainer_schedule_deleted, "client_entries_removed": client_schedule_deleted}
         except HTTPException:
             raise
         except Exception as e:
@@ -272,9 +330,217 @@ class CourseService:
         finally:
             db.close()
 
+    # --- SCHEDULE GENERATION ---
+
+    def generate_course_schedule(self, course_id: str, trainer_id: str, weeks_ahead: int = None) -> dict:
+        """
+        Generate recurring schedule entries for a course based on its days_of_week and time_slot.
+        Creates entries for the next N weeks (default 4).
+        Returns count of created entries.
+        """
+        if weeks_ahead is None:
+            weeks_ahead = COURSE_SCHEDULE_WEEKS_AHEAD
+
+        db = get_db_session()
+        try:
+            course = db.query(CourseORM).filter(CourseORM.id == course_id).first()
+            if not course:
+                raise HTTPException(status_code=404, detail="Course not found")
+
+            # Get days of week from course
+            days_of_week = []
+            if course.days_of_week_json:
+                days_of_week = json.loads(course.days_of_week_json)
+            elif course.day_of_week is not None:
+                days_of_week = [course.day_of_week]
+
+            if not days_of_week:
+                return {"status": "success", "created": 0, "message": "No days specified for course"}
+
+            time_slot = course.time_slot or "9:00 AM"
+            duration = course.duration or 60
+
+            # Calculate dates for the next N weeks
+            today = datetime.now().date()
+            created_count = 0
+
+            for week in range(weeks_ahead):
+                for day_num in days_of_week:
+                    # Calculate the date for this day of week
+                    # day_num: 0=Monday, 6=Sunday (Python weekday convention)
+                    days_until = (day_num - today.weekday()) % 7
+                    if week == 0 and days_until == 0:
+                        # Include today if it matches
+                        target_date = today
+                    else:
+                        days_until = days_until + (week * 7)
+                        if week == 0 and days_until < 0:
+                            days_until += 7
+                        target_date = today + timedelta(days=days_until)
+
+                    date_str = target_date.isoformat()
+
+                    # Check if entry already exists for this course on this date
+                    existing = db.query(TrainerScheduleORM).filter(
+                        TrainerScheduleORM.course_id == course_id,
+                        TrainerScheduleORM.date == date_str,
+                        TrainerScheduleORM.trainer_id == trainer_id
+                    ).first()
+
+                    if existing:
+                        continue  # Skip, already scheduled
+
+                    # Create trainer schedule entry
+                    new_entry = TrainerScheduleORM(
+                        trainer_id=trainer_id,
+                        date=date_str,
+                        time=time_slot,
+                        title=course.name,
+                        subtitle="Group Course",
+                        type="course",
+                        duration=duration,
+                        course_id=course_id
+                    )
+                    db.add(new_entry)
+                    created_count += 1
+
+            # Also create client schedule entries for all clients at the gym
+            client_entries_created = 0
+            if course.gym_id:
+                # Get all clients at this gym
+                clients = db.query(ClientProfileORM).filter(
+                    ClientProfileORM.gym_id == course.gym_id
+                ).all()
+
+                for client in clients:
+                    for week in range(weeks_ahead):
+                        for day_num in days_of_week:
+                            days_until = (day_num - today.weekday()) % 7
+                            if week == 0 and days_until == 0:
+                                target_date = today
+                            else:
+                                days_until = days_until + (week * 7)
+                                if week == 0 and days_until < 0:
+                                    days_until += 7
+                                target_date = today + timedelta(days=days_until)
+
+                            date_str = target_date.isoformat()
+
+                            # Check if client entry already exists
+                            existing_client = db.query(ClientScheduleORM).filter(
+                                ClientScheduleORM.course_id == course_id,
+                                ClientScheduleORM.date == date_str,
+                                ClientScheduleORM.client_id == client.id
+                            ).first()
+
+                            if existing_client:
+                                continue
+
+                            # Create client schedule entry
+                            client_entry = ClientScheduleORM(
+                                client_id=client.id,
+                                date=date_str,
+                                title=f"{course.name} @ {time_slot}",
+                                type="course",
+                                completed=False,
+                                course_id=course_id,
+                                details=json.dumps({"duration": duration, "trainer_id": trainer_id})
+                            )
+                            db.add(client_entry)
+                            client_entries_created += 1
+
+            db.commit()
+            logger.info(f"Generated {created_count} trainer entries and {client_entries_created} client entries for course {course_id}")
+            return {"status": "success", "created": created_count, "client_entries": client_entries_created}
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to generate course schedule: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to generate schedule: {str(e)}")
+        finally:
+            db.close()
+
+    def update_course_schedule(self, course_id: str, trainer_id: str) -> dict:
+        """
+        Update schedule entries when course details change.
+        Removes future non-completed entries and regenerates them.
+        """
+        db = get_db_session()
+        try:
+            today = datetime.now().date().isoformat()
+
+            # Delete future non-completed trainer entries for this course
+            deleted_trainer = db.query(TrainerScheduleORM).filter(
+                TrainerScheduleORM.course_id == course_id,
+                TrainerScheduleORM.trainer_id == trainer_id,
+                TrainerScheduleORM.date >= today,
+                TrainerScheduleORM.completed == False
+            ).delete()
+
+            # Delete future non-completed client entries for this course
+            deleted_client = db.query(ClientScheduleORM).filter(
+                ClientScheduleORM.course_id == course_id,
+                ClientScheduleORM.date >= today,
+                ClientScheduleORM.completed == False
+            ).delete()
+
+            db.commit()
+            logger.info(f"Deleted {deleted_trainer} trainer and {deleted_client} client entries for course {course_id}")
+
+            # Regenerate schedule
+            result = self.generate_course_schedule(course_id, trainer_id)
+            return {
+                "status": "success",
+                "deleted": deleted_trainer,
+                "deleted_client": deleted_client,
+                "created": result.get("created", 0),
+                "client_entries": result.get("client_entries", 0)
+            }
+
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to update course schedule: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to update schedule: {str(e)}")
+        finally:
+            db.close()
+
+    def delete_course_schedule(self, course_id: str, trainer_id: str) -> dict:
+        """Delete all schedule entries for a course (when course is deleted)."""
+        db = get_db_session()
+        try:
+            # Delete trainer entries
+            deleted_trainer = db.query(TrainerScheduleORM).filter(
+                TrainerScheduleORM.course_id == course_id,
+                TrainerScheduleORM.trainer_id == trainer_id
+            ).delete()
+
+            # Delete client entries
+            deleted_client = db.query(ClientScheduleORM).filter(
+                ClientScheduleORM.course_id == course_id
+            ).delete()
+
+            db.commit()
+            logger.info(f"Deleted {deleted_trainer} trainer and {deleted_client} client entries for course {course_id}")
+            return {"status": "success", "deleted": deleted_trainer, "deleted_client": deleted_client}
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to delete course schedule: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to delete course schedule: {str(e)}")
+        finally:
+            db.close()
+
     # --- HELPER METHODS ---
 
     def _course_to_dict(self, course: CourseORM) -> dict:
+        # Parse days_of_week with fallback to single day_of_week
+        days = None
+        if hasattr(course, 'days_of_week_json') and course.days_of_week_json:
+            days = json.loads(course.days_of_week_json)
+        elif course.day_of_week is not None:
+            days = [course.day_of_week]
+
         return {
             "id": course.id,
             "name": course.name,
@@ -282,11 +548,15 @@ class CourseService:
             "exercises": json.loads(course.exercises_json) if course.exercises_json else [],
             "music_links": json.loads(course.music_links_json) if course.music_links_json else [],
             "day_of_week": course.day_of_week,
+            "days_of_week": days,
             "time_slot": course.time_slot,
             "duration": course.duration,
             "owner_id": course.owner_id,
             "gym_id": course.gym_id,
             "is_shared": course.is_shared,
+            "course_type": getattr(course, 'course_type', None),
+            "cover_image_url": getattr(course, 'cover_image_url', None),
+            "trailer_url": getattr(course, 'trailer_url', None),
             "created_at": course.created_at,
             "updated_at": course.updated_at
         }

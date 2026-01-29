@@ -129,7 +129,8 @@ class ScheduleService:
                 subtitle=event_data.get("subtitle"),
                 type=event_data["type"],
                 duration=duration,
-                workout_id=event_data.get("workout_id")
+                workout_id=event_data.get("workout_id"),
+                course_id=event_data.get("course_id")
             )
             db.add(new_event)
             db.commit()
@@ -161,6 +162,85 @@ class ScheduleService:
         except Exception as e:
             db.rollback()
             raise HTTPException(status_code=500, detail=f"Failed to delete event: {str(e)}")
+        finally:
+            db.close()
+
+    def update_trainer_event(self, event_id: str, updates: dict, trainer_id: str) -> dict:
+        """Update an existing trainer event (time, date, duration, etc)."""
+        db = get_db_session()
+        try:
+            event = db.query(TrainerScheduleORM).filter(
+                TrainerScheduleORM.id == int(event_id),
+                TrainerScheduleORM.trainer_id == trainer_id
+            ).first()
+
+            if not event:
+                raise HTTPException(status_code=404, detail="Event not found")
+
+            # Check for conflicts if time/date/duration changed
+            new_date = updates.get("date", event.date)
+            new_time = updates.get("time", event.time)
+            new_duration = updates.get("duration", event.duration or 60)
+
+            if new_date != event.date or new_time != event.time or new_duration != event.duration:
+                has_conflict, conflict = self._check_schedule_conflict(
+                    trainer_id, new_date, new_time, new_duration, db,
+                    exclude_event_id=int(event_id)
+                )
+                if has_conflict:
+                    raise HTTPException(
+                        status_code=409,
+                        detail=f"Schedule conflict with '{conflict['title']}' at {conflict['time']}"
+                    )
+
+            # Apply updates
+            if "date" in updates:
+                event.date = updates["date"]
+            if "time" in updates:
+                event.time = updates["time"]
+            if "duration" in updates:
+                event.duration = updates["duration"]
+            if "title" in updates:
+                event.title = updates["title"]
+            if "subtitle" in updates:
+                event.subtitle = updates["subtitle"]
+
+            db.commit()
+            db.refresh(event)
+            return {
+                "status": "success",
+                "event": {
+                    "id": event.id,
+                    "date": event.date,
+                    "time": event.time,
+                    "title": event.title,
+                    "subtitle": event.subtitle,
+                    "duration": event.duration,
+                    "completed": event.completed,
+                    "course_id": event.course_id
+                }
+            }
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to update event: {str(e)}")
+        finally:
+            db.close()
+
+    def delete_course_schedule_entries(self, course_id: str, trainer_id: str) -> dict:
+        """Delete all schedule entries for a course (used when course is deleted)."""
+        db = get_db_session()
+        try:
+            deleted = db.query(TrainerScheduleORM).filter(
+                TrainerScheduleORM.course_id == course_id,
+                TrainerScheduleORM.trainer_id == trainer_id
+            ).delete()
+            db.commit()
+            return {"status": "success", "deleted_count": deleted}
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to delete course schedule: {str(e)}")
         finally:
             db.close()
 

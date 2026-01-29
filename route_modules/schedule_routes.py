@@ -78,6 +78,17 @@ async def add_trainer_event(
     return service.add_trainer_event(event_data, current_user.id)
 
 
+@router.put("/api/trainer/events/{event_id}")
+async def update_trainer_event(
+    event_id: str,
+    updates: dict,
+    service: ScheduleService = Depends(get_schedule_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Update a trainer event (time, date, duration, etc)."""
+    return service.update_trainer_event(event_id, updates, current_user.id)
+
+
 @router.delete("/api/trainer/events/{event_id}")
 async def delete_trainer_event(
     event_id: str,

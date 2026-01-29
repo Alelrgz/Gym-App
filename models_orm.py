@@ -31,11 +31,19 @@ class ExerciseORM(Base):
 
     id = Column(String, primary_key=True, index=True)
     name = Column(String, index=True)
-    muscle = Column(String)
+    muscle = Column(String)  # Also used as category for course exercises (warmup, cardio, etc.)
     type = Column(String)
     video_id = Column(String)
     # If owner_id is NULL, it's a global exercise. If set, it belongs to that trainer.
     owner_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)
+
+    # Extended fields for course exercises
+    description = Column(String, nullable=True)
+    default_duration = Column(Integer, nullable=True)  # Duration in seconds
+    difficulty = Column(String, nullable=True)  # beginner, intermediate, advanced
+    thumbnail_url = Column(String, nullable=True)  # Image URL
+    video_url = Column(String, nullable=True)  # Full video URL (YouTube, etc.)
+    steps_json = Column(String, nullable=True)  # JSON array of step strings
 
 class WorkoutORM(Base):
     __tablename__ = "workouts"
@@ -102,14 +110,16 @@ class ClientScheduleORM(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     # Vital for shared DB:
-    client_id = Column(String, ForeignKey("users.id"), index=True) 
-    
+    client_id = Column(String, ForeignKey("users.id"), index=True)
+
     date = Column(String, index=True) # ISO format YYYY-MM-DD
     title = Column(String)
-    type = Column(String) # workout, rest, etc.
+    type = Column(String) # workout, rest, course, etc.
     completed = Column(Boolean, default=False)
     workout_id = Column(String, nullable=True)
     details = Column(String, nullable=True)
+    # For group courses
+    course_id = Column(String, ForeignKey("courses.id"), nullable=True, index=True)
 
 class ClientDietSettingsORM(Base):
     __tablename__ = "client_diet_settings"
@@ -203,6 +213,9 @@ class TrainerScheduleORM(Base):
     # For 1-on-1 appointments
     client_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)
     appointment_id = Column(String, nullable=True, index=True)  # Links to AppointmentORM
+
+    # For course-based schedule entries (recurring group classes)
+    course_id = Column(String, ForeignKey("courses.id"), nullable=True, index=True)
 
 
 class TrainerNoteORM(Base):
@@ -491,7 +504,8 @@ class CourseORM(Base):
     music_links_json = Column(String, nullable=True)  # JSON: [{"title": "...", "url": "...", "type": "spotify|youtube"}]
 
     # Recurring schedule (e.g., "Monday 9:00 AM")
-    day_of_week = Column(Integer, nullable=True)  # 0=Monday, 6=Sunday
+    day_of_week = Column(Integer, nullable=True)  # 0=Monday, 6=Sunday (legacy, single day)
+    days_of_week_json = Column(String, nullable=True)  # JSON array of days [0,2,4] for Mon/Wed/Fri
     time_slot = Column(String, nullable=True)  # "9:00 AM"
     duration = Column(Integer, default=60)  # Duration in minutes
 
@@ -499,6 +513,11 @@ class CourseORM(Base):
     owner_id = Column(String, ForeignKey("users.id"), index=True)  # Trainer who created it
     gym_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)  # Gym owner ID
     is_shared = Column(Boolean, default=False)  # If True, visible to all trainers in gym
+
+    # Client preview / visual intro
+    course_type = Column(String, nullable=True)  # yoga, pilates, hiit, dance, spin, strength, stretch, cardio
+    cover_image_url = Column(String, nullable=True)  # Cover image for client view
+    trailer_url = Column(String, nullable=True)  # YouTube/Vimeo trailer URL
 
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
     updated_at = Column(String, nullable=True)

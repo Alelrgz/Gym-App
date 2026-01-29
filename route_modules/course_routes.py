@@ -61,6 +61,17 @@ async def delete_course(
     return service.delete_course(course_id, current_user.id)
 
 
+@router.post("/api/trainer/courses/{course_id}/regenerate-schedule")
+async def regenerate_course_schedule(
+    course_id: str,
+    weeks_ahead: int = 4,
+    service: CourseService = Depends(get_course_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Regenerate schedule entries for a course (deletes future entries and recreates)."""
+    return service.update_course_schedule(course_id, current_user.id)
+
+
 # --- LESSON MANAGEMENT ---
 
 @router.get("/api/trainer/courses/{course_id}/lessons")

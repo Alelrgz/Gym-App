@@ -346,22 +346,48 @@ window.showDayDetails = (dateStr, dayEvents, titleId, listId, isTrainer) => {
     dayEvents.forEach(e => {
         const div = document.createElement('div');
         div.className = "glass-card p-3 flex justify-between items-center slide-up";
-        const icon = e.type === 'workout' ? '💪' : (e.type === 'appointment' ? '📅' : '🧘');
-        const statusColor = e.type === 'appointment'
-            ? (e.completed ? 'text-green-400' : 'text-blue-400')
-            : (e.completed ? 'text-green-400' : 'text-orange-400');
+
+        // Determine icon and color based on event type
+        let icon, statusColor;
+        if (e.type === 'course') {
+            icon = '📚';
+            statusColor = e.completed ? 'text-green-400' : 'text-purple-400';
+        } else if (e.type === 'workout') {
+            icon = '💪';
+            statusColor = e.completed ? 'text-green-400' : 'text-orange-400';
+        } else if (e.type === 'appointment') {
+            icon = '📅';
+            statusColor = e.completed ? 'text-green-400' : 'text-blue-400';
+        } else {
+            icon = '🧘';
+            statusColor = e.completed ? 'text-green-400' : 'text-orange-400';
+        }
+
+        // Add edit/delete buttons for course events if trainer
+        const isCourseEvent = e.type === 'course' && e.course_id;
+        const courseActions = isCourseEvent && isTrainer ? `
+            <div class="flex items-center gap-2 ml-2">
+                <button onclick="event.stopPropagation(); window.editScheduleEvent('${e.id}', '${e.date}', '${e.time}', '${e.title}')"
+                    class="text-white/50 hover:text-white text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition">✏️</button>
+                <button onclick="event.stopPropagation(); window.deleteScheduleEvent('${e.id}', '${e.title}')"
+                    class="text-white/50 hover:text-red-400 text-xs px-2 py-1 rounded bg-white/10 hover:bg-red-500/20 transition">🗑️</button>
+            </div>
+        ` : '';
 
         div.innerHTML = `
-            <div class="flex items-center">
+            <div class="flex items-center flex-1">
                 <span class="text-xl mr-3">${icon}</span>
                 <div>
                     <p class="text-sm font-bold text-white">${e.title}</p>
                     <p class="text-[10px] text-gray-400">
-                        ${(e.details && (e.details.startsWith('[') || e.details.startsWith('{'))) ? 'Workout Data Saved' : e.details}
+                        ${isCourseEvent ? `Group Course • ${e.time || ''}` : ((e.details && (e.details.startsWith('[') || e.details.startsWith('{'))) ? 'Workout Data Saved' : (e.details || e.subtitle || ''))}
                     </p>
                 </div>
             </div>
-            <span class="text-xs font-bold ${statusColor}">${e.completed ? 'COMPLETED' : 'SCHEDULED'}</span>
+            <div class="flex items-center">
+                <span class="text-xs font-bold ${statusColor}">${e.completed ? 'COMPLETED' : 'SCHEDULED'}</span>
+                ${courseActions}
+            </div>
         `;
         listEl.appendChild(div);
     });
@@ -428,9 +454,14 @@ window.renderCalendar = (month, year, events, gridId, titleId, detailTitleId, de
             dots.className = "flex space-x-1 mt-1";
             dayEvents.forEach(e => {
                 const dot = document.createElement('div');
-                const dotColor = e.type === 'appointment'
-                    ? (e.completed ? 'bg-green-400' : 'bg-blue-400')
-                    : (e.completed ? 'bg-green-400' : 'bg-orange-400');
+                let dotColor;
+                if (e.type === 'course') {
+                    dotColor = e.completed ? 'bg-green-400' : 'bg-purple-400';
+                } else if (e.type === 'appointment') {
+                    dotColor = e.completed ? 'bg-green-400' : 'bg-blue-400';
+                } else {
+                    dotColor = e.completed ? 'bg-green-400' : 'bg-orange-400';
+                }
                 dot.className = `w-1 h-1 rounded-full ${dotColor}`;
                 dots.appendChild(dot);
             });
@@ -451,6 +482,59 @@ window.renderCalendar = (month, year, events, gridId, titleId, detailTitleId, de
             }
         };
         calendarGrid.appendChild(div);
+    }
+};
+
+// --- SCHEDULE EVENT EDIT/DELETE ---
+window.editScheduleEvent = async (eventId, currentDate, currentTime, title) => {
+    // Show a simple prompt to edit date/time
+    const newDate = prompt(`Edit date for "${title}":`, currentDate);
+    if (!newDate) return;
+
+    const newTime = prompt(`Edit time for "${title}":`, currentTime || '9:00 AM');
+    if (!newTime) return;
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/events/${eventId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ date: newDate, time: newTime })
+        });
+
+        if (res.ok) {
+            showToast('Schedule updated! 📅');
+            // Refresh the page or re-fetch trainer data
+            init();
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Failed to update schedule');
+        }
+    } catch (e) {
+        console.error('Error updating schedule:', e);
+        showToast('Failed to update schedule');
+    }
+};
+
+window.deleteScheduleEvent = async (eventId, title) => {
+    if (!confirm(`Remove "${title}" from your schedule?`)) return;
+
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/events/${eventId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+
+        if (res.ok) {
+            showToast('Removed from schedule 🗑️');
+            // Refresh
+            init();
+        } else {
+            showToast('Failed to remove from schedule');
+        }
+    } catch (e) {
+        console.error('Error deleting schedule:', e);
+        showToast('Failed to remove from schedule');
     }
 };
 
@@ -894,6 +978,9 @@ async function init() {
                 credentials: 'include'
             });
             const data = await trainerRes.json();
+
+            // Store trainer data globally for course modal and other features
+            window.trainerData = data;
 
             if (document.getElementById('active-clients-count')) {
                 document.getElementById('active-clients-count').innerText = data.active_clients;
@@ -7359,6 +7446,402 @@ function renderCourseCard(course, isOwner) {
     `;
 }
 
+// Course type color mapping
+const courseTypeColors = {
+    yoga: { color: 'purple', gradient: 'from-purple-500 to-pink-500', bg: 'bg-purple-500/20', border: 'border-purple-500', emoji: '🧘' },
+    pilates: { color: 'pink', gradient: 'from-pink-500 to-rose-500', bg: 'bg-pink-500/20', border: 'border-pink-500', emoji: '🤸' },
+    hiit: { color: 'orange', gradient: 'from-orange-500 to-red-500', bg: 'bg-orange-500/20', border: 'border-orange-500', emoji: '🔥' },
+    dance: { color: 'cyan', gradient: 'from-cyan-500 to-blue-500', bg: 'bg-cyan-500/20', border: 'border-cyan-500', emoji: '💃' },
+    spin: { color: 'green', gradient: 'from-green-500 to-emerald-500', bg: 'bg-green-500/20', border: 'border-green-500', emoji: '🚴' },
+    strength: { color: 'red', gradient: 'from-red-500 to-orange-500', bg: 'bg-red-500/20', border: 'border-red-500', emoji: '💪' },
+    stretch: { color: 'teal', gradient: 'from-teal-500 to-cyan-500', bg: 'bg-teal-500/20', border: 'border-teal-500', emoji: '🙆' },
+    cardio: { color: 'yellow', gradient: 'from-yellow-500 to-orange-500', bg: 'bg-yellow-500/20', border: 'border-yellow-500', emoji: '🏃' }
+};
+
+let selectedCourseType = 'yoga';
+let selectedCourseDays = [];  // Now an array for multiple days
+
+// Select course type (visual)
+window.selectCourseType = function(btn, type, color) {
+    selectedCourseType = type;
+    const config = courseTypeColors[type];
+
+    // Update all buttons
+    document.querySelectorAll('.course-type-btn').forEach(b => {
+        b.classList.remove('selected', 'border-purple-500', 'border-pink-500', 'border-orange-500', 'border-cyan-500', 'border-green-500', 'border-red-500', 'border-teal-500', 'border-yellow-500');
+        b.classList.remove('bg-purple-500/20', 'bg-pink-500/20', 'bg-orange-500/20', 'bg-cyan-500/20', 'bg-green-500/20', 'bg-red-500/20', 'bg-teal-500/20', 'bg-yellow-500/20');
+        b.classList.add('bg-white/5', 'border-transparent');
+    });
+
+    // Highlight selected
+    btn.classList.remove('bg-white/5', 'border-transparent');
+    btn.classList.add('selected', config.bg, config.border);
+
+    // Update header gradient
+    const gradient = document.getElementById('course-header-gradient');
+    if (gradient) {
+        gradient.className = `absolute inset-0 opacity-20 bg-gradient-to-br ${config.gradient} transition-all duration-300`;
+    }
+
+    // Update name icon
+    const nameIcon = document.getElementById('course-name-icon');
+    if (nameIcon) nameIcon.innerText = config.emoji;
+
+    // Update save button gradient
+    const saveBtn = document.getElementById('btn-save-course');
+    if (saveBtn) {
+        saveBtn.className = `w-full bg-gradient-to-r ${config.gradient} text-white font-bold py-4 rounded-xl hover:opacity-90 transition shadow-lg`;
+    }
+
+    // Store color
+    document.getElementById('course-color').value = color;
+
+    // Update "Add Exercises" button hint to show current type
+    const exerciseBtn = document.querySelector('[onclick="openCourseExercisePicker()"]');
+    if (exerciseBtn) {
+        const span = exerciseBtn.querySelector('span:last-child');
+        if (span && span.innerText.includes('Add')) {
+            span.innerText = `Add ${type.charAt(0).toUpperCase() + type.slice(1)} Exercises`;
+        }
+    }
+
+    // Refresh exercise picker if it's open
+    const pickerModal = document.getElementById('course-exercise-picker');
+    if (pickerModal && pickerModal.style.display !== 'none') {
+        populateCourseExerciseList();
+    }
+};
+
+// Select course day (visual) - now supports multiple days
+window.selectCourseDay = function(btn, day) {
+    const wasSelected = btn.classList.contains('selected');
+
+    if (wasSelected) {
+        // Deselect this day
+        btn.classList.remove('selected');
+        btn.style.backgroundColor = 'rgba(255,255,255,0.05)';
+        btn.style.color = 'rgba(255,255,255,0.6)';
+        selectedCourseDays = selectedCourseDays.filter(d => d !== day);
+    } else {
+        // Select this day - use red color
+        btn.classList.add('selected');
+        btn.style.backgroundColor = '#ef4444';  // red-500
+        btn.style.color = 'white';
+        if (!selectedCourseDays.includes(day)) {
+            selectedCourseDays.push(day);
+            selectedCourseDays.sort((a, b) => parseInt(a) - parseInt(b));  // Keep sorted Mon-Sun
+        }
+    }
+
+    // Update hidden input with JSON array
+    document.getElementById('course-day').value = JSON.stringify(selectedCourseDays.map(d => parseInt(d)));
+};
+
+// Adjust duration
+window.adjustDuration = function(delta) {
+    const input = document.getElementById('course-duration');
+    const display = document.getElementById('course-duration-display');
+    let val = parseInt(input.value) || 60;
+    val = Math.max(15, Math.min(180, val + delta));
+    input.value = val;
+    if (display) display.innerText = val;
+};
+
+// Toggle course visibility
+window.toggleCourseVisibility = function() {
+    const input = document.getElementById('course-shared');
+    const toggle = document.getElementById('visibility-toggle');
+    const dot = document.getElementById('visibility-dot');
+    const icon = document.getElementById('visibility-icon');
+    const label = document.getElementById('visibility-label');
+    const desc = document.getElementById('visibility-desc');
+
+    const isShared = input.value === 'true';
+
+    if (isShared) {
+        // Switch to private
+        input.value = 'false';
+        toggle.classList.remove('bg-primary');
+        toggle.classList.add('bg-white/10');
+        dot.style.transform = 'translateX(0)';
+        icon.innerText = '🔒';
+        label.innerText = 'Private Course';
+        desc.innerText = 'Only visible to you';
+    } else {
+        // Switch to shared
+        input.value = 'true';
+        toggle.classList.remove('bg-white/10');
+        toggle.classList.add('bg-primary');
+        dot.style.transform = 'translateX(20px)';
+        icon.innerText = '👥';
+        label.innerText = 'Shared with Gym';
+        desc.innerText = 'Other trainers can see this';
+    }
+};
+
+// Reset course modal to defaults
+function resetCourseModal() {
+    selectedCourseType = 'yoga';
+    selectedCourseDays = [];  // Reset to empty array
+
+    // Reset type buttons
+    document.querySelectorAll('.course-type-btn').forEach(b => {
+        b.classList.remove('selected', 'border-purple-500', 'border-pink-500', 'border-orange-500', 'border-cyan-500', 'border-green-500', 'border-red-500', 'border-teal-500', 'border-yellow-500');
+        b.classList.remove('bg-purple-500/20', 'bg-pink-500/20', 'bg-orange-500/20', 'bg-cyan-500/20', 'bg-green-500/20', 'bg-red-500/20', 'bg-teal-500/20', 'bg-yellow-500/20');
+        b.classList.add('bg-white/5', 'border-transparent');
+    });
+    const yogaBtn = document.querySelector('.course-type-btn[data-type="yoga"]');
+    if (yogaBtn) {
+        yogaBtn.classList.remove('bg-white/5', 'border-transparent');
+        yogaBtn.classList.add('selected', 'bg-purple-500/20', 'border-purple-500');
+    }
+
+    // Reset header gradient
+    const gradient = document.getElementById('course-header-gradient');
+    if (gradient) gradient.className = 'absolute inset-0 opacity-20 bg-gradient-to-br from-purple-500 to-pink-500 transition-all duration-300';
+
+    // Reset name icon
+    const nameIcon = document.getElementById('course-name-icon');
+    if (nameIcon) nameIcon.innerText = '🧘';
+
+    // Reset save button
+    const saveBtn = document.getElementById('btn-save-course');
+    if (saveBtn) saveBtn.className = 'w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold py-4 rounded-xl hover:opacity-90 transition shadow-lg';
+
+    // Reset "Add Exercises" button text
+    const exerciseBtn = document.querySelector('[onclick="openCourseExercisePicker()"]');
+    if (exerciseBtn) {
+        const span = exerciseBtn.querySelector('span:last-child');
+        if (span) span.innerText = 'Add Yoga Exercises';
+    }
+
+    // Reset day buttons
+    document.querySelectorAll('.course-day-btn').forEach(b => {
+        b.classList.remove('selected');
+        b.style.backgroundColor = 'rgba(255,255,255,0.05)';
+        b.style.color = 'rgba(255,255,255,0.6)';
+    });
+
+    // Reset visibility
+    const toggle = document.getElementById('visibility-toggle');
+    const dot = document.getElementById('visibility-dot');
+    const icon = document.getElementById('visibility-icon');
+    const label = document.getElementById('visibility-label');
+    const desc = document.getElementById('visibility-desc');
+    if (toggle) { toggle.classList.remove('bg-primary'); toggle.classList.add('bg-white/10'); }
+    if (dot) dot.style.transform = 'translateX(0)';
+    if (icon) icon.innerText = '🔒';
+    if (label) label.innerText = 'Private Course';
+    if (desc) desc.innerText = 'Only visible to you';
+
+    // Reset duration display
+    const durationDisplay = document.getElementById('course-duration-display');
+    if (durationDisplay) durationDisplay.innerText = '60';
+
+    // Reset client preview fields
+    const coverImg = document.getElementById('course-cover-img');
+    const coverPlaceholder = document.getElementById('course-cover-placeholder');
+    const coverRemove = document.getElementById('course-cover-remove');
+    const coverUrl = document.getElementById('course-cover-url');
+    const coverUrlInput = document.getElementById('course-cover-url-input');
+    if (coverImg) { coverImg.src = ''; coverImg.classList.add('hidden'); }
+    if (coverPlaceholder) coverPlaceholder.classList.remove('hidden');
+    if (coverRemove) coverRemove.classList.add('hidden');
+    if (coverUrl) coverUrl.value = '';
+    if (coverUrlInput) coverUrlInput.value = '';
+
+    const trailerPreview = document.getElementById('course-trailer-preview');
+    const trailerPlaceholder = document.getElementById('course-trailer-placeholder');
+    const trailerIframe = document.getElementById('course-trailer-iframe');
+    const trailerUrl = document.getElementById('course-trailer-url');
+    if (trailerPreview) trailerPreview.classList.add('hidden');
+    if (trailerPlaceholder) trailerPlaceholder.classList.remove('hidden');
+    if (trailerIframe) trailerIframe.src = '';
+    if (trailerUrl) trailerUrl.value = '';
+
+    // Reset preview title
+    const previewTitle = document.getElementById('course-preview-title');
+    if (previewTitle) previewTitle.innerText = 'Course Title';
+}
+
+// --- COURSE CLIENT PREVIEW FUNCTIONS ---
+
+// Handle cover image file selection
+window.handleCoverImageSelect = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Upload file to server
+    const formData = new FormData();
+    formData.append('file', file);
+
+    fetch(`${apiBase}/api/upload`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.url) {
+            setCoverImageFromUrl(data.url);
+        } else {
+            showToast('Failed to upload image');
+        }
+    })
+    .catch(err => {
+        console.error('Error uploading cover image:', err);
+        showToast('Failed to upload image');
+    });
+};
+
+// Set cover image from URL
+window.setCoverImageFromUrl = function(url) {
+    if (!url) return;
+
+    const coverImg = document.getElementById('course-cover-img');
+    const coverPlaceholder = document.getElementById('course-cover-placeholder');
+    const coverRemove = document.getElementById('course-cover-remove');
+    const coverUrl = document.getElementById('course-cover-url');
+
+    if (coverImg) {
+        coverImg.src = url;
+        coverImg.classList.remove('hidden');
+    }
+    if (coverPlaceholder) coverPlaceholder.classList.add('hidden');
+    if (coverRemove) coverRemove.classList.remove('hidden');
+    if (coverUrl) coverUrl.value = url;
+};
+
+// Remove cover image
+window.removeCoverImage = function() {
+    const coverImg = document.getElementById('course-cover-img');
+    const coverPlaceholder = document.getElementById('course-cover-placeholder');
+    const coverRemove = document.getElementById('course-cover-remove');
+    const coverUrl = document.getElementById('course-cover-url');
+    const coverUrlInput = document.getElementById('course-cover-url-input');
+
+    if (coverImg) { coverImg.src = ''; coverImg.classList.add('hidden'); }
+    if (coverPlaceholder) coverPlaceholder.classList.remove('hidden');
+    if (coverRemove) coverRemove.classList.add('hidden');
+    if (coverUrl) coverUrl.value = '';
+    if (coverUrlInput) coverUrlInput.value = '';
+};
+
+// Preview trailer video from YouTube/Vimeo URL
+window.previewTrailer = function(url) {
+    if (!url) return;
+
+    const trailerPreview = document.getElementById('course-trailer-preview');
+    const trailerPlaceholder = document.getElementById('course-trailer-placeholder');
+    const trailerIframe = document.getElementById('course-trailer-iframe');
+
+    // Extract embed URL from YouTube or Vimeo
+    let embedUrl = null;
+
+    // YouTube patterns
+    const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+    if (ytMatch) {
+        // Add parameters for proper playback
+        embedUrl = `https://www.youtube.com/embed/${ytMatch[1]}?rel=0&modestbranding=1&playsinline=1`;
+    }
+
+    // Vimeo patterns
+    const vimeoMatch = url.match(/(?:vimeo\.com\/)(\d+)/);
+    if (vimeoMatch) {
+        embedUrl = `https://player.vimeo.com/video/${vimeoMatch[1]}?title=0&byline=0&portrait=0`;
+    }
+
+    if (embedUrl && trailerIframe) {
+        trailerIframe.src = embedUrl;
+        if (trailerPreview) trailerPreview.classList.remove('hidden');
+        if (trailerPlaceholder) trailerPlaceholder.classList.add('hidden');
+    } else if (url) {
+        // Invalid URL - show warning
+        showToast('Please enter a valid YouTube or Vimeo URL');
+    }
+};
+
+// Remove trailer
+window.removeTrailer = function() {
+    const trailerPreview = document.getElementById('course-trailer-preview');
+    const trailerPlaceholder = document.getElementById('course-trailer-placeholder');
+    const trailerIframe = document.getElementById('course-trailer-iframe');
+    const trailerUrl = document.getElementById('course-trailer-url');
+
+    if (trailerPreview) trailerPreview.classList.add('hidden');
+    if (trailerPlaceholder) trailerPlaceholder.classList.remove('hidden');
+    if (trailerIframe) trailerIframe.src = '';
+    if (trailerUrl) trailerUrl.value = '';
+};
+
+// Populate trainer profile in course modal preview (both overlays)
+function populateCourseTrainerProfile() {
+    // Get trainer data from global state
+    const trainer = window.trainerData || {};
+    const name = trainer.name || trainer.username || 'Trainer';
+    const profilePic = trainer.profile_picture;
+
+    // Elements in video overlay
+    const trainerImg = document.getElementById('course-trainer-img');
+    const trainerInitial = document.getElementById('course-trainer-initial');
+    const trainerName = document.getElementById('course-trainer-name');
+
+    // Elements in placeholder overlay
+    const trainerImgPlaceholder = document.getElementById('course-trainer-img-placeholder');
+    const trainerInitialPlaceholder = document.getElementById('course-trainer-initial-placeholder');
+    const trainerNamePlaceholder = document.getElementById('course-trainer-name-placeholder');
+
+    // Set name in both overlays
+    if (trainerName) trainerName.innerText = name;
+    if (trainerNamePlaceholder) trainerNamePlaceholder.innerText = name;
+
+    // Set profile picture or initial in video overlay
+    if (trainerImg && trainerInitial) {
+        if (profilePic) {
+            trainerImg.src = profilePic;
+            trainerImg.classList.remove('hidden');
+            trainerInitial.classList.add('hidden');
+        } else {
+            trainerImg.classList.add('hidden');
+            trainerInitial.classList.remove('hidden');
+            trainerInitial.innerText = name.charAt(0).toUpperCase();
+        }
+    }
+
+    // Set profile picture or initial in placeholder overlay
+    if (trainerImgPlaceholder && trainerInitialPlaceholder) {
+        if (profilePic) {
+            trainerImgPlaceholder.src = profilePic;
+            trainerImgPlaceholder.classList.remove('hidden');
+            trainerInitialPlaceholder.classList.add('hidden');
+        } else {
+            trainerImgPlaceholder.classList.add('hidden');
+            trainerInitialPlaceholder.classList.remove('hidden');
+            trainerInitialPlaceholder.innerText = name.charAt(0).toUpperCase();
+        }
+    }
+}
+
+// Update course preview title from input
+function updateCoursePreviewTitle() {
+    const nameInput = document.getElementById('course-name');
+    const previewTitle = document.getElementById('course-preview-title');
+    if (nameInput && previewTitle) {
+        previewTitle.innerText = nameInput.value.trim() || 'Course Title';
+    }
+}
+
+// Setup course name input listener (called once)
+let courseNameListenerAdded = false;
+function setupCourseNamePreviewListener() {
+    if (courseNameListenerAdded) return;
+    const nameInput = document.getElementById('course-name');
+    if (nameInput) {
+        nameInput.addEventListener('input', updateCoursePreviewTitle);
+        courseNameListenerAdded = true;
+    }
+}
+
 // Open create course modal
 window.openCreateCourseModal = function() {
     document.getElementById('edit-course-id').value = '';
@@ -7368,9 +7851,20 @@ window.openCreateCourseModal = function() {
     document.getElementById('course-name').value = '';
     document.getElementById('course-description').value = '';
     document.getElementById('course-day').value = '';
-    document.getElementById('course-time').value = '';
+
+    // Handle both old and new time inputs
+    const timeInput = document.getElementById('course-time-input');
+    const oldTimeInput = document.getElementById('course-time');
+    if (timeInput) timeInput.value = '09:00';
+    if (oldTimeInput) oldTimeInput.value = '';
+
     document.getElementById('course-duration').value = '60';
     document.getElementById('course-shared').value = 'false';
+    document.getElementById('course-color').value = 'purple';
+
+    resetCourseModal();
+    populateCourseTrainerProfile();
+    setupCourseNamePreviewListener();
 
     courseExercisesList = [];
     courseMusicLinks = [];
@@ -7393,14 +7887,86 @@ window.openEditCourse = async function(courseId) {
         document.getElementById('course-name').value = course.name || '';
         document.getElementById('course-description').value = course.description || '';
         document.getElementById('course-day').value = course.day_of_week !== null ? course.day_of_week : '';
-        document.getElementById('course-time').value = course.time_slot || '';
         document.getElementById('course-duration').value = course.duration || 60;
         document.getElementById('course-shared').value = course.is_shared ? 'true' : 'false';
+
+        // Handle time input (new format)
+        const timeInput = document.getElementById('course-time-input');
+        const oldTimeInput = document.getElementById('course-time');
+        if (timeInput && course.time_slot) {
+            // Convert "9:00 AM" to "09:00" format
+            const time = course.time_slot;
+            const match = time.match(/(\d+):(\d+)\s*(AM|PM)?/i);
+            if (match) {
+                let hours = parseInt(match[1]);
+                const mins = match[2];
+                const period = match[3];
+                if (period && period.toUpperCase() === 'PM' && hours < 12) hours += 12;
+                if (period && period.toUpperCase() === 'AM' && hours === 12) hours = 0;
+                timeInput.value = `${hours.toString().padStart(2, '0')}:${mins}`;
+            } else {
+                timeInput.value = course.time_slot;
+            }
+        }
+        if (oldTimeInput) oldTimeInput.value = course.time_slot || '';
+
+        // Update duration display
+        const durationDisplay = document.getElementById('course-duration-display');
+        if (durationDisplay) durationDisplay.innerText = course.duration || 60;
+
+        // Reset visual elements first
+        resetCourseModal();
+
+        // Set course type from color/name (try to detect)
+        const courseType = detectCourseType(course.name, course.color);
+        if (courseType && courseTypeColors[courseType]) {
+            const typeBtn = document.querySelector(`.course-type-btn[data-type="${courseType}"]`);
+            if (typeBtn) selectCourseType(typeBtn, courseType, courseTypeColors[courseType].color);
+        }
+
+        // Set day selection - handle both array (new) and single value (old)
+        const daysToSelect = course.days_of_week || (course.day_of_week !== null && course.day_of_week !== undefined ? [course.day_of_week] : []);
+        daysToSelect.forEach(day => {
+            const dayBtn = document.querySelector(`.course-day-btn[data-day="${day}"]`);
+            if (dayBtn) selectCourseDay(dayBtn, day.toString());
+        });
+
+        // Set visibility toggle
+        if (course.is_shared) {
+            const toggle = document.getElementById('visibility-toggle');
+            const dot = document.getElementById('visibility-dot');
+            const icon = document.getElementById('visibility-icon');
+            const label = document.getElementById('visibility-label');
+            const desc = document.getElementById('visibility-desc');
+            if (toggle) { toggle.classList.remove('bg-white/10'); toggle.classList.add('bg-primary'); }
+            if (dot) dot.style.transform = 'translateX(20px)';
+            if (icon) icon.innerText = '👥';
+            if (label) label.innerText = 'Shared with Gym';
+            if (desc) desc.innerText = 'Other trainers can see this';
+        }
 
         courseExercisesList = course.exercises || [];
         courseMusicLinks = course.music_links || [];
         renderCourseExercises();
         renderMusicLinks();
+
+        // Set cover image if exists
+        if (course.cover_image_url) {
+            setCoverImageFromUrl(course.cover_image_url);
+            const coverUrlInput = document.getElementById('course-cover-url-input');
+            if (coverUrlInput) coverUrlInput.value = course.cover_image_url;
+        }
+
+        // Set trailer if exists
+        if (course.trailer_url) {
+            document.getElementById('course-trailer-url').value = course.trailer_url;
+            previewTrailer(course.trailer_url);
+        }
+
+        // Populate trainer profile in preview
+        populateCourseTrainerProfile();
+        setupCourseNamePreviewListener();
+        updateCoursePreviewTitle();
 
         showModal('create-course-modal');
     } catch (e) {
@@ -7409,30 +7975,87 @@ window.openEditCourse = async function(courseId) {
     }
 };
 
+// Detect course type from name
+function detectCourseType(name, color) {
+    if (!name) return 'yoga';
+    const lower = name.toLowerCase();
+    if (lower.includes('yoga')) return 'yoga';
+    if (lower.includes('pilates')) return 'pilates';
+    if (lower.includes('hiit') || lower.includes('high intensity')) return 'hiit';
+    if (lower.includes('dance') || lower.includes('zumba')) return 'dance';
+    if (lower.includes('spin') || lower.includes('cycling') || lower.includes('bike')) return 'spin';
+    if (lower.includes('strength') || lower.includes('weight') || lower.includes('pump')) return 'strength';
+    if (lower.includes('stretch') || lower.includes('flexibility')) return 'stretch';
+    if (lower.includes('cardio') || lower.includes('aerobic')) return 'cardio';
+    // Try to match by color
+    if (color) {
+        for (const [type, config] of Object.entries(courseTypeColors)) {
+            if (config.color === color) return type;
+        }
+    }
+    return 'yoga';
+}
+
 // Save course (create or update)
 window.saveCourse = async function() {
     const id = document.getElementById('edit-course-id').value;
     const name = document.getElementById('course-name').value;
     const description = document.getElementById('course-description').value;
-    const day = document.getElementById('course-day').value;
-    const time = document.getElementById('course-time').value;
+    const dayValue = document.getElementById('course-day').value;
     const duration = parseInt(document.getElementById('course-duration').value) || 60;
     const isShared = document.getElementById('course-shared').value === 'true';
+    const color = document.getElementById('course-color')?.value || 'purple';
+
+    // Parse days - can be JSON array or single value for backwards compatibility
+    let days = [];
+    if (dayValue) {
+        try {
+            days = JSON.parse(dayValue);
+            if (!Array.isArray(days)) days = [days];
+        } catch (e) {
+            days = dayValue !== '' ? [parseInt(dayValue)] : [];
+        }
+    }
+
+    // Handle time from either new or old input
+    let time = '';
+    const timeInput = document.getElementById('course-time-input');
+    const oldTimeInput = document.getElementById('course-time');
+    if (timeInput && timeInput.value) {
+        // Convert "09:00" to "9:00 AM" format
+        const [hours, mins] = timeInput.value.split(':');
+        let h = parseInt(hours);
+        const period = h >= 12 ? 'PM' : 'AM';
+        if (h > 12) h -= 12;
+        if (h === 0) h = 12;
+        time = `${h}:${mins} ${period}`;
+    } else if (oldTimeInput) {
+        time = oldTimeInput.value;
+    }
 
     if (!name) {
         showToast('Please enter a course name');
         return;
     }
 
+    // Get client preview fields
+    const coverImageUrl = document.getElementById('course-cover-url').value || null;
+    const trailerUrl = document.getElementById('course-trailer-url').value || null;
+
     const payload = {
         name,
         description: description || null,
-        day_of_week: day !== '' ? parseInt(day) : null,
+        days_of_week: days.length > 0 ? days : null,  // New field: array of days
+        day_of_week: days.length > 0 ? days[0] : null,  // Backwards compat: first day
         time_slot: time || null,
         duration,
         is_shared: isShared,
         exercises: courseExercisesList,
-        music_links: courseMusicLinks
+        music_links: courseMusicLinks,
+        color: color,
+        course_type: selectedCourseType,
+        cover_image_url: coverImageUrl,
+        trailer_url: trailerUrl
     };
 
     try {
@@ -7490,24 +8113,29 @@ function renderMusicLinks() {
     if (!container) return;
 
     if (courseMusicLinks.length === 0) {
-        container.innerHTML = '<p class="text-xs text-gray-500 italic">No playlists added</p>';
+        container.innerHTML = '<p class="text-xs text-gray-500 italic text-center py-2">Add Spotify or YouTube playlists</p>';
         return;
     }
 
     container.innerHTML = courseMusicLinks.map((link, i) => `
-        <div class="flex gap-2 items-center">
-            <select onchange="updateMusicLink(${i}, 'type', this.value)"
-                class="bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white w-20">
-                <option value="spotify" ${link.type === 'spotify' ? 'selected' : ''}>Spotify</option>
-                <option value="youtube" ${link.type === 'youtube' ? 'selected' : ''}>YouTube</option>
-            </select>
-            <input type="text" value="${link.title || ''}" placeholder="Title"
-                onchange="updateMusicLink(${i}, 'title', this.value)"
-                class="flex-1 bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white min-w-0">
-            <input type="text" value="${link.url || ''}" placeholder="Paste URL"
-                onchange="updateMusicLink(${i}, 'url', this.value)"
-                class="flex-1 bg-white/5 border border-white/10 rounded-lg p-2 text-xs text-white min-w-0">
-            <button onclick="removeMusicLink(${i})" class="text-red-400 hover:text-red-300 px-2">X</button>
+        <div class="bg-white/5 rounded-xl p-3 group hover:bg-white/10 transition">
+            <div class="flex items-center gap-3 mb-2">
+                <span class="text-xl">${link.type === 'spotify' ? '🟢' : '🔴'}</span>
+                <input type="text" value="${link.title || ''}" placeholder="Playlist name"
+                    onchange="updateMusicLink(${i}, 'title', this.value)"
+                    class="flex-1 bg-transparent text-sm text-white font-medium outline-none placeholder-white/30">
+                <button onclick="removeMusicLink(${i})" class="text-white/30 hover:text-red-400 opacity-0 group-hover:opacity-100 transition">✕</button>
+            </div>
+            <div class="flex gap-2">
+                <select onchange="updateMusicLink(${i}, 'type', this.value)"
+                    class="bg-white/10 border-0 rounded-lg px-2 py-1.5 text-[10px] text-white/70 w-20">
+                    <option value="spotify" ${link.type === 'spotify' ? 'selected' : ''}>Spotify</option>
+                    <option value="youtube" ${link.type === 'youtube' ? 'selected' : ''}>YouTube</option>
+                </select>
+                <input type="text" value="${link.url || ''}" placeholder="Paste playlist URL..."
+                    onchange="updateMusicLink(${i}, 'url', this.value)"
+                    class="flex-1 bg-white/10 border-0 rounded-lg px-3 py-1.5 text-[10px] text-white/70 outline-none min-w-0 placeholder-white/30">
+            </div>
         </div>
     `).join('');
 }
@@ -7528,20 +8156,44 @@ function renderCourseExercises() {
     const container = document.getElementById('course-selected-exercises');
     if (!container) return;
 
+    // Update exercise count badge
+    const badge = document.getElementById('exercise-count-badge');
+    if (badge) {
+        badge.innerText = `${courseExercisesList.length} selected`;
+    }
+
     if (courseExercisesList.length === 0) {
-        container.innerHTML = '<p class="text-xs text-gray-500 text-center py-4 italic">No exercises selected.</p>';
+        container.innerHTML = `
+            <div class="text-center py-4">
+                <span class="text-3xl mb-2 block opacity-30">🏃</span>
+                <p class="text-xs text-gray-500">No exercises added yet</p>
+            </div>
+        `;
         return;
     }
 
     container.innerHTML = courseExercisesList.map((ex, i) => `
-        <div class="glass-card p-2 flex justify-between items-center">
-            <div>
-                <p class="text-sm font-medium text-white">${ex.name}</p>
-                <p class="text-[10px] text-gray-400">${ex.sets} sets x ${ex.reps} reps</p>
+        <div class="bg-white/5 rounded-xl p-3 flex justify-between items-center group hover:bg-white/10 transition">
+            <div class="flex items-center gap-3">
+                <span class="text-lg">${getCourseExerciseEmoji(ex)}</span>
+                <div>
+                    <p class="text-sm font-medium text-white">${ex.name}</p>
+                    <p class="text-[10px] text-gray-400">${ex.duration ? ex.duration + 's' : (ex.sets + ' x ' + ex.reps)}</p>
+                </div>
             </div>
-            <button onclick="removeCourseExercise(${i})" class="text-red-400 hover:text-red-300 px-2">X</button>
+            <button onclick="removeCourseExercise(${i})" class="text-white/30 hover:text-red-400 px-2 opacity-0 group-hover:opacity-100 transition">✕</button>
         </div>
     `).join('');
+}
+
+function getCourseExerciseEmoji(ex) {
+    const cat = (ex.muscle_group || ex.category || '').toLowerCase();
+    const emojiMap = {
+        yoga: '🧘', pilates: '🤸', stretch: '🙆', cardio: '🏃',
+        warmup: '🔥', cooldown: '❄️', hiit: '⚡', dance: '💃',
+        strength: '💪', balance: '⚖️', breathing: '🌬️', core: '🎯'
+    };
+    return emojiMap[cat] || '🏋️';
 }
 
 window.removeCourseExercise = function(index) {
@@ -7550,25 +8202,133 @@ window.removeCourseExercise = function(index) {
 };
 
 // Exercise picker for courses
-window.openCourseExercisePicker = function() {
-    populateCourseExerciseList();
+window.openCourseExercisePicker = async function() {
     showModal('course-exercise-picker');
+    await populateCourseExerciseList();
+
+    // Setup search handler
+    const searchInput = document.getElementById('course-ex-search');
+    if (searchInput) {
+        searchInput.value = ''; // Reset search
+        searchInput.oninput = () => filterCourseExercisePickerList(searchInput.value);
+    }
 };
 
-function populateCourseExerciseList() {
+function filterCourseExercisePickerList(searchTerm) {
     const container = document.getElementById('course-exercise-list');
-    if (!container || !window.APP_STATE?.exercises) return;
+    if (!container) return;
 
-    container.innerHTML = window.APP_STATE?.exercises.map(ex => `
+    const allExercises = window.APP_STATE?.exercises || allCourseExercises || [];
+
+    // Filter for Course-type exercises that match the selected course type
+    const allCourseTypeExercises = allExercises.filter(ex => ex.type === 'Course');
+    const matchingExercises = allCourseTypeExercises.filter(ex => {
+        const category = (ex.muscle_group || ex.muscle || ex.category || '').toLowerCase();
+        return category === selectedCourseType.toLowerCase();
+    });
+
+    // Use matching exercises if available, otherwise use all course exercises
+    const baseExercises = matchingExercises.length > 0 ? matchingExercises : allCourseTypeExercises;
+    const showingAll = matchingExercises.length === 0 && allCourseTypeExercises.length > 0;
+
+    // Apply search filter
+    const filtered = baseExercises.filter(ex =>
+        ex.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (ex.muscle || ex.muscle_group || '').toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    if (filtered.length === 0) {
+        container.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm">No exercises match your search</div>';
+        return;
+    }
+
+    const headerNote = showingAll
+        ? `<div class="p-3 mb-2 bg-amber-500/20 border border-amber-500/30 rounded-xl text-amber-300 text-xs text-center">
+            No ${selectedCourseType} exercises found. Showing all course exercises.
+           </div>`
+        : '';
+
+    container.innerHTML = headerNote + filtered.map(ex => {
+        const safeName = (ex.name || '').replace(/'/g, "\\'");
+        const safeId = (ex.id || '').toString().replace(/'/g, "\\'");
+        const safeVideoId = (ex.video_id || '').replace(/'/g, "\\'");
+        return `
         <div class="glass-card p-3 flex justify-between items-center cursor-pointer hover:bg-white/10 transition"
-             onclick="selectCourseExercise('${ex.id}', '${ex.name}', '${ex.video_id || ''}')">
+             onclick="selectCourseExercise('${safeId}', '${safeName}', '${safeVideoId}')">
             <div>
                 <p class="text-sm font-medium text-white">${ex.name}</p>
-                <p class="text-[10px] text-gray-400">${ex.muscle} • ${ex.type}</p>
+                <p class="text-[10px] text-gray-400">${ex.muscle || ex.muscle_group || ''}</p>
             </div>
             <span class="text-primary">+</span>
         </div>
-    `).join('');
+    `}).join('');
+}
+
+async function populateCourseExerciseList() {
+    const container = document.getElementById('course-exercise-list');
+    if (!container) return;
+
+    // Show loading state
+    container.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm">Loading exercises...</div>';
+
+    // Get exercises from APP_STATE, allCourseExercises, or fetch fresh
+    let allExercises = window.APP_STATE?.exercises || allCourseExercises || [];
+
+    // If no exercises loaded yet, fetch them
+    if (allExercises.length === 0) {
+        try {
+            const res = await fetch(`${apiBase}/api/exercises`, { credentials: 'include' });
+            if (res.ok) {
+                allExercises = await res.json();
+                // Store for future use
+                if (!window.APP_STATE) window.APP_STATE = {};
+                window.APP_STATE.exercises = allExercises;
+            }
+        } catch (e) {
+            console.error('Error fetching exercises:', e);
+            container.innerHTML = '<div class="p-4 text-center text-red-400 text-sm">Failed to load exercises</div>';
+            return;
+        }
+    }
+
+    // Filter for Course-type exercises that match the selected course type
+    const courseTypeExercises = allExercises.filter(ex => ex.type === 'Course');
+    const matchingExercises = courseTypeExercises.filter(ex => {
+        const category = (ex.muscle_group || ex.muscle || ex.category || '').toLowerCase();
+        return category === selectedCourseType.toLowerCase();
+    });
+
+    // Use matching exercises if available, otherwise show all course exercises with a note
+    const exercisesToShow = matchingExercises.length > 0 ? matchingExercises : courseTypeExercises;
+    const showingAll = matchingExercises.length === 0 && courseTypeExercises.length > 0;
+
+    if (exercisesToShow.length === 0) {
+        container.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm">No course exercises available. Create some in the Exercise Library below!</div>';
+        return;
+    }
+
+    const headerNote = showingAll
+        ? `<div class="p-3 mb-2 bg-amber-500/20 border border-amber-500/30 rounded-xl text-amber-300 text-xs text-center">
+            No ${selectedCourseType} exercises found. Showing all course exercises.
+           </div>`
+        : `<div class="p-2 mb-2 text-center text-xs text-gray-400">
+            Showing ${selectedCourseType} exercises
+           </div>`;
+
+    container.innerHTML = headerNote + exercisesToShow.map(ex => {
+        const safeName = (ex.name || '').replace(/'/g, "\\'");
+        const safeId = (ex.id || '').toString().replace(/'/g, "\\'");
+        const safeVideoId = (ex.video_id || '').replace(/'/g, "\\'");
+        return `
+        <div class="glass-card p-3 flex justify-between items-center cursor-pointer hover:bg-white/10 transition"
+             onclick="selectCourseExercise('${safeId}', '${safeName}', '${safeVideoId}')">
+            <div>
+                <p class="text-sm font-medium text-white">${ex.name}</p>
+                <p class="text-[10px] text-gray-400">${ex.muscle || ex.muscle_group || ''}</p>
+            </div>
+            <span class="text-primary">+</span>
+        </div>
+    `}).join('');
 }
 
 window.selectCourseExercise = function(id, name, videoId) {
@@ -8174,4 +8934,408 @@ window.endLiveClass = function() {
     // Ask if they want to mark a scheduled lesson as complete
     // For now just close
     showToast('Class ended');
+};
+
+// ======================
+// COURSE EXERCISES
+// ======================
+
+let allCourseExercises = [];
+let courseExerciseSteps = [];
+let currentCourseExerciseFilter = 'all';
+let currentCourseExerciseId = null;
+
+// Load course exercises - only shows exercises with type="Course"
+// These are course-specific exercises (yoga poses, pilates moves, aerobics, stretches, etc.)
+window.loadCourseExercises = async function() {
+    const container = document.getElementById('course-exercise-library');
+    if (!container) return;
+
+    try {
+        const res = await fetch(`${apiBase}/api/exercises`, { credentials: 'include' });
+        const exercises = await res.json();
+
+        // Only show exercises with type="Course" - separate from regular gym exercises
+        allCourseExercises = exercises
+            .filter(ex => ex.type === 'Course')
+            .map(ex => ({
+                ...ex,
+                course_category: mapToCourseCategoryDisplay(ex.muscle_group || 'flexibility')
+            }));
+
+        renderCourseExerciseLibrary();
+    } catch (e) {
+        console.error('Error loading course exercises:', e);
+        container.innerHTML = `<div class="col-span-2 glass-card p-6 text-center"><p class="text-red-400 text-xs">Failed to load exercises</p></div>`;
+    }
+};
+
+// Map course exercise categories
+function mapToCourseCategoryDisplay(category) {
+    const mapping = {
+        'warmup': { emoji: '🔥', label: 'Warmup' },
+        'cardio': { emoji: '🏃', label: 'Cardio' },
+        'flexibility': { emoji: '🧘', label: 'Flexibility' },
+        'cooldown': { emoji: '❄️', label: 'Cooldown' },
+        'yoga': { emoji: '🧘', label: 'Yoga' },
+        'pilates': { emoji: '🤸', label: 'Pilates' },
+        'stretch': { emoji: '🙆', label: 'Stretch' },
+        'balance': { emoji: '⚖️', label: 'Balance' },
+        'breathing': { emoji: '🌬️', label: 'Breathing' },
+        'core': { emoji: '🎯', label: 'Core' },
+        'hiit': { emoji: '⚡', label: 'HIIT' },
+        'dance': { emoji: '💃', label: 'Dance' },
+        'aerobics': { emoji: '🕺', label: 'Aerobics' },
+        'strength': { emoji: '💪', label: 'Strength' }
+    };
+
+    const key = (category || '').toLowerCase();
+    return mapping[key] || { emoji: '🏃', label: 'General' };
+}
+
+// Render exercise cards in the library view
+function renderCourseExerciseLibrary() {
+    const container = document.getElementById('course-exercise-library');
+    if (!container) return;
+
+    const searchTerm = (document.getElementById('course-exercise-search')?.value || '').toLowerCase();
+
+    let filtered = allCourseExercises;
+
+    // Apply category filter
+    if (currentCourseExerciseFilter !== 'all') {
+        filtered = filtered.filter(ex => {
+            const cat = (ex.muscle_group || ex.type || '').toLowerCase();
+            return cat === currentCourseExerciseFilter;
+        });
+    }
+
+    // Apply search filter
+    if (searchTerm) {
+        filtered = filtered.filter(ex =>
+            ex.name.toLowerCase().includes(searchTerm) ||
+            (ex.description || '').toLowerCase().includes(searchTerm)
+        );
+    }
+
+    if (filtered.length === 0) {
+        const isFiltered = currentCourseExerciseFilter !== 'all' || searchTerm;
+        container.innerHTML = `
+            <div class="col-span-2 glass-card p-6 text-center">
+                <p class="text-4xl mb-2">🧘</p>
+                <p class="text-gray-400 text-sm">${isFiltered ? 'No matching exercises' : 'No course exercises yet'}</p>
+                <p class="text-gray-500 text-xs mt-1">${isFiltered ? 'Try a different filter or search' : 'Create yoga poses, pilates moves, stretches and more'}</p>
+            </div>`;
+        return;
+    }
+
+    container.innerHTML = filtered.map(ex => {
+        const catInfo = mapToCourseCategoryDisplay(ex.muscle_group || ex.type);
+        const duration = ex.default_duration || 60;
+        const durationText = duration > 0 ? `${duration}s` : 'No timer';
+
+        return `
+            <div class="glass-card p-3 cursor-pointer hover:bg-white/10 transition tap-effect"
+                onclick="openCourseExerciseDetail('${ex.id}')">
+                <div class="relative w-full h-20 bg-black/30 rounded-lg mb-2 overflow-hidden flex items-center justify-center">
+                    ${ex.thumbnail_url || ex.video_url ?
+                        `<img src="${ex.thumbnail_url || getYouTubeThumbnail(ex.video_url)}"
+                            alt="${ex.name}" class="w-full h-full object-cover"
+                            onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                        <div class="absolute inset-0 items-center justify-center text-3xl" style="display: none;">${catInfo.emoji}</div>` :
+                        `<span class="text-3xl">${catInfo.emoji}</span>`
+                    }
+                </div>
+                <h4 class="text-sm font-bold truncate">${ex.name}</h4>
+                <div class="flex items-center justify-between mt-1">
+                    <span class="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/60">${catInfo.label}</span>
+                    <span class="text-[10px] text-white/40">${durationText}</span>
+                </div>
+            </div>`;
+    }).join('');
+}
+
+// Get YouTube thumbnail from URL
+function getYouTubeThumbnail(url) {
+    if (!url) return '';
+    const videoId = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1];
+    return videoId ? `https://img.youtube.com/vi/${videoId}/mqdefault.jpg` : '';
+}
+
+// Filter exercises by category
+window.filterCourseExercises = function(category) {
+    currentCourseExerciseFilter = category;
+
+    // Update button states
+    document.querySelectorAll('.course-ex-filter-btn').forEach(btn => {
+        if (btn.dataset.filter === category) {
+            btn.classList.add('active', 'bg-primary/20', 'text-primary', 'border-primary/30');
+            btn.classList.remove('bg-white/5', 'text-white/60', 'border-white/10');
+        } else {
+            btn.classList.remove('active', 'bg-primary/20', 'text-primary', 'border-primary/30');
+            btn.classList.add('bg-white/5', 'text-white/60', 'border-white/10');
+        }
+    });
+
+    renderCourseExerciseLibrary();
+};
+
+// Search filter
+window.filterCourseExercisesBySearch = function(term) {
+    renderCourseExerciseLibrary();
+};
+
+// Open create exercise modal
+window.openCourseExerciseModal = function(exerciseId = null) {
+    currentCourseExerciseId = exerciseId;
+    courseExerciseSteps = [];
+
+    const modal = document.getElementById('course-exercise-modal');
+    const title = document.getElementById('course-exercise-modal-title');
+
+    // Reset form
+    document.getElementById('course-exercise-id').value = '';
+    document.getElementById('course-exercise-name').value = '';
+    document.getElementById('course-exercise-category').value = 'cardio';
+    document.getElementById('course-exercise-description').value = '';
+    document.getElementById('course-exercise-duration').value = '60';
+    document.getElementById('course-exercise-difficulty').value = 'intermediate';
+    document.getElementById('course-exercise-video').value = '';
+    document.getElementById('course-exercise-image').value = '';
+    document.getElementById('course-exercise-image-preview').classList.add('hidden');
+    document.getElementById('course-exercise-steps').innerHTML = '';
+
+    if (exerciseId) {
+        title.textContent = 'Edit Exercise';
+        // Load exercise data
+        const exercise = allCourseExercises.find(ex => ex.id === exerciseId);
+        if (exercise) {
+            document.getElementById('course-exercise-id').value = exercise.id;
+            document.getElementById('course-exercise-name').value = exercise.name || '';
+            document.getElementById('course-exercise-category').value = (exercise.muscle_group || 'cardio').toLowerCase();
+            document.getElementById('course-exercise-description').value = exercise.description || '';
+            document.getElementById('course-exercise-duration').value = exercise.default_duration || 60;
+            document.getElementById('course-exercise-difficulty').value = exercise.difficulty || 'intermediate';
+            document.getElementById('course-exercise-video').value = exercise.video_url || '';
+            document.getElementById('course-exercise-image').value = exercise.thumbnail_url || '';
+
+            if (exercise.thumbnail_url) {
+                const preview = document.getElementById('course-exercise-image-preview');
+                preview.querySelector('img').src = exercise.thumbnail_url;
+                preview.classList.remove('hidden');
+            }
+
+            // Load steps if available
+            if (exercise.steps && Array.isArray(exercise.steps)) {
+                courseExerciseSteps = [...exercise.steps];
+                renderCourseExerciseSteps();
+            }
+        }
+    } else {
+        title.textContent = 'Create Exercise';
+    }
+
+    showModal('course-exercise-modal');
+};
+
+// Add step input
+window.addCourseExerciseStep = function() {
+    courseExerciseSteps.push('');
+    renderCourseExerciseSteps();
+};
+
+// Render steps
+function renderCourseExerciseSteps() {
+    const container = document.getElementById('course-exercise-steps');
+    if (!container) return;
+
+    container.innerHTML = courseExerciseSteps.map((step, i) => `
+        <div class="flex gap-2 items-start">
+            <span class="text-xs text-white/40 mt-2.5">${i + 1}.</span>
+            <input type="text" value="${step}" onchange="updateCourseExerciseStep(${i}, this.value)"
+                placeholder="Step ${i + 1}..."
+                class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white focus:border-primary outline-none">
+            <button onclick="removeCourseExerciseStep(${i})" class="text-red-400 hover:text-red-300 px-2 py-2">✕</button>
+        </div>
+    `).join('');
+}
+
+// Update step
+window.updateCourseExerciseStep = function(index, value) {
+    courseExerciseSteps[index] = value;
+};
+
+// Remove step
+window.removeCourseExerciseStep = function(index) {
+    courseExerciseSteps.splice(index, 1);
+    renderCourseExerciseSteps();
+};
+
+// Upload exercise image
+window.uploadCourseExerciseImage = async function(input) {
+    if (!input.files || !input.files[0]) return;
+
+    const file = input.files[0];
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const res = await fetch(`${apiBase}/api/upload`, {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+
+        if (!res.ok) throw new Error('Upload failed');
+
+        const data = await res.json();
+        document.getElementById('course-exercise-image').value = data.url;
+
+        const preview = document.getElementById('course-exercise-image-preview');
+        preview.querySelector('img').src = data.url;
+        preview.classList.remove('hidden');
+
+        showToast('Image uploaded');
+    } catch (e) {
+        console.error('Upload error:', e);
+        showToast('Failed to upload image');
+    }
+};
+
+// Save exercise
+window.saveCourseExercise = async function() {
+    const name = document.getElementById('course-exercise-name').value.trim();
+    const category = document.getElementById('course-exercise-category').value;
+    const description = document.getElementById('course-exercise-description').value.trim();
+    const duration = parseInt(document.getElementById('course-exercise-duration').value) || 60;
+    const difficulty = document.getElementById('course-exercise-difficulty').value;
+    const videoUrl = document.getElementById('course-exercise-video').value.trim();
+    const imageUrl = document.getElementById('course-exercise-image').value.trim();
+    const exerciseId = document.getElementById('course-exercise-id').value;
+
+    if (!name) {
+        showToast('Please enter an exercise name');
+        return;
+    }
+
+    const exerciseData = {
+        name,
+        muscle_group: category, // Using muscle_group field for category
+        type: 'Course', // Mark as course exercise
+        description,
+        default_duration: duration,
+        difficulty,
+        video_url: videoUrl || null,
+        thumbnail_url: imageUrl || null,
+        steps: courseExerciseSteps.filter(s => s.trim())
+    };
+
+    try {
+        let res;
+        if (exerciseId) {
+            // Update existing
+            res = await fetch(`${apiBase}/api/exercises/${exerciseId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(exerciseData)
+            });
+        } else {
+            // Create new
+            res = await fetch(`${apiBase}/api/exercises`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(exerciseData)
+            });
+        }
+
+        if (!res.ok) throw new Error('Failed to save exercise');
+
+        showToast(exerciseId ? 'Exercise updated' : 'Exercise created');
+        hideModal('course-exercise-modal');
+        loadCourseExercises();
+    } catch (e) {
+        console.error('Error saving exercise:', e);
+        showToast('Failed to save exercise');
+    }
+};
+
+// Open exercise detail modal
+window.openCourseExerciseDetail = function(exerciseId) {
+    const exercise = allCourseExercises.find(ex => ex.id === exerciseId);
+    if (!exercise) return;
+
+    currentCourseExerciseId = exerciseId;
+
+    const catInfo = mapToCourseCategoryDisplay(exercise.muscle_group || exercise.type);
+    const duration = exercise.default_duration || 60;
+    const durationText = duration > 0 ? `${duration}s` : 'No timer';
+
+    // Set media
+    const mediaContainer = document.getElementById('course-exercise-detail-media');
+    if (exercise.video_url) {
+        const videoId = exercise.video_url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/)?.[1];
+        if (videoId) {
+            mediaContainer.innerHTML = `
+                <iframe src="https://www.youtube.com/embed/${videoId}"
+                    class="w-full h-full" frameborder="0"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowfullscreen></iframe>`;
+        } else {
+            mediaContainer.innerHTML = `<span class="text-6xl">${catInfo.emoji}</span>`;
+        }
+    } else if (exercise.thumbnail_url) {
+        mediaContainer.innerHTML = `<img src="${exercise.thumbnail_url}" alt="${exercise.name}" class="w-full h-full object-cover">`;
+    } else {
+        mediaContainer.innerHTML = `<span class="text-6xl">${catInfo.emoji}</span>`;
+    }
+
+    // Set details
+    document.getElementById('course-exercise-detail-name').textContent = exercise.name;
+    document.getElementById('course-exercise-detail-category').textContent = `${catInfo.emoji} ${catInfo.label}`;
+    document.getElementById('course-exercise-detail-difficulty').textContent = exercise.difficulty || 'Intermediate';
+    document.getElementById('course-exercise-detail-duration').textContent = durationText;
+    document.getElementById('course-exercise-detail-description').textContent = exercise.description || 'No description provided.';
+
+    // Set steps
+    const stepsSection = document.getElementById('course-exercise-detail-steps-section');
+    const stepsList = document.getElementById('course-exercise-detail-steps');
+
+    if (exercise.steps && exercise.steps.length > 0) {
+        stepsSection.classList.remove('hidden');
+        stepsList.innerHTML = exercise.steps.map(step => `<li class="mb-1">${step}</li>`).join('');
+    } else {
+        stepsSection.classList.add('hidden');
+    }
+
+    showModal('course-exercise-detail-modal');
+};
+
+// Edit from detail modal
+window.editCourseExerciseFromDetail = function() {
+    hideModal('course-exercise-detail-modal');
+    openCourseExerciseModal(currentCourseExerciseId);
+};
+
+// Delete from detail modal
+window.deleteCourseExerciseFromDetail = async function() {
+    if (!currentCourseExerciseId) return;
+    if (!confirm('Delete this exercise?')) return;
+
+    try {
+        const res = await fetch(`${apiBase}/api/exercises/${currentCourseExerciseId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+
+        if (!res.ok) throw new Error('Failed to delete');
+
+        showToast('Exercise deleted');
+        hideModal('course-exercise-detail-modal');
+        loadCourseExercises();
+    } catch (e) {
+        console.error('Error deleting exercise:', e);
+        showToast('Failed to delete exercise');
+    }
 };

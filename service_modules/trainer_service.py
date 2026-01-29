@@ -50,7 +50,8 @@ class TrainerService:
                     "subtitle": s.subtitle or "",
                     "type": s.type,
                     "duration": s.duration if s.duration else 60,
-                    "completed": s.completed
+                    "completed": s.completed,
+                    "course_id": s.course_id
                 })
 
             # Create a lookup for profiles

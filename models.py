@@ -21,9 +21,16 @@ class Exercise(BaseModel):
 class ExerciseTemplate(BaseModel):
     id: Optional[str] = None
     name: str
-    muscle: str
-    type: str
+    muscle: Optional[str] = None
+    muscle_group: Optional[str] = None  # Alias for muscle (used in course exercises)
+    type: Optional[str] = None
     video_id: Optional[str] = None
+    video_url: Optional[str] = None
+    thumbnail_url: Optional[str] = None
+    description: Optional[str] = None
+    default_duration: Optional[int] = None  # Duration in seconds
+    difficulty: Optional[str] = None  # beginner, intermediate, advanced
+    steps: Optional[List[str]] = None  # Exercise steps/cues
 
 class Workout(BaseModel):
     id: Optional[str] = None
@@ -135,12 +142,16 @@ class TrainerEvent(BaseModel):
     time: str # HH:MM AM/PM
     title: str
     subtitle: str
-    type: str # 'consultation', 'class', 'personal', 'other'
+    type: str # 'consultation', 'class', 'personal', 'other', 'course'
     duration: int = 60 # Default to 60
     completed: bool = False
+    course_id: Optional[str] = None  # Links to CourseORM for recurring group classes
 
 class TrainerData(BaseModel):
     id: str # Self ID
+    name: Optional[str] = None  # Trainer's display name (username)
+    profile_picture: Optional[str] = None  # Profile picture URL
+    specialties: Optional[str] = None  # Comma-separated specialties
     clients: List[ClientSummary]
     video_library: List[Video]
     active_clients: int

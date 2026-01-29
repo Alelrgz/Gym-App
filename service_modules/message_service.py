@@ -289,12 +289,16 @@ class MessageService:
                 for conv in conversations:
                     other_id = conv.client_id
                     other_user = db.query(UserORM).filter(UserORM.id == other_id).first()
+                    other_profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == other_id).first()
                     unread = conv.trainer_unread_count or 0
+
+                    # Use profile name if available, fallback to username
+                    display_name = (other_profile.name if other_profile and other_profile.name else None) or (other_user.username if other_user else "Unknown")
 
                     result.append({
                         "id": conv.id,
                         "other_user_id": other_id,
-                        "other_user_name": other_user.username if other_user else "Unknown",
+                        "other_user_name": display_name,
                         "other_user_role": other_user.role if other_user else "unknown",
                         "last_message_preview": conv.last_message_preview,
                         "last_message_at": conv.last_message_at,
@@ -313,10 +317,13 @@ class MessageService:
                     other_user = db.query(UserORM).filter(UserORM.id == other_id).first()
                     unread = conv.client_unread_count or 0
 
+                    # Trainers use username as display name
+                    display_name = other_user.username if other_user else "Unknown"
+
                     result.append({
                         "id": conv.id,
                         "other_user_id": other_id,
-                        "other_user_name": other_user.username if other_user else "Unknown",
+                        "other_user_name": display_name,
                         "other_user_role": other_user.role if other_user else "unknown",
                         "last_message_preview": conv.last_message_preview,
                         "last_message_at": conv.last_message_at,
@@ -334,6 +341,7 @@ class MessageService:
                     # Determine other user
                     other_id = conv.user2_id if conv.user1_id == user_id else conv.user1_id
                     other_user = db.query(UserORM).filter(UserORM.id == other_id).first()
+                    other_profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == other_id).first()
 
                     # Determine unread count
                     if conv.user1_id == user_id:
@@ -341,10 +349,13 @@ class MessageService:
                     else:
                         unread = conv.user2_unread_count or 0
 
+                    # Use profile name if available, fallback to username
+                    display_name = (other_profile.name if other_profile and other_profile.name else None) or (other_user.username if other_user else "Unknown")
+
                     result.append({
                         "id": conv.id,
                         "other_user_id": other_id,
-                        "other_user_name": other_user.username if other_user else "Unknown",
+                        "other_user_name": display_name,
                         "other_user_role": other_user.role if other_user else "unknown",
                         "last_message_preview": conv.last_message_preview,
                         "last_message_at": conv.last_message_at,
