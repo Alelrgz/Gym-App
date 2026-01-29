@@ -4300,6 +4300,60 @@ function adjustReps(delta) {
     document.getElementById('rep-counter').innerText = workoutState.currentReps;
 }
 
+// Toggle workout panel between expanded and compact mode (full screen video)
+let workoutPanelCompact = false;
+function toggleWorkoutPanel() {
+    const panel = document.getElementById('workout-panel');
+    const dragHandle = document.getElementById('drag-handle');
+    const videoSection = document.querySelector('#workout-screen > div:first-child');
+
+    if (!panel) return;
+
+    // Ensure smooth transitions are set
+    panel.style.transition = 'height 0.4s cubic-bezier(0.4, 0, 0.2, 1), flex 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+    if (videoSection) {
+        videoSection.style.transition = 'height 0.4s cubic-bezier(0.4, 0, 0.2, 1), flex 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+    }
+    if (dragHandle) {
+        dragHandle.style.transition = 'all 0.3s ease';
+    }
+
+    workoutPanelCompact = !workoutPanelCompact;
+
+    if (workoutPanelCompact) {
+        // Compact mode - collapse panel to just the drag handle, video expands
+        panel.style.flex = '0 0 56px';
+        panel.style.height = '56px';
+        panel.style.minHeight = '56px';
+        panel.style.overflow = 'hidden';
+        if (videoSection) {
+            videoSection.style.flex = '1';
+            videoSection.style.height = 'auto';
+        }
+        if (dragHandle) {
+            dragHandle.style.width = '5rem';
+            dragHandle.style.height = '5px';
+            dragHandle.style.backgroundColor = 'rgba(249, 115, 22, 0.7)';
+        }
+    } else {
+        // Expanded mode - restore normal layout
+        panel.style.flex = '1';
+        panel.style.height = 'auto';
+        panel.style.minHeight = 'unset';
+        panel.style.overflow = 'auto';
+        if (videoSection) {
+            videoSection.style.flex = '0 0 35vh';
+            videoSection.style.height = '35vh';
+        }
+        if (dragHandle) {
+            dragHandle.style.width = '2.5rem';
+            dragHandle.style.height = '4px';
+            dragHandle.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+        }
+    }
+}
+window.toggleWorkoutPanel = toggleWorkoutPanel;
+
 // function completeSet() removed (duplicate)
 
 async function finishWorkout() {
@@ -5410,21 +5464,18 @@ function updateWorkoutUI() {
             div.dataset.idx = idx;
 
             if (isCurrent) {
-                // EXPANDED ACTIVE CARD
-                // Use glass-card class + glow for distinct active state
-                div.className = `glass-card p-5 mb-6 relative overflow-visible transition-all duration-500 transform scale-[1.02] border-2 border-primary/50 shadow-2xl shadow-primary/20`;
+                // EXPANDED ACTIVE CARD - Modern glass style
+                div.className = `glass-card p-4 mb-4 relative overflow-visible transition-all duration-300 border border-orange-500/30 rounded-2xl`;
                 div.onclick = null; // Disable collapse on click
 
-                // Active Indicator (Background Glow)
+                // Subtle glow effect
                 const glow = document.createElement('div');
-                glow.className = "absolute top-0 right-0 w-32 h-32 bg-primary/20 blur-[50px] rounded-full pointer-events-none -mr-10 -mt-10";
+                glow.className = "absolute -inset-1 bg-orange-500/10 blur-xl rounded-2xl pointer-events-none -z-10";
                 div.appendChild(glow);
 
-                // Generate Sets Rows
-                // Add disable logic
+                // Generate Sets Rows - Modern clean style
                 const isDisabled = workoutState.isCompletedView ? 'disabled' : '';
-                // Adjusted input styling
-                const baseInputClass = "w-full bg-transparent border-none text-white text-right font-black outline-none text-xl font-mono placeholder-white/20";
+                const baseInputClass = "w-full bg-transparent border-none text-white text-right font-bold outline-none text-base placeholder-white/20";
                 const inputClass = isDisabled ? `${baseInputClass} opacity-50 cursor-not-allowed` : baseInputClass;
 
                 let setsHtml = '';
@@ -5434,47 +5485,47 @@ function updateWorkoutUI() {
                     const isSetCompleted = perf.completed;
                     const isSetActive = (i === (workoutState.currentSet - 1));
 
-                    // Dynamic styles
-                    let rowClass = "grid grid-cols-[1.5fr,1fr,1fr] gap-4 mb-3 items-center relative z-10 transition-all duration-300 rounded-xl p-2";
-                    let currentInputClass = inputClass; // Create a copy of const inputClass
+                    // Dynamic styles - use 4 columns when in completed view to fit edit button
+                    const gridCols = workoutState.isCompletedView ? 'grid-cols-[1.2fr,1fr,1fr,auto]' : 'grid-cols-[1.2fr,1fr,1fr]';
+                    let rowClass = `grid ${gridCols} gap-2 mb-2 items-center relative z-10 transition-all duration-200 rounded-xl p-2.5`;
+                    let currentInputClass = inputClass;
                     let statusIcon = "";
 
                     if (isSetCompleted) {
-                        rowClass += " bg-green-500/10 border border-green-500/20"; // Removed opacity-60
-                        statusIcon = `<div class="absolute left-2 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-green-500 rounded-full flex items-center justify-center text-black font-bold text-xs shadow-lg shadow-green-500/50 z-20">✓</div>`;
-                        currentInputClass += " cursor-not-allowed text-white opacity-80"; // Changed to text-white for visibility
+                        rowClass += " bg-green-500/5 border border-green-500/10";
+                        statusIcon = `<div class="absolute left-2 top-1/2 transform -translate-y-1/2 w-5 h-5 bg-green-500/20 rounded-md flex items-center justify-center text-green-500 z-20">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                        </div>`;
+                        currentInputClass += " cursor-not-allowed text-white/60";
                     } else if (isSetActive) {
-                        rowClass += " bg-primary/10 border border-primary/40 ring-1 ring-primary/20"; // Active look
-                        statusIcon = `<div class="absolute left-2 top-1/2 transform -translate-y-1/2 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-black font-bold text-xs shadow-lg shadow-primary/50 z-20 animate-pulse">▶</div>`;
+                        rowClass += " bg-orange-500/5 border border-orange-500/20";
+                        statusIcon = `<div class="absolute left-2 top-1/2 transform -translate-y-1/2 w-5 h-5 bg-orange-500 rounded-md flex items-center justify-center text-white z-20">
+                            <svg class="w-3 h-3" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                        </div>`;
                     } else {
-                        rowClass += " border border-transparent"; // Pending
+                        rowClass += " border border-white/5 bg-white/[0.02]";
                     }
 
-                    // Disable inputs if completed
                     const isInputDisabled = isDisabled || isSetCompleted ? 'disabled' : '';
 
-                    // EDIT MODE LOGIC
+                    // EDIT MODE LOGIC - now as grid item, not absolute
                     let editBtnHtml = '';
                     if (workoutState.isCompletedView) {
-                        // Check if this specific set is in edit mode
                         const isEditing = perf.isEditing || false;
 
                         if (isEditing) {
-                            // Enable inputs
-                            currentInputClass = baseInputClass + " border-b border-primary";
-                            // Save Button
+                            currentInputClass = baseInputClass + " border-b border-orange-500";
                             editBtnHtml = `
-                                <button onclick="event.stopPropagation(); window.updateSetData(${idx}, ${i}, this.closest('.grid').querySelector('input[placeholder=\\'${item.reps}\\']').value, this.closest('.grid').querySelector('input[placeholder=\\'-\\' ]').value); workoutState.exercises[${idx}].performance[${i}].isEditing = false; updateWorkoutUI();" 
-                                    class="absolute -right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-black shadow-lg z-30 hover:scale-110 transition">
-                                    💾
+                                <button onclick="event.stopPropagation(); window.updateSetData(${idx}, ${i}, this.closest('.grid').querySelector('input[placeholder=\\'${item.reps}\\']').value, this.closest('.grid').querySelector('input[placeholder=\\'-\\' ]').value); workoutState.exercises[${idx}].performance[${i}].isEditing = false; updateWorkoutUI();"
+                                    class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-white hover:scale-105 transition flex-shrink-0">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
                                 </button>
                             `;
                         } else {
-                            // Edit Button
                             editBtnHtml = `
-                                <button onclick="event.stopPropagation(); workoutState.exercises[${idx}].performance[${i}].isEditing = true; updateWorkoutUI();" 
-                                    class="absolute -right-2 top-1/2 transform -translate-y-1/2 w-8 h-8 bg-white/10 rounded-full flex items-center justify-center text-gray-300 shadow-lg z-30 hover:bg-white/20 hover:text-white transition">
-                                    ✏️
+                                <button onclick="event.stopPropagation(); workoutState.exercises[${idx}].performance[${i}].isEditing = true; updateWorkoutUI();"
+                                    class="w-8 h-8 bg-white/5 border border-white/10 rounded-lg flex items-center justify-center text-white/40 hover:bg-white/10 hover:text-white transition flex-shrink-0">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>
                                 </button>
                             `;
                         }
@@ -5483,22 +5534,22 @@ function updateWorkoutUI() {
                     setsHtml += `
                         <div class="${rowClass}">
                             ${statusIcon}
-                            <span class="text-sm font-bold text-gray-400 tracking-widest pl-10 font-mono uppercase ${isSetActive ? 'text-primary' : ''}">Set ${i + 1}</span>
-                            <div class="flex items-center bg-black/40 border border-white/10 rounded-xl px-3 py-3 focus-within:border-primary/80 focus-within:bg-black/60 transition duration-300 shadow-inner">
-                                <input type="number" value="${perf.reps}" 
+                            <span class="text-xs font-medium text-white/40 pl-8 uppercase tracking-wider ${isSetActive ? 'text-orange-500' : ''}">Set ${i + 1}</span>
+                            <div class="flex items-center bg-white/5 border border-white/5 rounded-lg px-3 py-2.5 focus-within:border-orange-500/50 transition">
+                                <input type="number" value="${perf.reps}"
                                     oninput="window.updatePerformance(${idx}, ${i}, 'reps', this.value)"
                                     onclick="event.stopPropagation()"
                                     ${workoutState.isCompletedView && !perf.isEditing ? 'disabled' : (isInputDisabled && !perf.isEditing ? 'disabled' : '')}
                                     class="${currentInputClass}" placeholder="${item.reps}">
-                                <span class="text-[10px] text-gray-500 font-bold ml-2 mt-1 tracking-wider">REPS</span>
+                                <span class="text-[10px] text-white/30 font-medium ml-1 uppercase">reps</span>
                             </div>
-                            <div class="flex items-center bg-black/40 border border-white/10 rounded-xl px-3 py-3 focus-within:border-primary/80 focus-within:bg-black/60 transition duration-300 shadow-inner">
-                                <input type="number" value="${perf.weight}" 
+                            <div class="flex items-center bg-white/5 border border-white/5 rounded-lg px-3 py-2.5 focus-within:border-orange-500/50 transition">
+                                <input type="number" value="${perf.weight}"
                                     oninput="window.updatePerformance(${idx}, ${i}, 'weight', this.value)"
                                     onclick="event.stopPropagation()"
                                     ${workoutState.isCompletedView && !perf.isEditing ? 'disabled' : (isInputDisabled && !perf.isEditing ? 'disabled' : '')}
                                     class="${currentInputClass}" placeholder="-">
-                                <span class="text-[10px] text-gray-500 font-bold ml-2 mt-1 tracking-wider text-white">KG</span>
+                                <span class="text-[10px] text-white/30 font-medium ml-1 uppercase">kg</span>
                             </div>
                             ${editBtnHtml}
                         </div>
@@ -5513,57 +5564,61 @@ function updateWorkoutUI() {
                 let badgeHtml = '';
                 if (isAllDetailedCompleted) {
                     badgeHtml = `
-                    <span class="text-[10px] font-black text-white bg-green-500 px-3 py-1 rounded-full shadow-lg shadow-green-500/40 tracking-widest uppercase items-center flex gap-1">
-                        <span class="w-2 h-2 bg-white rounded-full"></span> Done
+                    <span class="text-[10px] font-medium text-green-500 bg-green-500/10 px-2.5 py-1 rounded-lg border border-green-500/20 uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 bg-green-500 rounded-full"></span> Done
                     </span>`;
                 } else {
                     badgeHtml = `
-                    <span class="text-[10px] font-black text-white bg-red-500 px-3 py-1 rounded-full shadow-lg shadow-red-500/40 tracking-widest uppercase items-center flex gap-1">
-                        <span class="w-2 h-2 bg-white rounded-full animate-ping"></span> Active
+                    <span class="text-[10px] font-medium text-orange-500 bg-orange-500/10 px-2.5 py-1 rounded-lg border border-orange-500/20 uppercase tracking-wider flex items-center gap-1.5">
+                        <span class="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse"></span> Active
                     </span>`;
                 }
 
                 div.innerHTML += `
-                    <div class="flex items-center justify-between mb-6 pb-4 border-b border-white/10 relative z-10 cursor-pointer group"
+                    <div class="flex items-center justify-between mb-4 pb-3 border-b border-white/5 relative z-10 cursor-pointer group"
                         onclick="window.toggleCollapse(${idx}, event)">
-                        <div class="flex items-center space-x-4">
-                            <div class="w-12 h-12 rounded-full bg-primary text-black flex items-center justify-center font-black animate-pulse text-xl shadow-lg shadow-primary/50">▶</div>
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center text-white text-sm">
+                                <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            </div>
                             <div>
-                                <h4 class="font-black text-white text-2xl tracking-tight leading-none mb-1 drop-shadow-md">${item.name}</h4>
-                                <p class="text-xs text-primary font-bold tracking-widest uppercase opacity-90">${item.sets} Sets • ${item.reps} Target</p>
+                                <h4 class="font-bold text-white text-lg">${item.name}</h4>
+                                <p class="text-xs text-orange-500 font-medium">${item.sets} Sets &bull; ${item.reps} Target</p>
                             </div>
                         </div>
-                        <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2">
                              ${badgeHtml}
-                            <div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center transition-transform duration-300 ${chevronRotate} group-hover:bg-white/20">
-                                ▼
+                            <div class="w-7 h-7 rounded-lg bg-white/5 flex items-center justify-center transition-transform duration-300 ${chevronRotate} group-hover:bg-white/10 text-white/50">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"/></svg>
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="space-y-2 relative z-10 transition-all duration-300 overflow-hidden ${isCollapsed ? 'max-h-0 opacity-0' : 'max-h-[1000px] opacity-100'}">
                         ${setsHtml}
                     </div>
                 `;
 
             } else {
-                // COMPACT CARD (Inactive)
-                div.className = `p-3 rounded-xl flex items-center mb-2 cursor-pointer transition-all hover:bg-white/5 border border-transparent opacity-60 hover:opacity-100`;
+                // COMPACT CARD (Inactive) - Clean minimal style
+                div.className = `p-3 rounded-xl flex items-center mb-2 cursor-pointer transition-all bg-white/[0.02] hover:bg-white/5 border border-white/5 ${idx < workoutState.currentExerciseIdx ? 'opacity-60' : 'opacity-40'} hover:opacity-100`;
                 div.onclick = () => window.switchExercise(idx);
 
-                let icon = `<div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center mr-3 text-xs text-gray-400 font-bold">${idx + 1}</div>`;
+                let icon = `<div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-xs text-white/50 font-medium">${idx + 1}</div>`;
                 if (idx < workoutState.currentExerciseIdx || workoutState.isCompletedView) {
-                    icon = '<div class="w-8 h-8 rounded-full bg-green-500 text-black flex items-center justify-center mr-3 font-bold">✓</div>';
+                    icon = `<div class="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center text-green-500">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                    </div>`;
                 }
 
                 div.innerHTML = `
-                    <div class="flex items-center space-x-4 pointer-events-none w-full">
+                    <div class="flex items-center gap-3 pointer-events-none w-full">
                         ${icon}
                         <div class="flex-1">
-                            <h4 class="font-bold text-white text-sm">${item.name}</h4>
-                            <p class="text-xs text-gray-400">${item.sets} Sets • ${item.reps} Reps</p>
+                            <h4 class="font-medium text-white text-sm">${item.name}</h4>
+                            <p class="text-xs text-white/40">${item.sets} Sets &bull; ${item.reps} Reps</p>
                         </div>
-                        ${idx < workoutState.currentExerciseIdx ? '<span class="text-xs text-green-400 font-bold">Done</span>' : ''}
+                        ${idx < workoutState.currentExerciseIdx ? '<span class="text-[10px] text-green-500 font-medium uppercase tracking-wider">Done</span>' : ''}
                     </div>
                 `;
             }
@@ -6655,14 +6710,14 @@ window.openBookAppointmentModal = function() {
     document.getElementById('book-appt-notes').value = '';
 
     // Load available slots for today
-    loadAvailableSlots(today);
+    loadTrainerAvailableSlots(today);
 
     // Load workouts for selection
     loadWorkoutsForAppointment();
 
     // Listen for date changes
     dateInput.onchange = function() {
-        loadAvailableSlots(this.value);
+        loadTrainerAvailableSlots(this.value);
     };
 
     hideModal('client-modal');
@@ -6694,7 +6749,7 @@ async function loadWorkoutsForAppointment() {
     }
 }
 
-async function loadAvailableSlots(date) {
+async function loadTrainerAvailableSlots(date) {
     const timeSelect = document.getElementById('book-appt-time');
     timeSelect.innerHTML = '<option value="">Loading...</option>';
 

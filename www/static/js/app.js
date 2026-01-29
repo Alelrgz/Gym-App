@@ -2367,7 +2367,7 @@ function updateWorkoutUI() {
                     </span>`;
                 } else {
                     badgeHtml = `
-                    <span class="text-[10px] font-black text-white bg-red-500 px-3 py-1 rounded-full shadow-lg shadow-red-500/40 tracking-widest uppercase items-center flex gap-1">
+                    <span class="text-[10px] font-black text-white bg-orange-500 px-3 py-1 rounded-full shadow-lg shadow-orange-500/40 tracking-widest uppercase items-center flex gap-1">
                         <span class="w-2 h-2 bg-white rounded-full animate-ping"></span> Active
                     </span>`;
                 }

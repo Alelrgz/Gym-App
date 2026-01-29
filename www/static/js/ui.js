@@ -57,7 +57,7 @@ export function updateWorkoutUI(workoutState) {
 
             let icon = `<div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center mr-3 text-xs text-gray-400">${idx + 1}</div>`;
             if (isCurrent) icon = '<div class="w-8 h-8 rounded-full bg-primary text-black flex items-center justify-center mr-3 font-bold animate-pulse">▶</div>';
-            if (idx < workoutState.currentExerciseIdx) icon = '<div class="w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center mr-3 font-bold animate-pulse">✓</div>';
+            if (idx < workoutState.currentExerciseIdx) icon = '<div class="w-8 h-8 rounded-full bg-green-500 text-white flex items-center justify-center mr-3 font-bold">✓</div>';
 
             div.innerHTML = `
                 <div class="flex items-center space-x-4 pointer-events-none">

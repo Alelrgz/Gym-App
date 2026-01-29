@@ -41,7 +41,7 @@ export function updateWorkoutUI(workoutState) {
         }
     }
 
-    // Render Routine List
+    // Render Routine List - Modern clean style
     const list = document.getElementById('workout-routine-list');
     if (list) {
         list.innerHTML = '';
@@ -53,20 +53,25 @@ export function updateWorkoutUI(workoutState) {
             div.dataset.action = 'jumpToExercise';
             div.dataset.idx = idx;
 
-            div.className = `p-3 rounded-xl flex items-center mb-2 cursor-pointer transition-all ${isCurrent ? 'bg-white/10 border border-primary/50' : 'hover:bg-white/5 border border-transparent'}`;
+            div.className = `p-3 rounded-xl flex items-center mb-2 cursor-pointer transition-all ${isCurrent ? 'bg-white/5 border border-orange-500/30' : 'bg-white/[0.02] hover:bg-white/5 border border-white/5'} ${idx < workoutState.currentExerciseIdx ? 'opacity-60' : ''}`;
 
-            let icon = `<div class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center mr-3 text-xs text-gray-400">${idx + 1}</div>`;
-            if (isCurrent) icon = '<div class="w-8 h-8 rounded-full bg-primary text-black flex items-center justify-center mr-3 font-bold animate-pulse">▶</div>';
-            if (idx < workoutState.currentExerciseIdx) icon = '<div class="w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center mr-3 font-bold animate-pulse">✓</div>';
+            let icon = `<div class="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center text-xs text-white/50 font-medium">${idx + 1}</div>`;
+            if (isCurrent) icon = `<div class="w-8 h-8 rounded-lg bg-orange-500 flex items-center justify-center text-white">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            </div>`;
+            if (idx < workoutState.currentExerciseIdx) icon = `<div class="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center text-green-500">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+            </div>`;
 
             div.innerHTML = `
-                <div class="flex items-center space-x-4 pointer-events-none">
+                <div class="flex items-center gap-3 pointer-events-none w-full">
                     ${icon}
                     <div class="flex-1">
-                        <h4 class="font-bold text-white ${isCurrent ? 'text-lg' : 'text-sm'}">${item.name}</h4>
-                        <p class="text-xs text-gray-400">${item.sets} Sets • ${item.reps} Reps</p>
+                        <h4 class="font-medium text-white ${isCurrent ? 'text-base' : 'text-sm'}">${item.name}</h4>
+                        <p class="text-xs text-white/40">${item.sets} Sets &bull; ${item.reps} Reps</p>
                     </div>
-                    ${isCurrent ? '<span class="text-xs font-bold text-primary uppercase tracking-wider">Active</span>' : ''}
+                    ${isCurrent ? '<span class="text-[10px] font-medium text-orange-500 bg-orange-500/10 px-2 py-1 rounded-md border border-orange-500/20 uppercase tracking-wider">Active</span>' : ''}
+                    ${idx < workoutState.currentExerciseIdx ? '<span class="text-[10px] text-green-500 font-medium uppercase tracking-wider">Done</span>' : ''}
                 </div>
             `;
 

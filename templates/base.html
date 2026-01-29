@@ -241,6 +241,66 @@
         let globalSelectedDate = null;
         let globalSelectedTime = null;
 
+        async function loadTrainerSessionTypes() {
+            const sessionTypeSelect = document.getElementById('appointment-session-type');
+            if (!sessionTypeSelect) return;
+
+            // Category labels - use global if available (from client.html), otherwise use local
+            const labels = (typeof categoryLabels !== 'undefined') ? categoryLabels : {
+                'bodybuilding': '💪 Bodybuilding',
+                'crossfit': '🏋️ Crossfit',
+                'calisthenics': '🤸 Calisthenics',
+                'cardio': '🏃 Cardio',
+                'hiit': '⚡ HIIT',
+                'yoga': '🧘 Yoga',
+                'boxing': '🥊 Boxing',
+                'rehabilitation': '🩹 Rehabilitation'
+            };
+
+            // Get trainer ID
+            const trainerId = globalSelectedTrainerId || (typeof selectedTrainerId !== 'undefined' ? selectedTrainerId : null);
+            if (!trainerId) {
+                sessionTypeSelect.innerHTML = '<option value="" disabled selected>No trainer selected</option>';
+                return;
+            }
+
+            // Clear all options and show loading
+            sessionTypeSelect.innerHTML = '<option value="" disabled selected>Loading...</option>';
+
+            try {
+                const response = await fetch(`/api/client/trainer/${trainerId}/session-types`, {
+                    credentials: 'include'
+                });
+
+                if (response.ok) {
+                    const specialties = await response.json();
+
+                    // Clear and add placeholder
+                    sessionTypeSelect.innerHTML = '<option value="" disabled selected>Choose session type...</option>';
+
+                    if (specialties && specialties.length > 0) {
+                        // Add trainer's specialties as options
+                        specialties.forEach(specialty => {
+                            const option = document.createElement('option');
+                            const key = specialty.toLowerCase();
+                            option.value = key;
+                            option.textContent = labels[key] || specialty;
+                            sessionTypeSelect.appendChild(option);
+                        });
+                    } else {
+                        // Trainer hasn't set specialties - show general option
+                        sessionTypeSelect.innerHTML = '<option value="general" selected>General Training</option>';
+                    }
+                } else {
+                    // Fallback to general training
+                    sessionTypeSelect.innerHTML = '<option value="general" selected>General Training</option>';
+                }
+            } catch (error) {
+                console.error('Error loading trainer specialties:', error);
+                sessionTypeSelect.innerHTML = '<option value="general" selected>General Training</option>';
+            }
+        }
+
         async function initBookingTrainerId() {
             // Try to get trainer ID from client data
             try {
@@ -256,7 +316,7 @@
             }
         }
 
-        function openBookingModal() {
+        async function openBookingModal() {
             // Use global or page-specific trainer ID
             const trainerId = globalSelectedTrainerId || (typeof selectedTrainerId !== 'undefined' ? selectedTrainerId : null);
 
@@ -271,6 +331,9 @@
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('appointment-date').min = today;
             document.getElementById('appointment-date').value = '';
+
+            // Load trainer's session types
+            await loadTrainerSessionTypes();
 
             document.getElementById('booking-modal').classList.remove('hidden');
             document.getElementById('booking-step-1').classList.remove('hidden');
@@ -357,6 +420,8 @@
             }
 
             const notes = document.getElementById('appointment-notes').value;
+            const sessionTypeSelect = document.getElementById('appointment-session-type');
+            const sessionType = sessionTypeSelect ? sessionTypeSelect.value : 'general';
 
             try {
                 const response = await fetch('/api/client/appointments', {
@@ -368,6 +433,7 @@
                         date: globalSelectedDate,
                         start_time: globalSelectedTime,
                         duration: 60,
+                        session_type: sessionType,
                         notes: notes
                     })
                 });

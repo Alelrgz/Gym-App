@@ -1985,7 +1985,12 @@ async function loadAppointments() {
 
         if (!response.ok) return;
 
-        const appointments = await response.json();
+        const allAppointments = await response.json();
+
+        // Filter out canceled appointments
+        const appointments = allAppointments.filter(appt =>
+            appt.status !== 'canceled' && appt.status !== 'cancelled'
+        );
 
         if (appointments.length === 0) {
             document.getElementById('appointments-list').innerHTML = `

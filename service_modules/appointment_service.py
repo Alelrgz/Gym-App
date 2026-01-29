@@ -214,6 +214,12 @@ class AppointmentService:
                                 # If time format is invalid, skip this event
                                 continue
 
+                    # Skip past time slots if the date is today
+                    now = datetime.now()
+                    if target_date.date() == now.date() and current_time <= now:
+                        current_time = slot_end
+                        continue
+
                     if not is_booked:
                         available_slots.append({
                             "start_time": current_time.strftime("%H:%M"),
