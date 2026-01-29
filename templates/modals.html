@@ -314,8 +314,15 @@
             <button onclick="closeBookingModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
         </div>
 
-        <!-- Step 1: Select Date -->
+        <!-- Step 1: Select Session Type & Date -->
         <div id="booking-step-1">
+            <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Session Type</label>
+            <select id="appointment-session-type"
+                class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition mb-4 appearance-none cursor-pointer"
+                style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22white%22%20viewBox%3D%220%200%2016%2016%22%3E%3Cpath%20d%3D%22M7.247%2011.14%202.451%205.658C1.885%205.013%202.345%204%203.204%204h9.592a1%201%200%200%201%20.753%201.659l-4.796%205.48a1%201%200%200%201-1.506%200z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 12px center;">
+                <option value="" disabled selected>Loading categories...</option>
+            </select>
+
             <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Select Date</label>
             <input type="date" id="appointment-date"
                 class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition mb-4"
@@ -431,23 +438,48 @@
         <div onclick="event.stopPropagation()">
             <h4 class="text-xs font-bold text-gray-500 uppercase mb-2 ml-1">Your Specialties</h4>
             <div class="bg-white/5 p-3 rounded-xl border border-white/5">
-                <!-- Tags Display -->
-                <div id="specialties-tags" class="flex flex-wrap gap-2 mb-3 min-h-[32px]">
-                    <!-- Tags will be populated by JS -->
+                <div class="grid grid-cols-2 gap-2">
+                    <label class="flex items-center gap-2 p-2 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition">
+                        <input type="checkbox" id="spec-bodybuilding" value="Bodybuilding" onchange="updateSpecialties()"
+                            class="w-4 h-4 accent-orange-500">
+                        <span class="text-xs text-white">💪 Bodybuilding</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition">
+                        <input type="checkbox" id="spec-crossfit" value="Crossfit" onchange="updateSpecialties()"
+                            class="w-4 h-4 accent-orange-500">
+                        <span class="text-xs text-white">🏋️ Crossfit</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition">
+                        <input type="checkbox" id="spec-calisthenics" value="Calisthenics" onchange="updateSpecialties()"
+                            class="w-4 h-4 accent-orange-500">
+                        <span class="text-xs text-white">🤸 Calisthenics</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition">
+                        <input type="checkbox" id="spec-cardio" value="Cardio" onchange="updateSpecialties()"
+                            class="w-4 h-4 accent-orange-500">
+                        <span class="text-xs text-white">🏃 Cardio</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition">
+                        <input type="checkbox" id="spec-hiit" value="HIIT" onchange="updateSpecialties()"
+                            class="w-4 h-4 accent-orange-500">
+                        <span class="text-xs text-white">⚡ HIIT</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition">
+                        <input type="checkbox" id="spec-yoga" value="Yoga" onchange="updateSpecialties()"
+                            class="w-4 h-4 accent-orange-500">
+                        <span class="text-xs text-white">🧘 Yoga</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition">
+                        <input type="checkbox" id="spec-boxing" value="Boxing" onchange="updateSpecialties()"
+                            class="w-4 h-4 accent-orange-500">
+                        <span class="text-xs text-white">🥊 Boxing</span>
+                    </label>
+                    <label class="flex items-center gap-2 p-2 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition">
+                        <input type="checkbox" id="spec-rehab" value="Rehabilitation" onchange="updateSpecialties()"
+                            class="w-4 h-4 accent-orange-500">
+                        <span class="text-xs text-white">🩹 Rehab</span>
+                    </label>
                 </div>
-                <!-- Add New Specialty -->
-                <div class="flex gap-2">
-                    <input type="text" id="new-specialty-input"
-                        class="flex-1 bg-black/20 text-sm text-white placeholder-gray-500 px-3 py-2 rounded-lg outline-none border border-white/10 focus:border-white/20"
-                        placeholder="Add specialty (e.g., Yoga, HIIT...)"
-                        maxlength="30"
-                        onclick="event.stopPropagation()"
-                        onkeypress="if(event.key==='Enter'){addSpecialty(); event.preventDefault();}">
-                    <button onclick="addSpecialty()" class="text-xs bg-orange-500 hover:bg-orange-400 px-3 py-2 rounded-lg font-medium transition tap-effect">
-                        Add
-                    </button>
-                </div>
-                <p class="text-[10px] text-gray-500 mt-2">Click a tag to remove it</p>
             </div>
         </div>
 

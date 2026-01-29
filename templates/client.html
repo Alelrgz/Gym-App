@@ -229,33 +229,79 @@
         {% endcall %}
     </div>
 
-    <!-- Macro Dashboard -->
-    {% call card(classes="p-5") %}
-    <div class="flex justify-between items-end mb-4">
-        <h3 class="text-sm font-bold text-white">Macros</h3>
-        <span class="text-xs text-gray-400" id="cals-remaining">... left</span>
+    <!-- Weight/Strength Trend Section -->
+    <div>
+        <div class="flex justify-between items-center mb-3">
+            <h3 id="trend-section-title" class="text-sm font-bold text-gray-400 uppercase tracking-wider">Weight Trend</h3>
+            <!-- Toggle between Weight and Strength -->
+            <div class="flex bg-white/5 rounded-lg p-0.5">
+                <button onclick="switchTrendView('weight')" id="trend-toggle-weight" class="text-[10px] px-3 py-1 rounded-md bg-blue-500/20 text-blue-400 font-bold transition">Weight</button>
+                <button onclick="switchTrendView('strength')" id="trend-toggle-strength" class="text-[10px] px-3 py-1 rounded-md text-gray-400 hover:text-white transition">Strength</button>
+            </div>
+        </div>
+        <div id="weight-chart-container" class="bg-white/5 rounded-xl p-4">
+            <div class="flex justify-between items-center mb-3">
+                <div class="flex items-center gap-2">
+                    <button onclick="openWeightModal()" id="weight-update-btn" class="flex items-center gap-1.5 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-500/30 px-3 py-1 rounded-full hover:from-blue-500/30 hover:to-cyan-500/30 transition tap-effect">
+                        <span class="text-xs">⚖️</span>
+                        <span id="client-weight" class="text-sm font-bold text-blue-400">--</span>
+                        <span class="text-xs text-blue-400/70">kg</span>
+                    </button>
+                    <span id="weight-trend-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold">--</span>
+                </div>
+                <div class="flex gap-1">
+                    <button onclick="loadTrendChart('week')" id="weight-period-week" class="text-[10px] px-2 py-1 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition">Week</button>
+                    <button onclick="loadTrendChart('month')" id="weight-period-month" class="text-[10px] px-2 py-1 rounded-lg bg-blue-500/20 text-blue-400 font-bold">Month</button>
+                    <button onclick="loadTrendChart('year')" id="weight-period-year" class="text-[10px] px-2 py-1 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition">Year</button>
+                </div>
+            </div>
+        <!-- Chart Area -->
+        <div class="relative h-32">
+            <canvas id="weight-chart" class="w-full h-full"></canvas>
+            <div id="weight-chart-loading" class="absolute inset-0 flex items-center justify-center">
+                <span class="text-gray-500 text-xs">Loading chart...</span>
+            </div>
+        </div>
+        <!-- Weight Stats Row -->
+        <div id="weight-stats-row" class="flex justify-between mt-3 text-center">
+            <div>
+                <p class="text-[10px] text-gray-500">Start</p>
+                <p id="weight-stat-start" class="text-sm font-bold text-gray-400">--</p>
+            </div>
+            <div>
+                <p class="text-[10px] text-gray-500">Min</p>
+                <p id="weight-stat-min" class="text-sm font-bold text-green-400">--</p>
+            </div>
+            <div>
+                <p class="text-[10px] text-gray-500">Max</p>
+                <p id="weight-stat-max" class="text-sm font-bold text-red-400">--</p>
+            </div>
+            <div>
+                <p class="text-[10px] text-gray-500">Change</p>
+                <p id="weight-stat-change" class="text-sm font-bold text-blue-400">--</p>
+            </div>
+        </div>
+        <!-- Strength Stats Row (hidden by default) -->
+        <div id="strength-stats-row" class="hidden flex justify-between mt-3 text-center">
+            <div>
+                <p class="text-[10px] text-gray-500">Start</p>
+                <p id="strength-stat-start" class="text-sm font-bold text-gray-400">0%</p>
+            </div>
+            <div>
+                <p class="text-[10px] text-gray-500">Current</p>
+                <p id="strength-stat-current" class="text-sm font-bold text-green-400">--</p>
+            </div>
+            <div>
+                <p class="text-[10px] text-gray-500">Progress</p>
+                <p id="strength-stat-progress" class="text-sm font-bold text-purple-400">--%</p>
+            </div>
+            <div>
+                <p class="text-[10px] text-gray-500">Trend</p>
+                <p id="strength-stat-trend" class="text-sm font-bold text-blue-400">--</p>
+            </div>
+        </div>
+        </div>
     </div>
-    <div class="flex justify-between px-2">
-        <div class="flex flex-col items-center">
-            <div class="macro-ring" id="ring-protein" style="background: conic-gradient(#4ADE80 0%, #333 0%);">
-                <div class="macro-content"><span class="text-[10px] text-gray-400">Pro</span><br><span
-                        class="text-xs font-bold text-white" id="val-protein">...</span></div>
-            </div>
-        </div>
-        <div class="flex flex-col items-center">
-            <div class="macro-ring" id="ring-carbs" style="background: conic-gradient(#60A5FA 0%, #333 0%);">
-                <div class="macro-content"><span class="text-[10px] text-gray-400">Carb</span><br><span
-                        class="text-xs font-bold text-white" id="val-carbs">...</span></div>
-            </div>
-        </div>
-        <div class="flex flex-col items-center">
-            <div class="macro-ring" id="ring-fat" style="background: conic-gradient(#F472B6 0%, #333 0%);">
-                <div class="macro-content"><span class="text-[10px] text-gray-400">Fat</span><br><span
-                        class="text-xs font-bold text-white" id="val-fat">...</span></div>
-            </div>
-        </div>
-    </div>
-    {% endcall %}
 
     <!-- Grouped Diet Log -->
     <div id="diet-log-container" class="space-y-4"></div>
@@ -263,14 +309,7 @@
     <!-- Physique Photos -->
     <div>
         <div class="flex justify-between items-center mb-3">
-            <div class="flex items-center gap-3">
-                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Physique Update</h3>
-                <button onclick="openWeightModal()" class="flex items-center gap-1.5 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-500/30 px-3 py-1 rounded-full hover:from-blue-500/30 hover:to-cyan-500/30 transition tap-effect">
-                    <span class="text-xs">⚖️</span>
-                    <span id="client-weight" class="text-sm font-bold text-blue-400">--</span>
-                    <span class="text-xs text-blue-400/70">kg</span>
-                </button>
-            </div>
+            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Physique Update</h3>
             <div class="flex gap-2">
                 <button onclick="openCompareModal()" class="text-xs bg-white/5 border border-white/10 backdrop-blur-sm px-3 py-1.5 rounded-xl text-white/80 hover:bg-white/10 hover:text-white transition tap-effect flex items-center gap-1">
                     <span class="text-[10px]">⚖️</span> Compare
@@ -280,47 +319,6 @@
                 </button>
             </div>
         </div>
-        <!-- Weight Chart -->
-        <div id="weight-chart-container" class="bg-white/5 rounded-xl p-4 mb-4">
-            <div class="flex justify-between items-center mb-3">
-                <div class="flex items-center gap-2">
-                    <span class="text-xs text-gray-400 font-medium">Weight Trend</span>
-                    <span id="weight-trend-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold">--</span>
-                </div>
-                <div class="flex gap-1">
-                    <button onclick="loadWeightChart('week')" id="weight-period-week" class="text-[10px] px-2 py-1 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition">Week</button>
-                    <button onclick="loadWeightChart('month')" id="weight-period-month" class="text-[10px] px-2 py-1 rounded-lg bg-blue-500/20 text-blue-400 font-bold">Month</button>
-                    <button onclick="loadWeightChart('year')" id="weight-period-year" class="text-[10px] px-2 py-1 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition">Year</button>
-                </div>
-            </div>
-            <!-- Chart Area -->
-            <div class="relative h-32">
-                <canvas id="weight-chart" class="w-full h-full"></canvas>
-                <div id="weight-chart-loading" class="absolute inset-0 flex items-center justify-center">
-                    <span class="text-gray-500 text-xs">Loading chart...</span>
-                </div>
-            </div>
-            <!-- Stats Row -->
-            <div class="flex justify-between mt-3 text-center">
-                <div>
-                    <p class="text-[10px] text-gray-500">Start</p>
-                    <p id="weight-stat-start" class="text-sm font-bold text-gray-400">--</p>
-                </div>
-                <div>
-                    <p class="text-[10px] text-gray-500">Min</p>
-                    <p id="weight-stat-min" class="text-sm font-bold text-green-400">--</p>
-                </div>
-                <div>
-                    <p class="text-[10px] text-gray-500">Max</p>
-                    <p id="weight-stat-max" class="text-sm font-bold text-red-400">--</p>
-                </div>
-                <div>
-                    <p class="text-[10px] text-gray-500">Change</p>
-                    <p id="weight-stat-change" class="text-sm font-bold text-blue-400">--</p>
-                </div>
-            </div>
-        </div>
-
         <div class="flex space-x-3 overflow-x-auto pb-2" id="photo-gallery">
             <p class="text-gray-500 text-xs py-4">Loading photos...</p>
         </div>
@@ -1591,7 +1589,7 @@ document.addEventListener('DOMContentLoaded', () => {
         <div data-action="showModal" data-target="shop-modal"
             class="flex items-center gap-2 bg-gradient-to-r from-yellow-500/20 to-amber-500/20 border border-yellow-500/30 px-4 py-2 rounded-full tap-effect hover:from-yellow-500/30 hover:to-amber-500/30 transition shadow-lg shadow-yellow-500/10 relative z-10"
             onclick="event.preventDefault(); event.stopPropagation();">
-            <span class="text-lg">💎</span>
+            <span class="text-lg">🔶</span>
             <span class="text-sm font-bold bg-gradient-to-r from-yellow-300 to-amber-400 bg-clip-text text-transparent" id="gem-count">0</span>
         </div>
         {% endcall %}
@@ -1808,93 +1806,95 @@ document.addEventListener('DOMContentLoaded', () => {
 <!-- Member Profile Modal -->
 <div id="member-profile-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
     onclick="if(event.target === this) closeMemberProfileModal()">
-    <div class="glass-card p-5 rounded-2xl max-w-sm w-full relative overflow-hidden">
-        <!-- Background glow -->
-        <div class="absolute top-0 left-0 w-32 h-32 bg-purple-500/20 blur-3xl rounded-full -ml-10 -mt-10"></div>
-        <div class="absolute bottom-0 right-0 w-32 h-32 bg-blue-500/20 blur-3xl rounded-full -mr-10 -mb-10"></div>
-
-        <!-- Close button -->
-        <button onclick="closeMemberProfileModal()" class="absolute top-3 right-3 w-8 h-8 flex items-center justify-center text-2xl text-gray-400 hover:text-white z-20 bg-white/10 rounded-full hover:bg-white/20 transition">&times;</button>
-
-        <!-- Header: Profile Picture + Name on left, Stats on right -->
-        <div class="flex items-start gap-4 mb-5 relative z-10">
-            <!-- Left: Avatar & Name -->
-            <div class="flex-shrink-0">
-                <div id="member-profile-avatar" class="w-16 h-16 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center overflow-hidden ring-2 ring-purple-500/50">
+    <div class="glass-card p-5 rounded-2xl max-w-sm w-full">
+        <!-- Header -->
+        <div class="flex justify-between items-start mb-4">
+            <div class="flex items-center gap-3">
+                <div id="member-profile-avatar" class="w-14 h-14 rounded-full bg-orange-500/20 flex items-center justify-center overflow-hidden border-2 border-orange-500/30">
                     <span class="text-2xl">👤</span>
                 </div>
-                <h3 id="member-profile-name" class="text-lg font-bold text-white mt-2 max-w-[100px] truncate">Username</h3>
-                <p id="member-profile-bio" class="text-gray-400 text-[10px] italic max-w-[100px] truncate"></p>
+                <div>
+                    <h3 id="member-profile-name" class="text-lg font-bold text-white">Username</h3>
+                    <p id="member-profile-bio" class="text-gray-400 text-xs max-w-[180px] truncate"></p>
+                </div>
             </div>
+            <button onclick="closeMemberProfileModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
 
-            <!-- Right: Stats -->
-            <div class="flex-1 grid grid-cols-3 gap-2">
-                <div class="bg-gradient-to-br from-orange-500/20 to-red-500/10 rounded-xl p-2 text-center relative overflow-hidden">
-                    <div class="flex items-center justify-center gap-0.5">
-                        <span class="text-sm">🔥</span>
-                        <p id="member-profile-streak" class="text-lg font-bold bg-gradient-to-r from-orange-400 to-red-400 bg-clip-text text-transparent">0</p>
-                    </div>
-                    <p class="text-[8px] text-orange-400 uppercase font-bold">Streak</p>
+        <!-- Stats Row -->
+        <div class="grid grid-cols-3 gap-2 mb-4">
+            <div class="bg-white/5 rounded-xl p-3 text-center border border-white/5">
+                <div class="flex items-center justify-center gap-1">
+                    <span class="text-sm">🔥</span>
+                    <p id="member-profile-streak" class="text-xl font-bold text-orange-400">0</p>
                 </div>
-                <div class="bg-gradient-to-br from-yellow-500/20 to-amber-500/10 rounded-xl p-2 text-center relative overflow-hidden">
-                    <div class="flex items-center justify-center gap-0.5">
-                        <span class="text-sm">💎</span>
-                        <p id="member-profile-gems" class="text-lg font-bold bg-gradient-to-r from-yellow-300 to-amber-400 bg-clip-text text-transparent">0</p>
-                    </div>
-                    <p class="text-[8px] text-yellow-400 uppercase font-bold">Gems</p>
+                <p class="text-[10px] text-gray-500 uppercase font-medium mt-1">Streak</p>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3 text-center border border-white/5">
+                <div class="flex items-center justify-center gap-1">
+                    <span class="text-sm">🔶</span>
+                    <p id="member-profile-gems" class="text-xl font-bold text-orange-400">0</p>
                 </div>
-                <div class="bg-gradient-to-br from-green-500/20 to-emerald-500/10 rounded-xl p-2 text-center relative overflow-hidden">
-                    <div class="flex items-center justify-center gap-0.5">
-                        <p id="member-profile-health" class="text-lg font-bold bg-gradient-to-r from-green-400 to-emerald-400 bg-clip-text text-transparent">0</p>
-                        <span class="text-[10px] text-green-400 font-bold">%</span>
-                    </div>
-                    <p class="text-[8px] text-green-400 uppercase font-bold">Diet</p>
+                <p class="text-[10px] text-gray-500 uppercase font-medium mt-1">Gems</p>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3 text-center border border-white/5">
+                <div class="flex items-center justify-center gap-0.5">
+                    <p id="member-profile-health" class="text-xl font-bold text-green-400">0</p>
+                    <span class="text-xs text-green-400 font-bold">%</span>
                 </div>
+                <p class="text-[10px] text-gray-500 uppercase font-medium mt-1">Diet</p>
             </div>
         </div>
 
-        <!-- Progress Chart -->
-        <div class="bg-white/5 rounded-xl p-4 mb-4 relative z-10">
+        <!-- Weekly Activity -->
+        <div class="bg-white/5 rounded-xl p-4 mb-4 border border-white/5">
             <div class="flex justify-between items-center mb-3">
-                <span class="text-xs text-gray-400 font-medium">Weekly Progress</span>
-                <span class="text-[10px] text-purple-400 font-bold">Last 7 days</span>
+                <span class="text-xs text-gray-400 uppercase tracking-wider font-medium">Weekly Activity</span>
+                <span class="text-[10px] text-orange-400">Last 7 days</span>
             </div>
-            <!-- Bar Chart -->
-            <div id="member-progress-chart" class="flex items-end justify-between gap-1 h-20">
-                <div class="flex-1 flex flex-col items-center">
-                    <div class="w-full bg-gradient-to-t from-purple-500 to-blue-500 rounded-t-sm transition-all duration-500" style="height: 40%"></div>
-                    <span class="text-[8px] text-gray-500 mt-1">M</span>
+            <!-- Activity Dots -->
+            <div id="member-progress-chart" class="flex items-center justify-between">
+                <div class="flex-1 flex flex-col items-center gap-1">
+                    <div class="w-8 h-8 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center member-day-dot" data-active="false">
+                        <span class="text-xs text-gray-500">M</span>
+                    </div>
                 </div>
-                <div class="flex-1 flex flex-col items-center">
-                    <div class="w-full bg-gradient-to-t from-purple-500 to-blue-500 rounded-t-sm transition-all duration-500" style="height: 65%"></div>
-                    <span class="text-[8px] text-gray-500 mt-1">T</span>
+                <div class="flex-1 flex flex-col items-center gap-1">
+                    <div class="w-8 h-8 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center member-day-dot" data-active="false">
+                        <span class="text-xs text-gray-500">T</span>
+                    </div>
                 </div>
-                <div class="flex-1 flex flex-col items-center">
-                    <div class="w-full bg-gradient-to-t from-purple-500 to-blue-500 rounded-t-sm transition-all duration-500" style="height: 45%"></div>
-                    <span class="text-[8px] text-gray-500 mt-1">W</span>
+                <div class="flex-1 flex flex-col items-center gap-1">
+                    <div class="w-8 h-8 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center member-day-dot" data-active="false">
+                        <span class="text-xs text-gray-500">W</span>
+                    </div>
                 </div>
-                <div class="flex-1 flex flex-col items-center">
-                    <div class="w-full bg-gradient-to-t from-purple-500 to-blue-500 rounded-t-sm transition-all duration-500" style="height: 80%"></div>
-                    <span class="text-[8px] text-gray-500 mt-1">T</span>
+                <div class="flex-1 flex flex-col items-center gap-1">
+                    <div class="w-8 h-8 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center member-day-dot" data-active="false">
+                        <span class="text-xs text-gray-500">T</span>
+                    </div>
                 </div>
-                <div class="flex-1 flex flex-col items-center">
-                    <div class="w-full bg-gradient-to-t from-purple-500 to-blue-500 rounded-t-sm transition-all duration-500" style="height: 55%"></div>
-                    <span class="text-[8px] text-gray-500 mt-1">F</span>
+                <div class="flex-1 flex flex-col items-center gap-1">
+                    <div class="w-8 h-8 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center member-day-dot" data-active="false">
+                        <span class="text-xs text-gray-500">F</span>
+                    </div>
                 </div>
-                <div class="flex-1 flex flex-col items-center">
-                    <div class="w-full bg-gradient-to-t from-purple-500 to-blue-500 rounded-t-sm transition-all duration-500" style="height: 90%"></div>
-                    <span class="text-[8px] text-gray-500 mt-1">S</span>
+                <div class="flex-1 flex flex-col items-center gap-1">
+                    <div class="w-8 h-8 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center member-day-dot" data-active="false">
+                        <span class="text-xs text-gray-500">S</span>
+                    </div>
                 </div>
-                <div class="flex-1 flex flex-col items-center">
-                    <div class="w-full bg-gradient-to-t from-purple-500/50 to-blue-500/50 rounded-t-sm transition-all duration-500" style="height: 30%"></div>
-                    <span class="text-[8px] text-purple-400 mt-1">S</span>
+                <div class="flex-1 flex flex-col items-center gap-1">
+                    <div class="w-8 h-8 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center member-day-dot" data-active="false">
+                        <span class="text-xs text-gray-500">S</span>
+                    </div>
                 </div>
             </div>
         </div>
 
         <!-- Message Button -->
         <button id="member-profile-message-btn" onclick="messageFromProfile()"
-            class="w-full py-3 bg-gradient-to-r from-blue-500 to-purple-500 text-white font-bold rounded-xl hover:from-blue-400 hover:to-purple-400 transition tap-effect relative z-10">
+            class="w-full py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-400 transition tap-effect">
             Message
         </button>
     </div>
@@ -2019,7 +2019,7 @@ async function loadAppointments() {
     }
 }
 
-function openBookingModal() {
+async function openBookingModal() {
     if (!selectedTrainerId) {
         showToast('No trainer assigned', 'error');
         return;
@@ -2030,10 +2030,71 @@ function openBookingModal() {
     document.getElementById('appointment-date').min = today;
     document.getElementById('appointment-date').value = '';
 
+    // Reset session type selection
+    const sessionTypeSelect = document.getElementById('appointment-session-type');
+    if (sessionTypeSelect) {
+        sessionTypeSelect.selectedIndex = 0;
+    }
+
+    // Load trainer's custom session types
+    await loadTrainerSessionTypes();
+
     document.getElementById('booking-modal').classList.remove('hidden');
     document.getElementById('booking-step-1').classList.remove('hidden');
     document.getElementById('booking-step-2').classList.add('hidden');
     document.body.style.overflow = 'hidden';
+}
+
+// Category labels with emojis (lowercase keys)
+const categoryLabels = {
+    'bodybuilding': '💪 Bodybuilding',
+    'crossfit': '🏋️ Crossfit',
+    'calisthenics': '🤸 Calisthenics',
+    'cardio': '🏃 Cardio',
+    'hiit': '⚡ HIIT',
+    'yoga': '🧘 Yoga',
+    'boxing': '🥊 Boxing',
+    'rehabilitation': '🩹 Rehabilitation'
+};
+
+async function loadTrainerSessionTypes() {
+    const sessionTypeSelect = document.getElementById('appointment-session-type');
+    if (!sessionTypeSelect) return;
+
+    // Clear all options
+    sessionTypeSelect.innerHTML = '<option value="" disabled selected>Loading...</option>';
+
+    try {
+        const response = await fetch(`/api/client/trainer/${selectedTrainerId}/session-types`, {
+            credentials: 'include'
+        });
+
+        if (response.ok) {
+            const specialties = await response.json();
+
+            // Clear and add placeholder
+            sessionTypeSelect.innerHTML = '<option value="" disabled selected>Choose session type...</option>';
+
+            if (specialties && specialties.length > 0) {
+                // Add trainer's specialties as options
+                specialties.forEach(specialty => {
+                    const option = document.createElement('option');
+                    const key = specialty.toLowerCase();
+                    option.value = key;
+                    option.textContent = categoryLabels[key] || specialty;
+                    sessionTypeSelect.appendChild(option);
+                });
+            } else {
+                // Trainer hasn't set specialties - show message
+                sessionTypeSelect.innerHTML = '<option value="" disabled selected>No categories available</option>';
+            }
+        } else {
+            sessionTypeSelect.innerHTML = '<option value="" disabled selected>Choose session type...</option>';
+        }
+    } catch (error) {
+        console.error('Error loading trainer specialties:', error);
+        sessionTypeSelect.innerHTML = '<option value="" disabled selected>Error loading categories</option>';
+    }
 }
 
 function closeBookingModal() {
@@ -2123,6 +2184,14 @@ async function confirmBooking() {
         return;
     }
 
+    const sessionTypeSelect = document.getElementById('appointment-session-type');
+    const sessionType = sessionTypeSelect ? sessionTypeSelect.value : null;
+
+    if (!sessionType) {
+        showToast('Please select a session type', 'error');
+        return;
+    }
+
     const notes = document.getElementById('appointment-notes').value;
 
     try {
@@ -2137,6 +2206,7 @@ async function confirmBooking() {
                 date: selectedDate,
                 start_time: selectedTime,
                 duration: 60,
+                session_type: sessionType,
                 notes: notes
             })
         });
@@ -3181,33 +3251,26 @@ function updateMemberProgressChart(healthScore, streak) {
     const today = new Date().getDay(); // 0=Sunday, 1=Monday, etc
     const todayIndex = today === 0 ? 6 : today - 1; // Convert to 0=Monday
 
-    // Generate progress bars based on health score with some variance
-    const baseProgress = Math.min(healthScore, 100);
+    // Determine active days based on streak
+    const activeDays = Math.min(streak, 7);
+
     let html = '';
-
     days.forEach((day, index) => {
-        // Create variance: past days have actual values, future days are dimmed
-        const isPast = index < todayIndex;
+        const isPast = index <= todayIndex;
         const isToday = index === todayIndex;
-        const isFuture = index > todayIndex;
 
-        // Generate height based on health score with random variance
-        let height;
-        if (isFuture) {
-            height = 15; // Minimal for future days
-        } else {
-            // Vary between 40-100% of health score for past days
-            const variance = Math.random() * 0.4 + 0.6;
-            height = Math.max(20, Math.min(95, baseProgress * variance));
-        }
+        // Active if within streak and not future
+        const isActive = isPast && (todayIndex - index) < activeDays;
 
-        const opacity = isFuture ? '0.3' : '1';
-        const textColor = isToday ? 'text-purple-400' : 'text-gray-500';
+        const bgClass = isActive ? 'bg-orange-500' : 'bg-orange-500/20';
+        const borderClass = isActive ? 'border-orange-400' : 'border-orange-500/30';
+        const textClass = isActive ? 'text-white font-bold' : (isToday ? 'text-orange-400' : 'text-gray-500');
 
         html += `
-            <div class="flex-1 flex flex-col items-center">
-                <div class="w-full bg-gradient-to-t from-purple-500 to-blue-500 rounded-t-sm transition-all duration-500" style="height: ${height}%; opacity: ${opacity}"></div>
-                <span class="text-[8px] ${textColor} mt-1">${day}</span>
+            <div class="flex-1 flex flex-col items-center gap-1">
+                <div class="w-8 h-8 rounded-full ${bgClass} border ${borderClass} flex items-center justify-center transition-all">
+                    <span class="text-xs ${textClass}">${day}</span>
+                </div>
             </div>
         `;
     });

@@ -276,6 +276,7 @@ class AppointmentService:
 
             # Create appointment record
             appointment_id = str(uuid.uuid4())
+            session_type = request.session_type or "general"
             appointment = AppointmentORM(
                 id=appointment_id,
                 client_id=client_id,
@@ -284,11 +285,15 @@ class AppointmentService:
                 start_time=request.start_time,
                 end_time=end_time,
                 duration=request.duration,
+                session_type=session_type,
                 notes=request.notes,
                 status="scheduled"
             )
 
             db.add(appointment)
+
+            # Format session type for display
+            session_label = session_type.replace("_", " ").title() if session_type else "Training"
 
             # Also create an entry in the trainer's calendar
             trainer_calendar_entry = TrainerScheduleORM(
@@ -297,8 +302,8 @@ class AppointmentService:
                 appointment_id=appointment_id,
                 date=request.date,
                 time=time_12hr,
-                title=f"1-on-1 Session with {client_name}",
-                subtitle=request.notes if request.notes else "Personal training session",
+                title=f"{session_label} Session with {client_name}",
+                subtitle=request.notes if request.notes else f"{session_label} session",
                 type="1on1_appointment",
                 duration=request.duration,
                 completed=False
@@ -312,7 +317,7 @@ class AppointmentService:
             client_calendar_entry = ClientScheduleORM(
                 client_id=client_id,
                 date=request.date,
-                title=f"1-on-1 Session with {trainer_name}",
+                title=f"{session_label} Session with {trainer_name}",
                 type="appointment",
                 completed=False
             )
@@ -323,14 +328,15 @@ class AppointmentService:
                 user_id=request.trainer_id,
                 type="appointment_booked",
                 title="New Appointment Booked",
-                message=f"{client_name} booked a session on {request.date} at {time_12hr}",
+                message=f"{client_name} booked a {session_label} session on {request.date} at {time_12hr}",
                 data=json.dumps({
                     "appointment_id": appointment_id,
                     "client_id": client_id,
                     "client_name": client_name,
                     "date": request.date,
                     "time": time_12hr,
-                    "duration": request.duration
+                    "duration": request.duration,
+                    "session_type": session_type
                 }),
                 read=False,
                 created_at=datetime.utcnow().isoformat()
@@ -407,6 +413,9 @@ class AppointmentService:
 
             # Create appointment record
             appointment_id = str(uuid.uuid4())
+            session_type = request.session_type or "general"
+            session_label = session_type.replace("_", " ").title() if session_type else "Training"
+
             appointment = AppointmentORM(
                 id=appointment_id,
                 client_id=client_id,
@@ -415,6 +424,7 @@ class AppointmentService:
                 start_time=request.start_time,
                 end_time=end_time,
                 duration=request.duration,
+                session_type=session_type,
                 notes=request.notes,
                 status="scheduled"
             )
@@ -428,8 +438,8 @@ class AppointmentService:
                 appointment_id=appointment_id,
                 date=request.date,
                 time=time_12hr,
-                title=f"1-on-1 Session with {client_name}",
-                subtitle=request.notes if request.notes else "Personal training session",
+                title=f"{session_label} Session with {client_name}",
+                subtitle=request.notes if request.notes else f"{session_label} session",
                 type="1on1_appointment",
                 duration=request.duration,
                 completed=False
@@ -442,7 +452,7 @@ class AppointmentService:
             client_calendar_entry = ClientScheduleORM(
                 client_id=client_id,
                 date=request.date,
-                title=f"1-on-1 Session with {trainer_name}",
+                title=f"{session_label} Session with {trainer_name}",
                 type="appointment",
                 completed=False
             )
@@ -454,14 +464,15 @@ class AppointmentService:
                 user_id=client_id,
                 type="appointment_scheduled",
                 title="Appointment Scheduled",
-                message=f"{trainer_name} scheduled a session with you on {request.date} at {time_12hr}",
+                message=f"{trainer_name} scheduled a {session_label} session with you on {request.date} at {time_12hr}",
                 data=json.dumps({
                     "appointment_id": appointment_id,
                     "trainer_id": trainer_id,
                     "trainer_name": trainer_name,
                     "date": request.date,
                     "time": time_12hr,
-                    "duration": request.duration
+                    "duration": request.duration,
+                    "session_type": session_type
                 }),
                 read=False,
                 created_at=datetime.utcnow().isoformat()
@@ -671,6 +682,61 @@ class AppointmentService:
             db.rollback()
             logger.error(f"Error completing appointment: {e}")
             raise HTTPException(status_code=500, detail=f"Failed to complete appointment: {str(e)}")
+        finally:
+            db.close()
+
+    # --- SESSION TYPES ---
+
+    def get_trainer_session_types(self, trainer_id: str) -> List[str]:
+        """Get trainer's specialties as session types for booking."""
+        db = get_db_session()
+        try:
+            trainer = db.query(UserORM).filter(UserORM.id == trainer_id).first()
+            if not trainer:
+                return []
+
+            # Use trainer's specialties as session types
+            if trainer.specialties:
+                # Specialties are stored as comma-separated string
+                specialties = [s.strip().lower() for s in trainer.specialties.split(",") if s.strip()]
+                return specialties
+            return []
+
+        finally:
+            db.close()
+
+    def set_trainer_session_types(self, trainer_id: str, session_types: List[str]) -> dict:
+        """Set trainer's custom session types in their settings."""
+        db = get_db_session()
+        try:
+            trainer = db.query(UserORM).filter(UserORM.id == trainer_id).first()
+            if not trainer:
+                raise HTTPException(status_code=404, detail="Trainer not found")
+
+            # Parse existing settings or create new
+            settings = {}
+            if trainer.settings:
+                try:
+                    settings = json.loads(trainer.settings) if isinstance(trainer.settings, str) else trainer.settings
+                except (json.JSONDecodeError, TypeError):
+                    settings = {}
+
+            # Update session types
+            settings["session_types"] = session_types
+            trainer.settings = json.dumps(settings)
+
+            db.commit()
+            logger.info(f"Updated session types for trainer {trainer_id}: {session_types}")
+
+            return {"status": "success", "session_types": session_types}
+
+        except HTTPException:
+            db.rollback()
+            raise
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error setting session types: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to set session types: {str(e)}")
         finally:
             db.close()
 

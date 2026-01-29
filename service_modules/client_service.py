@@ -595,6 +595,98 @@ class ClientService:
         finally:
             db.close()
 
+    def get_strength_progress(self, client_id: str, period: str = "month") -> dict:
+        """Calculate strength progress over time for charting."""
+        db = get_db_session()
+        try:
+            from sqlalchemy import func
+
+            # Determine date range based on period
+            now = datetime.now()
+            if period == "week":
+                start_date = now - timedelta(days=7)
+            elif period == "month":
+                start_date = now - timedelta(days=30)
+            elif period == "year":
+                start_date = now - timedelta(days=365)
+            else:
+                start_date = now - timedelta(days=30)
+
+            # Get average max weight across all exercises per date
+            # This gives us a daily "strength index"
+            logs = db.query(
+                ClientExerciseLogORM.date,
+                ClientExerciseLogORM.exercise_name,
+                func.max(ClientExerciseLogORM.weight).label('max_weight')
+            ).filter(
+                ClientExerciseLogORM.client_id == client_id,
+                ClientExerciseLogORM.date >= start_date.strftime("%Y-%m-%d"),
+                ClientExerciseLogORM.weight > 0
+            ).group_by(
+                ClientExerciseLogORM.date,
+                ClientExerciseLogORM.exercise_name
+            ).order_by(
+                ClientExerciseLogORM.date
+            ).all()
+
+            if not logs:
+                return {"progress": 0, "trend": "stable", "data": []}
+
+            # Group by date and calculate average strength per day
+            date_data = {}
+            for log in logs:
+                if log.date not in date_data:
+                    date_data[log.date] = []
+                date_data[log.date].append(log.max_weight)
+
+            # Calculate daily average and normalize to percentage from baseline
+            sorted_dates = sorted(date_data.keys())
+            if not sorted_dates:
+                return {"progress": 0, "trend": "stable", "data": []}
+
+            # Get baseline (first day's average)
+            baseline = sum(date_data[sorted_dates[0]]) / len(date_data[sorted_dates[0]])
+            if baseline == 0:
+                baseline = 1  # Avoid division by zero
+
+            # Build data points as percentage change from baseline
+            data_points = []
+            for date_str in sorted_dates:
+                daily_avg = sum(date_data[date_str]) / len(date_data[date_str])
+                pct_change = ((daily_avg - baseline) / baseline) * 100
+
+                parsed_date = datetime.strptime(date_str, "%Y-%m-%d")
+                data_points.append({
+                    "date": date_str,
+                    "strength": round(pct_change, 1),
+                    "label": parsed_date.strftime("%d %b") if period != "year" else parsed_date.strftime("%b %y")
+                })
+
+            # Calculate overall progress (last vs first)
+            if len(data_points) >= 2:
+                overall_progress = data_points[-1]["strength"]
+            else:
+                overall_progress = 0
+
+            # Determine trend
+            if overall_progress > 2:
+                trend = "up"
+            elif overall_progress < -2:
+                trend = "down"
+            else:
+                trend = "stable"
+
+            return {
+                "progress": round(overall_progress, 1),
+                "trend": trend,
+                "data": data_points
+            }
+        except Exception as e:
+            logger.error(f"Error calculating strength progress: {e}")
+            return {"progress": 0, "trend": "stable", "exercises_tracked": 0}
+        finally:
+            db.close()
+
     def toggle_premium_status(self, client_id: str) -> dict:
         """Toggle premium status for a client."""
         logger.debug(f"Entering toggle_premium_status for {client_id}")

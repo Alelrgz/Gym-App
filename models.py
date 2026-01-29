@@ -316,6 +316,7 @@ class BookAppointmentRequest(BaseModel):
     date: str  # YYYY-MM-DD
     start_time: str  # HH:MM
     duration: int = 60
+    session_type: Optional[str] = None  # e.g., "bodybuilding", "crossfit", "calisthenics", or custom
     notes: Optional[str] = None
 
 class CancelAppointmentRequest(BaseModel):

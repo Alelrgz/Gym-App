@@ -340,6 +340,7 @@ class AppointmentORM(Base):
 
     # Appointment details
     title = Column(String, default="1-on-1 Training Session")
+    session_type = Column(String, nullable=True)  # bodybuilding, crossfit, calisthenics, or custom
     notes = Column(String, nullable=True)  # Client's notes/goals for the session
     trainer_notes = Column(String, nullable=True)  # Trainer's notes after session
 

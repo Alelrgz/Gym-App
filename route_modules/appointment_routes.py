@@ -39,6 +39,42 @@ async def get_my_availability(
     return service.get_trainer_availability(user.id)
 
 
+@router.get("/api/trainer/session-types")
+async def get_session_types(
+    user = Depends(get_current_user),
+    service: AppointmentService = Depends(get_appointment_service)
+):
+    """Get trainer's custom session types."""
+    if user.role != "trainer":
+        raise HTTPException(status_code=403, detail="Only trainers can view their session types")
+
+    return service.get_trainer_session_types(user.id)
+
+
+@router.post("/api/trainer/session-types")
+async def set_session_types(
+    request: dict,
+    user = Depends(get_current_user),
+    service: AppointmentService = Depends(get_appointment_service)
+):
+    """Set trainer's custom session types."""
+    if user.role != "trainer":
+        raise HTTPException(status_code=403, detail="Only trainers can set session types")
+
+    session_types = request.get("session_types", [])
+    return service.set_trainer_session_types(user.id, session_types)
+
+
+@router.get("/api/client/trainer/{trainer_id}/session-types")
+async def get_trainer_session_types_for_client(
+    trainer_id: str,
+    user = Depends(get_current_user),
+    service: AppointmentService = Depends(get_appointment_service)
+):
+    """Get a trainer's session types (for clients booking)."""
+    return service.get_trainer_session_types(trainer_id)
+
+
 @router.get("/api/trainer/available-slots")
 async def get_my_available_slots(
     date: str,

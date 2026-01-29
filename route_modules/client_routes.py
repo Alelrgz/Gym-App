@@ -80,6 +80,16 @@ async def get_weight_history(
     return service.get_weight_history(current_user.id, period)
 
 
+@router.get("/api/client/strength-progress")
+async def get_strength_progress(
+    period: str = "month",  # "week", "month", "year"
+    service: ClientService = Depends(get_client_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Get client's strength progress based on exercise weight increases."""
+    return service.get_strength_progress(current_user.id, period)
+
+
 @router.post("/api/trainer/client/{client_id}/toggle_premium")
 async def toggle_client_premium(
     client_id: str,

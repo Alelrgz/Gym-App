@@ -1000,5 +1000,13 @@
             alert('Error saving availability: ' + e.message);
         }
     }
+
+    // Open availability modal
+    const originalOpenAvailabilityModal = openAvailabilityModal;
+    openAvailabilityModal = async function() {
+        window.showModal('availability-modal');
+        await loadAvailability();
+        setupDayToggles();
+    };
 </script>
 {% endblock %}

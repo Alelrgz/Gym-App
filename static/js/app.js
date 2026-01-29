@@ -110,8 +110,20 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// --- TRAINER SPECIALTIES ---
+// --- TRAINER SPECIALTIES (Checkbox-based) ---
 let currentSpecialties = [];
+
+// Map checkbox IDs to specialty values
+const specialtyMapping = {
+    'spec-bodybuilding': 'Bodybuilding',
+    'spec-crossfit': 'Crossfit',
+    'spec-calisthenics': 'Calisthenics',
+    'spec-cardio': 'Cardio',
+    'spec-hiit': 'HIIT',
+    'spec-yoga': 'Yoga',
+    'spec-boxing': 'Boxing',
+    'spec-rehab': 'Rehabilitation'
+};
 
 async function loadTrainerSpecialties() {
     try {
@@ -121,7 +133,14 @@ async function loadTrainerSpecialties() {
         if (response.ok) {
             const data = await response.json();
             currentSpecialties = data.specialties || [];
-            renderSpecialtiesTags();
+
+            // Update checkboxes based on saved specialties
+            Object.entries(specialtyMapping).forEach(([checkboxId, value]) => {
+                const checkbox = document.getElementById(checkboxId);
+                if (checkbox) {
+                    checkbox.checked = currentSpecialties.includes(value);
+                }
+            });
         }
     } catch (error) {
         console.error('Error loading specialties:', error);
@@ -129,56 +148,20 @@ async function loadTrainerSpecialties() {
 }
 window.loadTrainerSpecialties = loadTrainerSpecialties;
 
-function renderSpecialtiesTags() {
-    const container = document.getElementById('specialties-tags');
-    if (!container) return;
+function updateSpecialties() {
+    // Collect all checked specialties
+    currentSpecialties = [];
+    Object.entries(specialtyMapping).forEach(([checkboxId, value]) => {
+        const checkbox = document.getElementById(checkboxId);
+        if (checkbox && checkbox.checked) {
+            currentSpecialties.push(value);
+        }
+    });
 
-    if (currentSpecialties.length === 0) {
-        container.innerHTML = '<span class="text-xs text-gray-500 italic">No specialties added yet</span>';
-        return;
-    }
-
-    container.innerHTML = currentSpecialties.map(specialty =>
-        `<span onclick="removeSpecialty('${specialty.replace(/'/g, "\\'")}')"
-               class="inline-flex items-center gap-1 bg-orange-500/20 text-orange-400 px-3 py-1 rounded-full text-xs cursor-pointer hover:bg-red-500/20 hover:text-red-400 transition">
-            ${specialty}
-            <span class="text-[10px]">×</span>
-        </span>`
-    ).join('');
+    // Auto-save when specialties change
+    saveSpecialties();
 }
-
-async function addSpecialty() {
-    const input = document.getElementById('new-specialty-input');
-    if (!input) return;
-
-    const specialty = input.value.trim();
-    if (!specialty) return;
-
-    // Check if already exists (case-insensitive)
-    if (currentSpecialties.some(s => s.toLowerCase() === specialty.toLowerCase())) {
-        showToast('Specialty already added', 'error');
-        return;
-    }
-
-    // Max 5 specialties
-    if (currentSpecialties.length >= 5) {
-        showToast('Maximum 5 specialties allowed', 'error');
-        return;
-    }
-
-    currentSpecialties.push(specialty);
-    input.value = '';
-    renderSpecialtiesTags();
-    await saveSpecialties();
-}
-window.addSpecialty = addSpecialty;
-
-async function removeSpecialty(specialty) {
-    currentSpecialties = currentSpecialties.filter(s => s !== specialty);
-    renderSpecialtiesTags();
-    await saveSpecialties();
-}
-window.removeSpecialty = removeSpecialty;
+window.updateSpecialties = updateSpecialties;
 
 async function saveSpecialties() {
     try {
@@ -2308,6 +2291,86 @@ document.addEventListener('DOMContentLoaded', initCarousel);
 
 let weightChartInstance = null;
 let currentWeightPeriod = 'month';
+let currentTrendView = 'weight'; // 'weight' or 'strength'
+let cachedWeightData = null;
+let cachedStrengthData = null;
+
+// Switch between weight and strength views
+function switchTrendView(view) {
+    currentTrendView = view;
+
+    // Update toggle buttons
+    const weightBtn = document.getElementById('trend-toggle-weight');
+    const strengthBtn = document.getElementById('trend-toggle-strength');
+    const title = document.getElementById('trend-section-title');
+    const weightUpdateBtn = document.getElementById('weight-update-btn');
+    const trendBadge = document.getElementById('weight-trend-badge');
+    const weightStatsRow = document.getElementById('weight-stats-row');
+    const strengthStatsRow = document.getElementById('strength-stats-row');
+
+    if (view === 'weight') {
+        weightBtn.className = 'text-[10px] px-3 py-1 rounded-md bg-blue-500/20 text-blue-400 font-bold transition';
+        strengthBtn.className = 'text-[10px] px-3 py-1 rounded-md text-gray-400 hover:text-white transition';
+        title.textContent = 'Weight Trend';
+        if (weightUpdateBtn) weightUpdateBtn.classList.remove('hidden');
+        if (weightStatsRow) weightStatsRow.classList.remove('hidden');
+        if (strengthStatsRow) strengthStatsRow.classList.add('hidden');
+        // Render weight chart
+        if (cachedWeightData) {
+            renderWeightChart(cachedWeightData.data, cachedWeightData.stats);
+        }
+    } else {
+        weightBtn.className = 'text-[10px] px-3 py-1 rounded-md text-gray-400 hover:text-white transition';
+        strengthBtn.className = 'text-[10px] px-3 py-1 rounded-md bg-green-500/20 text-green-400 font-bold transition';
+        title.textContent = 'Strength Progress';
+        if (weightUpdateBtn) weightUpdateBtn.classList.add('hidden');
+        if (weightStatsRow) weightStatsRow.classList.add('hidden');
+        if (strengthStatsRow) strengthStatsRow.classList.remove('hidden');
+        // Render strength chart
+        if (cachedStrengthData) {
+            renderStrengthChart(cachedStrengthData);
+        }
+    }
+
+    // Update trend badge based on current view
+    updateTrendBadge(view);
+}
+
+function updateTrendBadge(view) {
+    const trendBadge = document.getElementById('weight-trend-badge');
+    if (!trendBadge) return;
+
+    if (view === 'weight' && cachedWeightData && cachedWeightData.stats) {
+        const stats = cachedWeightData.stats;
+        if (stats.trend === 'down') {
+            trendBadge.textContent = `↓ ${Math.abs(stats.change)} kg`;
+            trendBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold';
+        } else if (stats.trend === 'up') {
+            trendBadge.textContent = `↑ ${stats.change} kg`;
+            trendBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-bold';
+        } else {
+            trendBadge.textContent = '→ Stable';
+            trendBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold';
+        }
+    } else if (view === 'strength' && cachedStrengthData) {
+        const progress = cachedStrengthData.progress || 0;
+        if (progress > 0) {
+            trendBadge.textContent = `↑ +${progress}%`;
+            trendBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold';
+        } else if (progress < 0) {
+            trendBadge.textContent = `↓ ${progress}%`;
+            trendBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-bold';
+        } else {
+            trendBadge.textContent = '→ Stable';
+            trendBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold';
+        }
+    }
+}
+
+// Load chart based on current view
+function loadTrendChart(period = 'month') {
+    loadWeightChart(period);
+}
 
 async function loadWeightChart(period = 'month') {
     currentWeightPeriod = period;
@@ -2328,22 +2391,199 @@ async function loadWeightChart(period = 'month') {
     if (loadingEl) loadingEl.style.display = 'flex';
 
     try {
-        const response = await fetch(`/api/client/weight-history?period=${period}`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` },
-            credentials: 'include'
-        });
+        // Fetch both weight history and strength progress in parallel
+        const [weightResponse, strengthResponse] = await Promise.all([
+            fetch(`/api/client/weight-history?period=${period}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` },
+                credentials: 'include'
+            }),
+            fetch(`/api/client/strength-progress?period=${period}`, {
+                headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` },
+                credentials: 'include'
+            })
+        ]);
 
-        if (!response.ok) throw new Error('Failed to load weight history');
+        if (!weightResponse.ok) throw new Error('Failed to load weight history');
 
-        const result = await response.json();
-        renderWeightChart(result.data, result.stats);
-        // Also render mini hero chart
+        const result = await weightResponse.json();
+        cachedWeightData = result;
+
+        // Get strength data
+        if (strengthResponse.ok) {
+            cachedStrengthData = await strengthResponse.json();
+            updateStrengthStats(cachedStrengthData);
+        }
+
+        // Render based on current view
+        if (currentTrendView === 'weight') {
+            renderWeightChart(result.data, result.stats);
+        } else {
+            renderStrengthChart(cachedStrengthData);
+        }
+
+        // Also render mini hero chart (weight only)
         renderHeroWeightChart(result.data, result.stats);
+
+        // Update trend badge
+        updateTrendBadge(currentTrendView);
     } catch (error) {
-        console.error('Error loading weight chart:', error);
+        console.error('Error loading chart:', error);
     } finally {
         if (loadingEl) loadingEl.style.display = 'none';
     }
+}
+
+function updateStrengthStats(strengthData) {
+    if (!strengthData) return;
+
+    const progress = strengthData.progress || 0;
+    const trend = strengthData.trend || 'stable';
+
+    // Update strength stats row
+    const startEl = document.getElementById('strength-stat-start');
+    const currentEl = document.getElementById('strength-stat-current');
+    const progressEl = document.getElementById('strength-stat-progress');
+    const trendEl = document.getElementById('strength-stat-trend');
+
+    if (startEl) startEl.textContent = '0%';
+    if (currentEl) {
+        const prefix = progress > 0 ? '+' : '';
+        currentEl.textContent = `${prefix}${progress}%`;
+        currentEl.className = `text-sm font-bold ${progress > 0 ? 'text-green-400' : progress < 0 ? 'text-red-400' : 'text-gray-400'}`;
+    }
+    if (progressEl) {
+        const prefix = progress > 0 ? '+' : '';
+        progressEl.textContent = `${prefix}${progress}%`;
+        progressEl.className = `text-sm font-bold ${progress > 0 ? 'text-green-400' : progress < 0 ? 'text-red-400' : 'text-purple-400'}`;
+    }
+    if (trendEl) {
+        trendEl.textContent = trend === 'up' ? '↑ Gaining' : trend === 'down' ? '↓ Losing' : '→ Stable';
+        trendEl.className = `text-sm font-bold ${trend === 'up' ? 'text-green-400' : trend === 'down' ? 'text-red-400' : 'text-blue-400'}`;
+    }
+}
+
+function renderStrengthChart(strengthData) {
+    const canvas = document.getElementById('weight-chart');
+    if (!canvas || !strengthData || !strengthData.data || strengthData.data.length === 0) {
+        // Show empty state
+        const ctx = canvas?.getContext('2d');
+        if (ctx) {
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * 2;
+            canvas.height = rect.height * 2;
+            ctx.scale(2, 2);
+            ctx.clearRect(0, 0, rect.width, rect.height);
+            ctx.fillStyle = 'rgba(255,255,255,0.3)';
+            ctx.font = '12px system-ui';
+            ctx.textAlign = 'center';
+            ctx.fillText('No strength data yet', rect.width / 2, rect.height / 2);
+            ctx.fillText('Complete workouts to track progress', rect.width / 2, rect.height / 2 + 16);
+        }
+        return;
+    }
+
+    const data = strengthData.data;
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * 2;
+    canvas.height = rect.height * 2;
+    ctx.scale(2, 2);
+
+    const width = rect.width;
+    const height = rect.height;
+    const padding = { top: 10, right: 10, bottom: 20, left: 35 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+
+    ctx.clearRect(0, 0, width, height);
+
+    // Get min/max for strength scaling
+    const values = data.map(d => d.strength);
+    const minStrength = Math.min(...values, 0) - 5;
+    const maxStrength = Math.max(...values, 0) + 5;
+    const strengthRange = maxStrength - minStrength || 1;
+
+    // Draw grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+        const y = padding.top + (chartHeight * i / 4);
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(width - padding.right, y);
+        ctx.stroke();
+    }
+
+    // Draw zero line if visible
+    if (minStrength < 0 && maxStrength > 0) {
+        const zeroY = padding.top + chartHeight - ((0 - minStrength) / strengthRange * chartHeight);
+        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+        ctx.setLineDash([5, 5]);
+        ctx.beginPath();
+        ctx.moveTo(padding.left, zeroY);
+        ctx.lineTo(width - padding.right, zeroY);
+        ctx.stroke();
+        ctx.setLineDash([]);
+    }
+
+    // Draw Y-axis labels (percentage)
+    ctx.fillStyle = 'rgba(34, 197, 94, 0.7)';
+    ctx.font = '9px system-ui';
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= 4; i++) {
+        const strength = maxStrength - (strengthRange * i / 4);
+        const y = padding.top + (chartHeight * i / 4);
+        ctx.fillText(`${strength.toFixed(0)}%`, padding.left - 5, y + 3);
+    }
+
+    // Calculate points
+    const points = data.map((d, i) => ({
+        x: padding.left + (chartWidth * i / (data.length - 1 || 1)),
+        y: padding.top + chartHeight - ((d.strength - minStrength) / strengthRange * chartHeight),
+        label: d.label,
+        strength: d.strength
+    }));
+
+    // Draw gradient fill
+    const gradient = ctx.createLinearGradient(0, padding.top, 0, height - padding.bottom);
+    gradient.addColorStop(0, 'rgba(34, 197, 94, 0.3)');
+    gradient.addColorStop(1, 'rgba(34, 197, 94, 0.0)');
+
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, height - padding.bottom);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.lineTo(points[points.length - 1].x, height - padding.bottom);
+    ctx.closePath();
+    ctx.fillStyle = gradient;
+    ctx.fill();
+
+    // Draw line
+    ctx.beginPath();
+    ctx.moveTo(points[0].x, points[0].y);
+    points.forEach(p => ctx.lineTo(p.x, p.y));
+    ctx.strokeStyle = '#22C55E';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Draw points
+    points.forEach(p => {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = '#22C55E';
+        ctx.fill();
+    });
+
+    // Draw X-axis labels
+    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    ctx.font = '8px system-ui';
+    ctx.textAlign = 'center';
+    const labelStep = Math.ceil(data.length / 5);
+    data.forEach((d, i) => {
+        if (i % labelStep === 0 || i === data.length - 1) {
+            const x = padding.left + (chartWidth * i / (data.length - 1 || 1));
+            ctx.fillText(d.label, x, height - 5);
+        }
+    });
 }
 
 function renderHeroWeightChart(data, stats) {
@@ -2430,7 +2670,7 @@ function renderWeightChart(data, stats) {
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
 
-    // Get min/max for scaling
+    // Get min/max for weight scaling
     const weights = data.map(d => d.weight);
     const minWeight = Math.min(...weights) - 1;
     const maxWeight = Math.max(...weights) + 1;
@@ -2447,8 +2687,8 @@ function renderWeightChart(data, stats) {
         ctx.stroke();
     }
 
-    // Draw Y-axis labels
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
+    // Draw Y-axis labels (Weight in kg)
+    ctx.fillStyle = 'rgba(59, 130, 246, 0.7)';
     ctx.font = '9px system-ui';
     ctx.textAlign = 'right';
     for (let i = 0; i <= 4; i++) {
@@ -2457,7 +2697,7 @@ function renderWeightChart(data, stats) {
         ctx.fillText(weight.toFixed(1), padding.left - 5, y + 3);
     }
 
-    // Calculate points
+    // Calculate weight points
     const points = data.map((d, i) => ({
         x: padding.left + (chartWidth * i / (data.length - 1 || 1)),
         y: padding.top + chartHeight - ((d.weight - minWeight) / weightRange * chartHeight),
@@ -2487,14 +2727,11 @@ function renderWeightChart(data, stats) {
     ctx.stroke();
 
     // Draw points
-    points.forEach((p, i) => {
+    points.forEach(p => {
         ctx.beginPath();
         ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
         ctx.fillStyle = '#3B82F6';
         ctx.fill();
-        ctx.strokeStyle = '#1E3A5F';
-        ctx.lineWidth = 1;
-        ctx.stroke();
     });
 
     // Draw X-axis labels (only a few)
@@ -2510,30 +2747,19 @@ function renderWeightChart(data, stats) {
     });
 
     // Update stats
-    document.getElementById('weight-stat-start').textContent = stats.start ? `${stats.start} kg` : '--';
-    document.getElementById('weight-stat-min').textContent = stats.min ? `${stats.min} kg` : '--';
-    document.getElementById('weight-stat-max').textContent = stats.max ? `${stats.max} kg` : '--';
-
+    const startEl = document.getElementById('weight-stat-start');
+    const minEl = document.getElementById('weight-stat-min');
+    const maxEl = document.getElementById('weight-stat-max');
     const changeEl = document.getElementById('weight-stat-change');
+
+    if (startEl) startEl.textContent = stats.start ? `${stats.start} kg` : '--';
+    if (minEl) minEl.textContent = stats.min ? `${stats.min} kg` : '--';
+    if (maxEl) maxEl.textContent = stats.max ? `${stats.max} kg` : '--';
+
     if (changeEl && stats.change !== undefined) {
         const sign = stats.change > 0 ? '+' : '';
         changeEl.textContent = `${sign}${stats.change} kg`;
         changeEl.className = `text-sm font-bold ${stats.change < 0 ? 'text-green-400' : stats.change > 0 ? 'text-red-400' : 'text-gray-400'}`;
-    }
-
-    // Update trend badge
-    const trendBadge = document.getElementById('weight-trend-badge');
-    if (trendBadge) {
-        if (stats.trend === 'down') {
-            trendBadge.textContent = `↓ ${Math.abs(stats.change)} kg`;
-            trendBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold';
-        } else if (stats.trend === 'up') {
-            trendBadge.textContent = `↑ ${stats.change} kg`;
-            trendBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-bold';
-        } else {
-            trendBadge.textContent = '→ Stable';
-            trendBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold';
-        }
     }
 }
 
@@ -2725,7 +2951,7 @@ async function loadPhysiquePhotos(gallery) {
             if (data.photos && data.photos.length > 0) {
                 data.photos.forEach(photo => {
                     const wrapper = document.createElement('div');
-                    wrapper.className = 'relative flex-shrink-0 group';
+                    wrapper.className = 'relative flex-shrink-0';
                     wrapper.innerHTML = `
                         <div class="relative cursor-pointer" onclick="openPhotoViewer('${photo.photo_url}', '${photo.title || ''}', '${photo.photo_date || ''}', '${(photo.notes || '').replace(/'/g, "\\'")}')">
                             <img src="${photo.photo_url}" class="w-24 h-32 object-cover rounded-xl border border-white/10">
@@ -2734,7 +2960,7 @@ async function loadPhysiquePhotos(gallery) {
                             </div>` : ''}
                         </div>
                         <button onclick="event.stopPropagation(); deletePhysiquePhoto(${photo.photo_id}, this.parentElement)"
-                            class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 rounded-full text-white text-xs flex items-center justify-center hover:bg-red-600 transition opacity-0 group-hover:opacity-100">×</button>
+                            class="absolute -top-1 -right-1 w-5 h-5 bg-red-500/80 rounded-full text-white text-[10px] flex items-center justify-center hover:bg-red-500 transition">×</button>
                     `;
                     gallery.appendChild(wrapper);
                 });
