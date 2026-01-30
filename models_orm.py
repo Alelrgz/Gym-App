@@ -506,6 +506,23 @@ class ChatRequestORM(Base):
     responded_at = Column(String, nullable=True)  # When accepted/rejected
 
 
+class FriendshipORM(Base):
+    """Friendships between gym members."""
+    __tablename__ = "friendships"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    # Normalized: user1_id < user2_id to prevent duplicate entries
+    user1_id = Column(String, ForeignKey("users.id"), index=True)
+    user2_id = Column(String, ForeignKey("users.id"), index=True)
+
+    status = Column(String, default="pending")  # pending, accepted, declined
+    initiated_by = Column(String, ForeignKey("users.id"))  # Who sent the request
+    message = Column(String, nullable=True)  # Optional message with request
+
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    accepted_at = Column(String, nullable=True)
+
+
 # --- GROUP COURSES & LESSONS ---
 
 class CourseORM(Base):

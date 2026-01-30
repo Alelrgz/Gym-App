@@ -46,6 +46,17 @@ async def complete_schedule_item(
     return service.complete_schedule_item(payload, current_user.id)
 
 
+@router.post("/api/client/schedule/complete-coop")
+async def complete_coop_workout(
+    payload: dict,
+    service: ScheduleService = Depends(get_schedule_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Complete a CO-OP workout - logs completion for both user and partner."""
+    # payload: { "date": "YYYY-MM-DD", "partner_id": "...", "exercises": [...] }
+    return service.complete_coop_workout(payload, current_user.id)
+
+
 @router.put("/api/client/schedule/update_set")
 async def update_completed_workout(
     payload: dict,

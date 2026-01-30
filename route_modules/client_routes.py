@@ -480,6 +480,9 @@ async def can_message_user(
 @router.get("/api/client/gym-members")
 async def get_gym_members(current_user: UserORM = Depends(get_current_user)):
     """Get other clients in the same gym for social features."""
+    from service_modules.friend_service import get_friend_service
+    friend_service = get_friend_service()
+
     db = get_db_session()
     try:
         # Get current user's gym
@@ -497,11 +500,14 @@ async def get_gym_members(current_user: UserORM = Depends(get_current_user)):
         for profile in other_profiles:
             user = db.query(UserORM).filter(UserORM.id == profile.id).first()
             if user:
+                # Get friendship status
+                friendship = friend_service.get_friendship_status(current_user.id, user.id)
                 members.append({
                     "id": user.id,
                     "username": user.username,
                     "profile_picture": user.profile_picture,
-                    "privacy_mode": profile.privacy_mode or "public"
+                    "privacy_mode": profile.privacy_mode or "public",
+                    "friendship_status": friendship["status"]
                 })
 
         return members
@@ -515,6 +521,9 @@ async def get_member_profile(
     current_user: UserORM = Depends(get_current_user)
 ):
     """Get a gym member's public profile."""
+    from service_modules.friend_service import get_friend_service
+    friend_service = get_friend_service()
+
     if member_id == current_user.id:
         raise HTTPException(status_code=400, detail="Use /api/client/data for your own profile")
 
@@ -535,6 +544,10 @@ async def get_member_profile(
         if not member_user:
             raise HTTPException(status_code=404, detail="User not found")
 
+        # Get friendship status
+        friendship = friend_service.get_friendship_status(current_user.id, member_id)
+        is_friend = friendship["status"] == "friends"
+
         return {
             "id": member_user.id,
             "username": member_user.username,
@@ -543,7 +556,10 @@ async def get_member_profile(
             "streak": member_profile.streak or 0,
             "gems": member_profile.gems or 0,
             "health_score": member_profile.health_score or 0,
-            "privacy_mode": member_profile.privacy_mode or "public"
+            "privacy_mode": member_profile.privacy_mode or "public",
+            "is_friend": is_friend,
+            "friendship_status": friendship["status"],
+            "friendship_request_id": friendship.get("request_id")
         }
     finally:
         db.close()

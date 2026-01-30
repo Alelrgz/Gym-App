@@ -1331,18 +1331,6 @@ async function init() {
                     ? u.profile_picture
                     : `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name}`;
 
-                // Determine privacy indicator
-                const privacyMode = u.privacy_mode || 'public';
-                let chatIcon = '💬';
-                let privacyIndicator = '';
-                if (privacyMode === 'private') {
-                    chatIcon = '🔒';
-                    privacyIndicator = ' <span class="text-xs text-gray-500">🔒</span>';
-                } else if (privacyMode === 'staff_only') {
-                    chatIcon = '🛡️';
-                    privacyIndicator = ' <span class="text-xs text-gray-500">🛡️</span>';
-                }
-
                 div.innerHTML = `
                     <div class="flex items-center space-x-3">
                         <span class="text-2xl font-black w-10">${getRankEmoji(u.rank)}</span>
@@ -1350,20 +1338,24 @@ async function init() {
                             <img src="${avatarUrl}" class="w-full h-full object-cover" />
                         </div>
                         <div>
-                            <p class="font-bold text-sm text-white">${u.name}${isUser ? ' (You)' : ''}${!isUser ? privacyIndicator : ''}</p>
+                            <p class="font-bold text-sm text-white">${u.name}${isUser ? ' (You)' : ''}</p>
                             <p class="text-[10px] text-gray-400">${u.streak} day streak • ${u.health_score} health</p>
                         </div>
                     </div>
                     <div class="text-right flex items-center space-x-2">
-                        ${!isUser ? `<span class="text-xs text-gray-400">${chatIcon}</span>` : ''}
+                        ${!isUser ? '<span class="text-gray-400 text-sm">View &rarr;</span>' : ''}
                         <p class="text-yellow-400 font-bold">🔶 ${u.gems}</p>
                     </div>
                 `;
 
-                // Add click handler to open chat (if not yourself)
+                // Add click handler to open member profile (if not yourself)
                 if (!isUser && u.user_id) {
                     div.addEventListener('click', () => {
-                        window.openChatWithUser(u.user_id, u.name, avatarUrl);
+                        if (typeof openMemberProfile === 'function') {
+                            openMemberProfile(u.user_id);
+                        } else if (typeof window.openMemberProfile === 'function') {
+                            window.openMemberProfile(u.user_id);
+                        }
                     });
                 }
 
@@ -4448,31 +4440,66 @@ async function finishWorkout() {
     try {
         const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD local time
 
-        // Disable button specific logic if needed, or show loading state
+        // Check for CO-OP partner
+        const coopPartnerStr = localStorage.getItem('coopPartner');
+        const coopPartner = coopPartnerStr ? JSON.parse(coopPartnerStr) : null;
+        const isCoopWorkout = coopPartner && new URLSearchParams(window.location.search).get('coop') === 'true';
 
-        // Use different endpoint for trainers vs clients
-        const endpoint = APP_CONFIG.role === 'trainer'
-            ? `${apiBase}/api/trainer/schedule/complete`
-            : `${apiBase}/api/client/schedule/complete`;
+        // Use different endpoint for trainers vs clients vs co-op
+        let endpoint;
+        let requestBody;
+
+        if (APP_CONFIG.role === 'trainer') {
+            endpoint = `${apiBase}/api/trainer/schedule/complete`;
+            requestBody = {
+                date: todayStr,
+                exercises: workoutState.exercises
+            };
+        } else if (isCoopWorkout) {
+            endpoint = `${apiBase}/api/client/schedule/complete-coop`;
+            requestBody = {
+                date: todayStr,
+                partner_id: coopPartner.id,
+                exercises: workoutState.exercises
+            };
+        } else {
+            endpoint = `${apiBase}/api/client/schedule/complete`;
+            requestBody = {
+                date: todayStr,
+                exercises: workoutState.exercises
+            };
+        }
 
         const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                date: todayStr,
-                exercises: workoutState.exercises // Send performance data
-            })
+            body: JSON.stringify(requestBody)
         });
 
         if (res.ok) {
-            console.log("Workout marked as complete on server");
+            const result = await res.json();
+            console.log("Workout marked as complete on server", result);
 
             // Clear Cache to prevent stale data on reload
             localStorage.removeItem(getCacheKey());
 
+            // Clear CO-OP partner data
+            if (isCoopWorkout) {
+                localStorage.removeItem('coopPartner');
+                console.log(`CO-OP workout completed with ${coopPartner.name}!`);
+            }
+
             // Show Success UI ONLY after server confirms
             document.getElementById('celebration-overlay').classList.remove('hidden');
             startConfetti();
+
+            // Update celebration message for CO-OP
+            if (isCoopWorkout && coopPartner) {
+                const celebrationTitle = document.querySelector('#celebration-overlay h1');
+                const celebrationMsg = document.querySelector('#celebration-overlay p');
+                if (celebrationTitle) celebrationTitle.textContent = 'CO-OP Complete!';
+                if (celebrationMsg) celebrationMsg.textContent = `Great teamwork with ${coopPartner.name}! 👥`;
+            }
 
             // Update UI to show completed state
             const startBtn = document.querySelector('a[href*="mode=workout"]');

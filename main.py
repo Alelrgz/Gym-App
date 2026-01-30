@@ -5,7 +5,7 @@ import logging
 from dotenv import load_dotenv
 
 load_dotenv()
-# Trigger reload v6.4 - gym assignment routes added
+# Trigger reload v6.5 - friend routes added
 
 # Set up logging to see errors in the console
 logging.basicConfig(level=logging.INFO)

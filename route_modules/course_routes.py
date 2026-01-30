@@ -115,3 +115,24 @@ async def delete_lesson(
 ):
     """Delete a scheduled lesson."""
     return service.delete_lesson(lesson_id, current_user.id)
+
+
+# --- CLIENT ENDPOINTS ---
+
+@router.get("/api/client/trainer/{trainer_id}/courses")
+async def get_trainer_courses_for_client(
+    trainer_id: str,
+    service: CourseService = Depends(get_course_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Get all courses offered by a specific trainer (for clients to browse)."""
+    return service.get_trainer_courses_for_client(trainer_id)
+
+
+@router.get("/api/client/gym/courses")
+async def get_gym_courses_for_client(
+    service: CourseService = Depends(get_course_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Get all courses available at the client's gym."""
+    return service.get_gym_courses_for_client(current_user.id)

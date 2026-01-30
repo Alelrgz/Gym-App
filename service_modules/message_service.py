@@ -122,6 +122,13 @@ class MessageService:
                     logger.info(f"can_message: Existing conversation found, allowing reply")
                     return True
 
+                # Check if they are friends - friends can always message
+                from service_modules.friend_service import get_friend_service
+                friend_service = get_friend_service()
+                if friend_service.are_friends(user_id, other_user_id):
+                    logger.info(f"can_message: Users are friends, allowing message")
+                    return True
+
                 # Check privacy modes:
                 # - "public": anyone can message
                 # - "private": need accepted chat request

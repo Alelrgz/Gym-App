@@ -601,6 +601,74 @@ class CourseService:
 
         return False
 
+    # --- CLIENT-FACING METHODS ---
+
+    def get_trainer_courses_for_client(self, trainer_id: str) -> list:
+        """Get all courses offered by a specific trainer (for clients to browse)."""
+        db = get_db_session()
+        try:
+            # Get trainer's username for display
+            trainer = db.query(UserORM).filter(UserORM.id == trainer_id).first()
+            trainer_name = trainer.username if trainer else "Trainer"
+
+            # Get all courses owned by this trainer
+            courses = db.query(CourseORM).filter(CourseORM.owner_id == trainer_id).all()
+
+            result = []
+            for course in courses:
+                course_dict = self._course_to_dict(course)
+                course_dict["trainer_name"] = trainer_name
+                # Get upcoming lesson count
+                today = datetime.now().date().isoformat()
+                upcoming_lessons = db.query(CourseLessonORM).filter(
+                    CourseLessonORM.course_id == course.id,
+                    CourseLessonORM.date >= today,
+                    CourseLessonORM.completed == False
+                ).count()
+                course_dict["upcoming_lessons"] = upcoming_lessons
+                result.append(course_dict)
+
+            return result
+        finally:
+            db.close()
+
+    def get_gym_courses_for_client(self, client_id: str) -> list:
+        """Get all courses available at the client's gym."""
+        db = get_db_session()
+        try:
+            # Get the client's gym_id
+            client_profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
+            if not client_profile or not client_profile.gym_id:
+                return []
+
+            gym_id = client_profile.gym_id
+
+            # Get all courses at this gym (owned by trainers at this gym)
+            courses = db.query(CourseORM).filter(CourseORM.gym_id == gym_id).all()
+
+            result = []
+            today = datetime.now().date().isoformat()
+
+            for course in courses:
+                course_dict = self._course_to_dict(course)
+
+                # Get trainer name for each course
+                trainer = db.query(UserORM).filter(UserORM.id == course.owner_id).first()
+                course_dict["trainer_name"] = trainer.username if trainer else "Trainer"
+
+                # Get upcoming lesson count
+                upcoming_lessons = db.query(CourseLessonORM).filter(
+                    CourseLessonORM.course_id == course.id,
+                    CourseLessonORM.date >= today,
+                    CourseLessonORM.completed == False
+                ).count()
+                course_dict["upcoming_lessons"] = upcoming_lessons
+                result.append(course_dict)
+
+            return result
+        finally:
+            db.close()
+
 
 # Singleton instance
 course_service = CourseService()

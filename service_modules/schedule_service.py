@@ -359,6 +359,135 @@ class ScheduleService:
         finally:
             db.close()
 
+    def complete_coop_workout(self, payload: dict, user_id: str) -> dict:
+        """Complete a CO-OP workout - logs completion for both user and partner."""
+        from service_modules.friend_service import get_friend_service
+
+        date_str = payload.get("date")
+        partner_id = payload.get("partner_id")
+        exercises = payload.get("exercises", [])
+
+        if not partner_id:
+            raise HTTPException(status_code=400, detail="Partner ID required for CO-OP workout")
+
+        # Verify they are friends
+        friend_service = get_friend_service()
+        if not friend_service.are_friends(user_id, partner_id):
+            raise HTTPException(status_code=403, detail="You can only do CO-OP workouts with friends")
+
+        db = get_db_session()
+        try:
+            # Get user's schedule item
+            user_item = db.query(ClientScheduleORM).filter(
+                ClientScheduleORM.client_id == user_id,
+                ClientScheduleORM.date == date_str,
+                ClientScheduleORM.type == "workout"
+            ).first()
+
+            # Get partner's schedule item
+            partner_item = db.query(ClientScheduleORM).filter(
+                ClientScheduleORM.client_id == partner_id,
+                ClientScheduleORM.date == date_str,
+                ClientScheduleORM.type == "workout"
+            ).first()
+
+            if not user_item:
+                raise HTTPException(status_code=404, detail="You don't have a workout scheduled for today")
+
+            # Mark user's workout as complete
+            user_item.completed = True
+            user_item.details = json.dumps(exercises)
+
+            # Save exercise logs for user
+            for ex in exercises:
+                ex_name = ex.get("name")
+                perf_list = ex.get("performance", [])
+
+                for i, perf in enumerate(perf_list):
+                    if perf.get("completed"):
+                        log = ClientExerciseLogORM(
+                            client_id=user_id,
+                            date=date_str,
+                            workout_id=user_item.workout_id,
+                            exercise_name=ex_name,
+                            set_number=i + 1,
+                            reps=int(perf.get("reps", 0) or 0),
+                            weight=float(perf.get("weight", 0) or 0),
+                            metric_type="weight_reps"
+                        )
+                        db.add(log)
+
+            # If partner has a workout scheduled, complete it too
+            if partner_item:
+                partner_item.completed = True
+                partner_item.details = json.dumps(exercises)
+
+                # Save exercise logs for partner
+                for ex in exercises:
+                    ex_name = ex.get("name")
+                    perf_list = ex.get("performance", [])
+
+                    for i, perf in enumerate(perf_list):
+                        if perf.get("completed"):
+                            log = ClientExerciseLogORM(
+                                client_id=partner_id,
+                                date=date_str,
+                                workout_id=partner_item.workout_id,
+                                exercise_name=ex_name,
+                                set_number=i + 1,
+                                reps=int(perf.get("reps", 0) or 0),
+                                weight=float(perf.get("weight", 0) or 0),
+                                metric_type="weight_reps"
+                            )
+                            db.add(log)
+
+                db.commit()
+                return {
+                    "status": "success",
+                    "message": "CO-OP workout completed for both of you!",
+                    "partner_completed": True
+                }
+            else:
+                # Partner doesn't have a workout today - create one based on user's workout
+                new_partner_item = ClientScheduleORM(
+                    client_id=partner_id,
+                    date=date_str,
+                    type="workout",
+                    workout_id=user_item.workout_id,
+                    title=user_item.title,
+                    completed=True,
+                    details=json.dumps(exercises)
+                )
+                db.add(new_partner_item)
+
+                # Save exercise logs for partner
+                for ex in exercises:
+                    ex_name = ex.get("name")
+                    perf_list = ex.get("performance", [])
+
+                    for i, perf in enumerate(perf_list):
+                        if perf.get("completed"):
+                            log = ClientExerciseLogORM(
+                                client_id=partner_id,
+                                date=date_str,
+                                workout_id=user_item.workout_id,
+                                exercise_name=ex_name,
+                                set_number=i + 1,
+                                reps=int(perf.get("reps", 0) or 0),
+                                weight=float(perf.get("weight", 0) or 0),
+                                metric_type="weight_reps"
+                            )
+                            db.add(log)
+
+                db.commit()
+                return {
+                    "status": "success",
+                    "message": "CO-OP workout completed! Added to your friend's schedule too.",
+                    "partner_completed": True
+                }
+        finally:
+            db.close()
+
     def complete_trainer_schedule_item(self, payload: dict, trainer_id: str) -> dict:
         """Mark a trainer's personal workout schedule item as complete and save performance data."""
         date_str = payload.get("date")
