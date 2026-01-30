@@ -44,7 +44,7 @@
                 <span class="fab-icon">+</span>
             </div>
 
-            <div class="fab-menu {% if role == 'trainer' %}fab-menu-3{% elif role == 'owner' %}fab-menu-3{% else %}fab-menu-4{% endif %}">
+            <div class="fab-menu {% if role == 'trainer' %}fab-menu-3{% elif role == 'owner' %}fab-menu-3{% elif role == 'staff' %}fab-menu-3{% else %}fab-menu-4{% endif %}">
                 {% if role == 'owner' %}
                 <!-- Owner Menu -->
                 <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner' }}"
@@ -73,6 +73,16 @@
                 <a href="{{ 'trainer_courses.html' if static_build else '/trainer/courses?gym_id=' + gym_id }}"
                     class="fab-item" style="transition-delay: 0.15s">
                     📚<span class="fab-label">Courses</span>
+                </a>
+                {% elif role == 'staff' %}
+                <!-- Staff Menu -->
+                <a href="{{ 'staff.html' if static_build else '/?gym_id=' + gym_id + '&role=staff' }}"
+                    class="fab-item" style="transition-delay: 0.05s">
+                    🏠<span class="fab-label">Home</span>
+                </a>
+                <a href="{{ 'staff.html' if static_build else '/?gym_id=' + gym_id + '&role=staff&mode=settings' }}"
+                    class="fab-item" style="transition-delay: 0.1s">
+                    ⚙️<span class="fab-label">Settings</span>
                 </a>
                 {% else %}
                 <!-- Client Menu -->

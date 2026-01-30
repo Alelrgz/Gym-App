@@ -148,6 +148,7 @@ async def do_register(
     password: str = Form(...),
     email: str = Form(None),
     role: str = Form("client"),
+    sub_role: str = Form(None),
     secret_key: str = Form(None),
     gym_code: str = Form(None),
     db: Session = Depends(get_db)
@@ -172,14 +173,48 @@ async def do_register(
     gym_owner_id = None
     is_approved = True  # Default to approved
 
+    # Staff members register with role="owner" but sub_role="staff"
+    is_staff = (role == "owner" and sub_role == "staff")
+
     # Handle registration based on role
-    if role == "owner":
+    if role == "owner" and sub_role != "staff":
         # Generate a unique 6-character gym code for owners
         while True:
             generated_gym_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
             existing_code = db.query(User).filter(User.gym_code == generated_gym_code).first()
             if not existing_code:
                 break
+
+    elif is_staff:
+        # Staff MUST have a gym code and need approval
+        if not gym_code or not gym_code.strip():
+            return templates.TemplateResponse("register.html", {
+                "request": request,
+                "error": "Gym code is required for staff members. Please get the code from your gym owner.",
+                "gym_id": "iron_gym",
+                "role": "client",
+                "mode": "auth"
+            })
+
+        # Look up the gym owner by gym code
+        # Only actual owners have gym_code set, so this is sufficient
+        gym_owner = db.query(User).filter(
+            User.gym_code == gym_code.strip().upper(),
+            User.role == "owner"
+        ).first()
+
+        if not gym_owner:
+            return templates.TemplateResponse("register.html", {
+                "request": request,
+                "error": "Invalid gym code. Please check with your gym owner.",
+                "gym_id": "iron_gym",
+                "role": "client",
+                "mode": "auth"
+            })
+
+        gym_owner_id = gym_owner.id
+        is_approved = False  # Staff need owner approval
+        role = "staff"  # Change role to staff
 
     elif role == "trainer":
         # Trainers MUST have a gym code
@@ -228,15 +263,16 @@ async def do_register(
         email=email if email else None,
         hashed_password=hash_password(password),
         role=role,
+        sub_role=sub_role,  # Store sub-role (trainer/nutritionist/both or owner/staff)
         gym_code=generated_gym_code,  # Only set for owners
-        gym_owner_id=gym_owner_id,  # Set for trainers/clients joining a gym
+        gym_owner_id=gym_owner_id,  # Set for trainers/clients/staff joining a gym
         is_approved=is_approved
     )
     db.add(new_user)
     db.commit()
 
     # If owner, show them their gym code
-    if role == "owner":
+    if role == "owner" and generated_gym_code:
         return templates.TemplateResponse("register.html", {
             "request": request,
             "success": f"Registration successful! Your Gym Code is: {generated_gym_code}",
@@ -249,6 +285,16 @@ async def do_register(
 
     # For trainers pending approval
     if role == "trainer":
+        return templates.TemplateResponse("register.html", {
+            "request": request,
+            "error": "Registration submitted! Please wait for your gym owner to approve your account.",
+            "gym_id": "iron_gym",
+            "role": "client",
+            "mode": "auth"
+        })
+
+    # For staff pending approval
+    if role == "staff":
         return templates.TemplateResponse("register.html", {
             "request": request,
             "error": "Registration submitted! Please wait for your gym owner to approve your account.",

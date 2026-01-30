@@ -6,178 +6,793 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Register - Iron Gym</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        body {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            background-color: #121212;
-            color: white;
-            font-family: 'Inter', sans-serif;
-        }
-
-        .login-container {
-            background: #1e1e1e;
-            padding: 2rem;
-            border-radius: 12px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
-            width: 100%;
-            max-width: 400px;
-            text-align: center;
-        }
-
-        h1 {
-            margin-bottom: 1.5rem;
-        }
-
-        input,
-        select {
-            width: 100%;
-            padding: 12px;
-            margin-bottom: 1rem;
-            border-radius: 8px;
-            border: 1px solid #333;
-            background: #2c2c2c;
-            color: white;
+        * {
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
         }
 
-        button {
-            width: 100%;
-            padding: 12px;
-            background: #e94560;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            cursor: pointer;
-            font-weight: bold;
-            font-size: 1rem;
-        }
-
-        button:hover {
-            background: #ff5e78;
-        }
-
-        .error {
-            color: #ff5e78;
-            margin-bottom: 1rem;
-            display: none;
-        }
-
-        .success {
-            color: #4ade80;
-            margin-bottom: 1rem;
+        body {
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0a0a 0%, #1a1a2e 50%, #0f0f0f 100%);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             padding: 1rem;
-            background: #16a34a20;
-            border-radius: 8px;
+            overflow-x: hidden;
+        }
+
+        /* Animated background elements */
+        .bg-orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.3;
+            animation: float 8s ease-in-out infinite;
+        }
+
+        .bg-orb-1 {
+            width: 400px;
+            height: 400px;
+            background: linear-gradient(135deg, #f97316, #ea580c);
+            top: -100px;
+            right: -100px;
+            animation-delay: 0s;
+        }
+
+        .bg-orb-2 {
+            width: 300px;
+            height: 300px;
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            bottom: -50px;
+            left: -50px;
+            animation-delay: -4s;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translate(0, 0) scale(1); }
+            50% { transform: translate(30px, -30px) scale(1.1); }
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.03);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            box-shadow:
+                0 8px 32px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.05);
+        }
+
+        .role-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 2px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 1.25rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .role-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(249, 115, 22, 0.1), transparent);
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .role-card:hover {
+            border-color: rgba(249, 115, 22, 0.3);
+            transform: translateY(-2px);
+        }
+
+        .role-card:hover::before {
+            opacity: 1;
+        }
+
+        .role-card.selected {
+            border-color: #f97316;
+            background: rgba(249, 115, 22, 0.1);
+        }
+
+        .role-card.selected::before {
+            opacity: 1;
+        }
+
+        .role-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 0.75rem;
+            transition: all 0.3s ease;
+        }
+
+        .role-card.compact .role-icon {
+            width: 40px;
+            height: 40px;
+            margin-bottom: 0;
+        }
+
+        .role-card:hover .role-icon,
+        .role-card.selected .role-icon {
+            transform: scale(1.1);
+        }
+
+        .check-mark {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            width: 24px;
+            height: 24px;
+            background: #f97316;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transform: scale(0);
+            transition: all 0.3s ease;
+        }
+
+        .role-card.selected .check-mark {
+            opacity: 1;
+            transform: scale(1);
+        }
+
+        .input-group {
+            position: relative;
+            margin-bottom: 1rem;
+        }
+
+        .input-group svg {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            color: rgba(255, 255, 255, 0.4);
+            transition: color 0.3s ease;
+            pointer-events: none;
+        }
+
+        .input-group input {
+            width: 100%;
+            padding: 14px 14px 14px 48px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            color: white;
+            font-size: 1rem;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+
+        .input-group input::placeholder {
+            color: rgba(255, 255, 255, 0.4);
+        }
+
+        .input-group input:focus {
+            border-color: rgba(249, 115, 22, 0.5);
+            background: rgba(0, 0, 0, 0.4);
+            box-shadow: 0 0 0 3px rgba(249, 115, 22, 0.1);
+        }
+
+        .input-group:focus-within svg {
+            color: #f97316;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(249, 115, 22, 0.4);
+        }
+
+        .btn-primary:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .error-msg {
+            background: rgba(239, 68, 68, 0.1);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #fca5a5;
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
             display: none;
+        }
+
+        .success-msg {
+            background: rgba(34, 197, 94, 0.1);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #86efac;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
         }
 
         .gym-code-display {
-            font-size: 1.5rem;
+            font-size: 2rem;
             font-weight: bold;
-            color: #4ade80;
-            margin: 0.5rem 0;
-            padding: 0.5rem;
-            background: #16a34a30;
-            border-radius: 8px;
+            color: #f97316;
+            letter-spacing: 0.3em;
+            padding: 1rem;
+            background: rgba(249, 115, 22, 0.1);
+            border: 2px dashed rgba(249, 115, 22, 0.3);
+            border-radius: 12px;
+            margin: 1rem 0;
+        }
+
+        .step {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .step.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .hint-text {
+            font-size: 0.8rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-top: -0.5rem;
+            margin-bottom: 1rem;
+            padding-left: 0.5rem;
+        }
+
+        .hint-text.warning {
+            color: #fbbf24;
         }
 
         .login-link {
-            margin-top: 1rem;
             display: block;
-            color: #aaa;
+            text-align: center;
+            color: rgba(255, 255, 255, 0.6);
             text-decoration: none;
             font-size: 0.9rem;
+            transition: color 0.3s ease;
+            margin-top: 1.5rem;
         }
 
         .login-link:hover {
+            color: #f97316;
+        }
+
+        .login-link span {
+            color: #f97316;
+            font-weight: 500;
+        }
+
+        .step-indicator {
+            display: flex;
+            justify-content: center;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .step-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+        }
+
+        .step-dot.active {
+            background: #f97316;
+            width: 24px;
+            border-radius: 4px;
+        }
+
+        .step-dot.completed {
+            background: #22c55e;
+        }
+
+        .back-btn {
+            color: rgba(255, 255, 255, 0.6);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+            transition: color 0.3s ease;
+            background: none;
+            border: none;
+        }
+
+        .back-btn:hover {
             color: white;
         }
     </style>
 </head>
 
 <body>
-    <div class="login-container">
-        <h1>Join Iron Gym</h1>
+    <!-- Animated background orbs -->
+    <div class="bg-orb bg-orb-1"></div>
+    <div class="bg-orb bg-orb-2"></div>
+
+    <div class="glass-card w-full max-w-md p-8 relative z-10">
+        {% if show_gym_code %}
+        <!-- Success: Show Gym Code for Owners -->
+        <div class="success-msg">
+            <div class="text-4xl mb-4">🎉</div>
+            <h2 class="text-xl font-bold text-white mb-2">Welcome to Iron Gym!</h2>
+            <p class="text-gray-300 mb-4">Your gym has been created successfully.</p>
+            <p class="text-sm text-gray-400 mb-2">Share this code with your staff and members:</p>
+            <div class="gym-code-display">{{ gym_code }}</div>
+            <p class="text-xs text-gray-500 mt-4">Trainers and staff will need approval after registering.</p>
+            <a href="/auth/login" class="btn-primary inline-block mt-6 text-center no-underline" style="text-decoration: none;">
+                Continue to Login
+            </a>
+        </div>
+        {% else %}
+        <!-- Step Indicator -->
+        <div class="step-indicator">
+            <div class="step-dot active" id="dot-1"></div>
+            <div class="step-dot" id="dot-2"></div>
+            <div class="step-dot" id="dot-3"></div>
+        </div>
 
         <!-- Error Message -->
-        <div id="error-msg" class="error" {% if error %}style="display: block;" {% endif %}>
+        <div id="error-msg" class="error-msg" {% if error %}style="display: block;"{% endif %}>
             {{ error }}
         </div>
 
-        <!-- Success Message (shows gym code for owners) -->
-        {% if show_gym_code %}
-        <div class="success" style="display: block;">
-            <p>Registration successful!</p>
-            <p style="margin: 0.5rem 0;">Your Gym Code:</p>
-            <div class="gym-code-display">{{ gym_code }}</div>
-            <p style="font-size: 0.85rem; margin-top: 0.5rem;">Share this code with trainers and clients so they can join your gym!</p>
-            <a href="/auth/login" class="login-link" style="margin-top: 1rem; display: inline-block;">Go to Login</a>
+        <!-- Step 1: Choose Main Role -->
+        <div id="step-1" class="step active">
+            <h1 class="text-2xl font-bold text-white text-center mb-2">Join Iron Gym</h1>
+            <p class="text-gray-400 text-center text-sm mb-6">Choose how you'll use the app</p>
+
+            <div class="space-y-3">
+                <!-- Client Card -->
+                <div class="role-card" onclick="selectRole('client', this)">
+                    <div class="check-mark">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </div>
+                    <div class="flex items-center gap-4 relative z-10">
+                        <div class="role-icon bg-gradient-to-br from-green-500 to-emerald-600">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                                <circle cx="12" cy="7" r="4"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-white">Client / Member</h3>
+                            <p class="text-sm text-gray-400">Track workouts, book sessions & achieve goals</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trainer/Nutritionist Card -->
+                <div class="role-card" onclick="selectRole('trainer', this)">
+                    <div class="check-mark">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </div>
+                    <div class="flex items-center gap-4 relative z-10">
+                        <div class="role-icon bg-gradient-to-br from-orange-500 to-red-500">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <path d="M6.5 6.5h11M6.5 17.5h11M3 12h1.5M19.5 12H21M5.5 8.5v7M18.5 8.5v7M8 12h8"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-white">Trainer / Nutritionist</h3>
+                            <p class="text-sm text-gray-400">Manage clients, create programs & diets</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Owner/Staff Card -->
+                <div class="role-card" onclick="selectRole('owner', this)">
+                    <div class="check-mark">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
+                    </div>
+                    <div class="flex items-center gap-4 relative z-10">
+                        <div class="role-icon bg-gradient-to-br from-purple-500 to-indigo-600">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                                <polyline points="9 22 9 12 15 12 15 22"/>
+                            </svg>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="font-semibold text-white">Owner / Staff</h3>
+                            <p class="text-sm text-gray-400">Manage gym, staff & subscriptions</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="next-btn-1" class="btn-primary mt-6" onclick="goToStep2()" disabled>
+                Continue
+            </button>
+
+            <a href="/auth/login" class="login-link">
+                Already have an account? <span>Sign in</span>
+            </a>
         </div>
-        {% else %}
-        <form id="register-form" action="/auth/register" method="POST">
-            <input type="text" id="username" name="username" placeholder="Username" required>
-            <input type="email" id="email" name="email" placeholder="Email (Optional)">
-            <input type="password" id="password" name="password" placeholder="Password" required>
-            <select id="role" name="role">
-                <option value="client">Client</option>
-                <option value="trainer">Trainer</option>
-                <option value="owner">Owner</option>
-            </select>
 
-            <!-- Gym Code input (mandatory for trainers, optional for clients) -->
-            <input type="text" id="gym_code" name="gym_code" placeholder="Gym Code" style="display: none;" maxlength="6">
-            <p id="gym-code-hint" style="display: none; font-size: 0.8rem; color: #aaa; margin-top: -0.5rem; margin-bottom: 1rem; text-align: left;"></p>
+        <!-- Step 2: Sub-role Selection (for trainer/owner) -->
+        <div id="step-2" class="step">
+            <button onclick="goToStep1()" class="back-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back
+            </button>
 
-            <button type="submit">Register</button>
-        </form>
-        <a href="/auth/login" class="login-link">Already have an account? Login</a>
+            <!-- Trainer Sub-roles -->
+            <div id="trainer-subroles" style="display: none;">
+                <h1 class="text-2xl font-bold text-white mb-2">What's your specialty?</h1>
+                <p class="text-gray-400 text-sm mb-6">Select your professional role</p>
+
+                <div class="space-y-3">
+                    <div class="role-card compact" onclick="selectSubRole('trainer', this)">
+                        <div class="check-mark">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <div class="flex items-center gap-4 relative z-10">
+                            <div class="role-icon bg-gradient-to-br from-orange-500 to-red-500">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                    <path d="M6.5 6.5h11M6.5 17.5h11M3 12h1.5M19.5 12H21M5.5 8.5v7M18.5 8.5v7M8 12h8"/>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-white">Personal Trainer</h3>
+                                <p class="text-xs text-gray-400">Create workout plans & train clients</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="role-card compact" onclick="selectSubRole('nutritionist', this)">
+                        <div class="check-mark">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <div class="flex items-center gap-4 relative z-10">
+                            <div class="role-icon bg-gradient-to-br from-green-500 to-teal-500">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                    <path d="M18 8h1a4 4 0 0 1 0 8h-1"/>
+                                    <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"/>
+                                    <line x1="6" y1="1" x2="6" y2="4"/>
+                                    <line x1="10" y1="1" x2="10" y2="4"/>
+                                    <line x1="14" y1="1" x2="14" y2="4"/>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-white">Nutritionist</h3>
+                                <p class="text-xs text-gray-400">Create meal plans & diet programs</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="role-card compact" onclick="selectSubRole('both', this)">
+                        <div class="check-mark">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <div class="flex items-center gap-4 relative z-10">
+                            <div class="role-icon bg-gradient-to-br from-purple-500 to-pink-500">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-white">Both</h3>
+                                <p class="text-xs text-gray-400">Full fitness & nutrition coaching</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Owner Sub-roles -->
+            <div id="owner-subroles" style="display: none;">
+                <h1 class="text-2xl font-bold text-white mb-2">What's your role?</h1>
+                <p class="text-gray-400 text-sm mb-6">Select your position</p>
+
+                <div class="space-y-3">
+                    <div class="role-card compact" onclick="selectSubRole('owner', this)">
+                        <div class="check-mark">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <div class="flex items-center gap-4 relative z-10">
+                            <div class="role-icon bg-gradient-to-br from-purple-500 to-indigo-600">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                    <circle cx="12" cy="12" r="10"/>
+                                    <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-white">Gym Owner</h3>
+                                <p class="text-xs text-gray-400">Full control over gym & staff management</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="role-card compact" onclick="selectSubRole('staff', this)">
+                        <div class="check-mark">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3">
+                                <polyline points="20 6 9 17 4 12"/>
+                            </svg>
+                        </div>
+                        <div class="flex items-center gap-4 relative z-10">
+                            <div class="role-icon bg-gradient-to-br from-blue-500 to-cyan-500">
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                                    <circle cx="9" cy="7" r="4"/>
+                                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                                </svg>
+                            </div>
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-white">Staff / Reception</h3>
+                                <p class="text-xs text-gray-400">Manage check-ins & member services</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <button id="next-btn-2" class="btn-primary mt-6" onclick="goToStep3()" disabled>
+                Continue
+            </button>
+        </div>
+
+        <!-- Step 3: Account Details -->
+        <div id="step-3" class="step">
+            <button onclick="goToStep2()" class="back-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back
+            </button>
+
+            <h1 class="text-2xl font-bold text-white mb-2" id="step3-title">Create Account</h1>
+            <p class="text-gray-400 text-sm mb-6" id="step3-subtitle">Enter your details to get started</p>
+
+            <form id="register-form" action="/auth/register" method="POST">
+                <input type="hidden" id="role" name="role" value="">
+                <input type="hidden" id="sub_role" name="sub_role" value="">
+
+                <div class="input-group">
+                    <input type="text" id="username" name="username" placeholder="Username" required>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                        <circle cx="12" cy="7" r="4"/>
+                    </svg>
+                </div>
+
+                <div class="input-group">
+                    <input type="email" id="email" name="email" placeholder="Email (optional)">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+                        <polyline points="22,6 12,13 2,6"/>
+                    </svg>
+                </div>
+
+                <div class="input-group">
+                    <input type="password" id="password" name="password" placeholder="Password" required>
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                    </svg>
+                </div>
+
+                <!-- Gym Code (shown for client, trainer, and staff) -->
+                <div id="gym-code-section" style="display: none;">
+                    <div class="input-group">
+                        <input type="text" id="gym_code" name="gym_code" placeholder="Gym Code" maxlength="6" style="text-transform: uppercase; letter-spacing: 0.2em;">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                            <path d="M9 9h6v6H9z"/>
+                        </svg>
+                    </div>
+                    <p id="gym-code-hint" class="hint-text"></p>
+                </div>
+
+                <button type="submit" class="btn-primary">Create Account</button>
+            </form>
+        </div>
         {% endif %}
     </div>
+
     <script>
-        // Show/hide gym code input based on role
-        const roleSelect = document.getElementById('role');
-        const gymCodeInput = document.getElementById('gym_code');
-        const gymCodeHint = document.getElementById('gym-code-hint');
-        const registerForm = document.getElementById('register-form');
+        let selectedRole = null;
+        let selectedSubRole = null;
 
-        if (roleSelect && gymCodeInput) {
-            roleSelect.addEventListener('change', () => {
-                if (roleSelect.value === 'trainer') {
-                    gymCodeInput.style.display = 'block';
-                    gymCodeInput.placeholder = 'Gym Code (required)';
-                    gymCodeInput.required = true;
-                    gymCodeHint.style.display = 'block';
-                    gymCodeHint.textContent = 'Ask your gym owner for the 6-character code. Your registration will need to be approved.';
-                    gymCodeHint.style.color = '#f59e0b';
-                } else if (roleSelect.value === 'client') {
-                    gymCodeInput.style.display = 'block';
-                    gymCodeInput.placeholder = 'Gym Code (optional)';
-                    gymCodeInput.required = false;
-                    gymCodeHint.style.display = 'block';
-                    gymCodeHint.textContent = 'Enter a gym code to join a gym, or leave blank to add later.';
-                    gymCodeHint.style.color = '#aaa';
-                } else {
-                    gymCodeInput.style.display = 'none';
-                    gymCodeInput.value = '';
-                    gymCodeInput.required = false;
-                    gymCodeHint.style.display = 'none';
-                }
+        function selectRole(role, element) {
+            document.querySelectorAll('#step-1 .role-card').forEach(card => {
+                card.classList.remove('selected');
             });
+            element.classList.add('selected');
+            selectedRole = role;
+            document.getElementById('next-btn-1').disabled = false;
+        }
 
-            // Form validation
-            if (registerForm) {
-                registerForm.addEventListener('submit', (e) => {
-                    if (roleSelect.value === 'trainer' && !gymCodeInput.value.trim()) {
-                        e.preventDefault();
-                        document.getElementById('error-msg').textContent = 'Gym code is required for trainers. Please enter the code from your gym owner.';
-                        document.getElementById('error-msg').style.display = 'block';
-                    }
-                });
+        function selectSubRole(subRole, element) {
+            document.querySelectorAll('#step-2 .role-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            element.classList.add('selected');
+            selectedSubRole = subRole;
+            document.getElementById('next-btn-2').disabled = false;
+        }
+
+        function updateStepIndicator(activeStep) {
+            for (let i = 1; i <= 3; i++) {
+                const dot = document.getElementById(`dot-${i}`);
+                dot.classList.remove('active', 'completed');
+                if (i < activeStep) {
+                    dot.classList.add('completed');
+                } else if (i === activeStep) {
+                    dot.classList.add('active');
+                }
             }
         }
+
+        function goToStep2() {
+            if (!selectedRole) return;
+
+            // Client goes directly to step 3
+            if (selectedRole === 'client') {
+                selectedSubRole = 'client';
+                document.getElementById('role').value = 'client';
+                document.getElementById('sub_role').value = 'client';
+
+                updateStepIndicator(3);
+                setupStep3();
+
+                document.getElementById('step-1').classList.remove('active');
+                document.getElementById('step-3').classList.add('active');
+                return;
+            }
+
+            // Show appropriate sub-role selection
+            document.getElementById('trainer-subroles').style.display = selectedRole === 'trainer' ? 'block' : 'none';
+            document.getElementById('owner-subroles').style.display = selectedRole === 'owner' ? 'block' : 'none';
+
+            // Reset sub-role selection
+            selectedSubRole = null;
+            document.querySelectorAll('#step-2 .role-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            document.getElementById('next-btn-2').disabled = true;
+
+            updateStepIndicator(2);
+            document.getElementById('step-1').classList.remove('active');
+            document.getElementById('step-2').classList.add('active');
+        }
+
+        function goToStep1() {
+            selectedRole = null;
+            document.querySelectorAll('#step-1 .role-card').forEach(card => {
+                card.classList.remove('selected');
+            });
+            document.getElementById('next-btn-1').disabled = true;
+
+            updateStepIndicator(1);
+            document.getElementById('step-2').classList.remove('active');
+            document.getElementById('step-3').classList.remove('active');
+            document.getElementById('step-1').classList.add('active');
+        }
+
+        function goToStep3() {
+            if (!selectedSubRole) return;
+
+            // Set hidden inputs
+            // For staff, the role is still 'owner' but sub_role is 'staff'
+            document.getElementById('role').value = selectedRole;
+            document.getElementById('sub_role').value = selectedSubRole;
+
+            setupStep3();
+            updateStepIndicator(3);
+            document.getElementById('step-2').classList.remove('active');
+            document.getElementById('step-3').classList.add('active');
+        }
+
+        function setupStep3() {
+            const titles = {
+                'client': { title: 'Join as Member', subtitle: 'Start your fitness journey today' },
+                'trainer': { title: 'Join as Trainer', subtitle: 'Help clients achieve their goals' },
+                'nutritionist': { title: 'Join as Nutritionist', subtitle: 'Create meal plans for clients' },
+                'both': { title: 'Join as Coach', subtitle: 'Full fitness & nutrition coaching' },
+                'owner': { title: 'Create Your Gym', subtitle: 'Set up your fitness business' },
+                'staff': { title: 'Join as Staff', subtitle: 'Help manage gym operations' }
+            };
+
+            const titleInfo = titles[selectedSubRole] || titles[selectedRole];
+            document.getElementById('step3-title').textContent = titleInfo.title;
+            document.getElementById('step3-subtitle').textContent = titleInfo.subtitle;
+
+            // Show/hide gym code section
+            const gymCodeSection = document.getElementById('gym-code-section');
+            const gymCodeInput = document.getElementById('gym_code');
+            const gymCodeHint = document.getElementById('gym-code-hint');
+
+            if (selectedRole === 'trainer') {
+                gymCodeSection.style.display = 'block';
+                gymCodeInput.required = true;
+                gymCodeInput.placeholder = 'Gym Code (required)';
+                gymCodeHint.textContent = 'Ask your gym owner for the 6-character code. Registration requires approval.';
+                gymCodeHint.className = 'hint-text warning';
+            } else if (selectedRole === 'client') {
+                gymCodeSection.style.display = 'block';
+                gymCodeInput.required = false;
+                gymCodeInput.placeholder = 'Gym Code (optional)';
+                gymCodeHint.textContent = 'Enter a gym code to join, or add one later from settings.';
+                gymCodeHint.className = 'hint-text';
+            } else if (selectedSubRole === 'staff') {
+                gymCodeSection.style.display = 'block';
+                gymCodeInput.required = true;
+                gymCodeInput.placeholder = 'Gym Code (required)';
+                gymCodeHint.textContent = 'Enter your gym\'s code. Registration requires owner approval.';
+                gymCodeHint.className = 'hint-text warning';
+            } else {
+                // Owner creating new gym
+                gymCodeSection.style.display = 'none';
+                gymCodeInput.required = false;
+                gymCodeInput.value = '';
+            }
+        }
+
+        // Form validation
+        document.getElementById('register-form')?.addEventListener('submit', function(e) {
+            const role = document.getElementById('role').value;
+            const subRole = document.getElementById('sub_role').value;
+            const gymCode = document.getElementById('gym_code').value;
+
+            if ((role === 'trainer' || subRole === 'staff') && !gymCode.trim()) {
+                e.preventDefault();
+                document.getElementById('error-msg').textContent = 'Gym code is required.';
+                document.getElementById('error-msg').style.display = 'block';
+            }
+        });
     </script>
 </body>
 

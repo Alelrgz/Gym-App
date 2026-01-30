@@ -68,9 +68,9 @@
     {% else %}
     <!-- ==================== DASHBOARD MODE (default) ==================== -->
 
-    <!-- Pending Trainer Approvals - Only show if there are pending -->
+    <!-- Pending Staff Approvals - Only show if there are pending -->
     <div id="pending-trainers-section" class="mb-6 hidden">
-        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Pending Trainer Approvals</h3>
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Pending Staff Approvals</h3>
         <div id="pending-trainers-list" class="space-y-2">
             <!-- Pending trainers will be loaded here -->
         </div>
@@ -484,7 +484,7 @@ function displayPendingTrainers(trainers) {
             // In trainers mode, show empty state
             list.innerHTML = `
                 <div class="glass-card p-4 text-center text-gray-400 text-sm">
-                    No pending trainer approvals
+                    No pending approvals
                 </div>
             `;
         } else if (section) {
@@ -498,11 +498,30 @@ function displayPendingTrainers(trainers) {
         section.classList.remove('hidden');
     }
 
+    // Helper to get role display label
+    function getRoleLabel(user) {
+        if (user.role === 'staff') return 'Staff';
+        if (user.sub_role === 'nutritionist') return 'Nutritionist';
+        if (user.sub_role === 'both') return 'Trainer & Nutritionist';
+        return 'Trainer';
+    }
+
+    // Helper to get role badge color
+    function getRoleBadgeClass(user) {
+        if (user.role === 'staff') return 'bg-blue-500/20 text-blue-400';
+        if (user.sub_role === 'nutritionist') return 'bg-green-500/20 text-green-400';
+        if (user.sub_role === 'both') return 'bg-purple-500/20 text-purple-400';
+        return 'bg-orange-500/20 text-orange-400';
+    }
+
     list.innerHTML = trainers.map(trainer => `
         <div class="glass-card p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5">
             <div class="flex justify-between items-center">
                 <div>
-                    <p class="font-bold text-white">${trainer.username}</p>
+                    <div class="flex items-center gap-2 mb-1">
+                        <p class="font-bold text-white">${trainer.username}</p>
+                        <span class="text-xs px-2 py-0.5 rounded-full ${getRoleBadgeClass(trainer)}">${getRoleLabel(trainer)}</span>
+                    </div>
                     <p class="text-xs text-gray-400">${trainer.email || 'No email'}</p>
                     <p class="text-xs text-yellow-400 mt-1">Pending approval</p>
                 </div>

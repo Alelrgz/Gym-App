@@ -2950,17 +2950,16 @@ async function loadAllGymTrainers() {
                 <div onclick="openTrainerProfileModal('${trainer.id}', '${trainer.name}', ${trainer.profile_picture ? `'${trainer.profile_picture}'` : 'null'}, ${trainer.bio ? `'${bioEscaped}'` : 'null'}, '${specialtiesJson}')"
                     class="glass-card p-4 cursor-pointer hover:bg-white/5 transition tap-effect ${isMyTrainer ? 'border border-orange-500/30' : ''}">
                     <div class="flex space-x-4">
-                        <!-- Left column: Avatar + Available -->
+                        <!-- Left column: Avatar -->
                         <div class="flex flex-col items-center flex-shrink-0">
                             <div class="w-16 h-16 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center overflow-hidden">
                                 ${avatarHtml}
                             </div>
-                            ${trainer.has_availability ? `<span class="text-[10px] text-blue-400 font-medium mt-2">Available</span>` : `<span class="text-[10px] text-red-400 font-medium mt-2">Unavailable</span>`}
                         </div>
                         <!-- Right column: Name + Bio + Tags -->
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2 flex-wrap">
-                                <p class="font-bold text-white text-lg">${trainer.name}</p>
+                                <p class="font-bold text-white text-lg flex items-center gap-1.5">${trainer.name}${trainer.has_availability ? '<svg class="w-4 h-4 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</p>
                                 ${isMyTrainer ? '<span class="text-[10px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full">Your Trainer</span>' : ''}
                             </div>
                             ${trainer.bio ? `<p class="text-sm text-gray-400 mt-1 line-clamp-2">${trainer.bio}</p>` : '<p class="text-sm text-gray-500 italic mt-1">No bio</p>'}

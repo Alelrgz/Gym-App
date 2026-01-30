@@ -92,6 +92,11 @@ from route_modules.profile_routes import router as profile_router
 app.include_router(profile_router)
 print("DEBUG: Profile router included")
 
+# Include staff routes
+from route_modules.staff_routes import router as staff_router
+app.include_router(staff_router)
+print("DEBUG: Staff router included")
+
 
 def run_migrations(engine):
     """Run database migrations to add new columns."""
@@ -168,6 +173,19 @@ def run_migrations(engine):
                     logger.info("Added column course_id to client_schedule table")
                 except Exception as e:
                     logger.debug(f"Column course_id may already exist: {e}")
+
+    # Check if users table exists and add sub_role column if needed
+    if 'users' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('users')]
+
+        if 'sub_role' not in columns:
+            with engine.connect() as conn:
+                try:
+                    conn.execute(text('ALTER TABLE users ADD COLUMN sub_role TEXT'))
+                    conn.commit()
+                    logger.info("Added column sub_role to users table")
+                except Exception as e:
+                    logger.debug(f"Column sub_role may already exist: {e}")
 
 @app.on_event("startup")
 async def startup_event():
@@ -280,6 +298,8 @@ async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "cli
         template_name = "workout.html"
     elif role == "trainer":
         template_name = "trainer.html"
+    elif role == "staff":
+        template_name = "staff.html"
     elif role == "owner":
         template_name = "owner.html"
     

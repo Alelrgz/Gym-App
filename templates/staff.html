@@ -1,0 +1,640 @@
+{% extends "base.html" %}
+{% from 'macros.html' import card %}
+
+{% block content %}
+<div class="p-6 pt-10">
+    <h2 class="text-xl font-bold text-center mb-6" id="page-title">{{ 'Settings' if mode == 'settings' else 'Reception' }}</h2>
+
+    {% if mode == 'settings' %}
+    <!-- ==================== SETTINGS MODE ==================== -->
+
+    <!-- Profile Card -->
+    {% call card(classes="p-6 mb-6") %}
+    <div class="text-center">
+        <div class="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mx-auto mb-4">
+            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+            </svg>
+        </div>
+        <h3 class="text-lg font-bold text-white mb-1" id="staff-name">Staff Member</h3>
+        <p class="text-sm text-gray-400">Reception / Staff</p>
+    </div>
+    {% endcall %}
+
+    <!-- Account Info -->
+    {% call card(classes="p-4 mb-6") %}
+    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Account</h3>
+    <div class="space-y-3">
+        <div class="flex justify-between items-center">
+            <span class="text-gray-400">Role</span>
+            <span class="text-white font-semibold">Staff</span>
+        </div>
+        <div class="flex justify-between items-center">
+            <span class="text-gray-400">Gym</span>
+            <span class="text-white font-semibold" id="gym-name-display">Loading...</span>
+        </div>
+        <div class="flex justify-between items-center">
+            <span class="text-gray-400">Status</span>
+            <span class="text-green-400 font-semibold">Active</span>
+        </div>
+    </div>
+    {% endcall %}
+
+    <!-- Logout Button -->
+    <a href="/auth/logout" class="block w-full bg-red-500/20 hover:bg-red-500/30 text-red-400 text-center py-3 rounded-xl font-bold transition">
+        Logout
+    </a>
+
+    {% else %}
+    <!-- ==================== RECEPTION MODE (default) ==================== -->
+
+    <!-- Tab Navigation -->
+    <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
+        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition">
+            Dashboard
+        </button>
+        <button onclick="switchTab('members')" id="tab-members" class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition">
+            Members
+        </button>
+        <button onclick="switchTab('trainers')" id="tab-trainers" class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition">
+            Trainers
+        </button>
+    </div>
+
+    <!-- ========== DASHBOARD TAB ========== -->
+    <div id="content-dashboard" class="tab-content">
+        <!-- Quick Stats -->
+        <div class="grid grid-cols-2 gap-3 mb-6">
+            {% call card(classes="p-4 text-center") %}
+            <p class="text-3xl font-bold text-primary" id="members-today">0</p>
+            <p class="text-xs text-gray-400 uppercase">Checked In Today</p>
+            {% endcall %}
+
+            {% call card(classes="p-4 text-center") %}
+            <p class="text-3xl font-bold text-blue-400" id="total-members">0</p>
+            <p class="text-xs text-gray-400 uppercase">Total Members</p>
+            {% endcall %}
+        </div>
+
+        <!-- Quick Check-In -->
+        {% call card(classes="p-4 mb-6") %}
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Quick Check-In</h3>
+        <div class="flex gap-2">
+            <input type="text" id="checkin-search"
+                class="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition"
+                placeholder="Search member name...">
+            <button onclick="searchMember()" class="bg-primary hover:bg-primary/80 px-4 py-3 rounded-xl transition">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="M21 21l-4.35-4.35"/>
+                </svg>
+            </button>
+        </div>
+        <div id="search-results" class="mt-3 space-y-2 hidden"></div>
+        {% endcall %}
+
+        <!-- Recent Check-ins -->
+        <div class="mb-6">
+            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Recent Check-ins</h3>
+            <div id="recent-checkins-list" class="space-y-2">
+                {% call card(classes="p-4 text-center") %}
+                <p class="text-gray-400 text-sm">No check-ins yet today</p>
+                {% endcall %}
+            </div>
+        </div>
+
+        <!-- Today's Appointments -->
+        <div class="mb-6">
+            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Today's Appointments</h3>
+            <div id="todays-appointments-list" class="space-y-2">
+                {% call card(classes="p-4 text-center") %}
+                <p class="text-gray-400 text-sm">Loading...</p>
+                {% endcall %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MEMBERS TAB ========== -->
+    <div id="content-members" class="tab-content hidden">
+        <!-- Search Members -->
+        {% call card(classes="p-4 mb-6") %}
+        <div class="flex gap-2">
+            <input type="text" id="member-search"
+                class="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition"
+                placeholder="Search members...">
+        </div>
+        {% endcall %}
+
+        <!-- Member List -->
+        <div class="mb-6">
+            <div class="flex justify-between items-center mb-3">
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1">All Members</h3>
+                <span class="text-xs text-gray-500" id="members-count">0 members</span>
+            </div>
+            <div id="members-list" class="space-y-2 max-h-[60vh] overflow-y-auto">
+                {% call card(classes="p-4 text-center") %}
+                <p class="text-gray-400 text-sm">Loading members...</p>
+                {% endcall %}
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== TRAINERS TAB ========== -->
+    <div id="content-trainers" class="tab-content hidden">
+        <!-- Trainers List -->
+        <div class="mb-6">
+            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Trainers & Nutritionists</h3>
+            <div id="trainers-list" class="space-y-3">
+                {% call card(classes="p-4 text-center") %}
+                <p class="text-gray-400 text-sm">Loading trainers...</p>
+                {% endcall %}
+            </div>
+        </div>
+    </div>
+
+    {% endif %}
+</div>
+
+<!-- Trainer Schedule Modal -->
+<div id="trainer-schedule-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-white" id="trainer-modal-title">Trainer Schedule</h3>
+            <button onclick="closeTrainerModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+
+        <!-- Availability -->
+        <div class="mb-4">
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Weekly Availability</h4>
+            <div id="trainer-availability" class="space-y-2">
+                <p class="text-gray-400 text-sm">Loading...</p>
+            </div>
+        </div>
+
+        <!-- Today's Schedule -->
+        <div>
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Today's Appointments</h4>
+            <div id="trainer-today-schedule" class="space-y-2">
+                <p class="text-gray-400 text-sm">Loading...</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Message Modal -->
+<div id="message-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-card p-6 rounded-2xl max-w-md w-full">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-white">Send Message</h3>
+            <button onclick="closeMessageModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+
+        <p class="text-sm text-gray-400 mb-4">To: <span id="message-recipient" class="text-white font-semibold"></span></p>
+
+        <textarea id="message-content" rows="4"
+            class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition resize-none mb-4"
+            placeholder="Type your message..."></textarea>
+
+        <button onclick="sendMessage()" class="w-full bg-primary hover:bg-primary/80 text-white py-3 rounded-xl font-bold transition">
+            Send Message
+        </button>
+    </div>
+</div>
+
+<style>
+.tab-btn {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.6);
+}
+.tab-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+.tab-btn.active {
+    background: var(--primary, #f97316);
+    color: white;
+}
+</style>
+
+<script>
+let allMembers = [];
+let allTrainers = [];
+let currentMessageRecipient = null;
+
+document.addEventListener('DOMContentLoaded', async () => {
+    await loadStaffData();
+});
+
+function switchTab(tab) {
+    // Update tab buttons
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.getElementById(`tab-${tab}`).classList.add('active');
+
+    // Update content
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
+    document.getElementById(`content-${tab}`).classList.remove('hidden');
+
+    // Load tab-specific data
+    if (tab === 'trainers' && allTrainers.length === 0) {
+        loadTrainers();
+    }
+}
+
+async function loadStaffData() {
+    try {
+        // Load gym info
+        const gymRes = await fetch('/api/staff/gym-info', { credentials: 'include' });
+        if (gymRes.ok) {
+            const gymInfo = await gymRes.json();
+            const gymNameEl = document.getElementById('gym-name-display');
+            if (gymNameEl) gymNameEl.textContent = gymInfo.gym_name || 'Your Gym';
+
+            const staffNameEl = document.getElementById('staff-name');
+            if (staffNameEl) staffNameEl.textContent = gymInfo.staff_name || 'Staff Member';
+        }
+
+        // Load members
+        const membersRes = await fetch('/api/staff/members', { credentials: 'include' });
+        if (membersRes.ok) {
+            allMembers = await membersRes.json();
+            renderMembers(allMembers);
+
+            const totalEl = document.getElementById('total-members');
+            if (totalEl) totalEl.textContent = allMembers.length;
+
+            const countEl = document.getElementById('members-count');
+            if (countEl) countEl.textContent = `${allMembers.length} members`;
+        }
+
+        // Load today's appointments
+        await loadTodaysAppointments();
+
+        // Load check-in stats
+        await loadCheckinStats();
+
+    } catch (error) {
+        console.error('Error loading staff data:', error);
+    }
+}
+
+async function loadTrainers() {
+    try {
+        const res = await fetch('/api/staff/trainers', { credentials: 'include' });
+        const listEl = document.getElementById('trainers-list');
+
+        if (res.ok) {
+            allTrainers = await res.json();
+
+            if (allTrainers.length === 0) {
+                listEl.innerHTML = `
+                    <div class="glass-card p-4 text-center">
+                        <p class="text-gray-400 text-sm">No trainers in this gym yet</p>
+                    </div>
+                `;
+                return;
+            }
+
+            listEl.innerHTML = allTrainers.map(trainer => `
+                <div class="glass-card p-4">
+                    <div class="flex items-center gap-3 mb-3">
+                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-white font-bold text-lg">
+                            ${trainer.username.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <p class="font-semibold text-white flex items-center gap-2">
+                                ${trainer.username}
+                                ${trainer.is_available_today ? '<svg class="w-4 h-4 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+                            </p>
+                            <p class="text-xs text-gray-400">${getRoleLabel(trainer)}</p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="viewTrainerSchedule('${trainer.id}', '${trainer.username}')"
+                            class="flex-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 py-2 rounded-lg text-sm font-semibold transition">
+                            View Schedule
+                        </button>
+                        <button onclick="openMessageModal('${trainer.id}', '${trainer.username}')"
+                            class="flex-1 bg-primary/20 hover:bg-primary/30 text-primary py-2 rounded-lg text-sm font-semibold transition">
+                            Message
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+    } catch (error) {
+        console.error('Error loading trainers:', error);
+    }
+}
+
+function getRoleLabel(trainer) {
+    if (trainer.sub_role === 'nutritionist') return 'Nutritionist';
+    if (trainer.sub_role === 'both') return 'Trainer & Nutritionist';
+    return 'Personal Trainer';
+}
+
+function renderMembers(members) {
+    const list = document.getElementById('members-list');
+    if (!list) return;
+
+    if (members.length === 0) {
+        list.innerHTML = `
+            <div class="glass-card p-4 text-center">
+                <p class="text-gray-400 text-sm">No members found</p>
+            </div>
+        `;
+        return;
+    }
+
+    list.innerHTML = members.map(member => `
+        <div class="glass-card p-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold">
+                        ${member.name ? member.name.charAt(0).toUpperCase() : '?'}
+                    </div>
+                    <div>
+                        <p class="font-semibold text-white">${member.name || member.username}</p>
+                        <p class="text-xs text-gray-400">${member.email || 'No email'}</p>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="openMessageModal('${member.id}', '${member.name || member.username}')"
+                        class="bg-primary/20 hover:bg-primary/30 text-primary px-3 py-2 rounded-lg text-xs font-semibold transition"
+                        title="Message">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                        </svg>
+                    </button>
+                    <button onclick="checkInMember('${member.id}')"
+                        class="bg-green-500/20 hover:bg-green-500/30 text-green-400 px-3 py-2 rounded-lg text-xs font-semibold transition">
+                        Check In
+                    </button>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function searchMember() {
+    const query = document.getElementById('checkin-search').value.trim().toLowerCase();
+    const resultsDiv = document.getElementById('search-results');
+
+    if (!query) {
+        resultsDiv.classList.add('hidden');
+        return;
+    }
+
+    const filtered = allMembers.filter(m =>
+        (m.name && m.name.toLowerCase().includes(query)) ||
+        (m.username && m.username.toLowerCase().includes(query)) ||
+        (m.email && m.email.toLowerCase().includes(query))
+    );
+
+    if (filtered.length === 0) {
+        resultsDiv.innerHTML = '<p class="text-gray-400 text-sm text-center py-2">No members found</p>';
+    } else {
+        resultsDiv.innerHTML = filtered.slice(0, 5).map(member => `
+            <div class="glass-card p-3 flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <div class="w-8 h-8 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold text-sm">
+                        ${member.name ? member.name.charAt(0).toUpperCase() : '?'}
+                    </div>
+                    <span class="text-white font-medium">${member.name || member.username}</span>
+                </div>
+                <button onclick="checkInMember('${member.id}')"
+                    class="bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg text-xs font-semibold transition">
+                    Check In
+                </button>
+            </div>
+        `).join('');
+    }
+
+    resultsDiv.classList.remove('hidden');
+}
+
+// Member search filter
+document.getElementById('member-search')?.addEventListener('input', (e) => {
+    const query = e.target.value.trim().toLowerCase();
+    if (!query) {
+        renderMembers(allMembers);
+        return;
+    }
+    const filtered = allMembers.filter(m =>
+        (m.name && m.name.toLowerCase().includes(query)) ||
+        (m.username && m.username.toLowerCase().includes(query)) ||
+        (m.email && m.email.toLowerCase().includes(query))
+    );
+    renderMembers(filtered);
+});
+
+async function checkInMember(memberId) {
+    try {
+        const res = await fetch('/api/staff/checkin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ member_id: memberId })
+        });
+
+        if (res.ok) {
+            showToast('Member checked in successfully!', 'success');
+            await loadCheckinStats();
+            document.getElementById('checkin-search').value = '';
+            document.getElementById('search-results').classList.add('hidden');
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Check-in failed', 'error');
+        }
+    } catch (error) {
+        console.error('Check-in error:', error);
+        showToast('Check-in failed', 'error');
+    }
+}
+
+async function loadCheckinStats() {
+    try {
+        const res = await fetch('/api/staff/checkins/today', { credentials: 'include' });
+        if (res.ok) {
+            const data = await res.json();
+            const todayEl = document.getElementById('members-today');
+            if (todayEl) todayEl.textContent = data.count || 0;
+
+            const listEl = document.getElementById('recent-checkins-list');
+            if (listEl && data.recent && data.recent.length > 0) {
+                listEl.innerHTML = data.recent.map(checkin => `
+                    <div class="glass-card p-3 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                            </div>
+                            <span class="text-white font-medium">${checkin.member_name}</span>
+                        </div>
+                        <span class="text-xs text-gray-400">${checkin.time}</span>
+                    </div>
+                `).join('');
+            }
+        }
+    } catch (error) {
+        console.error('Error loading check-in stats:', error);
+    }
+}
+
+async function loadTodaysAppointments() {
+    try {
+        const res = await fetch('/api/staff/appointments/today', { credentials: 'include' });
+        const listEl = document.getElementById('todays-appointments-list');
+
+        if (res.ok) {
+            const appointments = await res.json();
+
+            if (appointments.length === 0) {
+                listEl.innerHTML = `
+                    <div class="glass-card p-4 text-center">
+                        <p class="text-gray-400 text-sm">No appointments scheduled for today</p>
+                    </div>
+                `;
+            } else {
+                listEl.innerHTML = appointments.map(appt => `
+                    <div class="glass-card p-3 flex items-center justify-between">
+                        <div>
+                            <p class="text-white font-medium">${appt.client_name}</p>
+                            <p class="text-xs text-gray-400">with ${appt.trainer_name}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-primary font-semibold">${appt.time}</p>
+                            <p class="text-xs text-gray-400">${appt.duration} min</p>
+                        </div>
+                    </div>
+                `).join('');
+            }
+        } else {
+            listEl.innerHTML = `
+                <div class="glass-card p-4 text-center">
+                    <p class="text-gray-400 text-sm">No appointments scheduled</p>
+                </div>
+            `;
+        }
+    } catch (error) {
+        console.error('Error loading appointments:', error);
+    }
+}
+
+// Trainer Schedule Modal
+async function viewTrainerSchedule(trainerId, trainerName) {
+    document.getElementById('trainer-modal-title').textContent = `${trainerName}'s Schedule`;
+    document.getElementById('trainer-schedule-modal').classList.remove('hidden');
+
+    // Load availability
+    const availEl = document.getElementById('trainer-availability');
+    const schedEl = document.getElementById('trainer-today-schedule');
+
+    try {
+        const res = await fetch(`/api/staff/trainer/${trainerId}/schedule`, { credentials: 'include' });
+        if (res.ok) {
+            const data = await res.json();
+
+            // Display availability
+            if (data.availability && data.availability.length > 0) {
+                const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+                availEl.innerHTML = data.availability.map(a => `
+                    <div class="flex justify-between items-center py-1">
+                        <span class="text-gray-400">${days[a.day_of_week]}</span>
+                        <span class="text-white">${a.start_time} - ${a.end_time}</span>
+                    </div>
+                `).join('');
+            } else {
+                availEl.innerHTML = '<p class="text-gray-500 text-sm">No availability set</p>';
+            }
+
+            // Display today's appointments
+            if (data.today_appointments && data.today_appointments.length > 0) {
+                schedEl.innerHTML = data.today_appointments.map(appt => `
+                    <div class="glass-card p-3 flex justify-between items-center">
+                        <div>
+                            <p class="text-white font-medium">${appt.client_name}</p>
+                            <p class="text-xs text-gray-400">${appt.session_type || 'General'}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-primary font-semibold">${appt.time}</p>
+                            <p class="text-xs text-gray-400">${appt.duration} min</p>
+                        </div>
+                    </div>
+                `).join('');
+            } else {
+                schedEl.innerHTML = '<p class="text-gray-500 text-sm">No appointments today</p>';
+            }
+        }
+    } catch (error) {
+        console.error('Error loading trainer schedule:', error);
+        availEl.innerHTML = '<p class="text-red-400 text-sm">Error loading availability</p>';
+    }
+}
+
+function closeTrainerModal() {
+    document.getElementById('trainer-schedule-modal').classList.add('hidden');
+}
+
+// Message Modal
+function openMessageModal(userId, userName) {
+    currentMessageRecipient = userId;
+    document.getElementById('message-recipient').textContent = userName;
+    document.getElementById('message-content').value = '';
+    document.getElementById('message-modal').classList.remove('hidden');
+}
+
+function closeMessageModal() {
+    document.getElementById('message-modal').classList.add('hidden');
+    currentMessageRecipient = null;
+}
+
+async function sendMessage() {
+    const content = document.getElementById('message-content').value.trim();
+    if (!content || !currentMessageRecipient) {
+        showToast('Please enter a message', 'error');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/messages/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                recipient_id: currentMessageRecipient,
+                content: content
+            })
+        });
+
+        if (res.ok) {
+            showToast('Message sent!', 'success');
+            closeMessageModal();
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Failed to send message', 'error');
+        }
+    } catch (error) {
+        console.error('Error sending message:', error);
+        showToast('Failed to send message', 'error');
+    }
+}
+
+// Search on Enter key
+document.getElementById('checkin-search')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') searchMember();
+});
+
+// Search on input
+document.getElementById('checkin-search')?.addEventListener('input', (e) => {
+    if (e.target.value.length >= 2) {
+        searchMember();
+    } else {
+        document.getElementById('search-results').classList.add('hidden');
+    }
+});
+</script>
+{% endblock %}

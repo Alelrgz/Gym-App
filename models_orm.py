@@ -12,6 +12,7 @@ class UserORM(Base):
     email = Column(String, unique=True, index=True, nullable=True)
     hashed_password = Column(String)
     role = Column(String) # client, trainer, owner
+    sub_role = Column(String, nullable=True) # trainer: trainer/nutritionist/both, owner: owner/staff
     is_active = Column(Boolean, default=True)
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
     settings = Column(String, nullable=True) # JSON string
@@ -444,6 +445,19 @@ class PhysiquePhotoORM(Base):
     # Timestamps
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
     updated_at = Column(String, nullable=True)
+
+
+class CheckInORM(Base):
+    """Member check-in records for gym reception/staff."""
+    __tablename__ = "checkins"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    member_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    staff_id = Column(String, ForeignKey("users.id"), nullable=True)  # Staff who checked them in
+    gym_owner_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+
+    checked_in_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    notes = Column(String, nullable=True)
 
 
 class DailyQuestCompletionORM(Base):

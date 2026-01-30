@@ -277,11 +277,12 @@ class GymAssignmentService:
             db.close()
 
     def get_pending_trainers(self, owner_id: str) -> list:
-        """Get all trainers pending approval for this gym owner."""
+        """Get all trainers and staff pending approval for this gym owner."""
         db = get_db_session()
         try:
+            # Get pending trainers AND staff
             pending = db.query(UserORM).filter(
-                UserORM.role == "trainer",
+                UserORM.role.in_(["trainer", "staff"]),
                 UserORM.gym_owner_id == owner_id,
                 UserORM.is_approved == False
             ).all()
@@ -291,6 +292,8 @@ class GymAssignmentService:
                     "id": t.id,
                     "username": t.username,
                     "email": t.email,
+                    "role": t.role,
+                    "sub_role": t.sub_role,
                     "created_at": t.created_at
                 }
                 for t in pending
@@ -299,26 +302,28 @@ class GymAssignmentService:
             db.close()
 
     def approve_trainer(self, owner_id: str, trainer_id: str) -> dict:
-        """Approve a trainer's registration."""
+        """Approve a trainer's or staff member's registration."""
         db = get_db_session()
         try:
-            trainer = db.query(UserORM).filter(
+            # Find trainer OR staff member
+            user = db.query(UserORM).filter(
                 UserORM.id == trainer_id,
-                UserORM.role == "trainer",
+                UserORM.role.in_(["trainer", "staff"]),
                 UserORM.gym_owner_id == owner_id
             ).first()
 
-            if not trainer:
-                raise HTTPException(status_code=404, detail="Trainer not found or not part of your gym")
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found or not part of your gym")
 
-            trainer.is_approved = True
+            user.is_approved = True
             db.commit()
 
-            logger.info(f"Owner {owner_id} approved trainer {trainer_id}")
+            role_label = "Staff member" if user.role == "staff" else "Trainer"
+            logger.info(f"Owner {owner_id} approved {user.role} {trainer_id}")
 
             return {
                 "status": "success",
-                "message": f"Trainer {trainer.username} has been approved"
+                "message": f"{role_label} {user.username} has been approved"
             }
 
         except HTTPException:
@@ -332,23 +337,25 @@ class GymAssignmentService:
             db.close()
 
     def reject_trainer(self, owner_id: str, trainer_id: str) -> dict:
-        """Reject a trainer's registration (deletes their account)."""
+        """Reject a trainer's or staff member's registration (deletes their account)."""
         db = get_db_session()
         try:
-            trainer = db.query(UserORM).filter(
+            # Find trainer OR staff member
+            user = db.query(UserORM).filter(
                 UserORM.id == trainer_id,
-                UserORM.role == "trainer",
+                UserORM.role.in_(["trainer", "staff"]),
                 UserORM.gym_owner_id == owner_id
             ).first()
 
-            if not trainer:
-                raise HTTPException(status_code=404, detail="Trainer not found or not part of your gym")
+            if not user:
+                raise HTTPException(status_code=404, detail="User not found or not part of your gym")
 
-            username = trainer.username
-            db.delete(trainer)
+            username = user.username
+            role = user.role
+            db.delete(user)
             db.commit()
 
-            logger.info(f"Owner {owner_id} rejected trainer {trainer_id}")
+            logger.info(f"Owner {owner_id} rejected {role} {trainer_id}")
 
             return {
                 "status": "success",
