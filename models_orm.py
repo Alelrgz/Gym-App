@@ -127,6 +127,11 @@ class ClientDietSettingsORM(Base):
 
     id = Column(String, ForeignKey("users.id"), primary_key=True, index=True) # client_id
 
+    # Fitness goal: cut, maintain, bulk
+    fitness_goal = Column(String, default="maintain")
+    # Base maintenance calories (used to calculate cut/bulk targets)
+    base_calories = Column(Integer, default=2000)
+
     calories_target = Column(Integer, default=2000)
     protein_target = Column(Integer, default=150)
     carbs_target = Column(Integer, default=200)

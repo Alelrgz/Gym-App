@@ -7,7 +7,7 @@ from typing import Optional, List
 from datetime import datetime
 from auth import get_current_user
 from models import ClientData, ClientProfileUpdate
-from models_orm import UserORM, ClientProfileORM, ChatRequestORM
+from models_orm import UserORM, ClientProfileORM, ChatRequestORM, ClientDietSettingsORM
 from service_modules.client_service import ClientService, get_client_service
 from service_modules.workout_service import get_workout_service
 from database import get_db_session
@@ -31,6 +31,10 @@ class ChatRequestCreate(BaseModel):
 class ChatRequestResponse(BaseModel):
     request_id: int
     accept: bool
+
+
+class FitnessGoalRequest(BaseModel):
+    fitness_goal: str  # "cut", "maintain", "bulk"
 
 
 @router.get("/api/client/data", response_model=ClientData)
@@ -147,6 +151,123 @@ async def set_privacy_mode(
         profile.privacy_mode = request.mode
         db.commit()
         return {"success": True, "privacy_mode": request.mode}
+    finally:
+        db.close()
+
+
+# ============ FITNESS GOAL ============
+
+@router.get("/api/client/fitness-goal")
+async def get_fitness_goal(current_user: UserORM = Depends(get_current_user)):
+    """Get current user's fitness goal and calorie targets."""
+    if current_user.role != "client":
+        raise HTTPException(status_code=403, detail="Only clients have fitness goals")
+
+    db = get_db_session()
+    try:
+        settings = db.query(ClientDietSettingsORM).filter(
+            ClientDietSettingsORM.id == current_user.id
+        ).first()
+
+        if not settings:
+            # Create default settings
+            settings = ClientDietSettingsORM(
+                id=current_user.id,
+                fitness_goal="maintain",
+                base_calories=2000,
+                calories_target=2000
+            )
+            db.add(settings)
+            db.commit()
+            db.refresh(settings)
+
+        # Check if client has a trainer assigned
+        has_trainer = current_user.trainer_id is not None
+
+        return {
+            "fitness_goal": settings.fitness_goal or "maintain",
+            "base_calories": settings.base_calories or 2000,
+            "calories_target": settings.calories_target,
+            "protein_target": settings.protein_target,
+            "carbs_target": settings.carbs_target,
+            "fat_target": settings.fat_target,
+            "has_trainer": has_trainer
+        }
+    finally:
+        db.close()
+
+
+@router.post("/api/client/fitness-goal")
+async def set_fitness_goal(
+    request: FitnessGoalRequest,
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Set user's fitness goal and adjust macro targets accordingly."""
+    if current_user.role != "client":
+        raise HTTPException(status_code=403, detail="Only clients have fitness goals")
+
+    # Block if client has a trainer assigned - trainer manages their nutrition
+    if current_user.trainer_id:
+        raise HTTPException(status_code=403, detail="Your trainer manages your nutrition plan")
+
+    if request.fitness_goal not in ["cut", "maintain", "bulk"]:
+        raise HTTPException(status_code=400, detail="Goal must be 'cut', 'maintain', or 'bulk'")
+
+    db = get_db_session()
+    try:
+        settings = db.query(ClientDietSettingsORM).filter(
+            ClientDietSettingsORM.id == current_user.id
+        ).first()
+
+        if not settings:
+            settings = ClientDietSettingsORM(
+                id=current_user.id,
+                base_calories=2000
+            )
+            db.add(settings)
+            db.flush()
+
+        # If base_calories not set, use current target as base
+        if not settings.base_calories or settings.base_calories == 0:
+            settings.base_calories = settings.calories_target or 2000
+
+        base = settings.base_calories
+
+        # Calculate new targets based on goal
+        if request.fitness_goal == "cut":
+            # Cut: -500 kcal, high protein (1g/lb target), moderate carbs, lower fat
+            new_calories = base - 500
+            new_protein = int(base * 0.35 / 4)  # 35% from protein
+            new_carbs = int(base * 0.35 / 4)    # 35% from carbs
+            new_fat = int(base * 0.30 / 9)      # 30% from fat
+        elif request.fitness_goal == "bulk":
+            # Bulk: +400 kcal, high protein, higher carbs for energy
+            new_calories = base + 400
+            new_protein = int(base * 0.30 / 4)  # 30% from protein
+            new_carbs = int(base * 0.50 / 4)    # 50% from carbs
+            new_fat = int(base * 0.20 / 9)      # 20% from fat
+        else:  # maintain
+            new_calories = base
+            new_protein = int(base * 0.30 / 4)
+            new_carbs = int(base * 0.40 / 4)
+            new_fat = int(base * 0.30 / 9)
+
+        settings.fitness_goal = request.fitness_goal
+        settings.calories_target = new_calories
+        settings.protein_target = new_protein
+        settings.carbs_target = new_carbs
+        settings.fat_target = new_fat
+
+        db.commit()
+
+        return {
+            "success": True,
+            "fitness_goal": request.fitness_goal,
+            "new_calories_target": new_calories,
+            "new_protein_target": new_protein,
+            "new_carbs_target": new_carbs,
+            "new_fat_target": new_fat
+        }
     finally:
         db.close()
 

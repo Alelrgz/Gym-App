@@ -1401,11 +1401,71 @@ setTimeout(() => loadGymAndTrainerInfo(), 100);
     </div>
     {% endcall %}
 
+    <!-- Fitness Goal Selector -->
+    <div class="space-y-3">
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1">Fitness Goal</h3>
+        <p class="text-xs text-gray-500 ml-1 -mt-1" id="goal-subtitle">Adjusts your daily calorie target</p>
+
+        <!-- Trainer managed notice (hidden by default) -->
+        <div id="trainer-managed-notice" class="hidden bg-gradient-to-r from-purple-500/20 to-blue-500/20 border border-purple-500/30 rounded-xl p-3 flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-purple-500/30 flex items-center justify-center">
+                <svg class="w-4 h-4 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+                </svg>
+            </div>
+            <p class="text-sm text-purple-300">Your trainer manages your nutrition plan</p>
+        </div>
+
+        <div class="grid grid-cols-3 gap-3" id="goal-selector">
+            <!-- Cut -->
+            <button onclick="selectFitnessGoal('cut')" id="goal-cut"
+                class="goal-card p-4 rounded-2xl border-2 border-transparent bg-white/5 hover:bg-white/10 transition-all duration-300 flex flex-col items-center space-y-2 tap-effect">
+                <div class="goal-icon w-12 h-12 rounded-full bg-blue-500/20 flex items-center justify-center text-2xl transition-all duration-300">
+                    <svg class="w-6 h-6 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 19V5M5 12l7-7 7 7"/>
+                    </svg>
+                </div>
+                <span class="font-bold text-white text-sm">Cut</span>
+                <span class="text-[10px] text-gray-500">-500 kcal</span>
+            </button>
+
+            <!-- Maintain -->
+            <button onclick="selectFitnessGoal('maintain')" id="goal-maintain"
+                class="goal-card p-4 rounded-2xl border-2 border-transparent bg-white/5 hover:bg-white/10 transition-all duration-300 flex flex-col items-center space-y-2 tap-effect">
+                <div class="goal-icon w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center text-2xl transition-all duration-300">
+                    <svg class="w-6 h-6 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M5 12h14"/>
+                    </svg>
+                </div>
+                <span class="font-bold text-white text-sm">Maintain</span>
+                <span class="text-[10px] text-gray-500">Baseline</span>
+            </button>
+
+            <!-- Bulk -->
+            <button onclick="selectFitnessGoal('bulk')" id="goal-bulk"
+                class="goal-card p-4 rounded-2xl border-2 border-transparent bg-white/5 hover:bg-white/10 transition-all duration-300 flex flex-col items-center space-y-2 tap-effect">
+                <div class="goal-icon w-12 h-12 rounded-full bg-orange-500/20 flex items-center justify-center text-2xl transition-all duration-300">
+                    <svg class="w-6 h-6 text-orange-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 5v14M5 12l7 7 7-7"/>
+                    </svg>
+                </div>
+                <span class="font-bold text-white text-sm">Bulk</span>
+                <span class="text-[10px] text-gray-500">+400 kcal</span>
+            </button>
+        </div>
+
+        <!-- Current target display -->
+        <div class="bg-white/5 rounded-xl p-3 flex items-center justify-between">
+            <span class="text-sm text-gray-400">Daily Target</span>
+            <span class="font-bold text-white" id="current-calorie-target">2000 kcal</span>
+        </div>
+    </div>
+
     <!-- Account Actions -->
     <div class="space-y-3">
         <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1">Settings</h3>
 
-        <button onclick="showToast('Payment settings feature coming soon! 💳')"
+        <button onclick="showToast('Payment settings feature coming soon!')"
             class="w-full bg-white/5 p-4 rounded-2xl flex items-center justify-between tap-effect group hover:bg-white/10 transition">
             <div class="flex items-center space-x-4">
                 <div class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
@@ -1533,7 +1593,123 @@ async function uploadProfilePicture(input) {
 // Load profile picture on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadProfilePicture();
+    loadFitnessGoal();
 });
+
+// --- FITNESS GOAL FUNCTIONS ---
+let currentFitnessGoal = 'maintain';
+let baseCalories = 2000;
+let hasTrainer = false;
+
+async function loadFitnessGoal() {
+    try {
+        const res = await fetch('/api/client/fitness-goal', { credentials: 'include' });
+        if (res.ok) {
+            const data = await res.json();
+            currentFitnessGoal = data.fitness_goal || 'maintain';
+            baseCalories = data.base_calories || 2000;
+            hasTrainer = data.has_trainer || false;
+            updateGoalUI(currentFitnessGoal, data.calories_target, hasTrainer);
+        }
+    } catch (e) {
+        console.error('Error loading fitness goal:', e);
+    }
+}
+
+function updateGoalUI(goal, targetCalories, trainerManaged = false) {
+    const goalColors = {
+        cut: { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.25)', glow: '0 0 20px rgba(59, 130, 246, 0.5)' },
+        maintain: { border: '#22c55e', bg: 'rgba(34, 197, 94, 0.25)', glow: '0 0 20px rgba(34, 197, 94, 0.5)' },
+        bulk: { border: '#f97316', bg: 'rgba(249, 115, 22, 0.25)', glow: '0 0 20px rgba(249, 115, 22, 0.5)' }
+    };
+
+    // Show/hide trainer managed notice
+    const trainerNotice = document.getElementById('trainer-managed-notice');
+    const goalSubtitle = document.getElementById('goal-subtitle');
+    if (trainerNotice) {
+        trainerNotice.classList.toggle('hidden', !trainerManaged);
+    }
+    if (goalSubtitle) {
+        goalSubtitle.textContent = trainerManaged ? 'Set by your trainer' : 'Adjusts your daily calorie target';
+    }
+
+    // Remove active state and checkmarks from all cards
+    document.querySelectorAll('.goal-card').forEach(card => {
+        card.style.border = '2px solid transparent';
+        card.style.background = 'rgba(255,255,255,0.05)';
+        card.style.boxShadow = 'none';
+        card.style.transform = 'scale(1)';
+        card.style.opacity = '1';
+        card.style.pointerEvents = 'auto';
+        // Remove any existing checkmark
+        const existingCheck = card.querySelector('.goal-checkmark');
+        if (existingCheck) existingCheck.remove();
+    });
+
+    // Add active state to selected card with prominent inline styling
+    const activeCard = document.getElementById(`goal-${goal}`);
+    const colors = goalColors[goal] || goalColors.maintain;
+    if (activeCard) {
+        activeCard.style.border = `3px solid ${colors.border}`;
+        activeCard.style.background = colors.bg;
+        activeCard.style.boxShadow = colors.glow;
+        activeCard.style.transform = 'scale(1.05)';
+
+        // Add a checkmark badge
+        const checkmark = document.createElement('div');
+        checkmark.className = 'goal-checkmark';
+        checkmark.innerHTML = `<svg class="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`;
+        checkmark.style.cssText = `position: absolute; top: -8px; right: -8px; width: 24px; height: 24px; background: ${colors.border}; border-radius: 50%; display: flex; align-items: center; justify-content: center;`;
+        activeCard.style.position = 'relative';
+        activeCard.appendChild(checkmark);
+    }
+
+    // If trainer managed, disable other buttons (make them faded and unclickable)
+    if (trainerManaged) {
+        document.querySelectorAll('.goal-card').forEach(card => {
+            if (card.id !== `goal-${goal}`) {
+                card.style.opacity = '0.4';
+                card.style.pointerEvents = 'none';
+            }
+        });
+    }
+
+    // Update calorie display
+    const calorieDisplay = document.getElementById('current-calorie-target');
+    if (calorieDisplay && targetCalories) {
+        calorieDisplay.textContent = `${targetCalories} kcal`;
+    }
+}
+
+async function selectFitnessGoal(goal) {
+    if (goal === currentFitnessGoal) return;
+    if (hasTrainer) {
+        showToast('Your trainer manages your nutrition plan', 'error');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/client/fitness-goal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ fitness_goal: goal })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            currentFitnessGoal = goal;
+            updateGoalUI(goal, data.new_calories_target, hasTrainer);
+            showToast(`Goal set to ${goal.charAt(0).toUpperCase() + goal.slice(1)}! Target: ${data.new_calories_target} kcal`, 'success');
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Failed to update goal', 'error');
+        }
+    } catch (e) {
+        console.error('Error updating fitness goal:', e);
+        showToast('Failed to update goal', 'error');
+    }
+}
 </script>
 
 {% else %}

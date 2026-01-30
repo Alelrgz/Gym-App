@@ -187,6 +187,28 @@ def run_migrations(engine):
                 except Exception as e:
                     logger.debug(f"Column sub_role may already exist: {e}")
 
+    # Add fitness_goal and base_calories to client_diet_settings
+    if 'client_diet_settings' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('client_diet_settings')]
+
+        if 'fitness_goal' not in columns:
+            with engine.connect() as conn:
+                try:
+                    conn.execute(text("ALTER TABLE client_diet_settings ADD COLUMN fitness_goal TEXT DEFAULT 'maintain'"))
+                    conn.commit()
+                    logger.info("Added column fitness_goal to client_diet_settings table")
+                except Exception as e:
+                    logger.debug(f"Column fitness_goal may already exist: {e}")
+
+        if 'base_calories' not in columns:
+            with engine.connect() as conn:
+                try:
+                    conn.execute(text("ALTER TABLE client_diet_settings ADD COLUMN base_calories INTEGER DEFAULT 2000"))
+                    conn.commit()
+                    logger.info("Added column base_calories to client_diet_settings table")
+                except Exception as e:
+                    logger.debug(f"Column base_calories may already exist: {e}")
+
 @app.on_event("startup")
 async def startup_event():
     logger.info("Initializing Database...")

@@ -130,7 +130,35 @@ class ClientService:
             # Reset current values if it's a new day
             today_str = date.today().isoformat()
             if diet_settings and hasattr(diet_settings, 'last_reset_date'):
-                if diet_settings.last_reset_date != today_str:
+                if diet_settings.last_reset_date and diet_settings.last_reset_date != today_str:
+                    # SAVE yesterday's data to daily summary BEFORE resetting
+                    yesterday_date = diet_settings.last_reset_date
+
+                    # Only save if there's meaningful data (calories > 0)
+                    if diet_settings.calories_current > 0:
+                        # Check if summary already exists
+                        existing_summary = db.query(ClientDailyDietSummaryORM).filter(
+                            ClientDailyDietSummaryORM.client_id == client_id,
+                            ClientDailyDietSummaryORM.date == yesterday_date
+                        ).first()
+
+                        if not existing_summary:
+                            yesterday_summary = ClientDailyDietSummaryORM(
+                                client_id=client_id,
+                                date=yesterday_date,
+                                total_calories=diet_settings.calories_current,
+                                total_protein=diet_settings.protein_current,
+                                total_carbs=diet_settings.carbs_current,
+                                total_fat=diet_settings.fat_current,
+                                total_hydration=diet_settings.hydration_current,
+                                target_calories=diet_settings.calories_target,
+                                target_protein=diet_settings.protein_target,
+                                target_carbs=diet_settings.carbs_target,
+                                target_fat=diet_settings.fat_target
+                            )
+                            db.add(yesterday_summary)
+                            logger.info(f"Saved daily diet summary for {client_id} on {yesterday_date}: {diet_settings.calories_current} kcal")
+
                     logger.info(f"New day detected for {client_id}. Resetting daily macros. Last reset: {diet_settings.last_reset_date}, Today: {today_str}")
                     diet_settings.calories_current = 0
                     diet_settings.protein_current = 0
