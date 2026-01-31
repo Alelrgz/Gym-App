@@ -39,6 +39,7 @@ class Workout(BaseModel):
     difficulty: str
     exercises: List[Exercise]
     completed: Optional[bool] = False
+    details: Optional[str] = None  # JSON string containing CO-OP info for completed workouts
 
 class WorkoutTemplate(BaseModel):
     id: Optional[str] = None

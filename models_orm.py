@@ -191,14 +191,16 @@ class ClientExerciseLogORM(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     client_id = Column(String, ForeignKey("users.id"), index=True)
-    
+
     date = Column(String, index=True)
     workout_id = Column(String, nullable=True)
     exercise_name = Column(String, index=True)
     set_number = Column(Integer)
     reps = Column(Integer)
     weight = Column(Float)
-    metric_type = Column(String, default="weight_reps") 
+    duration = Column(Float, nullable=True)  # Duration in minutes for cardio
+    distance = Column(Float, nullable=True)  # Distance in km for cardio
+    metric_type = Column(String, default="weight_reps")  # weight_reps, duration, distance, duration_distance 
 
 class TrainerScheduleORM(Base):
     __tablename__ = "trainer_schedule"

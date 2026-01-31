@@ -300,10 +300,52 @@ socket.onmessage = function (event) {
         // Re-run init to fetch fresh data
         init();
     }
+    // CO-OP invitation received
+    else if (data.type === 'coop_invite') {
+        console.log('CO-OP invite received from:', data.from_name);
+        if (typeof window.showCoopInviteModal === 'function') {
+            window.showCoopInviteModal(data.from_id, data.from_name, data.from_picture);
+        }
+    }
+    // CO-OP invitation was sent successfully
+    else if (data.type === 'coop_invite_sent') {
+        console.log('CO-OP invite sent, waiting for response...');
+    }
+    // CO-OP invitation failed (friend offline)
+    else if (data.type === 'coop_invite_failed') {
+        console.log('CO-OP invite failed:', data.reason);
+        if (typeof window.handleCoopInviteFailed === 'function') {
+            window.handleCoopInviteFailed(data.reason);
+        }
+    }
+    // CO-OP invitation accepted by friend
+    else if (data.type === 'coop_accepted') {
+        console.log('CO-OP accepted by:', data.partner_name);
+        if (typeof window.handleCoopAccepted === 'function') {
+            window.handleCoopAccepted(data.partner_id, data.partner_name, data.partner_picture);
+        }
+    }
+    // CO-OP invitation declined by friend
+    else if (data.type === 'coop_declined') {
+        console.log('CO-OP declined by:', data.partner_name);
+        if (typeof window.handleCoopDeclined === 'function') {
+            window.handleCoopDeclined(data.partner_name);
+        }
+    }
 };
 
 socket.onopen = () => console.log("Connected to Real-Time Engine");
 socket.onclose = () => console.log("Disconnected from Real-Time Engine");
+
+// Expose WebSocket send function for CO-OP and other features
+window.sendWebSocketMessage = function(message) {
+    if (socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify(message));
+        return true;
+    }
+    console.warn('WebSocket not connected');
+    return false;
+};
 
 // --- SHARED FUNCTIONS (Defined first to avoid hoisting issues) ---
 
@@ -778,7 +820,10 @@ async function init() {
                     setTxt('workout-difficulty', user.todays_workout.difficulty);
 
                     if (user.todays_workout.completed) {
-                        const startBtn = document.querySelector('a[href*="mode=workout"]');
+                        const startBtn = document.getElementById('workout-main-btn');
+                        const coopBadgeBtn = document.getElementById('coop-badge-btn');
+                        const coopCompletedBadge = document.getElementById('coop-completed-badge');
+
                         if (startBtn) {
                             startBtn.innerText = "COMPLETED ✓";
                             startBtn.className = "block w-full py-3 bg-green-500 text-white text-center font-bold rounded-xl hover:bg-green-600 transition";
@@ -788,6 +833,31 @@ async function init() {
                             } else {
                                 startBtn.href += "?view=completed";
                             }
+                        }
+
+                        // Hide the CO-OP start button when completed
+                        if (coopBadgeBtn) {
+                            coopBadgeBtn.classList.add('hidden');
+                        }
+
+                        // Check if this was a CO-OP workout
+                        let wasCoopWorkout = false;
+                        if (user.todays_workout.details) {
+                            try {
+                                const details = typeof user.todays_workout.details === 'string'
+                                    ? JSON.parse(user.todays_workout.details)
+                                    : user.todays_workout.details;
+                                if (details.coop && details.coop.partner) {
+                                    wasCoopWorkout = true;
+                                }
+                            } catch (e) {
+                                console.log('Could not parse workout details for CO-OP check');
+                            }
+                        }
+
+                        // Show CO-OP badge if it was a CO-OP workout
+                        if (wasCoopWorkout && coopCompletedBadge) {
+                            coopCompletedBadge.classList.remove('hidden');
                         }
                     }
                 } else {
@@ -2515,36 +2585,86 @@ async function loadWeightChart(period = 'month') {
 function updateStrengthStats(strengthData) {
     if (!strengthData) return;
 
-    const progress = strengthData.progress || 0;
     const trend = strengthData.trend || 'stable';
+    const categories = strengthData.categories || {};
+    const visibility = window.strengthChartVisibility || { upper_body: true, lower_body: true, cardio: true };
 
-    // Update strength stats row
-    const startEl = document.getElementById('strength-stat-start');
-    const currentEl = document.getElementById('strength-stat-current');
-    const progressEl = document.getElementById('strength-stat-progress');
+    // Update category-specific stats
+    const upperEl = document.getElementById('strength-stat-upper');
+    const lowerEl = document.getElementById('strength-stat-lower');
+    const cardioEl = document.getElementById('strength-stat-cardio');
     const trendEl = document.getElementById('strength-stat-trend');
 
-    if (startEl) startEl.textContent = '0%';
-    if (currentEl) {
+    // Helper to format progress with color (respects visibility)
+    function formatProgress(el, progress, baseColor, isVisible) {
+        if (!el) return;
+        if (progress === null || progress === undefined || !categories) {
+            el.textContent = '--';
+            el.className = `text-sm font-bold text-gray-500`;
+            el.style.opacity = '1';
+            return;
+        }
         const prefix = progress > 0 ? '+' : '';
-        currentEl.textContent = `${prefix}${progress}%`;
-        currentEl.className = `text-sm font-bold ${progress > 0 ? 'text-green-400' : progress < 0 ? 'text-red-400' : 'text-gray-400'}`;
+        el.textContent = `${prefix}${progress}%`;
+        // Use base color but adjust for negative
+        if (progress > 0) {
+            el.className = `text-sm font-bold ${baseColor}`;
+        } else if (progress < 0) {
+            el.className = `text-sm font-bold text-red-400`;
+        } else {
+            el.className = `text-sm font-bold text-gray-400`;
+        }
+        // Dim if category is hidden in chart
+        el.style.opacity = isVisible ? '1' : '0.35';
+        el.style.textDecoration = isVisible ? 'none' : 'line-through';
     }
-    if (progressEl) {
-        const prefix = progress > 0 ? '+' : '';
-        progressEl.textContent = `${prefix}${progress}%`;
-        progressEl.className = `text-sm font-bold ${progress > 0 ? 'text-green-400' : progress < 0 ? 'text-red-400' : 'text-purple-400'}`;
-    }
+
+    // Upper body (orange)
+    const upperProgress = categories.upper_body?.progress;
+    const upperHasData = categories.upper_body?.data?.some(d => d.strength !== null);
+    formatProgress(upperEl, upperHasData ? upperProgress : null, 'text-orange-400', visibility.upper_body);
+
+    // Lower body (purple)
+    const lowerProgress = categories.lower_body?.progress;
+    const lowerHasData = categories.lower_body?.data?.some(d => d.strength !== null);
+    formatProgress(lowerEl, lowerHasData ? lowerProgress : null, 'text-purple-400', visibility.lower_body);
+
+    // Cardio (green)
+    const cardioProgress = categories.cardio?.progress;
+    const cardioHasData = categories.cardio?.data?.some(d => d.strength !== null);
+    formatProgress(cardioEl, cardioHasData ? cardioProgress : null, 'text-green-400', visibility.cardio);
+
+    // Overall trend
     if (trendEl) {
         trendEl.textContent = trend === 'up' ? '↑ Gaining' : trend === 'down' ? '↓ Losing' : '→ Stable';
         trendEl.className = `text-sm font-bold ${trend === 'up' ? 'text-green-400' : trend === 'down' ? 'text-red-400' : 'text-blue-400'}`;
     }
 }
 
-function renderStrengthChart(strengthData) {
+// Track which categories are visible (for legend toggle)
+window.strengthChartVisibility = {
+    upper_body: true,
+    lower_body: true,
+    cardio: true
+};
+
+// Store legend hit areas for click detection
+window.strengthChartLegendAreas = [];
+
+// Store rendered point positions for hover detection
+window.strengthChartPoints = [];
+
+function renderStrengthChart(strengthData, hoveredPoint = null) {
     const canvas = document.getElementById('weight-chart');
-    if (!canvas || !strengthData || !strengthData.data || strengthData.data.length === 0) {
-        // Show empty state
+
+    const hasCategories = strengthData?.categories && (
+        strengthData.categories.upper_body?.data?.some(d => d.strength !== null) ||
+        strengthData.categories.lower_body?.data?.some(d => d.strength !== null) ||
+        strengthData.categories.cardio?.data?.some(d => d.strength !== null)
+    );
+    const hasLegacyData = strengthData?.data?.length > 0;
+
+    if (!canvas || !strengthData || (!hasCategories && !hasLegacyData)) {
         const ctx = canvas?.getContext('2d');
         if (ctx) {
             const rect = canvas.getBoundingClientRect();
@@ -2561,7 +2681,6 @@ function renderStrengthChart(strengthData) {
         return;
     }
 
-    const data = strengthData.data;
     const ctx = canvas.getContext('2d');
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width * 2;
@@ -2570,68 +2689,783 @@ function renderStrengthChart(strengthData) {
 
     const width = rect.width;
     const height = rect.height;
-    const padding = { top: 10, right: 10, bottom: 20, left: 35 };
+    const padding = { top: 28, right: 10, bottom: 20, left: 38 };
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
 
     ctx.clearRect(0, 0, width, height);
 
-    // Get min/max for strength scaling
-    const values = data.map(d => d.strength);
-    const minStrength = Math.min(...values, 0) - 5;
-    const maxStrength = Math.max(...values, 0) + 5;
-    const strengthRange = maxStrength - minStrength || 1;
+    // Category config with distinct line styles
+    const categoryConfig = {
+        upper_body: {
+            color: '#F97316',
+            label: 'Upper',
+            fillAlpha: 0.12,
+            lineWidth: 2.5,
+            dashPattern: [],           // Solid line
+            pointRadius: 4,
+            pointStyle: 'circle'
+        },
+        lower_body: {
+            color: '#8B5CF6',
+            label: 'Lower',
+            fillAlpha: 0.12,
+            lineWidth: 2.5,
+            dashPattern: [6, 3],       // Dashed line
+            pointRadius: 4,
+            pointStyle: 'diamond'
+        },
+        cardio: {
+            color: '#22C55E',
+            label: 'Cardio',
+            fillAlpha: 0.12,
+            lineWidth: 2.5,
+            dashPattern: [2, 2],       // Dotted line
+            pointRadius: 4,
+            pointStyle: 'triangle'
+        }
+    };
 
-    // Draw grid lines
-    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-    ctx.lineWidth = 1;
-    for (let i = 0; i <= 4; i++) {
-        const y = padding.top + (chartHeight * i / 4);
-        ctx.beginPath();
-        ctx.moveTo(padding.left, y);
-        ctx.lineTo(width - padding.right, y);
-        ctx.stroke();
+    // Collect values only from visible categories for optimal scaling
+    let allValues = [];
+    let referenceData = null;
+    const visibility = window.strengthChartVisibility;
+
+    if (hasCategories) {
+        ['upper_body', 'lower_body', 'cardio'].forEach(cat => {
+            if (!visibility[cat]) return; // Skip hidden categories
+            const catData = strengthData.categories[cat]?.data || [];
+            catData.forEach(d => {
+                if (d.strength !== null) allValues.push(d.strength);
+            });
+            if (!referenceData && catData.length > 0) referenceData = catData;
+        });
+        // Fallback reference data if all hidden
+        if (!referenceData) {
+            referenceData = strengthData.categories.upper_body?.data ||
+                           strengthData.categories.lower_body?.data ||
+                           strengthData.categories.cardio?.data || [];
+        }
+    } else {
+        allValues = strengthData.data.map(d => d.strength).filter(s => s !== null);
+        referenceData = strengthData.data;
     }
 
-    // Draw zero line if visible
-    if (minStrength < 0 && maxStrength > 0) {
+    // Smart Y-axis scaling: use nice round numbers
+    function getNiceScale(min, max) {
+        const range = max - min || 10;
+        const magnitude = Math.pow(10, Math.floor(Math.log10(range)));
+        const residual = range / magnitude;
+
+        let niceStep;
+        if (residual <= 1) niceStep = magnitude / 5;
+        else if (residual <= 2) niceStep = magnitude / 2;
+        else if (residual <= 5) niceStep = magnitude;
+        else niceStep = magnitude * 2;
+
+        const niceMin = Math.floor(min / niceStep) * niceStep;
+        const niceMax = Math.ceil(max / niceStep) * niceStep;
+
+        return { min: niceMin, max: niceMax, step: niceStep };
+    }
+
+    let minStrength, maxStrength, strengthRange, yAxisStep;
+
+    if (allValues.length === 0) {
+        // Default scale when no visible data
+        minStrength = -10;
+        maxStrength = 50;
+        yAxisStep = 15;
+    } else {
+        const dataMin = Math.min(...allValues);
+        const dataMax = Math.max(...allValues);
+        const dataRange = dataMax - dataMin || 10;
+        // Add 15% padding for breathing room
+        const dataPadding = dataRange * 0.15;
+        const scale = getNiceScale(dataMin - dataPadding, dataMax + dataPadding);
+        minStrength = scale.min;
+        maxStrength = scale.max;
+        yAxisStep = scale.step;
+    }
+    strengthRange = maxStrength - minStrength || 1;
+
+    // Helper: hex to rgba
+    function hexToRgba(hex, alpha) {
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+    }
+
+    // Helper: draw different point styles
+    function drawPoint(ctx, x, y, style, radius) {
+        ctx.beginPath();
+        switch (style) {
+            case 'diamond':
+                ctx.moveTo(x, y - radius);
+                ctx.lineTo(x + radius, y);
+                ctx.lineTo(x, y + radius);
+                ctx.lineTo(x - radius, y);
+                ctx.closePath();
+                break;
+            case 'triangle':
+                ctx.moveTo(x, y - radius);
+                ctx.lineTo(x + radius * 0.866, y + radius * 0.5);
+                ctx.lineTo(x - radius * 0.866, y + radius * 0.5);
+                ctx.closePath();
+                break;
+            case 'circle':
+            default:
+                ctx.arc(x, y, radius, 0, Math.PI * 2);
+                break;
+        }
+        ctx.fill();
+    }
+
+    // Draw interactive legend at top
+    window.strengthChartLegendAreas = [];
+    if (hasCategories) {
+        ctx.font = 'bold 9px system-ui';
+        let legendX = padding.left;
+
+        ['upper_body', 'lower_body', 'cardio'].forEach(cat => {
+            const config = categoryConfig[cat];
+            const catData = strengthData.categories[cat]?.data || [];
+            const hasData = catData.some(d => d.strength !== null);
+            if (!hasData) return;
+
+            const isVisible = visibility[cat];
+            const alpha = isVisible ? 1 : 0.3;
+
+            // Draw line sample with category's dash pattern
+            ctx.strokeStyle = hexToRgba(config.color, alpha);
+            ctx.lineWidth = 2;
+            ctx.setLineDash(config.dashPattern);
+            ctx.beginPath();
+            ctx.moveTo(legendX, 12);
+            ctx.lineTo(legendX + 18, 12);
+            ctx.stroke();
+            ctx.setLineDash([]);
+
+            // Draw point sample
+            ctx.fillStyle = hexToRgba(config.color, alpha);
+            drawPoint(ctx, legendX + 9, 12, config.pointStyle, 3);
+
+            // Draw label
+            ctx.fillStyle = `rgba(255,255,255,${isVisible ? 0.85 : 0.35})`;
+            ctx.textAlign = 'left';
+            const labelWidth = ctx.measureText(config.label).width;
+            ctx.fillText(config.label, legendX + 22, 15);
+
+            // Store hit area for click detection (scaled for retina)
+            window.strengthChartLegendAreas.push({
+                cat,
+                x: legendX - 2,
+                y: 2,
+                width: 24 + labelWidth + 4,
+                height: 20
+            });
+
+            legendX += 30 + labelWidth + 12;
+        });
+    }
+
+    // Draw grid lines
+    const numGridLines = Math.round(strengthRange / yAxisStep);
+    ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= numGridLines; i++) {
+        const value = minStrength + (yAxisStep * i);
+        const y = padding.top + chartHeight - ((value - minStrength) / strengthRange * chartHeight);
+        if (y >= padding.top && y <= padding.top + chartHeight) {
+            ctx.beginPath();
+            ctx.moveTo(padding.left, y);
+            ctx.lineTo(width - padding.right, y);
+            ctx.stroke();
+        }
+    }
+
+    // Draw zero line prominently if in range
+    if (minStrength <= 0 && maxStrength >= 0) {
         const zeroY = padding.top + chartHeight - ((0 - minStrength) / strengthRange * chartHeight);
-        ctx.strokeStyle = 'rgba(255,255,255,0.2)';
-        ctx.setLineDash([5, 5]);
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+        ctx.lineWidth = 1.5;
+        ctx.setLineDash([4, 4]);
         ctx.beginPath();
         ctx.moveTo(padding.left, zeroY);
         ctx.lineTo(width - padding.right, zeroY);
         ctx.stroke();
         ctx.setLineDash([]);
+
+        // "0%" label
+        ctx.fillStyle = 'rgba(255,255,255,0.6)';
+        ctx.font = 'bold 9px system-ui';
+        ctx.textAlign = 'right';
+        ctx.fillText('0%', padding.left - 5, zeroY + 3);
     }
 
-    // Draw Y-axis labels (percentage)
-    ctx.fillStyle = 'rgba(34, 197, 94, 0.7)';
+    // Draw Y-axis labels
+    ctx.fillStyle = 'rgba(255,255,255,0.5)';
     ctx.font = '9px system-ui';
     ctx.textAlign = 'right';
-    for (let i = 0; i <= 4; i++) {
-        const strength = maxStrength - (strengthRange * i / 4);
-        const y = padding.top + (chartHeight * i / 4);
-        ctx.fillText(`${strength.toFixed(0)}%`, padding.left - 5, y + 3);
+    for (let i = 0; i <= numGridLines; i++) {
+        const value = minStrength + (yAxisStep * i);
+        if (value === 0) continue; // Already drawn
+        const y = padding.top + chartHeight - ((value - minStrength) / strengthRange * chartHeight);
+        if (y >= padding.top - 5 && y <= padding.top + chartHeight + 5) {
+            const prefix = value > 0 ? '+' : '';
+            ctx.fillText(`${prefix}${value.toFixed(0)}%`, padding.left - 5, y + 3);
+        }
     }
 
-    // Calculate points
-    const points = data.map((d, i) => ({
-        x: padding.left + (chartWidth * i / (data.length - 1 || 1)),
-        y: padding.top + chartHeight - ((d.strength - minStrength) / strengthRange * chartHeight),
-        label: d.label,
-        strength: d.strength
+    // Helper: smooth bezier curve through points (Catmull-Rom spline)
+    function drawSmoothLine(ctx, points, tension = 0.3) {
+        if (points.length < 2) return;
+
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+
+        if (points.length === 2) {
+            ctx.lineTo(points[1].x, points[1].y);
+            return;
+        }
+
+        for (let i = 0; i < points.length - 1; i++) {
+            const p0 = points[Math.max(0, i - 1)];
+            const p1 = points[i];
+            const p2 = points[i + 1];
+            const p3 = points[Math.min(points.length - 1, i + 2)];
+
+            // Calculate control points
+            const cp1x = p1.x + (p2.x - p0.x) * tension;
+            const cp1y = p1.y + (p2.y - p0.y) * tension;
+            const cp2x = p2.x - (p3.x - p1.x) * tension;
+            const cp2y = p2.y - (p3.y - p1.y) * tension;
+
+            ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+        }
+    }
+
+    // Helper: draw category line with all styling
+    function drawCategoryLine(data, config, catKey) {
+        if (!data || data.length === 0 || !visibility[catKey]) return;
+
+        const dataLen = data.length;
+        const points = [];
+
+        // Build points array
+        data.forEach((d, i) => {
+            if (d.strength !== null) {
+                points.push({
+                    x: padding.left + (chartWidth * i / (dataLen - 1 || 1)),
+                    y: padding.top + chartHeight - ((d.strength - minStrength) / strengthRange * chartHeight),
+                    strength: d.strength,
+                    label: d.label
+                });
+            }
+        });
+
+        if (points.length === 0) return;
+
+        // Draw gradient fill with smooth curve
+        if (points.length > 1) {
+            const gradient = ctx.createLinearGradient(0, padding.top, 0, height - padding.bottom);
+            gradient.addColorStop(0, hexToRgba(config.color, config.fillAlpha));
+            gradient.addColorStop(0.7, hexToRgba(config.color, config.fillAlpha * 0.3));
+            gradient.addColorStop(1, hexToRgba(config.color, 0));
+
+            ctx.beginPath();
+            ctx.moveTo(points[0].x, height - padding.bottom);
+
+            // Use smooth curve for fill
+            ctx.lineTo(points[0].x, points[0].y);
+            for (let i = 0; i < points.length - 1; i++) {
+                const p0 = points[Math.max(0, i - 1)];
+                const p1 = points[i];
+                const p2 = points[i + 1];
+                const p3 = points[Math.min(points.length - 1, i + 2)];
+
+                const tension = 0.25;
+                const cp1x = p1.x + (p2.x - p0.x) * tension;
+                const cp1y = p1.y + (p2.y - p0.y) * tension;
+                const cp2x = p2.x - (p3.x - p1.x) * tension;
+                const cp2y = p2.y - (p3.y - p1.y) * tension;
+
+                ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, p2.x, p2.y);
+            }
+
+            ctx.lineTo(points[points.length - 1].x, height - padding.bottom);
+            ctx.closePath();
+            ctx.fillStyle = gradient;
+            ctx.fill();
+        }
+
+        // Draw line with category-specific style
+        ctx.setLineDash(config.dashPattern);
+        ctx.strokeStyle = config.color;
+        ctx.lineWidth = config.lineWidth;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+
+        drawSmoothLine(ctx, points, 0.25);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // Draw points with glow effect
+        points.forEach((p, idx) => {
+            // Check if this point is being hovered
+            const isHovered = hoveredPoint &&
+                Math.abs(p.x - hoveredPoint.x) < 1 &&
+                Math.abs(p.y - hoveredPoint.y) < 1;
+
+            const radius = isHovered ? config.pointRadius * 2.5 : config.pointRadius;
+            const glowSize = isHovered ? 15 : 6;
+
+            // Glow (bigger for hovered)
+            ctx.shadowColor = config.color;
+            ctx.shadowBlur = glowSize;
+            ctx.fillStyle = config.color;
+            drawPoint(ctx, p.x, p.y, config.pointStyle, radius);
+
+            // White center for last point or hovered point
+            if (idx === points.length - 1 || isHovered) {
+                ctx.shadowBlur = 0;
+                ctx.fillStyle = '#fff';
+                drawPoint(ctx, p.x, p.y, config.pointStyle, radius * 0.5);
+            }
+            ctx.shadowBlur = 0;
+
+            // Draw zoom ring around hovered point
+            if (isHovered) {
+                ctx.strokeStyle = config.color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, radius + 4, 0, Math.PI * 2);
+                ctx.stroke();
+
+                // Outer glow ring
+                ctx.strokeStyle = `${config.color}40`;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, radius + 8, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+        });
+
+        // Return points for hover detection (with date info)
+        return points.map(p => ({ ...p, date: p.label }));
+    }
+
+    // Clear stored points for hover detection
+    window.strengthChartPoints = [];
+
+    // Draw category lines and store points
+    if (hasCategories) {
+        // Draw in order: cardio (back), lower (mid), upper (front)
+        ['cardio', 'lower_body', 'upper_body'].forEach(cat => {
+            const config = categoryConfig[cat];
+            const catData = strengthData.categories[cat]?.data || [];
+            const drawnPoints = drawCategoryLine(catData, config, cat);
+            if (drawnPoints) {
+                drawnPoints.forEach(p => {
+                    window.strengthChartPoints.push({
+                        ...p,
+                        category: cat,
+                        color: config.color,
+                        label: config.label
+                    });
+                });
+            }
+        });
+    } else {
+        const drawnPoints = drawCategoryLine(strengthData.data, categoryConfig.cardio, 'cardio');
+        if (drawnPoints) {
+            drawnPoints.forEach(p => {
+                window.strengthChartPoints.push({
+                    ...p,
+                    category: 'cardio',
+                    color: categoryConfig.cardio.color,
+                    label: 'Strength'
+                });
+            });
+        }
+    }
+
+    // Draw X-axis labels
+    if (referenceData && referenceData.length > 0) {
+        ctx.fillStyle = 'rgba(255,255,255,0.45)';
+        ctx.font = '8px system-ui';
+        ctx.textAlign = 'center';
+        const labelStep = Math.max(1, Math.ceil(referenceData.length / 6));
+        referenceData.forEach((d, i) => {
+            if (i % labelStep === 0 || i === referenceData.length - 1) {
+                const x = padding.left + (chartWidth * i / (referenceData.length - 1 || 1));
+                ctx.fillText(d.label, x, height - 5);
+            }
+        });
+    }
+}
+
+// Create tooltip element for chart hover
+function getOrCreateChartTooltip() {
+    let tooltip = document.getElementById('strength-chart-tooltip');
+    if (!tooltip) {
+        tooltip = document.createElement('div');
+        tooltip.id = 'strength-chart-tooltip';
+        tooltip.style.cssText = `
+            position: fixed;
+            pointer-events: none;
+            background: rgba(20, 20, 25, 0.95);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255,255,255,0.15);
+            border-radius: 12px;
+            padding: 10px 14px;
+            font-size: 12px;
+            color: white;
+            z-index: 9999;
+            opacity: 0;
+            transform: translateY(5px) scale(0.95);
+            transition: opacity 0.15s, transform 0.15s;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+            min-width: 100px;
+        `;
+        document.body.appendChild(tooltip);
+    }
+    return tooltip;
+}
+
+// Add click and hover handlers for chart
+document.addEventListener('DOMContentLoaded', function() {
+    const canvas = document.getElementById('weight-chart');
+    if (canvas) {
+        const tooltip = getOrCreateChartTooltip();
+        let hoveredPoint = null;
+
+        canvas.addEventListener('click', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width / 2;
+            const scaleY = canvas.height / rect.height / 2;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+
+            // Check if click is in any legend area
+            for (const area of window.strengthChartLegendAreas || []) {
+                if (x >= area.x && x <= area.x + area.width &&
+                    y >= area.y && y <= area.y + area.height) {
+                    window.strengthChartVisibility[area.cat] = !window.strengthChartVisibility[area.cat];
+                    if (typeof cachedStrengthData !== 'undefined' && cachedStrengthData) {
+                        renderStrengthChart(cachedStrengthData);
+                        updateStrengthStats(cachedStrengthData);
+                    }
+                    break;
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', function(e) {
+            const rect = canvas.getBoundingClientRect();
+            const scaleX = canvas.width / rect.width / 2;
+            const scaleY = canvas.height / rect.height / 2;
+            const x = (e.clientX - rect.left) * scaleX;
+            const y = (e.clientY - rect.top) * scaleY;
+
+            // Check legend hover
+            let overLegend = false;
+            for (const area of window.strengthChartLegendAreas || []) {
+                if (x >= area.x && x <= area.x + area.width &&
+                    y >= area.y && y <= area.y + area.height) {
+                    overLegend = true;
+                    break;
+                }
+            }
+
+            // Check point hover (with 12px hit radius)
+            let closestPoint = null;
+            let closestDist = 12;
+            for (const point of window.strengthChartPoints || []) {
+                const dist = Math.sqrt(Math.pow(x - point.x, 2) + Math.pow(y - point.y, 2));
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    closestPoint = point;
+                }
+            }
+
+            // Update cursor
+            canvas.style.cursor = (overLegend || closestPoint) ? 'pointer' : 'default';
+
+            // Show/hide tooltip
+            if (closestPoint && closestPoint !== hoveredPoint) {
+                hoveredPoint = closestPoint;
+                const prefix = closestPoint.strength > 0 ? '+' : '';
+                tooltip.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+                        <div style="width: 10px; height: 10px; border-radius: 50%; background: ${closestPoint.color};"></div>
+                        <span style="font-weight: 600; color: ${closestPoint.color};">${closestPoint.label}</span>
+                    </div>
+                    <div style="font-size: 18px; font-weight: 700; margin-bottom: 2px;">${prefix}${closestPoint.strength.toFixed(1)}%</div>
+                    <div style="font-size: 10px; color: rgba(255,255,255,0.5);">${closestPoint.date || ''}</div>
+                `;
+
+                // Position tooltip near cursor but keep on screen
+                let tooltipX = e.clientX + 15;
+                let tooltipY = e.clientY - 50;
+                const tooltipRect = tooltip.getBoundingClientRect();
+                if (tooltipX + 120 > window.innerWidth) tooltipX = e.clientX - 130;
+                if (tooltipY < 10) tooltipY = e.clientY + 20;
+
+                tooltip.style.left = tooltipX + 'px';
+                tooltip.style.top = tooltipY + 'px';
+                tooltip.style.opacity = '1';
+                tooltip.style.transform = 'translateY(0) scale(1)';
+
+                // Redraw chart with highlighted point
+                if (typeof cachedStrengthData !== 'undefined' && cachedStrengthData) {
+                    renderStrengthChart(cachedStrengthData, closestPoint);
+                }
+            } else if (!closestPoint && hoveredPoint) {
+                hoveredPoint = null;
+                tooltip.style.opacity = '0';
+                tooltip.style.transform = 'translateY(5px) scale(0.95)';
+                // Redraw without highlight
+                if (typeof cachedStrengthData !== 'undefined' && cachedStrengthData) {
+                    renderStrengthChart(cachedStrengthData, null);
+                }
+            }
+        });
+
+        canvas.addEventListener('mouseleave', function() {
+            hoveredPoint = null;
+            tooltip.style.opacity = '0';
+            tooltip.style.transform = 'translateY(5px) scale(0.95)';
+            if (typeof cachedStrengthData !== 'undefined' && cachedStrengthData) {
+                renderStrengthChart(cachedStrengthData, null);
+            }
+        });
+    }
+});
+
+// ==============================================
+// Strength Details Modal
+// ==============================================
+let currentStrengthCategory = 'upper_body';
+let strengthDetailsCache = {};
+
+function openStrengthDetailsModal() {
+    const modal = document.getElementById('strength-details-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        document.body.style.overflow = 'hidden';
+        loadStrengthDetails('upper_body');
+    }
+}
+
+function closeStrengthDetailsModal() {
+    const modal = document.getElementById('strength-details-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+        document.body.style.overflow = '';
+    }
+}
+
+function switchStrengthTab(category) {
+    currentStrengthCategory = category;
+
+    // Update tab styles
+    const tabs = {
+        upper_body: { el: document.getElementById('strength-tab-upper'), color: 'orange' },
+        lower_body: { el: document.getElementById('strength-tab-lower'), color: 'purple' },
+        cardio: { el: document.getElementById('strength-tab-cardio'), color: 'green' }
+    };
+
+    Object.entries(tabs).forEach(([cat, config]) => {
+        if (config.el) {
+            if (cat === category) {
+                config.el.className = `flex-1 py-3 text-sm font-semibold text-center border-b-2 border-${config.color}-500 text-${config.color}-400 transition`;
+            } else {
+                config.el.className = 'flex-1 py-3 text-sm font-semibold text-center border-b-2 border-transparent text-gray-400 hover:text-white transition';
+            }
+        }
+    });
+
+    loadStrengthDetails(category);
+}
+
+async function loadStrengthDetails(category) {
+    const listEl = document.getElementById('strength-details-list');
+    const loadingEl = document.getElementById('strength-details-loading');
+    const emptyEl = document.getElementById('strength-details-empty');
+
+    if (!listEl) return;
+
+    // Show loading
+    listEl.innerHTML = '';
+    loadingEl?.classList.remove('hidden');
+    emptyEl?.classList.add('hidden');
+
+    try {
+        const url = `/api/client/exercise-details?category=${category}&period=${currentWeightPeriod || 'month'}`;
+        console.log('[StrengthDetails] Fetching:', url);
+
+        const response = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` },
+            credentials: 'include'
+        });
+
+        console.log('[StrengthDetails] Response status:', response.status);
+
+        if (!response.ok) throw new Error('Failed to load');
+
+        const data = await response.json();
+        console.log('[StrengthDetails] Data received:', data);
+        strengthDetailsCache[category] = data;
+
+        loadingEl?.classList.add('hidden');
+
+        if (!data.exercises || data.exercises.length === 0) {
+            emptyEl?.classList.remove('hidden');
+            return;
+        }
+
+        // Get category color
+        const colors = {
+            upper_body: { main: '#F97316', bg: 'bg-orange-500/20', text: 'text-orange-400' },
+            lower_body: { main: '#8B5CF6', bg: 'bg-purple-500/20', text: 'text-purple-400' },
+            cardio: { main: '#22C55E', bg: 'bg-green-500/20', text: 'text-green-400' }
+        };
+        const color = colors[category] || colors.upper_body;
+
+        // Render exercises
+        listEl.innerHTML = data.exercises.map(ex => {
+            const progressPrefix = ex.progress_pct > 0 ? '+' : '';
+            const progressColor = ex.progress_pct > 0 ? 'text-green-400' : ex.progress_pct < 0 ? 'text-red-400' : 'text-gray-400';
+
+            // Create mini chart data
+            const chartId = `mini-chart-${ex.name.replace(/\s+/g, '-').toLowerCase()}`;
+
+            // History items (last 5)
+            const recentHistory = ex.history.slice(-5).reverse();
+            const historyHtml = recentHistory.map(h => `
+                <div class="flex justify-between items-center py-1.5 border-b border-white/5 last:border-0">
+                    <span class="text-xs text-gray-400">${h.label}</span>
+                    <span class="text-xs font-medium text-white">${h.display}</span>
+                </div>
+            `).join('');
+
+            return `
+                <div class="bg-white/5 rounded-xl p-4 border border-white/5">
+                    <!-- Header -->
+                    <div class="flex justify-between items-start mb-3">
+                        <div class="flex-1">
+                            <h4 class="font-semibold text-white text-sm">${ex.name}</h4>
+                            <p class="text-xs text-gray-500 mt-0.5">${ex.history.length} sessions logged</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-lg font-bold ${progressColor}">${progressPrefix}${ex.progress_pct}%</p>
+                            <p class="text-[10px] text-gray-500">progress</p>
+                        </div>
+                    </div>
+
+                    <!-- Current / Best Stats -->
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div class="${color.bg} rounded-lg p-2.5">
+                            <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Current</p>
+                            <p class="text-sm font-bold ${color.text}">${ex.current?.display || '--'}</p>
+                        </div>
+                        <div class="bg-yellow-500/10 rounded-lg p-2.5">
+                            <p class="text-[10px] text-gray-400 uppercase tracking-wider mb-0.5">Best</p>
+                            <p class="text-sm font-bold text-yellow-400">${ex.best?.display || '--'}</p>
+                        </div>
+                    </div>
+
+                    <!-- Mini Sparkline Chart -->
+                    <div class="mb-3">
+                        <canvas id="${chartId}" class="w-full h-12 rounded-lg bg-white/5"></canvas>
+                    </div>
+
+                    <!-- Recent History -->
+                    <details class="group">
+                        <summary class="text-xs text-gray-400 cursor-pointer hover:text-white transition flex items-center gap-1">
+                            <svg class="w-3 h-3 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                            </svg>
+                            Recent History
+                        </summary>
+                        <div class="mt-2 pl-4">
+                            ${historyHtml}
+                        </div>
+                    </details>
+                </div>
+            `;
+        }).join('');
+
+        // Render mini charts after DOM update
+        setTimeout(() => {
+            data.exercises.forEach(ex => {
+                const chartId = `mini-chart-${ex.name.replace(/\s+/g, '-').toLowerCase()}`;
+                renderMiniSparkline(chartId, ex.history, category);
+            });
+        }, 50);
+
+    } catch (error) {
+        console.error('Error loading strength details:', error);
+        loadingEl?.classList.add('hidden');
+        emptyEl?.classList.remove('hidden');
+    }
+}
+
+function renderMiniSparkline(canvasId, history, category) {
+    const canvas = document.getElementById(canvasId);
+    if (!canvas || !history || history.length === 0) return;
+
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    canvas.width = rect.width * 2;
+    canvas.height = rect.height * 2;
+    ctx.scale(2, 2);
+
+    const width = rect.width;
+    const height = rect.height;
+    const padding = { top: 5, right: 5, bottom: 5, left: 5 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+
+    // Get values based on category
+    const values = history.map(h => {
+        if (category === 'cardio') {
+            return (h.duration || 0) + (h.distance || 0) * 5;
+        }
+        return h.weight || 0;
+    });
+
+    if (values.length === 0 || values.every(v => v === 0)) return;
+
+    const minVal = Math.min(...values) * 0.9;
+    const maxVal = Math.max(...values) * 1.1;
+    const range = maxVal - minVal || 1;
+
+    // Color based on category
+    const colors = {
+        upper_body: '#F97316',
+        lower_body: '#8B5CF6',
+        cardio: '#22C55E'
+    };
+    const color = colors[category] || colors.upper_body;
+
+    // Build points
+    const points = values.map((v, i) => ({
+        x: padding.left + (chartWidth * i / (values.length - 1 || 1)),
+        y: padding.top + chartHeight - ((v - minVal) / range * chartHeight)
     }));
 
     // Draw gradient fill
-    const gradient = ctx.createLinearGradient(0, padding.top, 0, height - padding.bottom);
-    gradient.addColorStop(0, 'rgba(34, 197, 94, 0.3)');
-    gradient.addColorStop(1, 'rgba(34, 197, 94, 0.0)');
+    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    gradient.addColorStop(0, color + '30');
+    gradient.addColorStop(1, color + '00');
 
     ctx.beginPath();
-    ctx.moveTo(points[0].x, height - padding.bottom);
+    ctx.moveTo(points[0].x, height);
     points.forEach(p => ctx.lineTo(p.x, p.y));
-    ctx.lineTo(points[points.length - 1].x, height - padding.bottom);
+    ctx.lineTo(points[points.length - 1].x, height);
     ctx.closePath();
     ctx.fillStyle = gradient;
     ctx.fill();
@@ -2640,30 +3474,27 @@ function renderStrengthChart(strengthData) {
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
     points.forEach(p => ctx.lineTo(p.x, p.y));
-    ctx.strokeStyle = '#22C55E';
+    ctx.strokeStyle = color;
     ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
     ctx.stroke();
 
-    // Draw points
-    points.forEach(p => {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-        ctx.fillStyle = '#22C55E';
-        ctx.fill();
-    });
-
-    // Draw X-axis labels
-    ctx.fillStyle = 'rgba(255,255,255,0.4)';
-    ctx.font = '8px system-ui';
-    ctx.textAlign = 'center';
-    const labelStep = Math.ceil(data.length / 5);
-    data.forEach((d, i) => {
-        if (i % labelStep === 0 || i === data.length - 1) {
-            const x = padding.left + (chartWidth * i / (data.length - 1 || 1));
-            ctx.fillText(d.label, x, height - 5);
-        }
-    });
+    // Draw last point
+    const lastPoint = points[points.length - 1];
+    ctx.beginPath();
+    ctx.arc(lastPoint.x, lastPoint.y, 3, 0, Math.PI * 2);
+    ctx.fillStyle = color;
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(lastPoint.x, lastPoint.y, 1.5, 0, Math.PI * 2);
+    ctx.fillStyle = '#fff';
+    ctx.fill();
 }
+
+// Make functions globally available
+window.openStrengthDetailsModal = openStrengthDetailsModal;
+window.closeStrengthDetailsModal = closeStrengthDetailsModal;
+window.switchStrengthTab = switchStrengthTab;
 
 function renderHeroWeightChart(data, stats) {
     const canvas = document.getElementById('hero-weight-chart');
@@ -4374,9 +5205,37 @@ window.assignWorkout = async function () {
 }
 
 function adjustReps(delta) {
-    if (!workoutState) return;
-    workoutState.currentReps = Math.max(0, parseInt(workoutState.currentReps) + delta);
-    document.getElementById('rep-counter').innerText = workoutState.currentReps;
+    // Check if we're in CO-OP partner mode
+    const isCoopPartnerMode = window.coopState?.isCoopMode && window.coopState?.activeTab === 'partner';
+
+    if (isCoopPartnerMode) {
+        window.coopState.partnerCurrentReps = Math.max(0, parseInt(window.coopState.partnerCurrentReps || 10) + delta);
+        document.getElementById('rep-counter').innerText = window.coopState.partnerCurrentReps;
+    } else {
+        if (!workoutState) return;
+        workoutState.currentReps = Math.max(0, parseInt(workoutState.currentReps) + delta);
+        document.getElementById('rep-counter').innerText = workoutState.currentReps;
+    }
+}
+
+// Helper to detect if an exercise is cardio (uses duration/distance instead of reps/weight)
+window.isCardioExercise = function(exerciseName) {
+    if (!exerciseName) return false;
+    const name = exerciseName.toLowerCase();
+
+    // Cardio keywords
+    const cardioKeywords = [
+        'run', 'running', 'sprint', 'jog', 'jogging',
+        'bike', 'cycling', 'cycle',
+        'hiit', 'cardio',
+        'treadmill', 'elliptical', 'stairmaster', 'stepper',
+        'rowing', 'rower',
+        'jump rope', 'jumping',
+        'swimming', 'swim',
+        'walk', 'walking'
+    ];
+
+    return cardioKeywords.some(kw => name.includes(kw));
 }
 
 // Toggle workout panel between expanded and compact mode (full screen video)
@@ -4460,7 +5319,8 @@ async function finishWorkout() {
             requestBody = {
                 date: todayStr,
                 partner_id: coopPartner.id,
-                exercises: workoutState.exercises
+                exercises: workoutState.exercises,
+                partner_exercises: window.coopState?.partnerExercises || workoutState.exercises
             };
         } else {
             endpoint = `${apiBase}/api/client/schedule/complete`;
@@ -4493,16 +5353,25 @@ async function finishWorkout() {
             document.getElementById('celebration-overlay').classList.remove('hidden');
             startConfetti();
 
-            // Update celebration message for CO-OP
+            // Update celebration message and gems for CO-OP
+            const gemsAmountEl = document.getElementById('celebration-gems-amount');
             if (isCoopWorkout && coopPartner) {
                 const celebrationTitle = document.querySelector('#celebration-overlay h1');
                 const celebrationMsg = document.querySelector('#celebration-overlay p');
                 if (celebrationTitle) celebrationTitle.textContent = 'CO-OP Complete!';
                 if (celebrationMsg) celebrationMsg.textContent = `Great teamwork with ${coopPartner.name}! 👥`;
+                // Show CO-OP bonus gems (50 base + 25 bonus = 75)
+                if (gemsAmountEl) gemsAmountEl.innerHTML = '+75 <span class="text-lg">gems</span> <span class="text-xs text-purple-400">(+25 CO-OP bonus!)</span>';
+            } else {
+                // Regular workout gems
+                if (gemsAmountEl) gemsAmountEl.innerHTML = '+50 <span class="text-lg">gems</span>';
             }
 
             // Update UI to show completed state
-            const startBtn = document.querySelector('a[href*="mode=workout"]');
+            const startBtn = document.getElementById('workout-main-btn') || document.querySelector('a[href*="mode=workout"]');
+            const coopBadgeBtn = document.getElementById('coop-badge-btn');
+            const coopCompletedBadge = document.getElementById('coop-completed-badge');
+
             if (startBtn) {
                 startBtn.innerText = "COMPLETED ✓";
                 startBtn.className = "block w-full py-3 bg-green-500 text-white text-center font-bold rounded-xl hover:bg-green-600 transition";
@@ -4514,6 +5383,16 @@ async function finishWorkout() {
                         startBtn.href += "?view=completed";
                     }
                 }
+            }
+
+            // Hide CO-OP start button when completed
+            if (coopBadgeBtn) {
+                coopBadgeBtn.classList.add('hidden');
+            }
+
+            // Show CO-OP completed badge if this was a CO-OP workout
+            if (isCoopWorkout && coopCompletedBadge) {
+                coopCompletedBadge.classList.remove('hidden');
             }
 
             // Refresh streak and quest data after workout completion
@@ -4570,20 +5449,24 @@ async function finishWorkout() {
     }
 }
 
-window.updateSetData = async function (exIdx, setIdx, reps, weight) {
+window.updateSetData = async function (exIdx, setIdx, reps, weight, duration, distance) {
     if (!workoutState) return;
 
     const ex = workoutState.exercises[exIdx];
     const setNum = setIdx + 1;
     const dateStr = new Date().toLocaleDateString('en-CA');
+    const isCardio = window.isCardioExercise(ex.name);
 
     const payload = {
         date: dateStr,
         workout_id: workoutState.workoutId,
         exercise_name: ex.name,
         set_number: setNum,
-        reps: reps,
-        weight: weight
+        reps: reps || 0,
+        weight: weight || 0,
+        duration: duration || null,
+        distance: distance || null,
+        metric_type: isCardio ? 'duration_distance' : 'weight_reps'
     };
 
     try {
@@ -4594,10 +5477,12 @@ window.updateSetData = async function (exIdx, setIdx, reps, weight) {
         });
 
         if (res.ok) {
-            showToast("Set updated! 💾");
+            showToast(isCardio ? "Cardio updated! 🏃" : "Set updated! 💾");
             // Update local state to reflect changes
             workoutState.exercises[exIdx].performance[setIdx].reps = reps;
             workoutState.exercises[exIdx].performance[setIdx].weight = weight;
+            workoutState.exercises[exIdx].performance[setIdx].duration = duration;
+            workoutState.exercises[exIdx].performance[setIdx].distance = distance;
         } else {
             const err = await res.text();
             showToast("Failed to update: " + err);
@@ -4605,6 +5490,24 @@ window.updateSetData = async function (exIdx, setIdx, reps, weight) {
     } catch (e) {
         console.error(e);
         showToast("Error updating set");
+    }
+};
+
+// Helper to read values from inputs in the DOM and call updateSetData
+window.updateSetDataFromInputs = function(exIdx, setIdx, isCardio) {
+    const perf = workoutState?.exercises?.[exIdx]?.performance?.[setIdx];
+    if (!perf) return;
+
+    if (isCardio) {
+        // For cardio, get duration and distance from local state
+        const duration = perf.duration || 0;
+        const distance = perf.distance || 0;
+        window.updateSetData(exIdx, setIdx, 0, 0, duration, distance);
+    } else {
+        // For strength, get reps and weight from local state
+        const reps = perf.reps || 0;
+        const weight = perf.weight || 0;
+        window.updateSetData(exIdx, setIdx, reps, weight, null, null);
     }
 };
 
@@ -5313,18 +6216,70 @@ document.addEventListener('DOMContentLoaded', () => {
                 // Store global user ID for cache keys
                 window.currentUserId = user.id;
 
+                // Check if this is a completed workout with structured details
+                let exercisesData = workout.exercises;
+                let coopData = null;
+
+                // Parse details if completed - new format includes CO-OP info
+                if (workout.completed && workout.details) {
+                    try {
+                        const details = typeof workout.details === 'string' ? JSON.parse(workout.details) : workout.details;
+                        // New format: { exercises: [...], coop: { partner, partner_exercises } }
+                        if (details.exercises) {
+                            exercisesData = details.exercises;
+                            coopData = details.coop || null;
+                        } else if (Array.isArray(details)) {
+                            // Legacy format: details is just the exercises array
+                            exercisesData = details;
+                        }
+                    } catch (e) {
+                        console.log("Could not parse workout details, using exercises directly");
+                    }
+                }
+
                 workoutState = {
                     workoutId: workout.id, // Needed for cache key
-                    exercises: workout.exercises.map(ex => ({
+                    exercises: exercisesData.map(ex => ({
                         ...ex,
                         collapsed: false, // Init collapsed state
                         performance: ex.performance || Array(ex.sets).fill().map(() => ({ reps: '', weight: '', completed: false }))
                     })),
                     currentExerciseIdx: 0,
                     currentSet: 1,
-                    currentReps: parseInt(String(workout.exercises[0].reps).split('-')[1] || workout.exercises[0].reps),
+                    currentReps: parseInt(String(exercisesData[0].reps).split('-')[1] || exercisesData[0].reps),
                     isCompletedView: isCompletedView // Store in state
                 };
+
+                // Set up CO-OP state if this was a CO-OP workout
+                if (coopData && coopData.partner) {
+                    window.coopState = window.coopState || {};
+                    window.coopState.isCoopMode = true;
+                    window.coopState.partner = coopData.partner;
+                    window.coopState.activeTab = 'me';
+                    window.coopState.partnerExercises = (coopData.partner_exercises || []).map(ex => ({
+                        ...ex,
+                        collapsed: false,
+                        performance: ex.performance || Array(ex.sets).fill().map(() => ({ reps: '', weight: '', completed: false }))
+                    }));
+                    window.coopState.partnerCurrentIdx = 0;
+                    window.coopState.partnerCurrentSet = 1;
+                    window.coopState.partnerCurrentReps = 10;
+
+                    // Show CO-OP indicator in completed view
+                    const indicator = document.getElementById('coop-indicator');
+                    const nameEl = document.getElementById('coop-partner-name');
+                    const avatarEl = document.getElementById('coop-partner-avatar');
+
+                    if (indicator) {
+                        indicator.classList.remove('hidden');
+                        if (nameEl) nameEl.textContent = coopData.partner.name || 'Partner';
+                        if (avatarEl && coopData.partner.profile_picture) {
+                            avatarEl.innerHTML = `<img src="${coopData.partner.profile_picture}" class="w-full h-full object-cover rounded-full">`;
+                        }
+                    }
+                    console.log("CO-OP workout loaded from completed data:", coopData.partner.name);
+                }
+                // Note: Only show partner tabs if coopData exists (meaning it was a CO-OP workout)
 
                 // Restore from cache if available, but only if NOT completed
                 if (!workout.completed) {
@@ -5340,9 +6295,120 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
+// Show option to load a friend's workout in completed view
+async function showLoadFriendWorkoutOption() {
+    // Fetch friends list
+    try {
+        const res = await fetch(`${apiBase}/api/friends`);
+        if (!res.ok) return;
+
+        const friends = await res.json();
+        if (!friends || friends.length === 0) return;
+
+        // Create a load partner button in the coop-indicator area
+        const indicator = document.getElementById('coop-indicator');
+        if (!indicator) return;
+
+        // Show the indicator with a "Load friend's workout" button
+        indicator.innerHTML = `
+            <div class="text-center">
+                <p class="text-xs text-gray-400 mb-2">View a friend's workout for today?</p>
+                <div class="flex flex-wrap gap-2 justify-center">
+                    ${friends.map(f => `
+                        <button onclick="loadFriendWorkout('${f.id}', '${f.username}', '${f.profile_picture || ''}')"
+                            class="flex items-center gap-2 px-3 py-2 bg-purple-500/20 rounded-xl border border-purple-500/30 hover:bg-purple-500/30 transition tap-effect">
+                            <div class="w-6 h-6 rounded-full bg-purple-500/30 flex items-center justify-center overflow-hidden">
+                                ${f.profile_picture ? `<img src="${f.profile_picture}" class="w-full h-full object-cover">` : '<span class="text-xs">👤</span>'}
+                            </div>
+                            <span class="text-sm text-purple-300">${f.username}</span>
+                        </button>
+                    `).join('')}
+                </div>
+            </div>
+        `;
+        indicator.classList.remove('hidden');
+    } catch (e) {
+        console.log('Could not load friends for workout view:', e);
+    }
+}
+
+// Load a friend's workout for the current date
+window.loadFriendWorkout = async function(friendId, friendName, friendPicture) {
+    const todayStr = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD
+
+    try {
+        const res = await fetch(`${apiBase}/api/friends/${friendId}/workout?date=${todayStr}`);
+        if (!res.ok) {
+            showToast('Could not load friend\'s workout', 'error');
+            return;
+        }
+
+        const data = await res.json();
+        if (!data.found) {
+            showToast(data.message || 'Friend has no workout for today', 'info');
+            return;
+        }
+
+        // Set up CO-OP state with friend's data
+        window.coopState = window.coopState || {};
+        window.coopState.isCoopMode = true;
+        window.coopState.partner = {
+            id: friendId,
+            name: friendName,
+            profile_picture: friendPicture
+        };
+        window.coopState.activeTab = 'me';
+        window.coopState.partnerExercises = (data.workout.exercises || []).map(ex => ({
+            ...ex,
+            collapsed: false,
+            performance: ex.performance || Array(ex.sets || 3).fill().map(() => ({ reps: '', weight: '', completed: false }))
+        }));
+        window.coopState.partnerCurrentIdx = 0;
+        window.coopState.partnerCurrentSet = 1;
+        window.coopState.partnerCurrentReps = 10;
+
+        // Update the indicator to show the tabs
+        const indicator = document.getElementById('coop-indicator');
+        if (indicator) {
+            indicator.innerHTML = `
+                <div class="flex gap-2 mb-3">
+                    <button id="coop-tab-me" onclick="switchCoopTab('me')" class="flex-1 py-2 px-3 rounded-xl flex items-center justify-center gap-2 transition-all bg-gradient-to-r from-orange-500 to-orange-600 border-2 border-orange-500">
+                        <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
+                            <span class="text-xs">👤</span>
+                        </div>
+                        <span class="text-sm font-bold text-white">You</span>
+                    </button>
+                    <button id="coop-tab-partner" onclick="switchCoopTab('partner')" class="flex-1 py-2 px-3 rounded-xl flex items-center justify-center gap-2 transition-all bg-white/5 border-2 border-white/10">
+                        <div id="coop-partner-avatar" class="w-6 h-6 rounded-full bg-purple-500/30 flex items-center justify-center overflow-hidden">
+                            ${friendPicture ? `<img src="${friendPicture}" class="w-full h-full object-cover rounded-full">` : '<span class="text-xs">👥</span>'}
+                        </div>
+                        <span id="coop-partner-name" class="text-sm font-bold text-white/70">${friendName}</span>
+                    </button>
+                </div>
+                <p id="coop-active-label" class="text-xs text-center text-purple-300 font-medium">
+                    Viewing: <span id="coop-controlling-name" class="text-white">Your workout</span>
+                </p>
+            `;
+        }
+
+        showToast(`Loaded ${friendName}'s workout!`, 'success');
+        console.log('Loaded friend workout:', data);
+
+    } catch (e) {
+        console.error('Error loading friend workout:', e);
+        showToast('Failed to load friend\'s workout', 'error');
+    }
+};
+
 // Helper to update performance data
-window.updatePerformance = function (exIdx, setIdx, field, val) {
-    if (workoutState && workoutState.exercises[exIdx]) {
+window.updatePerformance = function (exIdx, setIdx, field, val, isPartner = false) {
+    // Check if we're in CO-OP partner mode
+    const isPartnerMode = isPartner || (window.coopState?.isCoopMode && window.coopState?.activeTab === 'partner');
+
+    if (isPartnerMode && window.coopState?.partnerExercises?.[exIdx]) {
+        window.coopState.partnerExercises[exIdx].performance[setIdx][field] = val;
+        // Don't auto-save partner data to server - it gets saved on completion
+    } else if (workoutState && workoutState.exercises[exIdx]) {
         workoutState.exercises[exIdx].performance[setIdx][field] = val;
         saveProgress(); // Auto-save
     }
@@ -5446,63 +6512,132 @@ function loadProgress() {
 function completeSet() {
     if (!workoutState) return;
 
-    const exId = workoutState.currentExerciseIdx;
-    const setId = workoutState.currentSet - 1; // 0-indexed
+    // Check if we're in CO-OP mode and controlling partner
+    const isCoopPartnerMode = window.coopState?.isCoopMode && window.coopState?.activeTab === 'partner';
 
-    // VALIDATION: Check if weight is entered
-    if (workoutState.exercises[exId] && workoutState.exercises[exId].performance[setId]) {
-        const currentPerf = workoutState.exercises[exId].performance[setId];
+    let exId, setId, exercises, currentReps;
+    if (isCoopPartnerMode && window.coopState.partnerExercises) {
+        // Use partner's state
+        exId = window.coopState.partnerCurrentIdx;
+        setId = window.coopState.partnerCurrentSet - 1;
+        exercises = window.coopState.partnerExercises;
+        currentReps = window.coopState.partnerCurrentReps;
+    } else {
+        // Use main user's state
+        exId = workoutState.currentExerciseIdx;
+        setId = workoutState.currentSet - 1;
+        exercises = workoutState.exercises;
+        currentReps = workoutState.currentReps;
+    }
 
-        if (!currentPerf.weight && currentPerf.weight !== 0) {
-            showToast("Please enter weight for this set! ⚖️");
-            return;
+    // VALIDATION: Check required fields based on exercise type
+    if (exercises[exId] && exercises[exId].performance[setId]) {
+        const currentPerf = exercises[exId].performance[setId];
+        const isCardio = window.isCardioExercise(exercises[exId].name);
+
+        if (isCardio) {
+            // For cardio, validate duration OR distance is entered
+            if ((!currentPerf.duration && currentPerf.duration !== 0) &&
+                (!currentPerf.distance && currentPerf.distance !== 0)) {
+                showToast("Please enter duration or distance! 🏃");
+                return;
+            }
+        } else {
+            // For strength, validate weight is entered
+            if (!currentPerf.weight && currentPerf.weight !== 0) {
+                showToast("Please enter weight for this set! ⚖️");
+                return;
+            }
+            // AUTO-FILL REPS from Main Counter
+            currentPerf.reps = currentReps;
         }
 
-        // AUTO-FILL REPS from Main Counter
-        currentPerf.reps = workoutState.currentReps;
         currentPerf.completed = true; // Mark as done
 
-        // AUTO-FILL NEXT SET WEIGHT
-        const nextSetPerf = workoutState.exercises[exId].performance[setId + 1];
+        // AUTO-FILL NEXT SET (weight for strength, keep duration/distance for cardio)
+        const nextSetPerf = exercises[exId].performance[setId + 1];
         if (nextSetPerf) {
-            // Only auto-fill if next set has no weight yet
-            if (!nextSetPerf.weight && nextSetPerf.weight !== 0) {
-                nextSetPerf.weight = currentPerf.weight;
+            if (isCardio) {
+                // Auto-fill duration/distance for next cardio session
+                if (!nextSetPerf.duration && currentPerf.duration) {
+                    nextSetPerf.duration = currentPerf.duration;
+                }
+                if (!nextSetPerf.distance && currentPerf.distance) {
+                    nextSetPerf.distance = currentPerf.distance;
+                }
+            } else {
+                // Only auto-fill if next set has no weight yet
+                if (!nextSetPerf.weight && nextSetPerf.weight !== 0) {
+                    nextSetPerf.weight = currentPerf.weight;
+                }
             }
         }
 
-        saveProgress(); // Save the new data
+        if (!isCoopPartnerMode) {
+            saveProgress(); // Save the new data for main user
+        }
     }
 
-    const ex = workoutState.exercises[workoutState.currentExerciseIdx];
+    const ex = isCoopPartnerMode ? window.coopState.partnerExercises[exId] : workoutState.exercises[workoutState.currentExerciseIdx];
 
     // Show Rest Timer
     showRestTimer(ex.rest || 60, () => {
-        // Move to next set
-        if (workoutState.currentSet < ex.sets) {
-            workoutState.currentSet++;
-            // Parse reps if it's a range like "8-10"
-            let targetReps = ex.reps;
-            if (typeof ex.reps === 'string' && ex.reps.includes('-')) {
-                targetReps = ex.reps.split('-')[1]; // Take upper bound
-            }
-            workoutState.currentReps = parseInt(targetReps);
-            updateWorkoutUI();
-        } else {
-            // Move to next exercise
-            if (workoutState.currentExerciseIdx < workoutState.exercises.length - 1) {
-                workoutState.currentExerciseIdx++;
-                workoutState.currentSet = 1;
-                const nextEx = workoutState.exercises[workoutState.currentExerciseIdx];
-                let nextReps = nextEx.reps;
-                if (typeof nextEx.reps === 'string' && nextEx.reps.includes('-')) {
-                    nextReps = nextEx.reps.split('-')[1];
+        // Check partner mode again in callback (closure)
+        const partnerMode = window.coopState?.isCoopMode && window.coopState?.activeTab === 'partner';
+
+        if (partnerMode && window.coopState.partnerExercises) {
+            // Handle partner's workout progression
+            const partnerEx = window.coopState.partnerExercises[window.coopState.partnerCurrentIdx];
+            if (window.coopState.partnerCurrentSet < partnerEx.sets) {
+                window.coopState.partnerCurrentSet++;
+                let targetReps = partnerEx.reps;
+                if (typeof partnerEx.reps === 'string' && partnerEx.reps.includes('-')) {
+                    targetReps = partnerEx.reps.split('-')[1];
                 }
-                workoutState.currentReps = parseInt(nextReps);
+                window.coopState.partnerCurrentReps = parseInt(targetReps);
                 updateWorkoutUI();
             } else {
-                // Workout complete!
-                finishWorkout();
+                // Move to next exercise for partner
+                if (window.coopState.partnerCurrentIdx < window.coopState.partnerExercises.length - 1) {
+                    window.coopState.partnerCurrentIdx++;
+                    window.coopState.partnerCurrentSet = 1;
+                    const nextEx = window.coopState.partnerExercises[window.coopState.partnerCurrentIdx];
+                    let nextReps = nextEx.reps;
+                    if (typeof nextEx.reps === 'string' && nextEx.reps.includes('-')) {
+                        nextReps = nextEx.reps.split('-')[1];
+                    }
+                    window.coopState.partnerCurrentReps = parseInt(nextReps);
+                    updateWorkoutUI();
+                } else {
+                    showToast("Partner's workout complete! Switch back to your tab.", 'success');
+                }
+            }
+        } else {
+            // Handle main user's workout progression
+            if (workoutState.currentSet < ex.sets) {
+                workoutState.currentSet++;
+                let targetReps = ex.reps;
+                if (typeof ex.reps === 'string' && ex.reps.includes('-')) {
+                    targetReps = ex.reps.split('-')[1];
+                }
+                workoutState.currentReps = parseInt(targetReps);
+                updateWorkoutUI();
+            } else {
+                // Move to next exercise
+                if (workoutState.currentExerciseIdx < workoutState.exercises.length - 1) {
+                    workoutState.currentExerciseIdx++;
+                    workoutState.currentSet = 1;
+                    const nextEx = workoutState.exercises[workoutState.currentExerciseIdx];
+                    let nextReps = nextEx.reps;
+                    if (typeof nextEx.reps === 'string' && nextEx.reps.includes('-')) {
+                        nextReps = nextEx.reps.split('-')[1];
+                    }
+                    workoutState.currentReps = parseInt(nextReps);
+                    updateWorkoutUI();
+                } else {
+                    // Workout complete!
+                    finishWorkout();
+                }
             }
         }
     });
@@ -5511,12 +6646,31 @@ function completeSet() {
 function updateWorkoutUI() {
     if (!workoutState) return;
 
-    const ex = workoutState.exercises[workoutState.currentExerciseIdx];
+    // Check if we're in CO-OP partner mode
+    const isPartnerMode = window.coopState?.isCoopMode && window.coopState?.activeTab === 'partner';
+
+    // Use partner state if in partner mode
+    let exercises, currentIdx, currentSet, currentReps;
+    if (isPartnerMode && window.coopState.partnerExercises) {
+        exercises = window.coopState.partnerExercises;
+        currentIdx = window.coopState.partnerCurrentIdx;
+        currentSet = window.coopState.partnerCurrentSet;
+        currentReps = window.coopState.partnerCurrentReps;
+    } else {
+        exercises = workoutState.exercises;
+        currentIdx = workoutState.currentExerciseIdx;
+        currentSet = workoutState.currentSet;
+        currentReps = workoutState.currentReps;
+    }
+
+    const ex = exercises[currentIdx];
+    if (!ex) return;
 
     // Update Header & Counters
-    document.getElementById('exercise-name').innerText = ex.name;
-    document.getElementById('exercise-target').innerText = `Set ${workoutState.currentSet}/${ex.sets} • Target: ${ex.reps} Reps`;
-    document.getElementById('rep-counter').innerText = workoutState.currentReps;
+    const partnerLabel = isPartnerMode ? ` (${window.coopState.partner?.name || 'Partner'})` : '';
+    document.getElementById('exercise-name').innerText = ex.name + partnerLabel;
+    document.getElementById('exercise-target').innerText = `Set ${currentSet}/${ex.sets} • Target: ${ex.reps} Reps`;
+    document.getElementById('rep-counter').innerText = currentReps;
 
     // Update Video
     const videoEl = document.getElementById('exercise-video');
@@ -5569,13 +6723,15 @@ function updateWorkoutUI() {
     const list = document.getElementById('workout-routine-list');
     if (list) {
         list.innerHTML = '';
-        workoutState.exercises.forEach((item, idx) => {
+        exercises.forEach((item, idx) => {
             const div = document.createElement('div');
-            const isCurrent = idx === workoutState.currentExerciseIdx;
+            const isCurrent = idx === currentIdx;
+            const accentColor = isPartnerMode ? 'purple' : 'orange';
 
             // Event Delegation Attributes
             div.dataset.action = 'switchExercise';
             div.dataset.idx = idx;
+            if (isPartnerMode) div.dataset.partnerMode = 'true';
 
             if (isCurrent) {
                 // EXPANDED ACTIVE CARD - Modern glass style
@@ -5597,7 +6753,7 @@ function updateWorkoutUI() {
                     const perf = item.performance[i];
 
                     const isSetCompleted = perf.completed;
-                    const isSetActive = (i === (workoutState.currentSet - 1));
+                    const isSetActive = (i === (currentSet - 1));
 
                     // Dynamic styles - use 4 columns when in completed view to fit edit button
                     const gridCols = workoutState.isCompletedView ? 'grid-cols-[1.2fr,1fr,1fr,auto]' : 'grid-cols-[1.2fr,1fr,1fr]';
@@ -5626,15 +6782,26 @@ function updateWorkoutUI() {
                     let editBtnHtml = '';
                     if (workoutState.isCompletedView) {
                         const isEditing = perf.isEditing || false;
+                        const exerciseIsCardio = window.isCardioExercise(item.name);
 
                         if (isEditing) {
                             currentInputClass = baseInputClass + " border-b border-orange-500";
-                            editBtnHtml = `
-                                <button onclick="event.stopPropagation(); window.updateSetData(${idx}, ${i}, this.closest('.grid').querySelector('input[placeholder=\\'${item.reps}\\']').value, this.closest('.grid').querySelector('input[placeholder=\\'-\\' ]').value); workoutState.exercises[${idx}].performance[${i}].isEditing = false; updateWorkoutUI();"
-                                    class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-white hover:scale-105 transition flex-shrink-0">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
-                                </button>
-                            `;
+                            // Different save logic for cardio vs strength
+                            if (exerciseIsCardio) {
+                                editBtnHtml = `
+                                    <button onclick="event.stopPropagation(); window.updateSetDataFromInputs(${idx}, ${i}, true); workoutState.exercises[${idx}].performance[${i}].isEditing = false; updateWorkoutUI();"
+                                        class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-white hover:scale-105 transition flex-shrink-0">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    </button>
+                                `;
+                            } else {
+                                editBtnHtml = `
+                                    <button onclick="event.stopPropagation(); window.updateSetDataFromInputs(${idx}, ${i}, false); workoutState.exercises[${idx}].performance[${i}].isEditing = false; updateWorkoutUI();"
+                                        class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center text-white hover:scale-105 transition flex-shrink-0">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/></svg>
+                                    </button>
+                                `;
+                            }
                         } else {
                             editBtnHtml = `
                                 <button onclick="event.stopPropagation(); workoutState.exercises[${idx}].performance[${i}].isEditing = true; updateWorkoutUI();"
@@ -5645,10 +6812,33 @@ function updateWorkoutUI() {
                         }
                     }
 
-                    setsHtml += `
-                        <div class="${rowClass}">
-                            ${statusIcon}
-                            <span class="text-xs font-medium text-white/40 pl-8 uppercase tracking-wider ${isSetActive ? 'text-orange-500' : ''}">Set ${i + 1}</span>
+                    // Check if this is a cardio exercise
+                    const isCardio = window.isCardioExercise(item.name);
+
+                    // Build input fields based on exercise type
+                    let inputFieldsHtml = '';
+                    if (isCardio) {
+                        // Cardio: Duration and Distance inputs
+                        inputFieldsHtml = `
+                            <div class="flex items-center bg-white/5 border border-white/5 rounded-lg px-3 py-2.5 focus-within:border-green-500/50 transition">
+                                <input type="number" step="0.5" value="${perf.duration || ''}"
+                                    oninput="window.updatePerformance(${idx}, ${i}, 'duration', this.value)"
+                                    onclick="event.stopPropagation()"
+                                    ${workoutState.isCompletedView && !perf.isEditing ? 'disabled' : (isInputDisabled && !perf.isEditing ? 'disabled' : '')}
+                                    class="${currentInputClass}" placeholder="-">
+                                <span class="text-[10px] text-white/30 font-medium ml-1 uppercase">min</span>
+                            </div>
+                            <div class="flex items-center bg-white/5 border border-white/5 rounded-lg px-3 py-2.5 focus-within:border-green-500/50 transition">
+                                <input type="number" step="0.1" value="${perf.distance || ''}"
+                                    oninput="window.updatePerformance(${idx}, ${i}, 'distance', this.value)"
+                                    onclick="event.stopPropagation()"
+                                    ${workoutState.isCompletedView && !perf.isEditing ? 'disabled' : (isInputDisabled && !perf.isEditing ? 'disabled' : '')}
+                                    class="${currentInputClass}" placeholder="-">
+                                <span class="text-[10px] text-white/30 font-medium ml-1 uppercase">km</span>
+                            </div>`;
+                    } else {
+                        // Strength: Reps and Weight inputs
+                        inputFieldsHtml = `
                             <div class="flex items-center bg-white/5 border border-white/5 rounded-lg px-3 py-2.5 focus-within:border-orange-500/50 transition">
                                 <input type="number" value="${perf.reps}"
                                     oninput="window.updatePerformance(${idx}, ${i}, 'reps', this.value)"
@@ -5664,7 +6854,14 @@ function updateWorkoutUI() {
                                     ${workoutState.isCompletedView && !perf.isEditing ? 'disabled' : (isInputDisabled && !perf.isEditing ? 'disabled' : '')}
                                     class="${currentInputClass}" placeholder="-">
                                 <span class="text-[10px] text-white/30 font-medium ml-1 uppercase">kg</span>
-                            </div>
+                            </div>`;
+                    }
+
+                    setsHtml += `
+                        <div class="${rowClass}">
+                            ${statusIcon}
+                            <span class="text-xs font-medium text-white/40 pl-8 uppercase tracking-wider ${isSetActive ? 'text-orange-500' : ''}">${isCardio ? 'Session' : 'Set ' + (i + 1)}</span>
+                            ${inputFieldsHtml}
                             ${editBtnHtml}
                         </div>
                      `;

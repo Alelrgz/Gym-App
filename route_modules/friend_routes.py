@@ -110,6 +110,17 @@ async def get_friend_progress(
     return service.get_friend_progress(current_user.id, friend_id)
 
 
+@router.get("/api/friends/{friend_id}/workout")
+async def get_friend_workout(
+    friend_id: str,
+    date: str,  # YYYY-MM-DD format
+    service: FriendService = Depends(get_friend_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Get a friend's completed workout for a specific date (CO-OP viewing)."""
+    return service.get_friend_workout(current_user.id, friend_id, date)
+
+
 # === FRIENDSHIP STATUS ===
 
 @router.get("/api/friends/status/{user_id}")

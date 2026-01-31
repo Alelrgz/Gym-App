@@ -3,7 +3,8 @@ Schedule Service - handles trainer events, client schedules, and workout complet
 """
 from .base import (
     HTTPException, json, logging, date, datetime, timedelta,
-    get_db_session, TrainerScheduleORM, ClientScheduleORM, ClientExerciseLogORM
+    get_db_session, TrainerScheduleORM, ClientScheduleORM, ClientExerciseLogORM, UserORM,
+    ClientProfileORM
 )
 
 logger = logging.getLogger("gym_app")
@@ -366,6 +367,7 @@ class ScheduleService:
         date_str = payload.get("date")
         partner_id = payload.get("partner_id")
         exercises = payload.get("exercises", [])
+        partner_exercises = payload.get("partner_exercises", exercises)  # Use separate partner exercises if provided
 
         if not partner_id:
             raise HTTPException(status_code=400, detail="Partner ID required for CO-OP workout")
@@ -391,12 +393,26 @@ class ScheduleService:
                 ClientScheduleORM.type == "workout"
             ).first()
 
+            # Get partner's user info for storing in details
+            partner_user = db.query(UserORM).filter(UserORM.id == partner_id).first()
+            partner_info = {
+                "id": partner_id,
+                "name": partner_user.username if partner_user else "Partner",
+                "profile_picture": partner_user.profile_picture if partner_user else None
+            }
+
             if not user_item:
                 raise HTTPException(status_code=404, detail="You don't have a workout scheduled for today")
 
-            # Mark user's workout as complete
+            # Mark user's workout as complete - store with CO-OP info
             user_item.completed = True
-            user_item.details = json.dumps(exercises)
+            user_item.details = json.dumps({
+                "exercises": exercises,
+                "coop": {
+                    "partner": partner_info,
+                    "partner_exercises": partner_exercises
+                }
+            })
 
             # Save exercise logs for user
             for ex in exercises:
@@ -417,13 +433,27 @@ class ScheduleService:
                         )
                         db.add(log)
 
+            # Get current user info for partner's CO-OP reference
+            current_user = db.query(UserORM).filter(UserORM.id == user_id).first()
+            user_info = {
+                "id": user_id,
+                "name": current_user.username if current_user else "Partner",
+                "profile_picture": current_user.profile_picture if current_user else None
+            }
+
             # If partner has a workout scheduled, complete it too
             if partner_item:
                 partner_item.completed = True
-                partner_item.details = json.dumps(exercises)
+                partner_item.details = json.dumps({
+                    "exercises": partner_exercises,
+                    "coop": {
+                        "partner": user_info,
+                        "partner_exercises": exercises  # User's exercises from partner's perspective
+                    }
+                })
 
-                # Save exercise logs for partner
-                for ex in exercises:
+                # Save exercise logs for partner (using partner's exercise data)
+                for ex in partner_exercises:
                     ex_name = ex.get("name")
                     perf_list = ex.get("performance", [])
 
@@ -441,11 +471,27 @@ class ScheduleService:
                             )
                             db.add(log)
 
+                # Award gems to both users for completing workout (CO-OP bonus!)
+                WORKOUT_GEMS = 50  # Base gems for workout
+                COOP_BONUS = 25   # Extra gems for CO-OP
+                total_gems = WORKOUT_GEMS + COOP_BONUS
+
+                # Award to user
+                user_profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == user_id).first()
+                if user_profile:
+                    user_profile.gems = (user_profile.gems or 0) + total_gems
+
+                # Award to partner
+                partner_profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == partner_id).first()
+                if partner_profile:
+                    partner_profile.gems = (partner_profile.gems or 0) + total_gems
+
                 db.commit()
                 return {
                     "status": "success",
                     "message": "CO-OP workout completed for both of you!",
-                    "partner_completed": True
+                    "partner_completed": True,
+                    "gems_awarded": total_gems
                 }
             else:
                 # Partner doesn't have a workout today - create one based on user's workout
@@ -456,7 +502,13 @@ class ScheduleService:
                     workout_id=user_item.workout_id,
                     title=user_item.title,
                     completed=True,
-                    details=json.dumps(exercises)
+                    details=json.dumps({
+                        "exercises": partner_exercises,
+                        "coop": {
+                            "partner": user_info,
+                            "partner_exercises": exercises
+                        }
+                    })
                 )
                 db.add(new_partner_item)
 
@@ -479,11 +531,27 @@ class ScheduleService:
                             )
                             db.add(log)
 
+                # Award gems to both users for completing workout (CO-OP bonus!)
+                WORKOUT_GEMS = 50  # Base gems for workout
+                COOP_BONUS = 25   # Extra gems for CO-OP
+                total_gems = WORKOUT_GEMS + COOP_BONUS
+
+                # Award to user
+                user_profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == user_id).first()
+                if user_profile:
+                    user_profile.gems = (user_profile.gems or 0) + total_gems
+
+                # Award to partner
+                partner_profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == partner_id).first()
+                if partner_profile:
+                    partner_profile.gems = (partner_profile.gems or 0) + total_gems
+
                 db.commit()
                 return {
                     "status": "success",
                     "message": "CO-OP workout completed! Added to your friend's schedule too.",
-                    "partner_completed": True
+                    "partner_completed": True,
+                    "gems_awarded": total_gems
                 }
         finally:
             db.close()
@@ -525,6 +593,9 @@ class ScheduleService:
         set_number = int(payload.get("set_number"))
         reps = payload.get("reps")
         weight = payload.get("weight")
+        duration = payload.get("duration")  # For cardio (in minutes)
+        distance = payload.get("distance")  # For cardio (in km)
+        metric_type = payload.get("metric_type", "weight_reps")
 
         db = get_db_session()
         try:
@@ -540,6 +611,9 @@ class ScheduleService:
             if log:
                 log.reps = int(reps) if reps else 0
                 log.weight = float(weight) if weight else 0.0
+                log.duration = float(duration) if duration else None
+                log.distance = float(distance) if distance else None
+                log.metric_type = metric_type
             else:
                 log = ClientExerciseLogORM(
                     client_id=client_id,
@@ -549,7 +623,9 @@ class ScheduleService:
                     set_number=set_number,
                     reps=int(reps) if reps else 0,
                     weight=float(weight) if weight else 0.0,
-                    metric_type="weight_reps"
+                    duration=float(duration) if duration else None,
+                    distance=float(distance) if distance else None,
+                    metric_type=metric_type
                 )
                 db.add(log)
 
@@ -568,10 +644,12 @@ class ScheduleService:
                         if ex.get("name") == exercise_name:
                             perf_list = ex.get("performance", [])
                             while len(perf_list) < set_number:
-                                perf_list.append({"reps": "", "weight": "", "completed": False})
+                                perf_list.append({"reps": "", "weight": "", "duration": "", "distance": "", "completed": False})
 
                             perf_list[set_number - 1]["reps"] = reps
                             perf_list[set_number - 1]["weight"] = weight
+                            perf_list[set_number - 1]["duration"] = duration
+                            perf_list[set_number - 1]["distance"] = distance
                             perf_list[set_number - 1]["completed"] = True
                             break
 

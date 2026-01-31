@@ -8,7 +8,7 @@ from .base import (
     DailyQuestCompletionORM, ClientDailyDietSummaryORM, WeightHistoryORM
 )
 from models import ClientData, ClientProfileUpdate
-from data import CLIENT_DATA
+from data import CLIENT_DATA, EXERCISE_LIBRARY
 
 logger = logging.getLogger("gym_app")
 
@@ -315,13 +315,27 @@ class ClientService:
                     logger.warning(f"Could not fetch details for workout {today_event['workout_id']}: {e}")
 
             # PRIORITIZE SNAPSHOT FROM DB IF COMPLETED
+            logger.info(f"Checking completed workout: today_event={today_event is not None}, completed={today_event.get('completed') if today_event else 'N/A'}, has_details={bool(today_event.get('details')) if today_event else 'N/A'}, todays_workout={todays_workout is not None}")
             if today_event and today_event.get("completed") and today_event.get("details"):
                  try:
                     details_content = today_event["details"]
-                    if details_content.startswith("["): # JSON snapshot
-                        saved_exercises = json.loads(details_content)
+                    logger.info(f"Loading workout details for completed workout, content length: {len(details_content)}")
+                    parsed_details = json.loads(details_content)
+
+                    if isinstance(parsed_details, list):
+                        # Legacy format: details is just the exercises array
+                        logger.info("Parsed as legacy format (list)")
                         if todays_workout:
-                            todays_workout["exercises"] = saved_exercises
+                            todays_workout["exercises"] = parsed_details
+                    elif isinstance(parsed_details, dict):
+                        # New format: { exercises: [...], coop: { partner, partner_exercises } }
+                        logger.info(f"Parsed as new format (dict), has coop: {'coop' in parsed_details}")
+                        if todays_workout:
+                            if "exercises" in parsed_details:
+                                todays_workout["exercises"] = parsed_details["exercises"]
+                            # Include CO-OP details in the response
+                            todays_workout["details"] = details_content
+                            logger.info(f"Set todays_workout details, has coop in details: {'coop' in details_content}")
                  except Exception as e:
                      logger.error(f"Error loading saved workout snapshot: {e}")
 
@@ -623,11 +637,60 @@ class ClientService:
         finally:
             db.close()
 
+    def _get_exercise_category(self, exercise_name: str) -> str:
+        """Map exercise name to category (upper_body, lower_body, cardio)."""
+        # Build exercise name to muscle mapping from EXERCISE_LIBRARY
+        exercise_muscle_map = {ex['name'].lower(): ex['muscle'] for ex in EXERCISE_LIBRARY}
+
+        # Define muscle groups per category
+        UPPER_BODY_MUSCLES = {'chest', 'back', 'shoulders', 'biceps', 'triceps'}
+        LOWER_BODY_MUSCLES = {'legs', 'quads', 'hamstrings', 'glutes', 'calves'}
+        CARDIO_MUSCLES = {'cardio', 'abs'}
+
+        # Try exact match first
+        name_lower = exercise_name.lower()
+        muscle = exercise_muscle_map.get(name_lower)
+
+        if not muscle:
+            # Try fuzzy match - check if any exercise name is contained
+            for ex_name, ex_muscle in exercise_muscle_map.items():
+                if ex_name in name_lower or name_lower in ex_name:
+                    muscle = ex_muscle
+                    break
+
+        if not muscle:
+            # Guess from common keywords
+            keywords_upper = ['press', 'curl', 'row', 'pull', 'push', 'fly', 'raise', 'dip', 'tricep', 'bicep', 'chest', 'back', 'shoulder']
+            keywords_lower = ['squat', 'lunge', 'leg', 'calf', 'deadlift', 'rdl', 'glute', 'ham']
+            keywords_cardio = ['run', 'sprint', 'hiit', 'cardio', 'bike', 'row', 'jump', 'plank', 'crunch', 'twist', 'abs']
+
+            for kw in keywords_lower:
+                if kw in name_lower:
+                    return 'lower_body'
+            for kw in keywords_cardio:
+                if kw in name_lower:
+                    return 'cardio'
+            for kw in keywords_upper:
+                if kw in name_lower:
+                    return 'upper_body'
+
+            return 'upper_body'  # Default to upper body
+
+        muscle_lower = muscle.lower()
+        if muscle_lower in UPPER_BODY_MUSCLES:
+            return 'upper_body'
+        elif muscle_lower in LOWER_BODY_MUSCLES:
+            return 'lower_body'
+        elif muscle_lower in CARDIO_MUSCLES:
+            return 'cardio'
+        else:
+            return 'upper_body'  # Default
+
     def get_strength_progress(self, client_id: str, period: str = "month") -> dict:
-        """Calculate strength progress over time for charting."""
+        """Calculate strength progress over time for charting, broken down by category."""
         db = get_db_session()
         try:
-            from sqlalchemy import func
+            from sqlalchemy import func, or_
 
             # Determine date range based on period
             now = datetime.now()
@@ -640,16 +703,21 @@ class ClientService:
             else:
                 start_date = now - timedelta(days=30)
 
-            # Get average max weight across all exercises per date
-            # This gives us a daily "strength index"
+            # Get all exercise logs (weight, duration, distance)
             logs = db.query(
                 ClientExerciseLogORM.date,
                 ClientExerciseLogORM.exercise_name,
-                func.max(ClientExerciseLogORM.weight).label('max_weight')
+                func.max(ClientExerciseLogORM.weight).label('max_weight'),
+                func.max(ClientExerciseLogORM.duration).label('max_duration'),
+                func.max(ClientExerciseLogORM.distance).label('max_distance')
             ).filter(
                 ClientExerciseLogORM.client_id == client_id,
                 ClientExerciseLogORM.date >= start_date.strftime("%Y-%m-%d"),
-                ClientExerciseLogORM.weight > 0
+                or_(
+                    ClientExerciseLogORM.weight > 0,
+                    ClientExerciseLogORM.duration > 0,
+                    ClientExerciseLogORM.distance > 0
+                )
             ).group_by(
                 ClientExerciseLogORM.date,
                 ClientExerciseLogORM.exercise_name
@@ -657,61 +725,299 @@ class ClientService:
                 ClientExerciseLogORM.date
             ).all()
 
+            empty_result = {
+                "progress": 0,
+                "trend": "stable",
+                "data": [],
+                "categories": {
+                    "upper_body": {"progress": 0, "trend": "stable", "data": []},
+                    "lower_body": {"progress": 0, "trend": "stable", "data": []},
+                    "cardio": {"progress": 0, "trend": "stable", "data": []}
+                }
+            }
+
             if not logs:
-                return {"progress": 0, "trend": "stable", "data": []}
+                return empty_result
 
-            # Group by date and calculate average strength per day
-            date_data = {}
+            # Group by category and date
+            # For upper/lower body: use weight
+            # For cardio: use duration + distance (cardio score)
+            category_date_data = {
+                'upper_body': {},
+                'lower_body': {},
+                'cardio': {}
+            }
+            all_dates = set()
+
             for log in logs:
-                if log.date not in date_data:
-                    date_data[log.date] = []
-                date_data[log.date].append(log.max_weight)
+                category = self._get_exercise_category(log.exercise_name)
 
-            # Calculate daily average and normalize to percentage from baseline
-            sorted_dates = sorted(date_data.keys())
-            if not sorted_dates:
-                return {"progress": 0, "trend": "stable", "data": []}
+                if category == 'cardio':
+                    # For cardio: calculate a "cardio score" from duration and distance
+                    # Score = duration (mins) + distance (km) * 5 (weighted to balance)
+                    duration = log.max_duration or 0
+                    distance = log.max_distance or 0
+                    cardio_score = duration + (distance * 5)  # 5km ~ 25-30 min jog
 
-            # Get baseline (first day's average)
-            baseline = sum(date_data[sorted_dates[0]]) / len(date_data[sorted_dates[0]])
-            if baseline == 0:
-                baseline = 1  # Avoid division by zero
+                    if cardio_score > 0:
+                        if log.date not in category_date_data['cardio']:
+                            category_date_data['cardio'][log.date] = []
+                        category_date_data['cardio'][log.date].append(cardio_score)
+                        all_dates.add(log.date)
+                else:
+                    # For upper/lower body: use weight
+                    if log.max_weight and log.max_weight > 0:
+                        if log.date not in category_date_data[category]:
+                            category_date_data[category][log.date] = []
+                        category_date_data[category][log.date].append(log.max_weight)
+                        all_dates.add(log.date)
 
-            # Build data points as percentage change from baseline
-            data_points = []
-            for date_str in sorted_dates:
-                daily_avg = sum(date_data[date_str]) / len(date_data[date_str])
-                pct_change = ((daily_avg - baseline) / baseline) * 100
+            sorted_dates = sorted(all_dates)
 
-                parsed_date = datetime.strptime(date_str, "%Y-%m-%d")
-                data_points.append({
-                    "date": date_str,
-                    "strength": round(pct_change, 1),
-                    "label": parsed_date.strftime("%d %b") if period != "year" else parsed_date.strftime("%b %y")
-                })
+            def calculate_category_progress(date_data: dict, metric_name: str = "strength") -> dict:
+                """Calculate progress for a single category."""
+                if not date_data:
+                    return {"progress": 0, "trend": "stable", "data": []}
 
-            # Calculate overall progress (last vs first)
-            if len(data_points) >= 2:
-                overall_progress = data_points[-1]["strength"]
+                category_dates = sorted(date_data.keys())
+                if not category_dates:
+                    return {"progress": 0, "trend": "stable", "data": []}
+
+                # Get baseline (first day's average)
+                baseline = sum(date_data[category_dates[0]]) / len(date_data[category_dates[0]])
+                if baseline == 0:
+                    baseline = 1
+
+                data_points = []
+                for date_str in sorted_dates:  # Use all dates for alignment
+                    if date_str in date_data:
+                        daily_avg = sum(date_data[date_str]) / len(date_data[date_str])
+                        pct_change = ((daily_avg - baseline) / baseline) * 100
+                    else:
+                        # No data for this category on this date - use null for gaps
+                        pct_change = None
+
+                    parsed_date = datetime.strptime(date_str, "%Y-%m-%d")
+                    data_points.append({
+                        "date": date_str,
+                        "strength": round(pct_change, 1) if pct_change is not None else None,
+                        "label": parsed_date.strftime("%d %b") if period != "year" else parsed_date.strftime("%b %y")
+                    })
+
+                # Calculate overall progress (last valid vs first)
+                valid_points = [p for p in data_points if p["strength"] is not None]
+                if len(valid_points) >= 2:
+                    overall_progress = valid_points[-1]["strength"]
+                elif len(valid_points) == 1:
+                    overall_progress = valid_points[0]["strength"]
+                else:
+                    overall_progress = 0
+
+                # Determine trend
+                if overall_progress > 2:
+                    trend = "up"
+                elif overall_progress < -2:
+                    trend = "down"
+                else:
+                    trend = "stable"
+
+                return {
+                    "progress": round(overall_progress, 1),
+                    "trend": trend,
+                    "data": data_points
+                }
+
+            # Calculate progress for each category
+            categories = {
+                "upper_body": calculate_category_progress(category_date_data['upper_body']),
+                "lower_body": calculate_category_progress(category_date_data['lower_body']),
+                "cardio": calculate_category_progress(category_date_data['cardio'])
+            }
+
+            # Calculate overall progress (average of categories with data)
+            active_categories = [c for c in categories.values() if c["data"] and any(p["strength"] is not None for p in c["data"])]
+            if active_categories:
+                overall_progress = sum(c["progress"] for c in active_categories) / len(active_categories)
             else:
                 overall_progress = 0
 
-            # Determine trend
+            # Overall trend
             if overall_progress > 2:
-                trend = "up"
+                overall_trend = "up"
             elif overall_progress < -2:
-                trend = "down"
+                overall_trend = "down"
             else:
-                trend = "stable"
+                overall_trend = "stable"
+
+            # Also build legacy combined data for backwards compatibility
+            all_date_data = {}
+            for log in logs:
+                if log.max_weight and log.max_weight > 0:
+                    if log.date not in all_date_data:
+                        all_date_data[log.date] = []
+                    all_date_data[log.date].append(log.max_weight)
+
+            legacy_result = calculate_category_progress(all_date_data) if all_date_data else {"data": []}
 
             return {
                 "progress": round(overall_progress, 1),
-                "trend": trend,
-                "data": data_points
+                "trend": overall_trend,
+                "data": legacy_result["data"],  # Legacy combined data
+                "categories": categories
             }
         except Exception as e:
             logger.error(f"Error calculating strength progress: {e}")
-            return {"progress": 0, "trend": "stable", "exercises_tracked": 0}
+            return {
+                "progress": 0,
+                "trend": "stable",
+                "data": [],
+                "categories": {
+                    "upper_body": {"progress": 0, "trend": "stable", "data": []},
+                    "lower_body": {"progress": 0, "trend": "stable", "data": []},
+                    "cardio": {"progress": 0, "trend": "stable", "data": []}
+                }
+            }
+        finally:
+            db.close()
+
+    def get_exercise_details(self, client_id: str, category: str = "upper_body", period: str = "month") -> dict:
+        """Get detailed exercise history for a specific category with actual values."""
+        db = get_db_session()
+        try:
+            from sqlalchemy import func, or_
+
+            logger.info(f"[ExerciseDetails] client_id={client_id}, category={category}, period={period}")
+
+            # Determine date range
+            now = datetime.now()
+            if period == "week":
+                start_date = now - timedelta(days=7)
+            elif period == "month":
+                start_date = now - timedelta(days=30)
+            elif period == "year":
+                start_date = now - timedelta(days=365)
+            else:
+                start_date = now - timedelta(days=30)
+
+            logger.info(f"[ExerciseDetails] Date range: {start_date.strftime('%Y-%m-%d')} to {now.strftime('%Y-%m-%d')}")
+
+            # Get all exercise logs for the period
+            logs = db.query(
+                ClientExerciseLogORM.date,
+                ClientExerciseLogORM.exercise_name,
+                func.max(ClientExerciseLogORM.weight).label('max_weight'),
+                func.max(ClientExerciseLogORM.reps).label('max_reps'),
+                func.max(ClientExerciseLogORM.duration).label('max_duration'),
+                func.max(ClientExerciseLogORM.distance).label('max_distance')
+            ).filter(
+                ClientExerciseLogORM.client_id == client_id,
+                ClientExerciseLogORM.date >= start_date.strftime("%Y-%m-%d"),
+                or_(
+                    ClientExerciseLogORM.weight > 0,
+                    ClientExerciseLogORM.duration > 0,
+                    ClientExerciseLogORM.distance > 0
+                )
+            ).group_by(
+                ClientExerciseLogORM.date,
+                ClientExerciseLogORM.exercise_name
+            ).order_by(
+                ClientExerciseLogORM.date
+            ).all()
+
+            logger.info(f"[ExerciseDetails] Found {len(logs) if logs else 0} log entries")
+
+            if not logs:
+                return {"exercises": [], "category": category, "debug": {"client_id": client_id, "logs_found": 0}}
+
+            # Filter by category and group by exercise
+            exercise_data = {}
+
+            for log in logs:
+                ex_category = self._get_exercise_category(log.exercise_name)
+                logger.debug(f"[ExerciseDetails] Exercise '{log.exercise_name}' -> category '{ex_category}' (requested: '{category}')")
+                if ex_category != category:
+                    continue
+
+                ex_name = log.exercise_name
+                if ex_name not in exercise_data:
+                    exercise_data[ex_name] = {
+                        "name": ex_name,
+                        "category": category,
+                        "history": [],
+                        "current": None,
+                        "best": None,
+                        "progress_pct": 0
+                    }
+
+                # Parse date
+                parsed_date = datetime.strptime(log.date, "%Y-%m-%d")
+                date_label = parsed_date.strftime("%d %b")
+
+                if category == "cardio":
+                    # Cardio: track duration and distance
+                    duration = log.max_duration or 0
+                    distance = log.max_distance or 0
+                    entry = {
+                        "date": log.date,
+                        "label": date_label,
+                        "duration": round(duration, 1),
+                        "distance": round(distance, 2),
+                        "display": f"{int(duration)}min" + (f" / {distance:.1f}km" if distance > 0 else "")
+                    }
+                    exercise_data[ex_name]["history"].append(entry)
+
+                    # Track best (longest duration)
+                    if not exercise_data[ex_name]["best"] or duration > exercise_data[ex_name]["best"]["duration"]:
+                        exercise_data[ex_name]["best"] = entry
+                else:
+                    # Upper/Lower body: track weight and reps
+                    weight = log.max_weight or 0
+                    reps = log.max_reps or 0
+                    entry = {
+                        "date": log.date,
+                        "label": date_label,
+                        "weight": round(weight, 1),
+                        "reps": int(reps),
+                        "display": f"{weight:.1f}kg" + (f" x{int(reps)}" if reps > 0 else "")
+                    }
+                    exercise_data[ex_name]["history"].append(entry)
+
+                    # Track best (heaviest weight)
+                    if not exercise_data[ex_name]["best"] or weight > exercise_data[ex_name]["best"]["weight"]:
+                        exercise_data[ex_name]["best"] = entry
+
+            # Calculate progress for each exercise
+            for ex_name, data in exercise_data.items():
+                if len(data["history"]) >= 1:
+                    data["current"] = data["history"][-1]
+
+                if len(data["history"]) >= 2:
+                    first = data["history"][0]
+                    last = data["history"][-1]
+
+                    if category == "cardio":
+                        first_val = first["duration"] + (first["distance"] * 5)
+                        last_val = last["duration"] + (last["distance"] * 5)
+                    else:
+                        first_val = first["weight"]
+                        last_val = last["weight"]
+
+                    if first_val > 0:
+                        data["progress_pct"] = round(((last_val - first_val) / first_val) * 100, 1)
+
+            # Convert to list and sort by most recent activity
+            exercises = list(exercise_data.values())
+            exercises.sort(key=lambda x: x["history"][-1]["date"] if x["history"] else "", reverse=True)
+
+            logger.info(f"[ExerciseDetails] Returning {len(exercises)} exercises for category {category}")
+            return {
+                "category": category,
+                "exercises": exercises,
+                "debug": {"client_id": client_id, "total_logs": len(logs), "matched_exercises": len(exercises)}
+            }
+        except Exception as e:
+            logger.error(f"Error getting exercise details: {e}")
+            return {"exercises": [], "category": category, "debug": {"error": str(e)}}
         finally:
             db.close()
 

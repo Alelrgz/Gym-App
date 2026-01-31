@@ -734,23 +734,32 @@ function renderFriendProgress(data) {
             </div>
         </div>
         <!-- Strength Stats Row (hidden by default) -->
-        <div id="strength-stats-row" class="hidden flex justify-between mt-3 text-center">
-            <div>
-                <p class="text-[10px] text-gray-500">Start</p>
-                <p id="strength-stat-start" class="text-sm font-bold text-gray-400">0%</p>
+        <div id="strength-stats-row" class="hidden mt-3">
+            <div class="flex justify-between text-center">
+                <div>
+                    <p class="text-[10px] text-gray-500">Upper Body</p>
+                    <p id="strength-stat-upper" class="text-sm font-bold text-orange-400">--%</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-500">Lower Body</p>
+                    <p id="strength-stat-lower" class="text-sm font-bold text-purple-400">--%</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-500">Cardio</p>
+                    <p id="strength-stat-cardio" class="text-sm font-bold text-green-400">--%</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-500">Trend</p>
+                    <p id="strength-stat-trend" class="text-sm font-bold text-blue-400">--</p>
+                </div>
             </div>
-            <div>
-                <p class="text-[10px] text-gray-500">Current</p>
-                <p id="strength-stat-current" class="text-sm font-bold text-green-400">--</p>
-            </div>
-            <div>
-                <p class="text-[10px] text-gray-500">Progress</p>
-                <p id="strength-stat-progress" class="text-sm font-bold text-purple-400">--%</p>
-            </div>
-            <div>
-                <p class="text-[10px] text-gray-500">Trend</p>
-                <p id="strength-stat-trend" class="text-sm font-bold text-blue-400">--</p>
-            </div>
+            <!-- See More Button -->
+            <button onclick="openStrengthDetailsModal()" class="w-full mt-3 py-2 text-xs font-semibold text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 rounded-lg transition flex items-center justify-center gap-1">
+                <span>See Details</span>
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                </svg>
+            </button>
         </div>
         </div>
     </div>
@@ -796,6 +805,60 @@ function renderFriendProgress(data) {
         <button onclick="saveWeight()" class="w-full py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold rounded-xl hover:from-blue-400 hover:to-cyan-400 transition tap-effect">
             Save Weight
         </button>
+    </div>
+</div>
+
+<!-- Strength Details Modal -->
+<div id="strength-details-modal" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+    onclick="if(event.target === this) closeStrengthDetailsModal()">
+    <div class="glass-card rounded-2xl max-w-lg w-full max-h-[85vh] overflow-hidden flex flex-col">
+        <!-- Header -->
+        <div class="flex justify-between items-center p-5 border-b border-white/10">
+            <h3 class="text-xl font-bold">Strength Details</h3>
+            <button onclick="closeStrengthDetailsModal()" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/20 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                </svg>
+            </button>
+        </div>
+
+        <!-- Category Tabs -->
+        <div class="flex border-b border-white/10">
+            <button id="strength-tab-upper" onclick="switchStrengthTab('upper_body')" class="flex-1 py-3 text-sm font-semibold text-center border-b-2 border-orange-500 text-orange-400 transition">
+                Upper Body
+            </button>
+            <button id="strength-tab-lower" onclick="switchStrengthTab('lower_body')" class="flex-1 py-3 text-sm font-semibold text-center border-b-2 border-transparent text-gray-400 hover:text-white transition">
+                Lower Body
+            </button>
+            <button id="strength-tab-cardio" onclick="switchStrengthTab('cardio')" class="flex-1 py-3 text-sm font-semibold text-center border-b-2 border-transparent text-gray-400 hover:text-white transition">
+                Cardio
+            </button>
+        </div>
+
+        <!-- Content Area -->
+        <div class="flex-1 overflow-y-auto p-5">
+            <!-- Loading State -->
+            <div id="strength-details-loading" class="hidden flex flex-col items-center justify-center py-10">
+                <div class="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full animate-spin mb-3"></div>
+                <p class="text-gray-400 text-sm">Loading exercise data...</p>
+            </div>
+
+            <!-- Empty State -->
+            <div id="strength-details-empty" class="hidden flex flex-col items-center justify-center py-10">
+                <div class="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-4">
+                    <svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                </div>
+                <p class="text-gray-400 text-sm">No data for this category yet</p>
+                <p class="text-gray-500 text-xs mt-1">Complete workouts to see your progress</p>
+            </div>
+
+            <!-- Exercise List -->
+            <div id="strength-details-list" class="space-y-4">
+                <!-- Populated by JavaScript -->
+            </div>
+        </div>
     </div>
 </div>
 
@@ -1261,7 +1324,7 @@ if (mealForm) {
         <h2 class="font-bold text-xl">Schedule</h2>
     </div>
     <div class="flex space-x-2">
-        <div onclick="openClientBookAppointmentModal()" class="relative w-10 h-10 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center tap-effect cursor-pointer" title="Book Appointment">
+        <div onclick="openBookingChoiceForMyTrainer()" class="relative w-10 h-10 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center tap-effect cursor-pointer" title="Book Session">
             📅
         </div>
         <div onclick="openClientChatModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer">
@@ -2234,15 +2297,21 @@ async function selectFitnessGoal(goal) {
             </div>
             <h3 class="text-2xl font-black italic uppercase mb-1" id="workout-title">...</h3>
             <p class="text-sm text-gray-300 mb-4"><span id="workout-duration"></span> • <span id="workout-difficulty"></span></p>
-            <div class="flex gap-2">
-                <a href="{{ 'workout.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=workout' }}"
-                    class="flex-1 py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white text-center font-bold rounded-xl hover:from-red-400 hover:to-orange-400 transition-all shadow-lg shadow-red-500/25">START SESSION</a>
-                <button onclick="openCoopModal()"
-                    class="px-4 py-3 bg-purple-500/20 text-purple-300 font-bold rounded-xl border border-purple-500/30 hover:bg-purple-500/30 transition-all tap-effect flex items-center gap-2"
-                    title="Start a shared workout with a friend">
-                    <span>👥</span>
-                    <span class="text-xs">CO-OP</span>
+            <div class="relative" id="workout-button-container">
+                <a href="{{ 'workout.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=workout' }}" id="workout-main-btn"
+                    class="block w-full py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white text-center font-bold rounded-xl hover:from-red-400 hover:to-orange-400 transition-all shadow-lg shadow-red-500/25">
+                    START SESSION
+                </a>
+                <!-- CO-OP Badge (overlays on the right side) -->
+                <button onclick="event.preventDefault(); event.stopPropagation(); openCoopModal()" id="coop-badge-btn"
+                    class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-purple-500/30 hover:bg-purple-500/50 rounded-lg flex items-center justify-center transition-all tap-effect border border-purple-500/50"
+                    title="Start a CO-OP workout with a friend">
+                    <span class="text-lg">👥</span>
                 </button>
+                <!-- CO-OP completed indicator (hidden by default, shown if was CO-OP workout) -->
+                <div id="coop-completed-badge" class="hidden absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg">
+                    CO-OP
+                </div>
             </div>
         </div>
         {% endcall %}
@@ -2864,11 +2933,46 @@ async function selectFitnessGoal(goal) {
         <div id="coop-loading" class="text-center py-8 text-gray-400">
             <p>Loading friends...</p>
         </div>
+
+        <!-- Waiting for acceptance state -->
+        <div id="coop-waiting" class="hidden text-center py-8">
+            <div class="animate-pulse">
+                <div id="coop-waiting-avatar" class="w-20 h-20 rounded-full bg-purple-500/30 mx-auto mb-4 flex items-center justify-center overflow-hidden">
+                    <span class="text-3xl">👤</span>
+                </div>
+                <p class="text-white font-bold mb-2">Waiting for <span id="coop-waiting-name">Friend</span>...</p>
+                <p class="text-sm text-gray-400">They need to accept the invitation</p>
+            </div>
+            <button onclick="cancelCoopInvite()" class="mt-4 px-4 py-2 bg-white/10 rounded-lg text-gray-300 hover:bg-white/20 transition">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- CO-OP Invitation Received Modal -->
+<div id="coop-invite-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-card p-6 rounded-2xl max-w-sm w-full text-center">
+        <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 mx-auto mb-4 flex items-center justify-center overflow-hidden animate-pulse">
+            <span id="coop-invite-avatar" class="text-3xl">👤</span>
+        </div>
+        <h3 class="text-xl font-bold text-white mb-2">CO-OP Workout Invite!</h3>
+        <p class="text-gray-300 mb-1"><span id="coop-invite-name" class="font-bold text-purple-400">Friend</span> wants to workout with you</p>
+        <p class="text-sm text-gray-500 mb-6">The workout will be logged to both your schedules</p>
+
+        <div class="flex gap-3">
+            <button onclick="declineCoopInvite()" class="flex-1 py-3 bg-white/10 rounded-xl font-bold text-gray-300 hover:bg-white/20 transition">
+                Decline
+            </button>
+            <button onclick="acceptCoopInvite()" class="flex-1 py-3 bg-gradient-to-r from-purple-500 to-pink-500 rounded-xl font-bold text-white hover:opacity-90 transition">
+                Accept
+            </button>
+        </div>
     </div>
 </div>
 
 <script>
-let selectedTrainerId = null;
+var selectedTrainerId = null;
 let selectedDate = null;
 let selectedTime = null;
 
@@ -3789,8 +3893,8 @@ function bookWithTrainerFromProfile() {
 }
 
 // Booking Choice Modal Functions
-let bookingChoiceTrainerId = null;
-let bookingChoiceTrainerName = null;
+var bookingChoiceTrainerId = null;
+var bookingChoiceTrainerName = null;
 
 function openBookingChoiceModal(trainerId, trainerName) {
     bookingChoiceTrainerId = trainerId;
@@ -4748,6 +4852,10 @@ function openCoopModal() {
 function closeCoopModal() {
     document.getElementById('coop-modal').classList.add('hidden');
     document.body.style.overflow = '';
+    // Reset waiting state
+    document.getElementById('coop-waiting')?.classList.add('hidden');
+    document.getElementById('coop-friends-list')?.classList.remove('hidden');
+    pendingCoopPartner = null;
 }
 
 async function loadCoopFriends() {
@@ -4797,8 +4905,68 @@ async function loadCoopFriends() {
     }
 }
 
+// CO-OP state
+let pendingCoopInvite = null; // { inviterId, inviterName, inviterPicture }
+let pendingCoopPartner = null; // { id, name, profile_picture }
+
 function startCoopWorkout(partnerId, partnerName, partnerPicture) {
-    // Store co-op partner info in localStorage for the workout page
+    // Store pending partner info
+    pendingCoopPartner = { id: partnerId, name: partnerName, profile_picture: partnerPicture };
+
+    // Send WebSocket invite
+    if (window.sendWebSocketMessage) {
+        const sent = window.sendWebSocketMessage({
+            type: 'coop_invite',
+            partner_id: partnerId
+        });
+
+        if (sent) {
+            // Show waiting state
+            showCoopWaitingState(partnerName, partnerPicture);
+        } else {
+            showToast('Connection error. Please try again.', 'error');
+        }
+    } else {
+        showToast('Not connected to server', 'error');
+    }
+}
+
+function showCoopWaitingState(partnerName, partnerPicture) {
+    // Hide friends list, show waiting state
+    document.getElementById('coop-friends-list')?.classList.add('hidden');
+    document.getElementById('coop-no-friends')?.classList.add('hidden');
+    document.getElementById('coop-loading')?.classList.add('hidden');
+
+    const waiting = document.getElementById('coop-waiting');
+    const nameEl = document.getElementById('coop-waiting-name');
+    const avatarEl = document.getElementById('coop-waiting-avatar');
+
+    if (nameEl) nameEl.textContent = partnerName;
+    if (avatarEl && partnerPicture) {
+        avatarEl.innerHTML = `<img src="${partnerPicture}" class="w-full h-full object-cover">`;
+    }
+    waiting?.classList.remove('hidden');
+}
+
+function cancelCoopInvite() {
+    pendingCoopPartner = null;
+    closeCoopModal();
+    showToast('CO-OP invite cancelled', 'info');
+}
+
+// Called when friend is offline
+window.handleCoopInviteFailed = function(reason) {
+    pendingCoopPartner = null;
+    document.getElementById('coop-waiting')?.classList.add('hidden');
+    document.getElementById('coop-friends-list')?.classList.remove('hidden');
+    showToast(reason || 'Friend is offline', 'error');
+};
+
+// Called when friend accepts
+window.handleCoopAccepted = function(partnerId, partnerName, partnerPicture) {
+    console.log('handleCoopAccepted called!', { partnerId, partnerName, partnerPicture });
+
+    // Store co-op partner info
     localStorage.setItem('coopPartner', JSON.stringify({
         id: partnerId,
         name: partnerName,
@@ -4806,12 +4974,80 @@ function startCoopWorkout(partnerId, partnerName, partnerPicture) {
     }));
 
     closeCoopModal();
-    showToast(`Starting CO-OP workout with ${partnerName}!`, 'success');
+    showToast(`${partnerName} accepted! Starting CO-OP workout...`, 'success');
 
-    // Navigate to workout with coop param
-    const workoutUrl = '{{ "workout.html" if static_build else "/?gym_id=" + gym_id + "&role=client&mode=workout" }}';
-    const separator = workoutUrl.includes('?') ? '&' : '?';
-    window.location.href = `${workoutUrl}${separator}coop=true`;
+    // Navigate to workout - build URL without Jinja escaping issues
+    {% if static_build %}
+    const finalUrl = 'workout.html?coop=true';
+    {% else %}
+    const finalUrl = '/?gym_id={{ gym_id }}&role=client&mode=workout&coop=true';
+    {% endif %}
+    console.log('Navigating to:', finalUrl);
+
+    setTimeout(() => {
+        window.location.href = finalUrl;
+    }, 500);
+};
+
+// Called when friend declines
+window.handleCoopDeclined = function(partnerName) {
+    pendingCoopPartner = null;
+    document.getElementById('coop-waiting')?.classList.add('hidden');
+    document.getElementById('coop-friends-list')?.classList.remove('hidden');
+    showToast(`${partnerName} declined the invite`, 'info');
+};
+
+// Show CO-OP invitation modal (called when receiving an invite)
+window.showCoopInviteModal = function(inviterId, inviterName, inviterPicture) {
+    pendingCoopInvite = { inviterId, inviterName, inviterPicture };
+
+    const modal = document.getElementById('coop-invite-modal');
+    const nameEl = document.getElementById('coop-invite-name');
+    const avatarEl = document.getElementById('coop-invite-avatar');
+
+    if (nameEl) nameEl.textContent = inviterName;
+    if (avatarEl) {
+        if (inviterPicture) {
+            avatarEl.outerHTML = `<img id="coop-invite-avatar" src="${inviterPicture}" class="w-full h-full object-cover rounded-full">`;
+        } else {
+            avatarEl.textContent = '👤';
+        }
+    }
+    modal?.classList.remove('hidden');
+};
+
+function acceptCoopInvite() {
+    if (!pendingCoopInvite) return;
+
+    // Send acceptance via WebSocket
+    if (window.sendWebSocketMessage) {
+        window.sendWebSocketMessage({
+            type: 'coop_accept',
+            inviter_id: pendingCoopInvite.inviterId
+        });
+    }
+
+    // Close modal and show message
+    document.getElementById('coop-invite-modal')?.classList.add('hidden');
+    showToast(`Joined CO-OP workout with ${pendingCoopInvite.inviterName}!`, 'success');
+
+    // The inviter will control the workout - we just wait or show a message
+    pendingCoopInvite = null;
+}
+
+function declineCoopInvite() {
+    if (!pendingCoopInvite) return;
+
+    // Send decline via WebSocket
+    if (window.sendWebSocketMessage) {
+        window.sendWebSocketMessage({
+            type: 'coop_decline',
+            inviter_id: pendingCoopInvite.inviterId
+        });
+    }
+
+    document.getElementById('coop-invite-modal')?.classList.add('hidden');
+    pendingCoopInvite = null;
 }
 
 function openFriendRequestModal(userId, username, profilePicture) {
@@ -5179,4 +5415,238 @@ loadFriendsPreview();
 </script>
 
 {% endif %}
+
+<!-- Shared Booking Choice Modal (available for all modes) -->
+<div id="booking-choice-modal-shared" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+    onclick="if(event.target === this) closeBookingChoiceModal()">
+    <div class="glass-card p-6 rounded-2xl max-w-sm w-full">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Book with <span id="booking-choice-trainer-name-shared">Trainer</span></h3>
+            <button onclick="closeBookingChoiceModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+        <p class="text-gray-400 text-sm mb-6">What type of session would you like to book?</p>
+
+        <div class="space-y-3">
+            <!-- 1-on-1 Session Option -->
+            <button onclick="selectBookingType('personal')" class="w-full bg-gradient-to-r from-orange-500 to-red-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-2xl">
+                        👤
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white">1-on-1 Session</h4>
+                        <p class="text-sm text-white/70">Personal training tailored to you</p>
+                    </div>
+                </div>
+            </button>
+
+            <!-- Group Course Option -->
+            <button onclick="selectBookingType('course')" class="w-full bg-gradient-to-r from-purple-500 to-pink-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-2xl">
+                        👥
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white">Group Course</h4>
+                        <p class="text-sm text-white/70">Join a scheduled fitness class</p>
+                    </div>
+                </div>
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Shared Gym Courses Modal -->
+<div id="gym-courses-modal-shared" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+    onclick="if(event.target === this) closeGymCoursesModal()">
+    <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Group Classes</h3>
+            <button onclick="closeGymCoursesModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+        <p class="text-gray-400 text-sm mb-4">Browse all available courses at your gym</p>
+
+        <div id="gym-courses-list-shared" class="space-y-3">
+            <div class="text-center py-8 text-gray-400">
+                <div class="animate-pulse">Loading courses...</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Shared Booking Choice Functions (available for all modes)
+// Only declare if not already defined by mode-specific scripts
+if (typeof bookingChoiceTrainerId === 'undefined') {
+    var bookingChoiceTrainerId = null;
+}
+if (typeof bookingChoiceTrainerName === 'undefined') {
+    var bookingChoiceTrainerName = null;
+}
+
+// Ensure selectedTrainerId is defined globally
+if (typeof selectedTrainerId === 'undefined') {
+    var selectedTrainerId = null;
+
+    // Fetch trainer ID if not already loaded
+    (async function() {
+        try {
+            const response = await fetch('/api/client/data', {
+                credentials: 'include'
+            });
+            if (response.ok) {
+                const data = await response.json();
+                if (data.has_trainer && data.trainer_id) {
+                    selectedTrainerId = data.trainer_id;
+                }
+            }
+        } catch (e) {
+            console.log('Could not fetch trainer info for booking');
+        }
+    })();
+}
+
+// Only define functions if not already defined by mode-specific scripts
+if (typeof openBookingChoiceModal !== 'function') {
+    window.openBookingChoiceModal = function(trainerId, trainerName) {
+        bookingChoiceTrainerId = trainerId;
+        bookingChoiceTrainerName = trainerName;
+
+        // Try both modal IDs (mode-specific and shared)
+        const modal = document.getElementById('booking-choice-modal') || document.getElementById('booking-choice-modal-shared');
+        const nameEl = document.getElementById('booking-choice-trainer-name') || document.getElementById('booking-choice-trainer-name-shared');
+
+        if (nameEl) nameEl.textContent = trainerName || 'Trainer';
+        if (modal) modal.classList.remove('hidden');
+    };
+}
+
+if (typeof openBookingChoiceForMyTrainer !== 'function') {
+    window.openBookingChoiceForMyTrainer = async function() {
+        // Try to get trainer info if not already loaded
+        let trainerName = document.getElementById('trainer-name')?.textContent || 'Trainer';
+        let trainerId = selectedTrainerId;
+
+        // If no trainer ID, try to fetch it
+        if (!trainerId) {
+            try {
+                const response = await fetch('/api/client/data', { credentials: 'include' });
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.has_trainer && data.trainer_id) {
+                        trainerId = data.trainer_id;
+                        selectedTrainerId = trainerId;
+                        if (data.trainer_name) trainerName = data.trainer_name;
+                    }
+                }
+            } catch (e) {
+                console.log('Could not fetch trainer info');
+            }
+        }
+
+        // Always show the choice modal (even without trainer, user can still book courses)
+        openBookingChoiceModal(trainerId, trainerName);
+    };
+}
+
+if (typeof closeBookingChoiceModal !== 'function') {
+    window.closeBookingChoiceModal = function() {
+        const modal = document.getElementById('booking-choice-modal') || document.getElementById('booking-choice-modal-shared');
+        if (modal) modal.classList.add('hidden');
+        bookingChoiceTrainerId = null;
+        bookingChoiceTrainerName = null;
+    };
+}
+
+if (typeof selectBookingType !== 'function') {
+    window.selectBookingType = function(type) {
+        closeBookingChoiceModal();
+
+        if (type === 'personal') {
+            // Book 1-on-1 session
+            if (typeof selectedTrainerId !== 'undefined') {
+                const originalTrainerId = selectedTrainerId;
+                selectedTrainerId = bookingChoiceTrainerId;
+            }
+
+            if (typeof openBookingModal === 'function') {
+                openBookingModal();
+            }
+        } else if (type === 'course') {
+            // Show all gym courses
+            if (typeof openGymCoursesModal === 'function') {
+                openGymCoursesModal();
+            } else if (typeof openGymCoursesModalShared === 'function') {
+                openGymCoursesModalShared();
+            }
+        }
+    };
+}
+
+if (typeof openGymCoursesModalShared !== 'function') {
+    window.openGymCoursesModalShared = async function() {
+    const modal = document.getElementById('gym-courses-modal') || document.getElementById('gym-courses-modal-shared');
+    if (modal) modal.classList.remove('hidden');
+
+    const listEl = document.getElementById('gym-courses-list') || document.getElementById('gym-courses-list-shared');
+    if (listEl) {
+        listEl.innerHTML = '<div class="text-center py-8 text-gray-400"><div class="animate-pulse">Loading courses...</div></div>';
+    }
+
+    try {
+        const response = await fetch('/api/client/gym/courses', {
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            throw new Error('Failed to load courses');
+        }
+
+        const courses = await response.json();
+
+        if (courses.length === 0) {
+            listEl.innerHTML = `
+                <div class="text-center py-8 text-gray-400">
+                    <p class="text-4xl mb-2">📭</p>
+                    <p>No courses available at your gym yet</p>
+                </div>
+            `;
+            return;
+        }
+
+        listEl.innerHTML = courses.map(course => `
+            <div class="bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition cursor-pointer tap-effect"
+                onclick="viewCourseDetail('${course.id}')">
+                <div class="flex items-center gap-3">
+                    <div class="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center text-xl">
+                        ${course.icon || '🏋️'}
+                    </div>
+                    <div class="flex-1">
+                        <h4 class="font-bold text-white">${course.name}</h4>
+                        <p class="text-xs text-gray-400">${course.schedule || 'Schedule TBD'}</p>
+                    </div>
+                    <span class="text-orange-400 text-sm font-bold">${course.spots_left || '?'} spots</span>
+                </div>
+            </div>
+        `).join('');
+
+    } catch (error) {
+        console.error('Error loading courses:', error);
+        listEl.innerHTML = `
+            <div class="text-center py-8 text-red-400">
+                <p>Failed to load courses</p>
+            </div>
+        `;
+    }
+    };
+}
+
+if (typeof closeGymCoursesModal !== 'function') {
+    window.closeGymCoursesModal = function() {
+        const modal = document.getElementById('gym-courses-modal') || document.getElementById('gym-courses-modal-shared');
+        if (modal) modal.classList.add('hidden');
+    };
+}
+</script>
+
 {% endblock %}

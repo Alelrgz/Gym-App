@@ -4,7 +4,8 @@ Friend Service - handles friend requests, friendships, and friend-exclusive data
 from .base import (
     HTTPException, json, logging, datetime, timedelta,
     get_db_session, UserORM, ClientProfileORM, WeightHistoryORM,
-    ClientDailyDietSummaryORM, ClientExerciseLogORM, FriendshipORM
+    ClientDailyDietSummaryORM, ClientExerciseLogORM, FriendshipORM,
+    ClientScheduleORM
 )
 
 logger = logging.getLogger("gym_app")
@@ -353,6 +354,68 @@ class FriendService:
                 ],
                 "strength_progress": strength_data,
                 "current_weight": profile.weight
+            }
+        finally:
+            db.close()
+
+    def get_friend_workout(self, user_id: str, friend_id: str, date_str: str) -> dict:
+        """Get a friend's completed workout for a specific date (for CO-OP viewing)."""
+        # Verify they are actually friends
+        if not self.are_friends(user_id, friend_id):
+            raise HTTPException(status_code=403, detail="Not friends - cannot view workout")
+
+        db = get_db_session()
+        try:
+            # Get friend's user info
+            friend_user = db.query(UserORM).filter(UserORM.id == friend_id).first()
+            if not friend_user:
+                raise HTTPException(status_code=404, detail="Friend not found")
+
+            # Get friend's workout for the date
+            schedule_item = db.query(ClientScheduleORM).filter(
+                ClientScheduleORM.client_id == friend_id,
+                ClientScheduleORM.date == date_str,
+                ClientScheduleORM.type == "workout"
+            ).first()
+
+            if not schedule_item:
+                return {
+                    "found": False,
+                    "message": f"{friend_user.username} doesn't have a workout for this date"
+                }
+
+            if not schedule_item.completed:
+                return {
+                    "found": False,
+                    "message": f"{friend_user.username}'s workout is not completed yet"
+                }
+
+            # Parse the workout details
+            exercises = []
+            if schedule_item.details:
+                try:
+                    details = json.loads(schedule_item.details)
+                    # Handle both old format (array) and new format (object with exercises)
+                    if isinstance(details, list):
+                        exercises = details
+                    elif isinstance(details, dict) and "exercises" in details:
+                        exercises = details["exercises"]
+                except Exception as e:
+                    logger.error(f"Error parsing workout details: {e}")
+
+            return {
+                "found": True,
+                "friend": {
+                    "id": friend_id,
+                    "username": friend_user.username,
+                    "profile_picture": friend_user.profile_picture
+                },
+                "workout": {
+                    "title": schedule_item.title,
+                    "date": date_str,
+                    "completed": True,
+                    "exercises": exercises
+                }
             }
         finally:
             db.close()

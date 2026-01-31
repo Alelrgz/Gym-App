@@ -1,6 +1,7 @@
 import os
 import sys
 import time
+import json
 import logging
 from dotenv import load_dotenv
 
@@ -241,12 +242,26 @@ async def startup_event():
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
     # Try to authenticate user from cookie
     user_id = None
+    username = None
+    profile_picture = None
     try:
         token = websocket.cookies.get("access_token")
         if token:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-            user_id = payload.get("sub")
-            logger.info(f"WebSocket authenticated for user: {user_id}")
+            # Note: "sub" contains the USERNAME, not the user_id
+            token_username = payload.get("sub")
+            logger.info(f"WebSocket token for username: {token_username}")
+            # Look up actual user_id (UUID) from database
+            from database import get_db_session
+            from models_orm import UserORM
+            db = get_db_session()
+            user = db.query(UserORM).filter(UserORM.username == token_username).first()
+            if user:
+                user_id = user.id  # The actual UUID
+                username = user.username
+                profile_picture = user.profile_picture
+                logger.info(f"WebSocket authenticated - user_id: {user_id}, username: {username}")
+            db.close()
     except Exception as e:
         logger.debug(f"WebSocket auth failed (continuing anyway): {e}")
 
@@ -254,12 +269,59 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     try:
         while True:
             data = await websocket.receive_text()
-            # Handle incoming WebSocket messages (for future use)
             try:
                 msg = json.loads(data)
-                if msg.get("type") == "ping":
+                msg_type = msg.get("type")
+
+                if msg_type == "ping":
                     await websocket.send_json({"type": "pong"})
-            except:
+
+                # CO-OP Invitation: Inviter sends this to invite a friend
+                elif msg_type == "coop_invite" and user_id:
+                    partner_id = msg.get("partner_id")
+                    logger.info(f"CO-OP Invite: {username} (id={user_id}) inviting partner_id={partner_id}")
+                    logger.info(f"CO-OP Invite: Online users = {list(manager.user_connections.keys())}")
+                    if partner_id and manager.is_user_online(partner_id):
+                        logger.info(f"CO-OP Invite: Partner {partner_id} is online, sending invite with from_id={user_id}")
+                        # Send invitation to the partner
+                        await manager.send_to_user(partner_id, {
+                            "type": "coop_invite",
+                            "from_id": user_id,
+                            "from_name": username,
+                            "from_picture": profile_picture
+                        })
+                        await websocket.send_json({"type": "coop_invite_sent", "partner_id": partner_id})
+                    else:
+                        logger.info(f"CO-OP Invite: Partner {partner_id} NOT online")
+                        await websocket.send_json({"type": "coop_invite_failed", "reason": "Friend is offline"})
+
+                # CO-OP Accept: Friend accepts the invitation
+                elif msg_type == "coop_accept" and user_id:
+                    inviter_id = msg.get("inviter_id")
+                    logger.info(f"CO-OP Accept: {username} accepting invite from inviter_id={inviter_id}")
+                    logger.info(f"CO-OP Accept: Online users = {list(manager.user_connections.keys())}")
+                    if inviter_id and manager.is_user_online(inviter_id):
+                        logger.info(f"CO-OP Accept: Inviter {inviter_id} is online, sending coop_accepted")
+                        await manager.send_to_user(inviter_id, {
+                            "type": "coop_accepted",
+                            "partner_id": user_id,
+                            "partner_name": username,
+                            "partner_picture": profile_picture
+                        })
+                        await websocket.send_json({"type": "coop_accept_confirmed"})
+                    else:
+                        logger.info(f"CO-OP Accept: Inviter {inviter_id} NOT online or inviter_id is None")
+
+                # CO-OP Decline: Friend declines the invitation
+                elif msg_type == "coop_decline" and user_id:
+                    inviter_id = msg.get("inviter_id")
+                    if inviter_id and manager.is_user_online(inviter_id):
+                        await manager.send_to_user(inviter_id, {
+                            "type": "coop_declined",
+                            "partner_name": username
+                        })
+
+            except json.JSONDecodeError:
                 pass
     except WebSocketDisconnect:
         manager.disconnect(websocket)
