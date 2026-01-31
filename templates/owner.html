@@ -2,8 +2,37 @@
 {% from 'macros.html' import card %}
 
 {% block content %}
-<div class="p-6 pt-10">
-    <h2 class="text-xl font-bold text-center mb-6" id="gym-name-owner">{{ 'Settings' if mode == 'settings' else ('Trainers' if mode == 'trainers' else 'Dashboard') }}</h2>
+<!-- Desktop Navigation Bar (hidden on mobile) -->
+<nav class="hidden lg:flex items-center justify-between px-8 py-4 border-b border-white/10 mb-6">
+    <div class="flex items-center gap-3">
+        <span class="text-2xl">🏢</span>
+        <div>
+            <p class="label-uppercase text-[10px]">Gym Owner</p>
+            <h1 class="text-lg font-bold" id="desktop-gym-name">My Gym</h1>
+        </div>
+    </div>
+    <div class="flex items-center gap-2">
+        <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner' }}"
+           class="px-4 py-2 rounded-xl text-sm font-semibold transition {{ 'bg-primary/20 text-primary border border-primary/30' if mode != 'settings' and mode != 'trainers' else 'text-white/60 hover:bg-white/5' }}">
+            🏠 Dashboard
+        </a>
+        <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=trainers' }}"
+           class="px-4 py-2 rounded-xl text-sm font-semibold transition {{ 'bg-primary/20 text-primary border border-primary/30' if mode == 'trainers' else 'text-white/60 hover:bg-white/5' }}">
+            👥 Trainers
+        </a>
+        <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=settings' }}"
+           class="px-4 py-2 rounded-xl text-sm font-semibold transition {{ 'bg-primary/20 text-primary border border-primary/30' if mode == 'settings' else 'text-white/60 hover:bg-white/5' }}">
+            ⚙️ Settings
+        </a>
+        <div class="w-px h-6 bg-white/10 mx-2"></div>
+        <a href="/auth/logout" class="px-4 py-2 rounded-xl text-sm font-semibold text-red-400 hover:bg-red-500/10 transition">
+            🚪 Logout
+        </a>
+    </div>
+</nav>
+
+<div class="p-6 lg:pt-0 pt-10 max-w-6xl mx-auto">
+    <h2 class="text-xl lg:text-2xl font-bold text-center lg:text-left mb-6" id="gym-name-owner">{{ 'Settings' if mode == 'settings' else ('Trainers' if mode == 'trainers' else 'Dashboard') }}</h2>
 
     {% if mode == 'settings' %}
     <!-- ==================== SETTINGS MODE ==================== -->

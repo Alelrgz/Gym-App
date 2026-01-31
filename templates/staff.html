@@ -2,87 +2,157 @@
 {% from 'macros.html' import card %}
 
 {% block content %}
-<div class="p-6 pt-10">
-    <h2 class="text-xl font-bold text-center mb-6" id="page-title">{{ 'Settings' if mode == 'settings' else 'Reception' }}</h2>
+<!-- Desktop Navigation Bar (hidden on mobile) -->
+<nav class="hidden lg:flex items-center justify-between px-8 py-4 border-b border-white/10 mb-6">
+    <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+            <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="9" cy="7" r="4"/>
+            </svg>
+        </div>
+        <div>
+            <p class="label-uppercase text-[10px]">Staff</p>
+            <h1 class="text-lg font-bold">Reception</h1>
+        </div>
+    </div>
+    <div class="flex items-center gap-2">
+        <a href="{{ 'staff.html' if static_build else '/?gym_id=' + gym_id + '&role=staff' }}"
+           class="px-4 py-2 rounded-xl text-sm font-semibold transition {{ 'bg-primary/20 text-primary border border-primary/30' if mode != 'settings' else 'text-white/60 hover:bg-white/5' }}">
+            🏠 Dashboard
+        </a>
+        <a href="{{ 'staff.html' if static_build else '/?gym_id=' + gym_id + '&role=staff&mode=settings' }}"
+           class="px-4 py-2 rounded-xl text-sm font-semibold transition {{ 'bg-primary/20 text-primary border border-primary/30' if mode == 'settings' else 'text-white/60 hover:bg-white/5' }}">
+            ⚙️ Settings
+        </a>
+        <div class="w-px h-6 bg-white/10 mx-2"></div>
+        <a href="/auth/logout" class="px-4 py-2 rounded-xl text-sm font-semibold text-red-400 hover:bg-red-500/10 transition">
+            🚪 Logout
+        </a>
+    </div>
+</nav>
+
+<div class="p-4 md:p-6 lg:p-8 lg:pt-0 pt-8 md:pt-10 max-w-7xl mx-auto">
+    <h2 class="text-xl md:text-2xl lg:text-3xl font-bold text-center lg:text-left mb-6 lg:mb-8" id="page-title">{{ 'Settings' if mode == 'settings' else 'Reception Dashboard' }}</h2>
 
     {% if mode == 'settings' %}
     <!-- ==================== SETTINGS MODE ==================== -->
+    <div class="max-w-4xl mx-auto">
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left: Profile Card (larger on desktop) -->
+            <div class="lg:col-span-1">
+                {% call card(classes="p-6 lg:p-8") %}
+                <div class="text-center">
+                    <div class="w-24 h-24 lg:w-32 lg:h-32 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mx-auto mb-4">
+                        <svg class="w-12 h-12 lg:w-16 lg:h-16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                            <circle cx="9" cy="7" r="4"/>
+                            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-xl lg:text-2xl font-bold text-white mb-1" id="staff-name">Staff Member</h3>
+                    <p class="text-sm lg:text-base text-gray-400">Reception / Staff</p>
+                </div>
+                {% endcall %}
+            </div>
 
-    <!-- Profile Card -->
-    {% call card(classes="p-6 mb-6") %}
-    <div class="text-center">
-        <div class="w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mx-auto mb-4">
-            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
+            <!-- Right: Account Info & Actions -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Account Info -->
+                {% call card(classes="p-5 lg:p-6") %}
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Account Information</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="flex justify-between items-center p-3 bg-white/5 rounded-xl">
+                        <span class="text-gray-400">Role</span>
+                        <span class="text-white font-semibold">Staff / Reception</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-white/5 rounded-xl">
+                        <span class="text-gray-400">Gym</span>
+                        <span class="text-white font-semibold" id="gym-name-display">Loading...</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-white/5 rounded-xl">
+                        <span class="text-gray-400">Status</span>
+                        <span class="text-green-400 font-semibold flex items-center gap-2">
+                            <span class="w-2 h-2 rounded-full bg-green-400"></span>
+                            Active
+                        </span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-white/5 rounded-xl">
+                        <span class="text-gray-400">Access Level</span>
+                        <span class="text-white font-semibold">Full Access</span>
+                    </div>
+                </div>
+                {% endcall %}
+
+                <!-- Quick Actions -->
+                {% call card(classes="p-5 lg:p-6") %}
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Quick Actions</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <a href="/staff" class="flex items-center gap-3 p-4 bg-primary/10 hover:bg-primary/20 rounded-xl transition">
+                        <div class="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-primary">
+                                <rect x="3" y="3" width="7" height="7"/>
+                                <rect x="14" y="3" width="7" height="7"/>
+                                <rect x="14" y="14" width="7" height="7"/>
+                                <rect x="3" y="14" width="7" height="7"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-white font-semibold">Dashboard</p>
+                            <p class="text-xs text-gray-400">Go to reception</p>
+                        </div>
+                    </a>
+                    <a href="/auth/logout" class="flex items-center gap-3 p-4 bg-red-500/10 hover:bg-red-500/20 rounded-xl transition">
+                        <div class="w-10 h-10 rounded-lg bg-red-500/20 flex items-center justify-center">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="text-red-400">
+                                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+                                <polyline points="16 17 21 12 16 7"/>
+                                <line x1="21" y1="12" x2="9" y2="12"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-red-400 font-semibold">Logout</p>
+                            <p class="text-xs text-gray-400">Sign out of account</p>
+                        </div>
+                    </a>
+                </div>
+                {% endcall %}
+            </div>
         </div>
-        <h3 class="text-lg font-bold text-white mb-1" id="staff-name">Staff Member</h3>
-        <p class="text-sm text-gray-400">Reception / Staff</p>
     </div>
-    {% endcall %}
-
-    <!-- Account Info -->
-    {% call card(classes="p-4 mb-6") %}
-    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Account</h3>
-    <div class="space-y-3">
-        <div class="flex justify-between items-center">
-            <span class="text-gray-400">Role</span>
-            <span class="text-white font-semibold">Staff</span>
-        </div>
-        <div class="flex justify-between items-center">
-            <span class="text-gray-400">Gym</span>
-            <span class="text-white font-semibold" id="gym-name-display">Loading...</span>
-        </div>
-        <div class="flex justify-between items-center">
-            <span class="text-gray-400">Status</span>
-            <span class="text-green-400 font-semibold">Active</span>
-        </div>
-    </div>
-    {% endcall %}
-
-    <!-- Logout Button -->
-    <a href="/auth/logout" class="block w-full bg-red-500/20 hover:bg-red-500/30 text-red-400 text-center py-3 rounded-xl font-bold transition">
-        Logout
-    </a>
 
     {% else %}
     <!-- ==================== RECEPTION MODE (default) ==================== -->
 
-    <!-- Tab Navigation -->
-    <div class="flex gap-2 mb-6 overflow-x-auto pb-2">
-        <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition">
-            Dashboard
-        </button>
-        <button onclick="switchTab('members')" id="tab-members" class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition">
-            Members
-        </button>
-        <button onclick="switchTab('trainers')" id="tab-trainers" class="tab-btn px-4 py-2 rounded-xl text-sm font-semibold whitespace-nowrap transition">
-            Trainers
-        </button>
+    <!-- Top Row: Stats Cards -->
+    <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4 mb-6">
+        {% call card(classes="p-4 lg:p-5 text-center") %}
+        <p class="text-3xl lg:text-4xl font-bold text-primary" id="members-today">0</p>
+        <p class="text-xs text-gray-400 uppercase mt-1">Checked In Today</p>
+        {% endcall %}
+
+        {% call card(classes="p-4 lg:p-5 text-center") %}
+        <p class="text-3xl lg:text-4xl font-bold text-blue-400" id="total-members">0</p>
+        <p class="text-xs text-gray-400 uppercase mt-1">Total Members</p>
+        {% endcall %}
+
+        {% call card(classes="p-4 lg:p-5 text-center") %}
+        <p class="text-3xl lg:text-4xl font-bold text-green-400" id="trainers-count">0</p>
+        <p class="text-xs text-gray-400 uppercase mt-1">Trainers</p>
+        {% endcall %}
+
+        {% call card(classes="p-4 lg:p-5 text-center") %}
+        <p class="text-3xl lg:text-4xl font-bold text-purple-400" id="appointments-count">0</p>
+        <p class="text-xs text-gray-400 uppercase mt-1">Appointments Today</p>
+        {% endcall %}
     </div>
 
-    <!-- ========== DASHBOARD TAB ========== -->
-    <div id="content-dashboard" class="tab-content">
-        <!-- Quick Stats -->
-        <div class="grid grid-cols-2 gap-3 mb-6">
-            {% call card(classes="p-4 text-center") %}
-            <p class="text-3xl font-bold text-primary" id="members-today">0</p>
-            <p class="text-xs text-gray-400 uppercase">Checked In Today</p>
-            {% endcall %}
-
-            {% call card(classes="p-4 text-center") %}
-            <p class="text-3xl font-bold text-blue-400" id="total-members">0</p>
-            <p class="text-xs text-gray-400 uppercase">Total Members</p>
-            {% endcall %}
-        </div>
-
-        <!-- Quick Check-In -->
-        {% call card(classes="p-4 mb-6") %}
-        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Quick Check-In</h3>
-        <div class="flex gap-2">
+    <!-- Quick Check-In Bar -->
+    {% call card(classes="p-4 mb-6") %}
+    <div class="flex flex-col lg:flex-row lg:items-center gap-3">
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider lg:whitespace-nowrap">Quick Check-In</h3>
+        <div class="flex gap-2 flex-1 lg:max-w-md">
             <input type="text" id="checkin-search"
                 class="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition"
                 placeholder="Search member name...">
@@ -93,66 +163,65 @@
                 </svg>
             </button>
         </div>
-        <div id="search-results" class="mt-3 space-y-2 hidden"></div>
-        {% endcall %}
+        <div id="search-results" class="flex-1 space-y-2 hidden"></div>
+    </div>
+    {% endcall %}
 
-        <!-- Recent Check-ins -->
-        <div class="mb-6">
-            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Recent Check-ins</h3>
-            <div id="recent-checkins-list" class="space-y-2">
-                {% call card(classes="p-4 text-center") %}
+    <!-- Main Grid: 4 columns on desktop -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
+
+        <!-- Column 1: Recent Check-ins -->
+        <div class="lg:col-span-1">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Recent Check-ins</h3>
+            </div>
+            <div id="recent-checkins-list" class="space-y-2 lg:max-h-[400px] lg:overflow-y-auto pr-1">
+                {% call card(classes="p-3 text-center") %}
                 <p class="text-gray-400 text-sm">No check-ins yet today</p>
                 {% endcall %}
             </div>
         </div>
 
-        <!-- Today's Appointments -->
-        <div class="mb-6">
-            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Today's Appointments</h3>
-            <div id="todays-appointments-list" class="space-y-2">
-                {% call card(classes="p-4 text-center") %}
+        <!-- Column 2: Today's Appointments -->
+        <div class="lg:col-span-1">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Today's Appointments</h3>
+            </div>
+            <div id="todays-appointments-list" class="space-y-2 lg:max-h-[400px] lg:overflow-y-auto pr-1">
+                {% call card(classes="p-3 text-center") %}
                 <p class="text-gray-400 text-sm">Loading...</p>
                 {% endcall %}
             </div>
         </div>
-    </div>
 
-    <!-- ========== MEMBERS TAB ========== -->
-    <div id="content-members" class="tab-content hidden">
-        <!-- Search Members -->
-        {% call card(classes="p-4 mb-6") %}
-        <div class="flex gap-2">
+        <!-- Column 3: Members -->
+        <div class="lg:col-span-1">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Members</h3>
+                <span class="text-xs text-gray-500" id="members-count">0</span>
+            </div>
             <input type="text" id="member-search"
-                class="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition"
-                placeholder="Search members...">
-        </div>
-        {% endcall %}
-
-        <!-- Member List -->
-        <div class="mb-6">
-            <div class="flex justify-between items-center mb-3">
-                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1">All Members</h3>
-                <span class="text-xs text-gray-500" id="members-count">0 members</span>
-            </div>
-            <div id="members-list" class="space-y-2 max-h-[60vh] overflow-y-auto">
-                {% call card(classes="p-4 text-center") %}
-                <p class="text-gray-400 text-sm">Loading members...</p>
+                class="w-full bg-black/30 border border-white/10 rounded-xl px-3 py-2 text-sm text-white placeholder-gray-500 outline-none focus:border-primary/50 transition mb-3"
+                placeholder="Filter members...">
+            <div id="members-list" class="space-y-2 lg:max-h-[350px] lg:overflow-y-auto pr-1">
+                {% call card(classes="p-3 text-center") %}
+                <p class="text-gray-400 text-sm">Loading...</p>
                 {% endcall %}
             </div>
         </div>
-    </div>
 
-    <!-- ========== TRAINERS TAB ========== -->
-    <div id="content-trainers" class="tab-content hidden">
-        <!-- Trainers List -->
-        <div class="mb-6">
-            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Trainers & Nutritionists</h3>
-            <div id="trainers-list" class="space-y-3">
-                {% call card(classes="p-4 text-center") %}
-                <p class="text-gray-400 text-sm">Loading trainers...</p>
+        <!-- Column 4: Trainers -->
+        <div class="lg:col-span-1">
+            <div class="flex items-center justify-between mb-3">
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Trainers</h3>
+            </div>
+            <div id="trainers-list" class="space-y-2 lg:max-h-[400px] lg:overflow-y-auto pr-1">
+                {% call card(classes="p-3 text-center") %}
+                <p class="text-gray-400 text-sm">Loading...</p>
                 {% endcall %}
             </div>
         </div>
+
     </div>
 
     {% endif %}
@@ -204,20 +273,102 @@
     </div>
 </div>
 
-<style>
-.tab-btn {
-    background: rgba(255, 255, 255, 0.05);
-    color: rgba(255, 255, 255, 0.6);
-}
-.tab-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
-}
-.tab-btn.active {
-    background: var(--primary, #f97316);
-    color: white;
-}
-</style>
+<!-- Member Profile Modal -->
+<div id="member-profile-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-card p-6 rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-white">Member Profile</h3>
+            <button onclick="closeMemberModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+
+        <!-- Member Header -->
+        <div class="flex items-center gap-4 mb-6">
+            <div id="member-avatar" class="w-16 h-16 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold text-2xl">
+                ?
+            </div>
+            <div>
+                <h4 class="text-xl font-bold text-white" id="member-name">Loading...</h4>
+                <p class="text-sm text-gray-400" id="member-email">-</p>
+            </div>
+        </div>
+
+        <!-- Status Badge -->
+        <div class="mb-6">
+            <div id="member-status-badge" class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/20 text-green-400 text-sm font-semibold">
+                <span class="w-2 h-2 rounded-full bg-green-400"></span>
+                Active
+            </div>
+        </div>
+
+        <!-- Member Info -->
+        <div class="glass-card p-4 mb-4">
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Member Info</h4>
+            <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-gray-400">Member Since</span>
+                    <span class="text-white" id="member-since">-</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-400">Assigned Trainer</span>
+                    <span class="text-white" id="member-trainer">None</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-400">Last Check-in</span>
+                    <span class="text-white" id="member-last-checkin">Never</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-400">Total Check-ins</span>
+                    <span class="text-white" id="member-total-checkins">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Subscription Info -->
+        <div class="glass-card p-4 mb-4">
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Subscription</h4>
+            <div class="space-y-2 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-gray-400">Plan</span>
+                    <span class="text-white" id="member-plan">-</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-400">Status</span>
+                    <span id="member-sub-status" class="text-green-400">-</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-gray-400">Expires</span>
+                    <span class="text-white" id="member-sub-expires">-</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Documents -->
+        <div class="glass-card p-4 mb-4">
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Documents</h4>
+            <div id="member-documents" class="space-y-2">
+                <p class="text-gray-500 text-sm">No documents uploaded</p>
+            </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="flex gap-3">
+            <button onclick="checkInMemberFromModal()" id="modal-checkin-btn"
+                class="flex-1 bg-green-500/20 hover:bg-green-500/30 text-green-400 py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="20 6 9 17 4 12"/>
+                </svg>
+                Check In
+            </button>
+            <button onclick="messageFromModal()"
+                class="flex-1 bg-primary/20 hover:bg-primary/30 text-primary py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+                Message
+            </button>
+        </div>
+    </div>
+</div>
 
 <script>
 let allMembers = [];
@@ -227,21 +378,6 @@ let currentMessageRecipient = null;
 document.addEventListener('DOMContentLoaded', async () => {
     await loadStaffData();
 });
-
-function switchTab(tab) {
-    // Update tab buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-    document.getElementById(`tab-${tab}`).classList.add('active');
-
-    // Update content
-    document.querySelectorAll('.tab-content').forEach(content => content.classList.add('hidden'));
-    document.getElementById(`content-${tab}`).classList.remove('hidden');
-
-    // Load tab-specific data
-    if (tab === 'trainers' && allTrainers.length === 0) {
-        loadTrainers();
-    }
-}
 
 async function loadStaffData() {
     try {
@@ -266,8 +402,11 @@ async function loadStaffData() {
             if (totalEl) totalEl.textContent = allMembers.length;
 
             const countEl = document.getElementById('members-count');
-            if (countEl) countEl.textContent = `${allMembers.length} members`;
+            if (countEl) countEl.textContent = allMembers.length;
         }
+
+        // Load trainers immediately
+        await loadTrainers();
 
         // Load today's appointments
         await loadTodaysAppointments();
@@ -288,37 +427,37 @@ async function loadTrainers() {
         if (res.ok) {
             allTrainers = await res.json();
 
+            // Update trainers count stat
+            const trainersCountEl = document.getElementById('trainers-count');
+            if (trainersCountEl) trainersCountEl.textContent = allTrainers.length;
+
             if (allTrainers.length === 0) {
                 listEl.innerHTML = `
-                    <div class="glass-card p-4 text-center">
-                        <p class="text-gray-400 text-sm">No trainers in this gym yet</p>
+                    <div class="glass-card p-3 text-center">
+                        <p class="text-gray-400 text-sm">No trainers yet</p>
                     </div>
                 `;
                 return;
             }
 
             listEl.innerHTML = allTrainers.map(trainer => `
-                <div class="glass-card p-4">
-                    <div class="flex items-center gap-3 mb-3">
-                        <div class="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-white font-bold text-lg">
+                <div class="glass-card p-3 hover:bg-white/10 transition cursor-pointer" onclick="viewTrainerSchedule('${trainer.id}', '${trainer.username}')">
+                    <div class="flex items-center gap-3">
+                        <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-white font-bold">
                             ${trainer.username.charAt(0).toUpperCase()}
                         </div>
-                        <div>
-                            <p class="font-semibold text-white flex items-center gap-2">
+                        <div class="flex-1 min-w-0">
+                            <p class="font-semibold text-white text-sm flex items-center gap-1.5">
                                 ${trainer.username}
-                                ${trainer.is_available_today ? '<svg class="w-4 h-4 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+                                ${trainer.is_available_today ? '<svg class="w-4 h-4 text-green-400 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
                             </p>
                             <p class="text-xs text-gray-400">${getRoleLabel(trainer)}</p>
                         </div>
-                    </div>
-                    <div class="flex gap-2">
-                        <button onclick="viewTrainerSchedule('${trainer.id}', '${trainer.username}')"
-                            class="flex-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-400 py-2 rounded-lg text-sm font-semibold transition">
-                            View Schedule
-                        </button>
-                        <button onclick="openMessageModal('${trainer.id}', '${trainer.username}')"
-                            class="flex-1 bg-primary/20 hover:bg-primary/30 text-primary py-2 rounded-lg text-sm font-semibold transition">
-                            Message
+                        <button onclick="event.stopPropagation(); openMessageModal('${trainer.id}', '${trainer.username}')"
+                            class="p-2 bg-primary/20 hover:bg-primary/30 text-primary rounded-lg transition" title="Message">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                            </svg>
                         </button>
                     </div>
                 </div>
@@ -341,7 +480,7 @@ function renderMembers(members) {
 
     if (members.length === 0) {
         list.innerHTML = `
-            <div class="glass-card p-4 text-center">
+            <div class="glass-card p-3 text-center">
                 <p class="text-gray-400 text-sm">No members found</p>
             </div>
         `;
@@ -349,28 +488,27 @@ function renderMembers(members) {
     }
 
     list.innerHTML = members.map(member => `
-        <div class="glass-card p-4">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold">
-                        ${member.name ? member.name.charAt(0).toUpperCase() : '?'}
-                    </div>
-                    <div>
-                        <p class="font-semibold text-white">${member.name || member.username}</p>
-                        <p class="text-xs text-gray-400">${member.email || 'No email'}</p>
-                    </div>
+        <div class="glass-card p-3 hover:bg-white/10 transition cursor-pointer" onclick="openMemberProfile('${member.id}')">
+            <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold text-sm flex-shrink-0">
+                    ${member.name ? member.name.charAt(0).toUpperCase() : '?'}
                 </div>
-                <div class="flex gap-2">
-                    <button onclick="openMessageModal('${member.id}', '${member.name || member.username}')"
-                        class="bg-primary/20 hover:bg-primary/30 text-primary px-3 py-2 rounded-lg text-xs font-semibold transition"
-                        title="Message">
-                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <div class="flex-1 min-w-0">
+                    <p class="font-semibold text-white text-sm truncate">${member.name || member.username}</p>
+                    <p class="text-xs text-gray-500 truncate">${member.email || ''}</p>
+                </div>
+                <div class="flex gap-1.5 flex-shrink-0">
+                    <button onclick="event.stopPropagation(); openMessageModal('${member.id}', '${member.name || member.username}')"
+                        class="p-2 bg-primary/20 hover:bg-primary/30 text-primary rounded-lg transition" title="Message">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                         </svg>
                     </button>
-                    <button onclick="checkInMember('${member.id}')"
-                        class="bg-green-500/20 hover:bg-green-500/30 text-green-400 px-3 py-2 rounded-lg text-xs font-semibold transition">
-                        Check In
+                    <button onclick="event.stopPropagation(); checkInMember('${member.id}')"
+                        class="p-2 bg-green-500/20 hover:bg-green-500/30 text-green-400 rounded-lg transition" title="Check In">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20 6 9 17 4 12"/>
+                        </svg>
                     </button>
                 </div>
             </div>
@@ -463,20 +601,28 @@ async function loadCheckinStats() {
             if (todayEl) todayEl.textContent = data.count || 0;
 
             const listEl = document.getElementById('recent-checkins-list');
-            if (listEl && data.recent && data.recent.length > 0) {
-                listEl.innerHTML = data.recent.map(checkin => `
-                    <div class="glass-card p-3 flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <div class="w-8 h-8 rounded-full bg-green-500/20 flex items-center justify-center">
-                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2">
-                                    <polyline points="20 6 9 17 4 12"/>
-                                </svg>
+            if (listEl) {
+                if (data.recent && data.recent.length > 0) {
+                    listEl.innerHTML = data.recent.map(checkin => `
+                        <div class="glass-card p-3 flex items-center justify-between">
+                            <div class="flex items-center gap-2 min-w-0">
+                                <div class="w-7 h-7 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2">
+                                        <polyline points="20 6 9 17 4 12"/>
+                                    </svg>
+                                </div>
+                                <span class="text-white text-sm font-medium truncate">${checkin.member_name}</span>
                             </div>
-                            <span class="text-white font-medium">${checkin.member_name}</span>
+                            <span class="text-xs text-gray-500 flex-shrink-0 ml-2">${checkin.time}</span>
                         </div>
-                        <span class="text-xs text-gray-400">${checkin.time}</span>
-                    </div>
-                `).join('');
+                    `).join('');
+                } else {
+                    listEl.innerHTML = `
+                        <div class="glass-card p-3 text-center">
+                            <p class="text-gray-400 text-sm">No check-ins yet today</p>
+                        </div>
+                    `;
+                }
             }
         }
     } catch (error) {
@@ -492,30 +638,39 @@ async function loadTodaysAppointments() {
         if (res.ok) {
             const appointments = await res.json();
 
+            // Update appointments count stat
+            const apptCountEl = document.getElementById('appointments-count');
+            if (apptCountEl) apptCountEl.textContent = appointments.length;
+
             if (appointments.length === 0) {
                 listEl.innerHTML = `
-                    <div class="glass-card p-4 text-center">
-                        <p class="text-gray-400 text-sm">No appointments scheduled for today</p>
+                    <div class="glass-card p-3 text-center">
+                        <p class="text-gray-400 text-sm">No appointments today</p>
                     </div>
                 `;
             } else {
                 listEl.innerHTML = appointments.map(appt => `
-                    <div class="glass-card p-3 flex items-center justify-between">
-                        <div>
-                            <p class="text-white font-medium">${appt.client_name}</p>
-                            <p class="text-xs text-gray-400">with ${appt.trainer_name}</p>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-primary font-semibold">${appt.time}</p>
-                            <p class="text-xs text-gray-400">${appt.duration} min</p>
+                    <div class="glass-card p-3">
+                        <div class="flex items-center justify-between">
+                            <div class="min-w-0 flex-1">
+                                <p class="text-white font-medium text-sm truncate">${appt.client_name}</p>
+                                <p class="text-xs text-gray-400 truncate">with ${appt.trainer_name}</p>
+                            </div>
+                            <div class="text-right flex-shrink-0 ml-2">
+                                <p class="text-primary font-semibold text-sm">${appt.time}</p>
+                                <p class="text-xs text-gray-500">${appt.duration}min</p>
+                            </div>
                         </div>
                     </div>
                 `).join('');
             }
         } else {
+            const apptCountEl = document.getElementById('appointments-count');
+            if (apptCountEl) apptCountEl.textContent = '0';
+
             listEl.innerHTML = `
-                <div class="glass-card p-4 text-center">
-                    <p class="text-gray-400 text-sm">No appointments scheduled</p>
+                <div class="glass-card p-3 text-center">
+                    <p class="text-gray-400 text-sm">No appointments today</p>
                 </div>
             `;
         }
@@ -622,6 +777,175 @@ async function sendMessage() {
         showToast('Failed to send message', 'error');
     }
 }
+
+// ========== MEMBER PROFILE MODAL ==========
+let currentMemberData = null;
+
+async function openMemberProfile(memberId) {
+    document.getElementById('member-profile-modal').classList.remove('hidden');
+
+    // Reset modal content to loading state
+    document.getElementById('member-name').textContent = 'Loading...';
+    document.getElementById('member-email').textContent = '-';
+    document.getElementById('member-avatar').textContent = '?';
+
+    try {
+        const res = await fetch(`/api/staff/member/${memberId}`, { credentials: 'include' });
+        if (res.ok) {
+            const data = await res.json();
+            currentMemberData = data;
+            renderMemberProfile(data);
+        } else {
+            showToast('Failed to load member profile', 'error');
+            closeMemberModal();
+        }
+    } catch (error) {
+        console.error('Error loading member profile:', error);
+        showToast('Failed to load member profile', 'error');
+        closeMemberModal();
+    }
+}
+
+function renderMemberProfile(data) {
+    // Avatar
+    const avatar = document.getElementById('member-avatar');
+    const initial = (data.name || data.username || '?').charAt(0).toUpperCase();
+    avatar.textContent = initial;
+
+    // Basic info
+    document.getElementById('member-name').textContent = data.name || data.username;
+    document.getElementById('member-email').textContent = data.email || 'No email';
+
+    // Status badge
+    const statusBadge = document.getElementById('member-status-badge');
+    if (data.checked_in_today) {
+        statusBadge.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/20 text-green-400 text-sm font-semibold';
+        statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-green-400"></span> Checked In Today';
+    } else if (data.status === 'active') {
+        statusBadge.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/20 text-blue-400 text-sm font-semibold';
+        statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-blue-400"></span> Active Member';
+    } else {
+        statusBadge.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-500/20 text-gray-400 text-sm font-semibold';
+        statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-gray-400"></span> Inactive';
+    }
+
+    // Member info
+    document.getElementById('member-since').textContent = data.member_since || 'Unknown';
+    document.getElementById('member-trainer').textContent = data.trainer_name || 'None assigned';
+    document.getElementById('member-total-checkins').textContent = data.total_checkins || 0;
+
+    // Format last check-in
+    if (data.last_checkin) {
+        const lastCheckin = data.last_checkin;
+        if (lastCheckin.includes('T')) {
+            const [date, time] = lastCheckin.split('T');
+            document.getElementById('member-last-checkin').textContent = `${date} at ${time.slice(0,5)}`;
+        } else {
+            document.getElementById('member-last-checkin').textContent = lastCheckin;
+        }
+    } else {
+        document.getElementById('member-last-checkin').textContent = 'Never';
+    }
+
+    // Subscription info
+    const sub = data.subscription || {};
+    document.getElementById('member-plan').textContent = sub.plan || 'No active plan';
+
+    const subStatusEl = document.getElementById('member-sub-status');
+    if (sub.status === 'active') {
+        subStatusEl.className = 'text-green-400';
+        subStatusEl.textContent = 'Active';
+    } else if (sub.status === 'trialing') {
+        subStatusEl.className = 'text-yellow-400';
+        subStatusEl.textContent = 'Trial';
+    } else {
+        subStatusEl.className = 'text-gray-400';
+        subStatusEl.textContent = sub.status || 'Inactive';
+    }
+
+    document.getElementById('member-sub-expires').textContent = sub.expires || '-';
+
+    // Check-in button state
+    const checkinBtn = document.getElementById('modal-checkin-btn');
+    if (data.checked_in_today) {
+        checkinBtn.disabled = true;
+        checkinBtn.className = 'flex-1 bg-gray-500/20 text-gray-500 py-3 rounded-xl font-semibold cursor-not-allowed flex items-center justify-center gap-2';
+        checkinBtn.innerHTML = `
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Already Checked In
+        `;
+    } else {
+        checkinBtn.disabled = false;
+        checkinBtn.className = 'flex-1 bg-green-500/20 hover:bg-green-500/30 text-green-400 py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2';
+        checkinBtn.innerHTML = `
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Check In
+        `;
+    }
+
+    // Documents (placeholder for now)
+    const docsEl = document.getElementById('member-documents');
+    if (data.documents && data.documents.length > 0) {
+        docsEl.innerHTML = data.documents.map(doc => `
+            <div class="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+                <span class="text-white text-sm">${doc.name}</span>
+                <button class="text-primary text-sm">View</button>
+            </div>
+        `).join('');
+    } else {
+        docsEl.innerHTML = '<p class="text-gray-500 text-sm">No documents uploaded</p>';
+    }
+}
+
+function closeMemberModal() {
+    document.getElementById('member-profile-modal').classList.add('hidden');
+    currentMemberData = null;
+}
+
+async function checkInMemberFromModal() {
+    if (!currentMemberData) return;
+
+    try {
+        const res = await fetch('/api/staff/checkin', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ member_id: currentMemberData.id })
+        });
+
+        if (res.ok) {
+            showToast(`${currentMemberData.name || currentMemberData.username} checked in!`, 'success');
+            currentMemberData.checked_in_today = true;
+            renderMemberProfile(currentMemberData);
+            await loadCheckinStats();
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Check-in failed', 'error');
+        }
+    } catch (error) {
+        console.error('Check-in error:', error);
+        showToast('Check-in failed', 'error');
+    }
+}
+
+function messageFromModal() {
+    if (!currentMemberData) return;
+    const memberId = currentMemberData.id;
+    const memberName = currentMemberData.name || currentMemberData.username;
+    closeMemberModal();
+    openMessageModal(memberId, memberName);
+}
+
+// Close modal on background click
+document.getElementById('member-profile-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'member-profile-modal') {
+        closeMemberModal();
+    }
+});
 
 // Search on Enter key
 document.getElementById('checkin-search')?.addEventListener('keypress', (e) => {

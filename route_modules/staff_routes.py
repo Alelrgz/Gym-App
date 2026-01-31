@@ -5,7 +5,7 @@ Staff/Reception API routes for gym management
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db_session
-from models_orm import UserORM, AppointmentORM, CheckInORM
+from models_orm import UserORM, AppointmentORM, CheckInORM, ClientProfileORM
 from auth import get_current_user
 from datetime import datetime, date
 import logging
@@ -97,8 +97,19 @@ async def check_in_member(
     if not member:
         raise HTTPException(status_code=404, detail="Member not found")
 
-    # Create check-in record (if CheckInORM doesn't exist, we'll handle it)
+    # Check if member already checked in today
+    today = date.today().isoformat()
     try:
+        existing_checkin = db.query(CheckInORM).filter(
+            CheckInORM.member_id == member_id,
+            CheckInORM.gym_owner_id == user.gym_owner_id,
+            CheckInORM.checked_in_at.like(f"{today}%")
+        ).first()
+
+        if existing_checkin:
+            raise HTTPException(status_code=400, detail=f"{member.username} already checked in today")
+
+        # Create check-in record
         checkin = CheckInORM(
             member_id=member_id,
             staff_id=user.id,
@@ -107,6 +118,8 @@ async def check_in_member(
         )
         db.add(checkin)
         db.commit()
+    except HTTPException:
+        raise
     except Exception as e:
         # If CheckInORM doesn't exist, just log success
         logger.info(f"Check-in recorded for member {member_id} by staff {user.id}")
@@ -298,4 +311,102 @@ async def get_trainer_schedule(
         "sub_role": trainer.sub_role or "trainer",
         "availability": availability,
         "today_appointments": appt_list
+    }
+
+
+@router.get("/member/{member_id}")
+async def get_member_details(
+    member_id: str,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get detailed member profile for staff view"""
+    if user.role != "staff":
+        raise HTTPException(status_code=403, detail="Staff access only")
+
+    # Verify member belongs to same gym
+    member = db.query(UserORM).filter(
+        UserORM.id == member_id,
+        UserORM.gym_owner_id == user.gym_owner_id,
+        UserORM.role == "client"
+    ).first()
+
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    # Get assigned trainer if any
+    trainer_name = None
+    client_profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == member_id).first()
+    if client_profile and client_profile.trainer_id:
+        trainer = db.query(UserORM).filter(UserORM.id == client_profile.trainer_id).first()
+        if trainer:
+            trainer_name = trainer.username
+
+    # Get check-in stats
+    today = date.today().isoformat()
+    total_checkins = 0
+    last_checkin = None
+    checked_in_today = False
+
+    try:
+        checkins = db.query(CheckInORM).filter(
+            CheckInORM.member_id == member_id
+        ).order_by(CheckInORM.checked_in_at.desc()).all()
+
+        total_checkins = len(checkins)
+        if checkins:
+            last_checkin = checkins[0].checked_in_at
+            # Check if checked in today
+            if last_checkin and last_checkin.startswith(today):
+                checked_in_today = True
+    except Exception:
+        pass
+
+    # Get subscription info
+    subscription_info = {
+        "plan": "No active plan",
+        "status": "inactive",
+        "expires": None
+    }
+
+    try:
+        from models_orm import ClientSubscriptionORM, SubscriptionPlanORM
+        sub = db.query(ClientSubscriptionORM).filter(
+            ClientSubscriptionORM.client_id == member_id,
+            ClientSubscriptionORM.status.in_(["active", "trialing"])
+        ).first()
+
+        if sub:
+            plan = db.query(SubscriptionPlanORM).filter(SubscriptionPlanORM.id == sub.plan_id).first()
+            subscription_info = {
+                "plan": plan.name if plan else "Unknown Plan",
+                "status": sub.status,
+                "expires": sub.end_date
+            }
+    except Exception:
+        pass
+
+    # Format member since date
+    member_since = member.created_at
+    if member_since:
+        try:
+            if "T" in member_since:
+                member_since = member_since.split("T")[0]
+        except Exception:
+            pass
+
+    return {
+        "id": member.id,
+        "username": member.username,
+        "name": getattr(member, 'name', None) or member.username,
+        "email": member.email,
+        "profile_picture": member.profile_picture,
+        "member_since": member_since,
+        "trainer_name": trainer_name,
+        "status": "active" if member.is_active else "inactive",
+        "total_checkins": total_checkins,
+        "last_checkin": last_checkin,
+        "checked_in_today": checked_in_today,
+        "subscription": subscription_info,
+        "documents": []  # Placeholder for future document feature
     }

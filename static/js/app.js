@@ -1219,15 +1219,7 @@ async function init() {
             }
 
             // --- MY WORKOUTS SECTION ---
-            // Skip on trainer_personal page (has its own handlers)
-            const isTrainerPersonalPage = window.location.pathname.includes('/trainer/personal');
-            const toggleMyWorkout = document.getElementById('toggle-my-workout-btn');
-            const myWorkoutSection = document.getElementById('my-workout-section');
-            if (toggleMyWorkout && myWorkoutSection && !isTrainerPersonalPage) {
-                toggleMyWorkout.onclick = () => {
-                    myWorkoutSection.classList.toggle('hidden');
-                };
-            }
+            // Toggle handled by inline onclick in HTML
 
             if (data.workouts) {
                 const container = document.getElementById('my-workout-card-container');
@@ -1277,16 +1269,7 @@ async function init() {
             }
 
             // --- MY SPLITS SECTION ---
-            // Skip on trainer_personal page (has its own handlers)
-            const toggleMySplit = document.getElementById('toggle-my-split-btn');
-            const mySplitSection = document.getElementById('my-split-section');
-            if (toggleMySplit && mySplitSection && !isTrainerPersonalPage) {
-                toggleMySplit.onclick = () => {
-                    console.log('TOGGLE DEBUG [app.js]: My Splits onclick triggered!');
-                    mySplitSection.classList.toggle('hidden');
-                    console.log('TOGGLE DEBUG [app.js]: NOW hidden:', mySplitSection.classList.contains('hidden'));
-                };
-            }
+            // Toggle handled by inline onclick in HTML
 
             if (data.splits) {
                 const container = document.getElementById('my-split-card-container');
