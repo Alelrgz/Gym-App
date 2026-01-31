@@ -700,7 +700,8 @@ function renderClientList(clients) {
         //     premiumBtn = `<button onclick="window.togglePremium('${c.id}', false, event)" class="ml-2 bg-white/5 text-gray-500 border border-white/10 px-2 py-0.5 rounded text-[10px] font-bold hover:bg-white/20 hover:text-white transition">Make PRO</button>`;
         // }
 
-        div.innerHTML = `<div class="flex items-center"><div class="w-10 h-10 rounded-full bg-white/10 mr-3 overflow-hidden"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${c.name}" /></div><div><p class="font-bold text-sm text-white flex items-center">${c.name} ${premiumBtn}</p><p class="text-[10px] text-gray-400">${c.plan} • Seen ${c.last_seen}</p></div></div><span class="text-xs font-bold ${statusColor}">${c.status}</span>`;
+        const avatarUrl = c.profile_picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.name}`;
+        div.innerHTML = `<div class="flex items-center"><div class="w-10 h-10 rounded-full bg-white/10 mr-3 overflow-hidden"><img src="${avatarUrl}" class="w-full h-full object-cover" /></div><div><p class="font-bold text-sm text-white flex items-center">${c.name} ${premiumBtn}</p><p class="text-[10px] text-gray-400">${c.plan} • Seen ${c.last_seen}</p></div></div><span class="text-xs font-bold ${statusColor}">${c.status}</span>`;
         list.appendChild(div);
     });
 
@@ -762,14 +763,14 @@ async function init() {
                     if (welcomeNameEl) welcomeNameEl.textContent = user.username;
                 }
 
-                // Update streak display (week streak)
+                // Update streak display (day streak)
                 setTxt('client-streak', user.streak);
                 setTxt('streak-count', user.streak); // Legacy fallback
 
-                // Calculate next goal for week streak (milestones: 4, 8, 12, 16, 24, 52 weeks)
-                const weekMilestones = [4, 8, 12, 16, 24, 36, 52];
-                const nextWeekGoal = weekMilestones.find(m => m > user.streak) || (user.streak + 12);
-                setTxt('client-next-goal', `${nextWeekGoal} Weeks`);
+                // Calculate next goal for day streak (milestones: 3, 7, 14, 21, 30, 60, 90, 180, 365 days)
+                const dayMilestones = [3, 7, 14, 21, 30, 60, 90, 180, 365];
+                const nextDayGoal = dayMilestones.find(m => m > user.streak) || (user.streak + 30);
+                setTxt('client-next-goal', `${nextDayGoal} Days`);
 
                 setTxt('gem-count', user.gems);
                 setTxt('health-score', user.health_score);
@@ -5422,16 +5423,16 @@ async function finishWorkout() {
                             legacyStreakEl.innerText = clientData.streak;
                         }
 
-                        // Update next goal for week streak
-                        const weekMilestones = [4, 8, 12, 16, 24, 36, 52];
-                        const nextMilestone = weekMilestones.find(m => m > clientData.streak) || (clientData.streak + 12);
+                        // Update next goal for day streak
+                        const dayMilestones = [3, 7, 14, 21, 30, 60, 90, 180, 365];
+                        const nextMilestone = dayMilestones.find(m => m > clientData.streak) || (clientData.streak + 30);
                         const nextGoalEl = document.getElementById('client-next-goal');
                         if (nextGoalEl) {
-                            nextGoalEl.innerText = `${nextMilestone} Weeks`;
+                            nextGoalEl.innerText = `${nextMilestone} Days`;
                         }
                         const legacyNextGoalEl = document.getElementById('next-goal');
                         if (legacyNextGoalEl) {
-                            legacyNextGoalEl.innerText = `${nextMilestone} Weeks`;
+                            legacyNextGoalEl.innerText = `${nextMilestone} Days`;
                         }
                     }
                 } catch (e) {
@@ -5887,8 +5888,11 @@ window.assignWorkoutToSelf = async function (workoutId, workoutTitle) {
 // --- METRICS MODAL LOGIC ---
 
 let metricsChartInstance = null;
+let metricsWeightChart = null;
+let metricsStrengthChart = null;
+let metricsDietChart = null;
 
-function openMetricsModal(clientId = null) {
+async function openMetricsModal(clientId = null) {
     if (!clientId) {
         // Try to get from client details modal dataset (most reliable source when opened from client card)
         const clientModal = document.getElementById('client-modal');
@@ -5909,163 +5913,297 @@ function openMetricsModal(clientId = null) {
     document.getElementById('metrics-client-id').value = clientId;
 
     // Set Client Name if available
-    const clientName = document.getElementById('modal-client-name').innerText;
+    const clientNameEl = document.getElementById('modal-client-name');
+    const clientName = clientNameEl ? clientNameEl.innerText : 'Client';
     document.getElementById('metrics-client-name').innerText = `Performance Analytics for ${clientName}`;
 
     showModal('metrics-modal');
 
-    // Reset Chart
-    if (metricsChartInstance) {
-        metricsChartInstance.destroy();
-        metricsChartInstance = null;
-    }
+    // Reset all charts
+    if (metricsChartInstance) { metricsChartInstance.destroy(); metricsChartInstance = null; }
+    if (metricsWeightChart) { metricsWeightChart.destroy(); metricsWeightChart = null; }
+    if (metricsStrengthChart) { metricsStrengthChart.destroy(); metricsStrengthChart = null; }
+    if (metricsDietChart) { metricsDietChart.destroy(); metricsDietChart = null; }
 
-    // Clear search and show empty state
-    document.getElementById('metrics-exercise-search').value = "";
-    document.getElementById('metrics-search-suggestions').classList.add('hidden');
-
-    // Maybe render empty chart or auto-fetch a common exercise?
-    // Let's try to fetch "Bench Press" as a default to show something cool immediately
-    // fetchExerciseMetrics(clientId, "Bench Press (Barbell)"); 
+    // Fetch and render all metrics
+    await Promise.all([
+        fetchAndRenderWeightChart(clientId),
+        fetchAndRenderStrengthChart(clientId),
+        fetchAndRenderDietChart(clientId),
+        fetchAndRenderWeekStreak(clientId)
+    ]);
 }
 
-const metricsSearchInput = document.getElementById('metrics-exercise-search');
-const metricsSuggestions = document.getElementById('metrics-search-suggestions');
-let metricsDebounceTimer;
+async function fetchAndRenderWeightChart(clientId) {
+    try {
+        const response = await fetch(`${apiBase}/api/trainer/client/${clientId}/weight-history?period=month`, {
+            credentials: 'include'
+        });
+        if (!response.ok) return;
+        const data = await response.json();
 
-if (metricsSearchInput) {
-    metricsSearchInput.addEventListener('input', (e) => {
-        const query = e.target.value;
-        clearTimeout(metricsDebounceTimer);
+        // Update stats
+        const currentEl = document.getElementById('metrics-weight-current');
+        const goalEl = document.getElementById('metrics-weight-goal');
+        const changeEl = document.getElementById('metrics-weight-change');
 
-        if (query.length < 2) {
-            metricsSuggestions.classList.add('hidden');
+        if (data.data && data.data.length > 0) {
+            const current = data.data[data.data.length - 1].weight;
+            const first = data.data[0].weight;
+            const change = current - first;
+
+            if (currentEl) currentEl.textContent = current.toFixed(1);
+            if (goalEl) goalEl.textContent = data.goal_weight || '--';
+            if (changeEl) {
+                changeEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(1) + ' kg';
+                changeEl.className = 'text-sm font-bold ' + (change >= 0 ? 'text-green-400' : 'text-red-400');
+            }
+        }
+
+        // Render chart
+        const ctx = document.getElementById('metricsWeightChart');
+        if (!ctx) return;
+
+        metricsWeightChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.data.map(d => d.date.slice(5)),
+                datasets: [{
+                    label: 'Weight (kg)',
+                    data: data.data.map(d => d.weight),
+                    borderColor: '#F97316',
+                    backgroundColor: 'rgba(249, 115, 22, 0.1)',
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 3,
+                    pointBackgroundColor: '#F97316'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#666', font: { size: 9 } } },
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#666', font: { size: 9 } } }
+                }
+            }
+        });
+    } catch (e) {
+        console.error('Error fetching weight data:', e);
+    }
+}
+
+async function fetchAndRenderStrengthChart(clientId) {
+    try {
+        const response = await fetch(`${apiBase}/api/trainer/client/${clientId}/strength-progress?period=month`, {
+            credentials: 'include'
+        });
+        if (!response.ok) {
+            console.log('Strength API response not ok:', response.status);
+            return;
+        }
+        const data = await response.json();
+        console.log('Strength data:', data);
+
+        // Update stats
+        const upperEl = document.getElementById('metrics-upper-pct');
+        const lowerEl = document.getElementById('metrics-lower-pct');
+        const cardioEl = document.getElementById('metrics-cardio-pct');
+        const trendEl = document.getElementById('metrics-strength-trend');
+
+        if (data.categories) {
+            const upper = data.categories.upper_body?.progress || 0;
+            const lower = data.categories.lower_body?.progress || 0;
+            const cardio = data.categories.cardio?.progress || 0;
+
+            if (upperEl) upperEl.textContent = (upper >= 0 ? '+' : '') + upper.toFixed(0) + '%';
+            if (lowerEl) lowerEl.textContent = (lower >= 0 ? '+' : '') + lower.toFixed(0) + '%';
+            if (cardioEl) cardioEl.textContent = (cardio >= 0 ? '+' : '') + cardio.toFixed(0) + '%';
+
+            const avgProgress = (upper + lower + cardio) / 3;
+            if (trendEl) {
+                trendEl.textContent = avgProgress >= 0 ? '↑ Gaining' : '↓ Declining';
+                trendEl.className = 'text-sm font-bold ' + (avgProgress >= 0 ? 'text-green-400' : 'text-red-400');
+            }
+        }
+
+        // Render chart
+        const ctx = document.getElementById('metricsStrengthChart');
+        if (!ctx || !data.categories) return;
+
+        const datasets = [];
+        const colors = { upper_body: '#F97316', lower_body: '#8B5CF6', cardio: '#22C55E' };
+        const labels = { upper_body: 'Upper', lower_body: 'Lower', cardio: 'Cardio' };
+
+        for (const [key, cat] of Object.entries(data.categories)) {
+            if (cat.data && cat.data.length > 0) {
+                // Filter out null values and map strength values
+                const validData = cat.data.filter(d => d.strength !== null);
+                if (validData.length > 0) {
+                    datasets.push({
+                        label: labels[key],
+                        data: cat.data.map(d => d.strength),  // Use 'strength' field, not 'progress'
+                        borderColor: colors[key],
+                        backgroundColor: 'transparent',
+                        tension: 0.4,
+                        pointRadius: 2,
+                        spanGaps: true  // Connect lines across null values
+                    });
+                }
+            }
+        }
+
+        // Get dates from first available category
+        const firstCat = Object.values(data.categories).find(c => c.data && c.data.length > 0);
+        const chartLabels = firstCat ? firstCat.data.map(d => d.date.slice(5)) : [];
+
+        metricsStrengthChart = new Chart(ctx, {
+            type: 'line',
+            data: { labels: chartLabels, datasets },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { size: 9 }, color: '#999' } } },
+                scales: {
+                    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#666', font: { size: 9 } } },
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#666', font: { size: 9 }, callback: v => v + '%' } }
+                }
+            }
+        });
+    } catch (e) {
+        console.error('Error fetching strength data:', e);
+    }
+}
+
+async function fetchAndRenderDietChart(clientId) {
+    try {
+        const response = await fetch(`${apiBase}/api/trainer/client/${clientId}/diet-consistency?period=month`, {
+            credentials: 'include'
+        });
+        if (!response.ok) {
+            console.log('Diet API response not ok:', response.status);
+            return;
+        }
+        const data = await response.json();
+        console.log('Diet data:', data);
+
+        // Update stats
+        const streakEl = document.getElementById('metrics-diet-streak');
+        const avgEl = document.getElementById('metrics-diet-avg');
+        const daysEl = document.getElementById('metrics-diet-days');
+
+        if (streakEl) streakEl.textContent = (data.current_streak || 0) + ' day streak';
+        if (avgEl) avgEl.textContent = data.average_score || 0;
+        if (daysEl) daysEl.textContent = data.total_days || 0;
+
+        // Render chart
+        const ctx = document.getElementById('metricsDietChart');
+        if (!ctx) return;
+
+        // Handle empty data
+        if (!data.data || data.data.length === 0) {
+            // Show empty state message
+            metricsDietChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['No diet data logged'],
+                    datasets: [{
+                        label: 'Health Score',
+                        data: [0],
+                        backgroundColor: 'rgba(100, 100, 100, 0.3)',
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { grid: { display: false }, ticks: { color: '#666', font: { size: 9 } } },
+                        y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#666', font: { size: 9 } }, min: 0, max: 100 }
+                    }
+                }
+            });
             return;
         }
 
-        metricsDebounceTimer = setTimeout(() => {
-            // Use global exercises list if available
-            let options = [];
-            if (window.APP_STATE && window.APP_STATE.exercises) {
-                options = window.APP_STATE.exercises.map(ex => ex.name);
-            } else {
-                // Fallback to video suggestions if APP_STATE not ready (unlikely in trainer mode)
-                const datalist = document.getElementById('video-suggestions');
-                if (datalist) {
-                    options = Array.from(datalist.options).map(o => o.value);
-                }
-            }
-
-            // Deduplicate and Filter
-            const uniqueOptions = [...new Set(options)];
-            const matches = uniqueOptions.filter(name => name.toLowerCase().includes(query.toLowerCase())).slice(0, 10);
-
-            renderMetricsSuggestions(matches);
-        }, 300);
-    });
-}
-
-function renderMetricsSuggestions(matches) {
-    metricsSuggestions.innerHTML = '';
-    if (matches.length === 0) {
-        metricsSuggestions.classList.add('hidden');
-        return;
-    }
-
-    matches.forEach(name => {
-        const li = document.createElement('li');
-        li.className = "px-4 py-2 hover:bg-white/10 cursor-pointer text-sm text-gray-300";
-        li.innerText = name;
-        li.onclick = () => {
-            document.getElementById('metrics-exercise-search').value = name;
-            metricsSuggestions.classList.add('hidden');
-            const clientId = document.getElementById('metrics-client-id').value;
-            fetchExerciseMetrics(clientId, name);
-        };
-        metricsSuggestions.appendChild(li);
-    });
-    metricsSuggestions.classList.remove('hidden');
-}
-
-async function fetchExerciseMetrics(clientId, exerciseName) {
-    if (!exerciseName) return;
-
-    try {
-        const response = await fetch(`${APP_CONFIG.apiBase}/api/client/${clientId}/history?exercise_name=${encodeURIComponent(exerciseName)}`);
-        if (!response.ok) throw new Error("Failed to fetch history");
-
-        const history = await response.json();
-        renderExerciseChart(history, exerciseName);
-
-    } catch (e) {
-        console.error(e);
-        showToast("Error loading metrics.");
-    }
-}
-
-function renderExerciseChart(history, exerciseName) {
-    const ctx = document.getElementById('exerciseProgressChart');
-    if (!ctx) return;
-
-    if (metricsChartInstance) {
-        metricsChartInstance.destroy();
-    }
-
-    if (!history || history.length === 0) {
-        // Show "No Data" message on canvas?
-        // Or just an empty chart
-        showToast(`No history found for ${exerciseName}`);
-        return;
-    }
-
-    // Format Data
-    const labels = history.map(h => new Date(h.date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }));
-    const weights = history.map(h => h.max_weight);
-    // const reps = history.map(h => h.total_reps);
-
-    metricsChartInstance = new Chart(ctx, {
-        type: 'line',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Max Weight (kg)',
-                data: weights,
-                borderColor: '#4CAF50', // Green
-                backgroundColor: 'rgba(76, 175, 80, 0.2)',
-                borderWidth: 2,
-                tension: 0.4, // Smooth curves
-                pointBackgroundColor: '#fff',
-                pointRadius: 4
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    labels: { color: '#fff' }
-                },
-                title: {
-                    display: true,
-                    text: `${exerciseName} Progress`,
-                    color: '#fff',
-                    font: { size: 16 }
-                }
+        metricsDietChart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: data.data.map(d => d.date.slice(5)),
+                datasets: [{
+                    label: 'Health Score',
+                    data: data.data.map(d => d.score),
+                    backgroundColor: data.data.map(d =>
+                        d.score >= 80 ? 'rgba(34, 197, 94, 0.7)' :
+                        d.score >= 60 ? 'rgba(234, 179, 8, 0.7)' :
+                        'rgba(239, 68, 68, 0.7)'
+                    ),
+                    borderRadius: 4
+                }]
             },
-            scales: {
-                y: {
-                    beginAtZero: true,
-                    grid: { color: 'rgba(255,255,255,0.1)' },
-                    ticks: { color: '#aaa' }
-                },
-                x: {
-                    grid: { color: 'rgba(255,255,255,0.1)' },
-                    ticks: { color: '#aaa' }
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { display: false }, ticks: { color: '#666', font: { size: 8 }, maxRotation: 45 } },
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#666', font: { size: 9 } }, min: 0, max: 100 }
                 }
             }
+        });
+    } catch (e) {
+        console.error('Error fetching diet data:', e);
+    }
+}
+
+async function fetchAndRenderWeekStreak(clientId) {
+    try {
+        const response = await fetch(`${apiBase}/api/trainer/client/${clientId}/week-streak`, {
+            credentials: 'include'
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+
+        // Update streak number and label
+        const streakEl = document.getElementById('metrics-day-streak');
+        const numberEl = document.getElementById('metrics-streak-number');
+
+        const streak = data.current_streak || 0;
+        if (streakEl) streakEl.textContent = streak + ' day' + (streak !== 1 ? 's' : '');
+        if (numberEl) numberEl.textContent = streak;
+
+        // Render days grid
+        const daysGrid = document.getElementById('metrics-days-grid');
+        if (daysGrid && data.days) {
+            daysGrid.innerHTML = data.days.map(day => {
+                let bgClass, borderClass, icon;
+                if (day.completed) {
+                    bgClass = 'bg-gradient-to-br from-orange-500 to-orange-600';
+                    borderClass = 'border-orange-400';
+                    icon = '<svg class="w-3 h-3 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"/></svg>';
+                } else if (day.is_today) {
+                    bgClass = 'bg-white/10';
+                    borderClass = 'border-orange-400 border-dashed';
+                    icon = `<span class="text-orange-400 text-[8px] font-bold">${day.day_name}</span>`;
+                } else if (day.total > 0) {
+                    // Had workout scheduled but not completed
+                    bgClass = 'bg-red-500/20';
+                    borderClass = 'border-red-500/30';
+                    icon = '<span class="text-red-400 text-[10px]">✕</span>';
+                } else {
+                    // No workout scheduled
+                    bgClass = 'bg-white/5';
+                    borderClass = 'border-white/10';
+                    icon = `<span class="text-gray-600 text-[8px]">${day.day_name}</span>`;
+                }
+                return `<div class="w-6 h-6 rounded-md ${bgClass} border ${borderClass} flex items-center justify-center" title="${day.date}">${icon}</div>`;
+            }).join('');
         }
-    });
+    } catch (e) {
+        console.error('Error fetching day streak:', e);
+    }
 }
 
 function showRestTimer(seconds, callback) {

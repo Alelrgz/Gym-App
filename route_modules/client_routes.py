@@ -105,6 +105,49 @@ async def get_exercise_details(
     return service.get_exercise_details(current_user.id, category, period)
 
 
+@router.get("/api/trainer/client/{client_id}/weight-history")
+async def get_client_weight_history_for_trainer(
+    client_id: str,
+    period: str = "month",
+    service: ClientService = Depends(get_client_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Get a client's weight history (trainer access)."""
+    return service.get_weight_history(client_id, period)
+
+
+@router.get("/api/trainer/client/{client_id}/strength-progress")
+async def get_client_strength_progress_for_trainer(
+    client_id: str,
+    period: str = "month",
+    service: ClientService = Depends(get_client_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Get a client's strength progress (trainer access)."""
+    return service.get_strength_progress(client_id, period)
+
+
+@router.get("/api/trainer/client/{client_id}/diet-consistency")
+async def get_client_diet_consistency_for_trainer(
+    client_id: str,
+    period: str = "month",
+    service: ClientService = Depends(get_client_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Get a client's diet consistency data (trainer access)."""
+    return service.get_diet_consistency(client_id, period)
+
+
+@router.get("/api/trainer/client/{client_id}/week-streak")
+async def get_client_week_streak_for_trainer(
+    client_id: str,
+    service: ClientService = Depends(get_client_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Get a client's week streak data (trainer access)."""
+    return service.get_week_streak_data(client_id)
+
+
 @router.post("/api/trainer/client/{client_id}/toggle_premium")
 async def toggle_client_premium(
     client_id: str,

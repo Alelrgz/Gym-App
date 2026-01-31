@@ -97,7 +97,8 @@ class TrainerService:
                     "status": status,
                     "last_seen": f"{days_inactive} days ago" if days_inactive < 99 else "Never",
                     "plan": profile.plan if profile and profile.plan else "Standard",
-                    "is_premium": profile.is_premium if profile else False
+                    "is_premium": profile.is_premium if profile else False,
+                    "profile_picture": c.profile_picture  # From UserORM, not ClientProfileORM
                 })
 
             # --- FETCH MY WORKOUT (TRAINER) ---

@@ -369,57 +369,56 @@ class ClientService:
             db.close()
 
     def _calculate_client_streak(self, client_id: str, db) -> int:
-        """Calculate client's WEEK streak - consecutive weeks with at least one completed workout."""
+        """Calculate client's DAY streak - consecutive days with ALL scheduled workouts completed."""
         streak = 0
         try:
             today = datetime.now().date()
+            current_date = today
+            days_checked = 0
 
-            # Get start of current week (Monday)
-            current_week_start = today - timedelta(days=today.weekday())
+            logger.debug(f"[DAY_STREAK] Starting day streak calculation for client {client_id}, today={today}")
 
-            logger.debug(f"[WEEK_STREAK] Starting week streak calculation for client {client_id}, today={today}")
+            # Go backwards day by day
+            while days_checked < 365:
+                date_str = current_date.isoformat()
+                is_today = current_date == today
 
-            # Go backwards week by week
-            while True:
-                week_start = current_week_start
-                week_end = week_start + timedelta(days=6)
-
-                # Check if there's at least one completed workout this week
-                completed_this_week = db.query(ClientScheduleORM).filter(
+                # Get all scheduled workouts for this day
+                scheduled_workouts = db.query(ClientScheduleORM).filter(
                     ClientScheduleORM.client_id == client_id,
-                    ClientScheduleORM.date >= week_start.isoformat(),
-                    ClientScheduleORM.date <= week_end.isoformat(),
-                    ClientScheduleORM.type == "workout",
-                    ClientScheduleORM.completed == True
-                ).first()
+                    ClientScheduleORM.date == date_str,
+                    ClientScheduleORM.type == "workout"
+                ).all()
 
-                logger.debug(f"[WEEK_STREAK] Week {week_start} to {week_end}: completed={completed_this_week is not None}")
+                total_scheduled = len(scheduled_workouts)
+                completed_count = sum(1 for w in scheduled_workouts if w.completed)
 
-                if completed_this_week:
-                    # At least one workout completed this week
+                logger.debug(f"[DAY_STREAK] {date_str}: {completed_count}/{total_scheduled} completed")
+
+                if total_scheduled == 0:
+                    # No workouts scheduled - skip this day (don't count, don't break)
+                    logger.debug(f"[DAY_STREAK] No workouts scheduled, skipping day")
+                elif completed_count == total_scheduled:
+                    # All scheduled workouts completed - count this day
                     streak += 1
-                    logger.debug(f"[WEEK_STREAK] Week has completed workout! Streak now = {streak}")
+                    logger.debug(f"[DAY_STREAK] All workouts completed! Streak = {streak}")
                 else:
-                    # No completed workouts this week
-                    if week_start < today - timedelta(days=today.weekday()):
-                        # Past week with no completed workouts - break streak
-                        logger.debug(f"[WEEK_STREAK] Past week with no workouts, breaking streak")
-                        break
+                    # Not all workouts completed
+                    if is_today:
+                        # Today - don't break yet, still time to complete
+                        logger.debug(f"[DAY_STREAK] Today incomplete but day not over yet")
                     else:
-                        # Current week - check if there's still time (don't break yet)
-                        logger.debug(f"[WEEK_STREAK] Current week, no workout yet but week not over")
+                        # Past day with incomplete workouts - break streak
+                        logger.debug(f"[DAY_STREAK] Past day incomplete, breaking streak")
+                        break
 
-                # Move to previous week
-                current_week_start = current_week_start - timedelta(days=7)
+                # Move to previous day
+                current_date = current_date - timedelta(days=1)
+                days_checked += 1
 
-                # Safety limit: don't go back more than 52 weeks
-                if streak > 52:
-                    logger.debug(f"[WEEK_STREAK] Reached 52 week limit, stopping. Final streak = {streak}")
-                    break
-
-            logger.debug(f"[WEEK_STREAK] Final calculated week streak = {streak}")
+            logger.debug(f"[DAY_STREAK] Final calculated day streak = {streak}")
         except Exception as e:
-            logger.error(f"[WEEK_STREAK] Error calculating week streak: {e}", exc_info=True)
+            logger.error(f"[DAY_STREAK] Error calculating day streak: {e}", exc_info=True)
             streak = 0
 
         return streak
@@ -1018,6 +1017,115 @@ class ClientService:
         except Exception as e:
             logger.error(f"Error getting exercise details: {e}")
             return {"exercises": [], "category": category, "debug": {"error": str(e)}}
+        finally:
+            db.close()
+
+    def get_diet_consistency(self, client_id: str, period: str = "month") -> dict:
+        """Get client's diet consistency data for charting."""
+        db = get_db_session()
+        try:
+            from sqlalchemy import func
+
+            # Determine date range
+            now = datetime.now()
+            if period == "week":
+                start_date = now - timedelta(days=7)
+            elif period == "month":
+                start_date = now - timedelta(days=30)
+            elif period == "year":
+                start_date = now - timedelta(days=365)
+            else:
+                start_date = now - timedelta(days=30)
+
+            # Get daily diet summaries
+            summaries = db.query(ClientDailyDietSummaryORM).filter(
+                ClientDailyDietSummaryORM.client_id == client_id,
+                ClientDailyDietSummaryORM.date >= start_date.strftime("%Y-%m-%d")
+            ).order_by(ClientDailyDietSummaryORM.date).all()
+
+            data = []
+            total_score = 0
+            for summary in summaries:
+                score = summary.health_score or 0
+                total_score += score
+                data.append({
+                    "date": summary.date,
+                    "score": score,
+                    "calories": summary.total_cals or 0,
+                    "protein": summary.total_protein or 0,
+                    "carbs": summary.total_carbs or 0,
+                    "fat": summary.total_fat or 0
+                })
+
+            # Calculate average and streak
+            avg_score = round(total_score / len(data), 1) if data else 0
+
+            # Calculate current streak (consecutive days with score >= 70)
+            streak = 0
+            for entry in reversed(data):
+                if entry["score"] >= 70:
+                    streak += 1
+                else:
+                    break
+
+            return {
+                "data": data,
+                "average_score": avg_score,
+                "current_streak": streak,
+                "total_days": len(data)
+            }
+        except Exception as e:
+            logger.error(f"Error getting diet consistency: {e}")
+            return {"data": [], "average_score": 0, "current_streak": 0, "total_days": 0}
+        finally:
+            db.close()
+
+    def get_week_streak_data(self, client_id: str) -> dict:
+        """Get client's day streak data with last 14 days visualization."""
+        db = get_db_session()
+        try:
+            today = datetime.now().date()
+
+            days_data = []
+
+            # Check last 14 days (from oldest to newest)
+            for i in range(13, -1, -1):
+                day = today - timedelta(days=i)
+                date_str = day.isoformat()
+                is_today = i == 0
+
+                # Get all scheduled workouts for this day
+                scheduled_workouts = db.query(ClientScheduleORM).filter(
+                    ClientScheduleORM.client_id == client_id,
+                    ClientScheduleORM.date == date_str,
+                    ClientScheduleORM.type == "workout"
+                ).all()
+
+                total_scheduled = len(scheduled_workouts)
+                completed_count = sum(1 for w in scheduled_workouts if w.completed)
+
+                # Day is completed only if there were workouts scheduled AND all are done
+                day_completed = (total_scheduled > 0) and (completed_count == total_scheduled)
+
+                days_data.append({
+                    "date": date_str,
+                    "day_name": day.strftime("%a"),
+                    "completed": day_completed,
+                    "is_today": is_today,
+                    "total": total_scheduled,
+                    "done": completed_count
+                })
+
+            # Calculate current streak
+            streak = self._calculate_client_streak(client_id, db)
+
+            return {
+                "current_streak": streak,
+                "days": days_data
+            }
+        except Exception as e:
+            logger.error(f"Error getting week streak data: {e}")
+            return {"current_streak": 0, "weeks": []}
         finally:
             db.close()
 

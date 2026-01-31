@@ -130,6 +130,7 @@ class ClientSummary(BaseModel):
     last_seen: str
     plan: str
     is_premium: Optional[bool] = False
+    profile_picture: Optional[str] = None
 
 class Video(BaseModel):
     id: str

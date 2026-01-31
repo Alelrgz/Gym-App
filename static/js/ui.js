@@ -175,7 +175,8 @@ export function renderTrainerDashboard(data) {
             div.onclick = () => showClientModal(c.name, c.plan, c.status);
 
             const statusColor = c.status === 'At Risk' ? 'text-red-400' : 'text-green-400';
-            div.innerHTML = `<div class="flex items-center pointer-events-none"><div class="w-10 h-10 rounded-full bg-white/10 mr-3 overflow-hidden"><img src="https://api.dicebear.com/7.x/avataaars/svg?seed=${c.name}" /></div><div><p class="font-bold text-sm text-white">${c.name}</p><p class="text-[10px] text-gray-400">${c.plan} • Seen ${c.last_seen}</p></div></div><span class="text-xs font-bold ${statusColor} pointer-events-none">${c.status}</span>`;
+            const avatarUrl = c.profile_picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.name}`;
+            div.innerHTML = `<div class="flex items-center pointer-events-none"><div class="w-10 h-10 rounded-full bg-white/10 mr-3 overflow-hidden"><img src="${avatarUrl}" class="w-full h-full object-cover" /></div><div><p class="font-bold text-sm text-white">${c.name}</p><p class="text-[10px] text-gray-400">${c.plan} • Seen ${c.last_seen}</p></div></div><span class="text-xs font-bold ${statusColor} pointer-events-none">${c.status}</span>`;
             list.appendChild(div);
         });
     }
