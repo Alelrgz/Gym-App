@@ -145,23 +145,64 @@
         <!-- Friend-only Progress Section (hidden by default) -->
         <div id="friend-progress-section" class="hidden mb-4">
             <div class="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-xl p-4 border border-purple-500/20">
-                <div class="flex items-center gap-2 mb-3">
-                    <span class="text-purple-400">👥</span>
-                    <span class="text-xs text-purple-300 uppercase tracking-wider font-medium">Friend Progress</span>
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-purple-400">📊</span>
+                        <span class="text-xs text-purple-300 uppercase tracking-wider font-medium">Friend Progress</span>
+                    </div>
+                    <!-- View Tabs -->
+                    <div class="flex gap-1 bg-white/5 rounded-lg p-0.5">
+                        <button onclick="switchFriendProgressTab('strength')" id="friend-tab-strength" class="px-2 py-1 text-[10px] font-semibold rounded-md bg-purple-500 text-white transition">Strength</button>
+                        <button onclick="switchFriendProgressTab('weight')" id="friend-tab-weight" class="px-2 py-1 text-[10px] font-semibold rounded-md text-gray-400 hover:text-white transition">Weight</button>
+                        <button onclick="switchFriendProgressTab('health')" id="friend-tab-health" class="px-2 py-1 text-[10px] font-semibold rounded-md text-gray-400 hover:text-white transition">Health</button>
+                    </div>
                 </div>
-                <!-- Weight Trend -->
-                <div class="mb-3">
+
+                <!-- Strength Progress View -->
+                <div id="friend-strength-view" class="space-y-3">
+                    <!-- Strength Chart -->
+                    <div class="relative w-full" style="aspect-ratio: 16/9; min-height: 100px; max-height: 160px;">
+                        <canvas id="friend-strength-chart" class="absolute inset-0 w-full h-full"></canvas>
+                    </div>
+                    <!-- Strength Stats with Goals -->
+                    <div id="friend-strength-stats" class="grid grid-cols-3 gap-2">
+                        <div class="bg-white/5 rounded-lg p-2 text-center">
+                            <p class="text-[9px] text-gray-400 uppercase">Upper</p>
+                            <p id="friend-strength-upper" class="text-sm font-bold text-orange-400">--%</p>
+                            <p id="friend-goal-upper" class="text-[9px] text-gray-500">Goal: --</p>
+                        </div>
+                        <div class="bg-white/5 rounded-lg p-2 text-center">
+                            <p class="text-[9px] text-gray-400 uppercase">Lower</p>
+                            <p id="friend-strength-lower" class="text-sm font-bold text-purple-400">--%</p>
+                            <p id="friend-goal-lower" class="text-[9px] text-gray-500">Goal: --</p>
+                        </div>
+                        <div class="bg-white/5 rounded-lg p-2 text-center">
+                            <p class="text-[9px] text-gray-400 uppercase">Cardio</p>
+                            <p id="friend-strength-cardio" class="text-sm font-bold text-green-400">--%</p>
+                            <p id="friend-goal-cardio" class="text-[9px] text-gray-500">Goal: --</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weight Trend View -->
+                <div id="friend-weight-view" class="hidden">
                     <p class="text-[10px] text-gray-400 mb-1">Weight Trend (30 days)</p>
-                    <div id="friend-weight-chart" class="h-16 flex items-end gap-1">
+                    <div id="friend-weight-chart" class="h-20 flex items-end gap-1">
                         <!-- Bars will be rendered here -->
+                    </div>
+                    <div class="flex justify-between mt-2 text-[10px] text-gray-500">
+                        <span id="friend-weight-start">--</span>
+                        <span id="friend-weight-current" class="font-bold text-white">Current: --</span>
                     </div>
                 </div>
-                <!-- Health Score History -->
-                <div>
+
+                <!-- Health Score View -->
+                <div id="friend-health-view" class="hidden">
                     <p class="text-[10px] text-gray-400 mb-1">Health Score (7 days)</p>
-                    <div id="friend-health-bars" class="flex items-end justify-between h-12 gap-1">
+                    <div id="friend-health-bars" class="flex items-end justify-between h-16 gap-1">
                         <!-- Bars will be rendered here -->
                     </div>
+                    <p id="friend-health-avg" class="text-[10px] text-gray-500 mt-2 text-center">Avg: --</p>
                 </div>
             </div>
         </div>
@@ -239,10 +280,13 @@ async function openMemberProfile(memberId) {
         updateFriendActionButton(friendshipStatus);
 
         // Show/hide friend progress section
+        console.log('[MemberProfile] is_friend:', member.is_friend, 'friendship_status:', member.friendship_status);
         const progressSection = document.getElementById('friend-progress-section');
         if (member.is_friend) {
+            console.log('[MemberProfile] Loading friend progress...');
             loadFriendProgress(memberId);
         } else {
+            console.log('[MemberProfile] Not friends, hiding progress section');
             progressSection?.classList.add('hidden');
         }
 
@@ -463,46 +507,310 @@ function updateMemberProgressChart(healthScore, streak) {
 }
 
 async function loadFriendProgress(friendId) {
+    console.log('[FriendProgress] Loading progress for friend:', friendId);
     try {
         const response = await fetch(`/api/friends/${friendId}/progress`, { credentials: 'include' });
-        if (!response.ok) return;
+        console.log('[FriendProgress] Response status:', response.status);
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[FriendProgress] API error:', errorText);
+            return;
+        }
 
         const data = await response.json();
+        console.log('[FriendProgress] Data received:', data);
+
+        // Show section FIRST so canvas has dimensions
+        const section = document.getElementById('friend-progress-section');
+        console.log('[FriendProgress] Section element:', section);
+        if (section) {
+            section.classList.remove('hidden');
+            console.log('[FriendProgress] Section should now be visible');
+        }
+
+        // Then render charts
         renderFriendProgress(data);
-        document.getElementById('friend-progress-section')?.classList.remove('hidden');
     } catch (error) {
-        console.error('Error loading friend progress:', error);
+        console.error('[FriendProgress] Error:', error);
     }
 }
 
+let currentFriendProgressData = null;
+
 function renderFriendProgress(data) {
-    // Render weight chart
+    currentFriendProgressData = data;
+
+    // Wait for DOM to compute dimensions before rendering charts
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            // Render strength chart
+            renderFriendStrengthChart(data);
+
+            // Render strength stats with goals
+            renderFriendStrengthStats(data);
+
+            // Render weight chart
+            renderFriendWeightChart(data);
+
+            // Render health score bars
+            renderFriendHealthBars(data);
+        }, 50);
+    });
+}
+
+function switchFriendProgressTab(tab) {
+    const tabs = ['strength', 'weight', 'health'];
+    tabs.forEach(t => {
+        const tabBtn = document.getElementById(`friend-tab-${t}`);
+        const view = document.getElementById(`friend-${t}-view`);
+        if (tabBtn && view) {
+            if (t === tab) {
+                tabBtn.className = 'px-2 py-1 text-[10px] font-semibold rounded-md bg-purple-500 text-white transition';
+                view.classList.remove('hidden');
+            } else {
+                tabBtn.className = 'px-2 py-1 text-[10px] font-semibold rounded-md text-gray-400 hover:text-white transition';
+                view.classList.add('hidden');
+            }
+        }
+    });
+}
+
+function renderFriendStrengthChart(data) {
+    const canvas = document.getElementById('friend-strength-chart');
+    if (!canvas) return;
+
+    const strengthData = data.strength_by_category;
+    if (!strengthData || !strengthData.categories) {
+        const ctx = canvas.getContext('2d');
+        const rect = canvas.getBoundingClientRect();
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '11px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText('No strength data available', rect.width / 2, rect.height / 2);
+        return;
+    }
+
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 2;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    const width = rect.width;
+    const height = rect.height;
+    const padding = { top: 15, right: 10, bottom: 20, left: 30 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
+    // Get all data points
+    const categories = ['upper_body', 'lower_body', 'cardio'];
+    const colors = {
+        upper_body: '#F97316',
+        lower_body: '#8B5CF6',
+        cardio: '#22C55E'
+    };
+
+    let allValues = [];
+    let referenceData = null;
+
+    categories.forEach(cat => {
+        const catData = strengthData.categories[cat]?.data || [];
+        catData.forEach(d => {
+            if (d.strength !== null) allValues.push(d.strength);
+        });
+        if (!referenceData && catData.length > 0) referenceData = catData;
+    });
+
+    if (!referenceData || allValues.length === 0) {
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '11px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText('No strength data', width / 2, height / 2);
+        return;
+    }
+
+    // Include goals in scaling
+    const goals = data.strength_goals || {};
+    if (goals.upper) allValues.push(goals.upper);
+    if (goals.lower) allValues.push(goals.lower);
+    if (goals.cardio) allValues.push(goals.cardio);
+
+    const minStrength = Math.min(...allValues) - 5;
+    const maxStrength = Math.max(...allValues) + 5;
+    const strengthRange = maxStrength - minStrength || 1;
+
+    // Draw grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+        const y = padding.top + (chartHeight * i / 4);
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(width - padding.right, y);
+        ctx.stroke();
+    }
+
+    // Draw goal lines
+    const goalConfig = {
+        upper_body: { goal: goals.upper, color: colors.upper_body },
+        lower_body: { goal: goals.lower, color: colors.lower_body },
+        cardio: { goal: goals.cardio, color: colors.cardio }
+    };
+
+    Object.entries(goalConfig).forEach(([key, config]) => {
+        if (config.goal !== null && config.goal !== undefined) {
+            const goalY = padding.top + chartHeight - ((config.goal - minStrength) / strengthRange * chartHeight);
+            if (goalY >= padding.top && goalY <= padding.top + chartHeight) {
+                ctx.save();
+                ctx.strokeStyle = config.color;
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 3]);
+                ctx.globalAlpha = 0.6;
+                ctx.beginPath();
+                ctx.moveTo(padding.left, goalY);
+                ctx.lineTo(width - padding.right, goalY);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+    });
+
+    // Draw data lines
+    categories.forEach(cat => {
+        const catData = strengthData.categories[cat]?.data || [];
+        if (catData.length === 0) return;
+
+        const color = colors[cat];
+        const points = catData.map((d, i) => ({
+            x: padding.left + (chartWidth * i / (catData.length - 1 || 1)),
+            y: d.strength !== null ? padding.top + chartHeight - ((d.strength - minStrength) / strengthRange * chartHeight) : null
+        })).filter(p => p.y !== null);
+
+        if (points.length < 2) return;
+
+        // Draw line
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        points.forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.setLineDash([]);
+        ctx.stroke();
+
+        // Draw last point
+        const lastPoint = points[points.length - 1];
+        ctx.beginPath();
+        ctx.arc(lastPoint.x, lastPoint.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+    });
+
+    // Draw Y-axis labels
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '9px system-ui';
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= 4; i++) {
+        const val = Math.round(maxStrength - (strengthRange * i / 4));
+        const y = padding.top + (chartHeight * i / 4);
+        ctx.fillText(`${val}%`, padding.left - 4, y + 3);
+    }
+}
+
+function renderFriendStrengthStats(data) {
+    const strengthData = data.strength_by_category;
+    const goals = data.strength_goals || {};
+
+    // Update stats
+    const categories = {
+        upper: { el: 'friend-strength-upper', goalEl: 'friend-goal-upper', catKey: 'upper_body' },
+        lower: { el: 'friend-strength-lower', goalEl: 'friend-goal-lower', catKey: 'lower_body' },
+        cardio: { el: 'friend-strength-cardio', goalEl: 'friend-goal-cardio', catKey: 'cardio' }
+    };
+
+    Object.entries(categories).forEach(([key, config]) => {
+        const statEl = document.getElementById(config.el);
+        const goalEl = document.getElementById(config.goalEl);
+
+        // Get current strength value
+        let currentVal = null;
+        if (strengthData?.categories?.[config.catKey]?.data) {
+            const catData = strengthData.categories[config.catKey].data;
+            const lastPoint = catData.filter(d => d.strength !== null).pop();
+            if (lastPoint) currentVal = lastPoint.strength;
+        }
+
+        if (statEl) {
+            if (currentVal !== null) {
+                const prefix = currentVal >= 0 ? '+' : '';
+                statEl.textContent = `${prefix}${Math.round(currentVal)}%`;
+            } else {
+                statEl.textContent = '--%';
+            }
+        }
+
+        if (goalEl) {
+            const goalVal = goals[key];
+            if (goalVal !== null && goalVal !== undefined) {
+                goalEl.textContent = `Goal: +${goalVal}%`;
+                goalEl.className = 'text-[9px] text-purple-400';
+            } else {
+                goalEl.textContent = 'No goal set';
+                goalEl.className = 'text-[9px] text-gray-500';
+            }
+        }
+    });
+}
+
+function renderFriendWeightChart(data) {
     const weightChart = document.getElementById('friend-weight-chart');
-    if (weightChart && data.weight_history && data.weight_history.length > 0) {
+    if (!weightChart) return;
+
+    if (data.weight_history && data.weight_history.length > 0) {
         const weights = data.weight_history.map(w => w.weight);
         const maxW = Math.max(...weights);
         const minW = Math.min(...weights);
         const range = maxW - minW || 1;
 
-        // Show last 10 entries
         const recent = data.weight_history.slice(-10);
         weightChart.innerHTML = recent.map(entry => {
             const height = ((entry.weight - minW) / range) * 100;
-            return `<div class="flex-1 bg-purple-500/50 rounded-t" style="height: ${Math.max(20, height)}%" title="${entry.weight}kg"></div>`;
+            return `<div class="flex-1 bg-purple-500/50 rounded-t transition-all duration-300" style="height: ${Math.max(20, height)}%" title="${entry.weight}kg"></div>`;
         }).join('');
-    } else if (weightChart) {
+
+        // Update weight labels
+        const startEl = document.getElementById('friend-weight-start');
+        const currentEl = document.getElementById('friend-weight-current');
+        if (startEl) startEl.textContent = `${recent[0].weight}kg`;
+        if (currentEl) currentEl.textContent = `Current: ${data.current_weight || recent[recent.length - 1].weight}kg`;
+    } else {
         weightChart.innerHTML = '<p class="text-xs text-gray-500 w-full text-center">No weight data</p>';
     }
+}
 
-    // Render health score bars
+function renderFriendHealthBars(data) {
     const healthBars = document.getElementById('friend-health-bars');
-    if (healthBars && data.weekly_health_scores && data.weekly_health_scores.length > 0) {
+    if (!healthBars) return;
+
+    if (data.weekly_health_scores && data.weekly_health_scores.length > 0) {
+        let totalScore = 0;
         healthBars.innerHTML = data.weekly_health_scores.map(entry => {
             const score = entry.score || 0;
+            totalScore += score;
             const color = score >= 80 ? 'bg-green-500' : score >= 60 ? 'bg-yellow-500' : 'bg-red-500';
-            return `<div class="flex-1 ${color}/70 rounded-t" style="height: ${score}%" title="${score}%"></div>`;
+            return `<div class="flex-1 ${color}/70 rounded-t transition-all duration-300" style="height: ${score}%" title="${score}%"></div>`;
         }).join('');
-    } else if (healthBars) {
+
+        const avgEl = document.getElementById('friend-health-avg');
+        if (avgEl) {
+            const avg = Math.round(totalScore / data.weekly_health_scores.length);
+            avgEl.textContent = `Avg: ${avg}%`;
+        }
+    } else {
         healthBars.innerHTML = '<p class="text-xs text-gray-500 w-full text-center">No health data</p>';
     }
 }
@@ -707,9 +1015,9 @@ function renderFriendProgress(data) {
                     <button onclick="loadTrendChart('year')" id="weight-period-year" class="text-[10px] px-2 py-1 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition">Year</button>
                 </div>
             </div>
-        <!-- Chart Area -->
-        <div class="relative h-32">
-            <canvas id="weight-chart" class="w-full h-full"></canvas>
+        <!-- Chart Area - 16:9 aspect ratio container -->
+        <div class="relative w-full" style="aspect-ratio: 16/9; min-height: 180px; max-height: 280px;">
+            <canvas id="weight-chart" class="absolute inset-0 w-full h-full"></canvas>
             <div id="weight-chart-loading" class="absolute inset-0 flex items-center justify-center">
                 <span class="text-gray-500 text-xs">Loading chart...</span>
             </div>
@@ -735,31 +1043,39 @@ function renderFriendProgress(data) {
         </div>
         <!-- Strength Stats Row (hidden by default) -->
         <div id="strength-stats-row" class="hidden mt-3">
-            <div class="flex justify-between text-center">
-                <div>
-                    <p class="text-[10px] text-gray-500">Upper Body</p>
-                    <p id="strength-stat-upper" class="text-sm font-bold text-orange-400">--%</p>
+            <div class="flex items-center justify-between">
+                <!-- Stats inline with big numbers -->
+                <div class="flex items-center gap-6">
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full bg-orange-500"></div>
+                        <div>
+                            <p class="text-[9px] text-gray-500 uppercase leading-none">Upper</p>
+                            <p id="strength-stat-upper" class="text-xl font-black text-orange-400 leading-none">--%</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full bg-purple-500"></div>
+                        <div>
+                            <p class="text-[9px] text-gray-500 uppercase leading-none">Lower</p>
+                            <p id="strength-stat-lower" class="text-xl font-black text-purple-400 leading-none">--%</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <div class="w-3 h-3 rounded-full bg-green-500"></div>
+                        <div>
+                            <p class="text-[9px] text-gray-500 uppercase leading-none">Cardio</p>
+                            <p id="strength-stat-cardio" class="text-xl font-black text-green-400 leading-none">--%</p>
+                        </div>
+                    </div>
                 </div>
-                <div>
-                    <p class="text-[10px] text-gray-500">Lower Body</p>
-                    <p id="strength-stat-lower" class="text-sm font-bold text-purple-400">--%</p>
-                </div>
-                <div>
-                    <p class="text-[10px] text-gray-500">Cardio</p>
-                    <p id="strength-stat-cardio" class="text-sm font-bold text-green-400">--%</p>
-                </div>
-                <div>
-                    <p class="text-[10px] text-gray-500">Trend</p>
-                    <p id="strength-stat-trend" class="text-sm font-bold text-blue-400">--</p>
-                </div>
+                <!-- Details button -->
+                <button onclick="openStrengthDetailsModal()" class="flex items-center gap-1 text-xs text-orange-400 hover:text-orange-300 transition">
+                    <span id="strength-stat-trend" class="font-bold">Details</span>
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                    </svg>
+                </button>
             </div>
-            <!-- See More Button -->
-            <button onclick="openStrengthDetailsModal()" class="w-full mt-3 py-2 text-xs font-semibold text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 rounded-lg transition flex items-center justify-center gap-1">
-                <span>See Details</span>
-                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                </svg>
-            </button>
         </div>
         </div>
     </div>
@@ -833,6 +1149,34 @@ function renderFriendProgress(data) {
             <button id="strength-tab-cardio" onclick="switchStrengthTab('cardio')" class="flex-1 py-3 text-sm font-semibold text-center border-b-2 border-transparent text-gray-400 hover:text-white transition">
                 Cardio
             </button>
+        </div>
+
+        <!-- Goal Progress Section -->
+        <div id="strength-goal-section" class="hidden px-5 pt-4">
+            <div class="bg-gradient-to-r from-white/5 to-white/[0.02] rounded-xl p-4 border border-white/10">
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <div id="strength-goal-icon" class="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                            <svg class="w-4 h-4 text-orange-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400">Trainer Goal</p>
+                            <p id="strength-goal-target" class="text-lg font-bold text-white">+25%</p>
+                        </div>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-xs text-gray-400">Your Progress</p>
+                        <p id="strength-goal-current" class="text-lg font-bold text-orange-400">+21%</p>
+                    </div>
+                </div>
+                <!-- Progress Bar -->
+                <div class="relative h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div id="strength-goal-bar" class="absolute inset-y-0 left-0 bg-gradient-to-r from-orange-500 to-orange-400 rounded-full transition-all duration-500" style="width: 84%"></div>
+                </div>
+                <p id="strength-goal-status" class="text-xs text-gray-500 mt-2 text-center">84% of goal reached</p>
+            </div>
         </div>
 
         <!-- Content Area -->
@@ -2742,23 +3086,64 @@ async function selectFitnessGoal(goal) {
         <!-- Friend-only Progress Section (hidden by default) -->
         <div id="friend-progress-section" class="hidden mb-4">
             <div class="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-xl p-4 border border-purple-500/20">
-                <div class="flex items-center gap-2 mb-3">
-                    <span class="text-purple-400">👥</span>
-                    <span class="text-xs text-purple-300 uppercase tracking-wider font-medium">Friend Progress</span>
+                <div class="flex items-center justify-between mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="text-purple-400">📊</span>
+                        <span class="text-xs text-purple-300 uppercase tracking-wider font-medium">Friend Progress</span>
+                    </div>
+                    <!-- View Tabs -->
+                    <div class="flex gap-1 bg-white/5 rounded-lg p-0.5">
+                        <button onclick="switchFriendProgressTab('strength')" id="friend-tab-strength" class="px-2 py-1 text-[10px] font-semibold rounded-md bg-purple-500 text-white transition">Strength</button>
+                        <button onclick="switchFriendProgressTab('weight')" id="friend-tab-weight" class="px-2 py-1 text-[10px] font-semibold rounded-md text-gray-400 hover:text-white transition">Weight</button>
+                        <button onclick="switchFriendProgressTab('health')" id="friend-tab-health" class="px-2 py-1 text-[10px] font-semibold rounded-md text-gray-400 hover:text-white transition">Health</button>
+                    </div>
                 </div>
-                <!-- Weight Trend -->
-                <div class="mb-3">
+
+                <!-- Strength Progress View -->
+                <div id="friend-strength-view" class="space-y-3">
+                    <!-- Strength Chart -->
+                    <div class="relative w-full" style="aspect-ratio: 16/9; min-height: 100px; max-height: 160px;">
+                        <canvas id="friend-strength-chart" class="absolute inset-0 w-full h-full"></canvas>
+                    </div>
+                    <!-- Strength Stats with Goals -->
+                    <div id="friend-strength-stats" class="grid grid-cols-3 gap-2">
+                        <div class="bg-white/5 rounded-lg p-2 text-center">
+                            <p class="text-[9px] text-gray-400 uppercase">Upper</p>
+                            <p id="friend-strength-upper" class="text-sm font-bold text-orange-400">--%</p>
+                            <p id="friend-goal-upper" class="text-[9px] text-gray-500">Goal: --</p>
+                        </div>
+                        <div class="bg-white/5 rounded-lg p-2 text-center">
+                            <p class="text-[9px] text-gray-400 uppercase">Lower</p>
+                            <p id="friend-strength-lower" class="text-sm font-bold text-purple-400">--%</p>
+                            <p id="friend-goal-lower" class="text-[9px] text-gray-500">Goal: --</p>
+                        </div>
+                        <div class="bg-white/5 rounded-lg p-2 text-center">
+                            <p class="text-[9px] text-gray-400 uppercase">Cardio</p>
+                            <p id="friend-strength-cardio" class="text-sm font-bold text-green-400">--%</p>
+                            <p id="friend-goal-cardio" class="text-[9px] text-gray-500">Goal: --</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Weight Trend View -->
+                <div id="friend-weight-view" class="hidden">
                     <p class="text-[10px] text-gray-400 mb-1">Weight Trend (30 days)</p>
-                    <div id="friend-weight-chart" class="h-16 flex items-end gap-1">
+                    <div id="friend-weight-chart" class="h-20 flex items-end gap-1">
                         <!-- Bars will be rendered here -->
+                    </div>
+                    <div class="flex justify-between mt-2 text-[10px] text-gray-500">
+                        <span id="friend-weight-start">--</span>
+                        <span id="friend-weight-current" class="font-bold text-white">Current: --</span>
                     </div>
                 </div>
-                <!-- Health Score History -->
-                <div>
+
+                <!-- Health Score View -->
+                <div id="friend-health-view" class="hidden">
                     <p class="text-[10px] text-gray-400 mb-1">Health Score (7 days)</p>
-                    <div id="friend-health-bars" class="flex items-end justify-between h-12 gap-1">
+                    <div id="friend-health-bars" class="flex items-end justify-between h-16 gap-1">
                         <!-- Bars will be rendered here -->
                     </div>
+                    <p id="friend-health-avg" class="text-[10px] text-gray-500 mt-2 text-center">Avg: --</p>
                 </div>
             </div>
         </div>
@@ -4643,7 +5028,7 @@ async function loadFriendsModalData() {
         noFriendsMsg?.classList.add('hidden');
         list.innerHTML = friendsList.map(friend => `
             <div class="flex items-center justify-between p-3 bg-white/5 rounded-xl hover:bg-white/10 transition">
-                <div class="flex items-center gap-3 cursor-pointer" onclick="openMemberProfile('${friend.id}')">
+                <div class="flex items-center gap-3 cursor-pointer" onclick="closeFriendsModal(); openMemberProfile('${friend.id}')">
                     <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center overflow-hidden">
                         ${friend.profile_picture
                             ? `<img src="${friend.profile_picture}" class="w-full h-full object-cover">`
@@ -5218,46 +5603,310 @@ function updateFriendActionButton(status) {
 }
 
 async function loadFriendProgress(friendId) {
+    console.log('[FriendProgress] Loading progress for friend:', friendId);
     try {
         const response = await fetch(`/api/friends/${friendId}/progress`, { credentials: 'include' });
-        if (!response.ok) return;
+        console.log('[FriendProgress] Response status:', response.status);
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('[FriendProgress] API error:', errorText);
+            return;
+        }
 
         const data = await response.json();
+        console.log('[FriendProgress] Data received:', data);
+
+        // Show section FIRST so canvas has dimensions
+        const section = document.getElementById('friend-progress-section');
+        console.log('[FriendProgress] Section element:', section);
+        if (section) {
+            section.classList.remove('hidden');
+            console.log('[FriendProgress] Section should now be visible');
+        }
+
+        // Then render charts
         renderFriendProgress(data);
-        document.getElementById('friend-progress-section')?.classList.remove('hidden');
     } catch (error) {
-        console.error('Error loading friend progress:', error);
+        console.error('[FriendProgress] Error:', error);
     }
 }
 
+let currentFriendProgressData = null;
+
 function renderFriendProgress(data) {
-    // Render weight chart
+    currentFriendProgressData = data;
+
+    // Wait for DOM to compute dimensions before rendering charts
+    requestAnimationFrame(() => {
+        setTimeout(() => {
+            // Render strength chart
+            renderFriendStrengthChart(data);
+
+            // Render strength stats with goals
+            renderFriendStrengthStats(data);
+
+            // Render weight chart
+            renderFriendWeightChart(data);
+
+            // Render health score bars
+            renderFriendHealthBars(data);
+        }, 50);
+    });
+}
+
+function switchFriendProgressTab(tab) {
+    const tabs = ['strength', 'weight', 'health'];
+    tabs.forEach(t => {
+        const tabBtn = document.getElementById(`friend-tab-${t}`);
+        const view = document.getElementById(`friend-${t}-view`);
+        if (tabBtn && view) {
+            if (t === tab) {
+                tabBtn.className = 'px-2 py-1 text-[10px] font-semibold rounded-md bg-purple-500 text-white transition';
+                view.classList.remove('hidden');
+            } else {
+                tabBtn.className = 'px-2 py-1 text-[10px] font-semibold rounded-md text-gray-400 hover:text-white transition';
+                view.classList.add('hidden');
+            }
+        }
+    });
+}
+
+function renderFriendStrengthChart(data) {
+    const canvas = document.getElementById('friend-strength-chart');
+    if (!canvas) return;
+
+    const strengthData = data.strength_by_category;
+    if (!strengthData || !strengthData.categories) {
+        const ctx = canvas.getContext('2d');
+        const rect = canvas.getBoundingClientRect();
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '11px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText('No strength data available', rect.width / 2, rect.height / 2);
+        return;
+    }
+
+    const ctx = canvas.getContext('2d');
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 2;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    const width = rect.width;
+    const height = rect.height;
+    const padding = { top: 15, right: 10, bottom: 20, left: 30 };
+    const chartWidth = width - padding.left - padding.right;
+    const chartHeight = height - padding.top - padding.bottom;
+
+    // Clear canvas
+    ctx.clearRect(0, 0, width, height);
+
+    // Get all data points
+    const categories = ['upper_body', 'lower_body', 'cardio'];
+    const colors = {
+        upper_body: '#F97316',
+        lower_body: '#8B5CF6',
+        cardio: '#22C55E'
+    };
+
+    let allValues = [];
+    let referenceData = null;
+
+    categories.forEach(cat => {
+        const catData = strengthData.categories[cat]?.data || [];
+        catData.forEach(d => {
+            if (d.strength !== null) allValues.push(d.strength);
+        });
+        if (!referenceData && catData.length > 0) referenceData = catData;
+    });
+
+    if (!referenceData || allValues.length === 0) {
+        ctx.fillStyle = '#6b7280';
+        ctx.font = '11px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText('No strength data', width / 2, height / 2);
+        return;
+    }
+
+    // Include goals in scaling
+    const goals = data.strength_goals || {};
+    if (goals.upper) allValues.push(goals.upper);
+    if (goals.lower) allValues.push(goals.lower);
+    if (goals.cardio) allValues.push(goals.cardio);
+
+    const minStrength = Math.min(...allValues) - 5;
+    const maxStrength = Math.max(...allValues) + 5;
+    const strengthRange = maxStrength - minStrength || 1;
+
+    // Draw grid
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 1;
+    for (let i = 0; i <= 4; i++) {
+        const y = padding.top + (chartHeight * i / 4);
+        ctx.beginPath();
+        ctx.moveTo(padding.left, y);
+        ctx.lineTo(width - padding.right, y);
+        ctx.stroke();
+    }
+
+    // Draw goal lines
+    const goalConfig = {
+        upper_body: { goal: goals.upper, color: colors.upper_body },
+        lower_body: { goal: goals.lower, color: colors.lower_body },
+        cardio: { goal: goals.cardio, color: colors.cardio }
+    };
+
+    Object.entries(goalConfig).forEach(([key, config]) => {
+        if (config.goal !== null && config.goal !== undefined) {
+            const goalY = padding.top + chartHeight - ((config.goal - minStrength) / strengthRange * chartHeight);
+            if (goalY >= padding.top && goalY <= padding.top + chartHeight) {
+                ctx.save();
+                ctx.strokeStyle = config.color;
+                ctx.lineWidth = 1.5;
+                ctx.setLineDash([4, 3]);
+                ctx.globalAlpha = 0.6;
+                ctx.beginPath();
+                ctx.moveTo(padding.left, goalY);
+                ctx.lineTo(width - padding.right, goalY);
+                ctx.stroke();
+                ctx.restore();
+            }
+        }
+    });
+
+    // Draw data lines
+    categories.forEach(cat => {
+        const catData = strengthData.categories[cat]?.data || [];
+        if (catData.length === 0) return;
+
+        const color = colors[cat];
+        const points = catData.map((d, i) => ({
+            x: padding.left + (chartWidth * i / (catData.length - 1 || 1)),
+            y: d.strength !== null ? padding.top + chartHeight - ((d.strength - minStrength) / strengthRange * chartHeight) : null
+        })).filter(p => p.y !== null);
+
+        if (points.length < 2) return;
+
+        // Draw line
+        ctx.beginPath();
+        ctx.moveTo(points[0].x, points[0].y);
+        points.forEach(p => ctx.lineTo(p.x, p.y));
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.lineCap = 'round';
+        ctx.setLineDash([]);
+        ctx.stroke();
+
+        // Draw last point
+        const lastPoint = points[points.length - 1];
+        ctx.beginPath();
+        ctx.arc(lastPoint.x, lastPoint.y, 3, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+    });
+
+    // Draw Y-axis labels
+    ctx.fillStyle = '#9ca3af';
+    ctx.font = '9px system-ui';
+    ctx.textAlign = 'right';
+    for (let i = 0; i <= 4; i++) {
+        const val = Math.round(maxStrength - (strengthRange * i / 4));
+        const y = padding.top + (chartHeight * i / 4);
+        ctx.fillText(`${val}%`, padding.left - 4, y + 3);
+    }
+}
+
+function renderFriendStrengthStats(data) {
+    const strengthData = data.strength_by_category;
+    const goals = data.strength_goals || {};
+
+    // Update stats
+    const categories = {
+        upper: { el: 'friend-strength-upper', goalEl: 'friend-goal-upper', catKey: 'upper_body' },
+        lower: { el: 'friend-strength-lower', goalEl: 'friend-goal-lower', catKey: 'lower_body' },
+        cardio: { el: 'friend-strength-cardio', goalEl: 'friend-goal-cardio', catKey: 'cardio' }
+    };
+
+    Object.entries(categories).forEach(([key, config]) => {
+        const statEl = document.getElementById(config.el);
+        const goalEl = document.getElementById(config.goalEl);
+
+        // Get current strength value
+        let currentVal = null;
+        if (strengthData?.categories?.[config.catKey]?.data) {
+            const catData = strengthData.categories[config.catKey].data;
+            const lastPoint = catData.filter(d => d.strength !== null).pop();
+            if (lastPoint) currentVal = lastPoint.strength;
+        }
+
+        if (statEl) {
+            if (currentVal !== null) {
+                const prefix = currentVal >= 0 ? '+' : '';
+                statEl.textContent = `${prefix}${Math.round(currentVal)}%`;
+            } else {
+                statEl.textContent = '--%';
+            }
+        }
+
+        if (goalEl) {
+            const goalVal = goals[key];
+            if (goalVal !== null && goalVal !== undefined) {
+                goalEl.textContent = `Goal: +${goalVal}%`;
+                goalEl.className = 'text-[9px] text-purple-400';
+            } else {
+                goalEl.textContent = 'No goal set';
+                goalEl.className = 'text-[9px] text-gray-500';
+            }
+        }
+    });
+}
+
+function renderFriendWeightChart(data) {
     const weightChart = document.getElementById('friend-weight-chart');
-    if (weightChart && data.weight_history && data.weight_history.length > 0) {
+    if (!weightChart) return;
+
+    if (data.weight_history && data.weight_history.length > 0) {
         const weights = data.weight_history.map(w => w.weight);
         const maxW = Math.max(...weights);
         const minW = Math.min(...weights);
         const range = maxW - minW || 1;
 
-        // Show last 10 entries
         const recent = data.weight_history.slice(-10);
         weightChart.innerHTML = recent.map(entry => {
             const height = ((entry.weight - minW) / range) * 100;
-            return `<div class="flex-1 bg-purple-500/50 rounded-t" style="height: ${Math.max(20, height)}%" title="${entry.weight}kg"></div>`;
+            return `<div class="flex-1 bg-purple-500/50 rounded-t transition-all duration-300" style="height: ${Math.max(20, height)}%" title="${entry.weight}kg"></div>`;
         }).join('');
-    } else if (weightChart) {
+
+        // Update weight labels
+        const startEl = document.getElementById('friend-weight-start');
+        const currentEl = document.getElementById('friend-weight-current');
+        if (startEl) startEl.textContent = `${recent[0].weight}kg`;
+        if (currentEl) currentEl.textContent = `Current: ${data.current_weight || recent[recent.length - 1].weight}kg`;
+    } else {
         weightChart.innerHTML = '<p class="text-xs text-gray-500 w-full text-center">No weight data</p>';
     }
+}
 
-    // Render health score bars
+function renderFriendHealthBars(data) {
     const healthBars = document.getElementById('friend-health-bars');
-    if (healthBars && data.weekly_health_scores && data.weekly_health_scores.length > 0) {
+    if (!healthBars) return;
+
+    if (data.weekly_health_scores && data.weekly_health_scores.length > 0) {
+        let totalScore = 0;
         healthBars.innerHTML = data.weekly_health_scores.map(entry => {
             const score = entry.score || 0;
+            totalScore += score;
             const color = score >= 80 ? 'bg-green-500' : score >= 60 ? 'bg-yellow-500' : 'bg-red-500';
-            return `<div class="flex-1 ${color}/70 rounded-t" style="height: ${score}%" title="${score}%"></div>`;
+            return `<div class="flex-1 ${color}/70 rounded-t transition-all duration-300" style="height: ${score}%" title="${score}%"></div>`;
         }).join('');
-    } else if (healthBars) {
+
+        const avgEl = document.getElementById('friend-health-avg');
+        if (avgEl) {
+            const avg = Math.round(totalScore / data.weekly_health_scores.length);
+            avgEl.textContent = `Avg: ${avg}%`;
+        }
+    } else {
         healthBars.innerHTML = '<p class="text-xs text-gray-500 w-full text-center">No health data</p>';
     }
 }
@@ -5308,10 +5957,13 @@ async function openMemberProfile(memberId) {
         updateFriendActionButton(friendshipStatus);
 
         // Show/hide friend progress section
+        console.log('[MemberProfile] is_friend:', member.is_friend, 'friendship_status:', member.friendship_status);
         const progressSection = document.getElementById('friend-progress-section');
         if (member.is_friend) {
+            console.log('[MemberProfile] Loading friend progress...');
             loadFriendProgress(memberId);
         } else {
+            console.log('[MemberProfile] Not friends, hiding progress section');
             progressSection?.classList.add('hidden');
         }
 

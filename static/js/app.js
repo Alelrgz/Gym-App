@@ -2667,13 +2667,18 @@ function renderStrengthChart(strengthData, hoveredPoint = null) {
 
     const ctx = canvas.getContext('2d');
     const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width * 2;
-    canvas.height = rect.height * 2;
-    ctx.scale(2, 2);
+    const dpr = window.devicePixelRatio || 2;
+    canvas.width = rect.width * dpr;
+    canvas.height = rect.height * dpr;
+    ctx.scale(dpr, dpr);
+
+    // Enable high-quality rendering
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
     const width = rect.width;
     const height = rect.height;
-    const padding = { top: 28, right: 10, bottom: 20, left: 38 };
+    const padding = { top: 30, right: 14, bottom: 24, left: 40 };  // Slightly more padding for clarity
     const chartWidth = width - padding.left - padding.right;
     const chartHeight = height - padding.top - padding.bottom;
 
@@ -2684,28 +2689,28 @@ function renderStrengthChart(strengthData, hoveredPoint = null) {
         upper_body: {
             color: '#F97316',
             label: 'Upper',
-            fillAlpha: 0.12,
-            lineWidth: 2.5,
+            fillAlpha: 0.15,
+            lineWidth: 3,
             dashPattern: [],           // Solid line
-            pointRadius: 4,
+            pointRadius: 5,
             pointStyle: 'circle'
         },
         lower_body: {
             color: '#8B5CF6',
             label: 'Lower',
-            fillAlpha: 0.12,
-            lineWidth: 2.5,
-            dashPattern: [6, 3],       // Dashed line
-            pointRadius: 4,
+            fillAlpha: 0.15,
+            lineWidth: 3,
+            dashPattern: [8, 4],       // Dashed line
+            pointRadius: 5,
             pointStyle: 'diamond'
         },
         cardio: {
             color: '#22C55E',
             label: 'Cardio',
-            fillAlpha: 0.12,
-            lineWidth: 2.5,
-            dashPattern: [2, 2],       // Dotted line
-            pointRadius: 4,
+            fillAlpha: 0.15,
+            lineWidth: 3,
+            dashPattern: [3, 3],       // Dotted line
+            pointRadius: 5,
             pointStyle: 'triangle'
         }
     };
@@ -2754,6 +2759,13 @@ function renderStrengthChart(strengthData, hoveredPoint = null) {
     }
 
     let minStrength, maxStrength, strengthRange, yAxisStep;
+
+    // Include goal values in scaling so goal lines are always visible
+    if (strengthData.goals) {
+        if (strengthData.goals.upper !== null && strengthData.goals.upper !== undefined) allValues.push(strengthData.goals.upper);
+        if (strengthData.goals.lower !== null && strengthData.goals.lower !== undefined) allValues.push(strengthData.goals.lower);
+        if (strengthData.goals.cardio !== null && strengthData.goals.cardio !== undefined) allValues.push(strengthData.goals.cardio);
+    }
 
     if (allValues.length === 0) {
         // Default scale when no visible data
@@ -2809,7 +2821,7 @@ function renderStrengthChart(strengthData, hoveredPoint = null) {
     // Draw interactive legend at top
     window.strengthChartLegendAreas = [];
     if (hasCategories) {
-        ctx.font = 'bold 9px system-ui';
+        ctx.font = '600 11px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
         let legendX = padding.left;
 
         ['upper_body', 'lower_body', 'cardio'].forEach(cat => {
@@ -2819,38 +2831,30 @@ function renderStrengthChart(strengthData, hoveredPoint = null) {
             if (!hasData) return;
 
             const isVisible = visibility[cat];
-            const alpha = isVisible ? 1 : 0.3;
+            const alpha = isVisible ? 1 : 0.35;
 
-            // Draw line sample with category's dash pattern
-            ctx.strokeStyle = hexToRgba(config.color, alpha);
-            ctx.lineWidth = 2;
-            ctx.setLineDash(config.dashPattern);
-            ctx.beginPath();
-            ctx.moveTo(legendX, 12);
-            ctx.lineTo(legendX + 18, 12);
-            ctx.stroke();
-            ctx.setLineDash([]);
-
-            // Draw point sample
+            // Draw colored dot
             ctx.fillStyle = hexToRgba(config.color, alpha);
-            drawPoint(ctx, legendX + 9, 12, config.pointStyle, 3);
+            ctx.beginPath();
+            ctx.arc(legendX + 5, 14, 4, 0, Math.PI * 2);
+            ctx.fill();
 
             // Draw label
-            ctx.fillStyle = `rgba(255,255,255,${isVisible ? 0.85 : 0.35})`;
+            ctx.fillStyle = `rgba(255,255,255,${isVisible ? 0.9 : 0.4})`;
             ctx.textAlign = 'left';
             const labelWidth = ctx.measureText(config.label).width;
-            ctx.fillText(config.label, legendX + 22, 15);
+            ctx.fillText(config.label, legendX + 14, 18);
 
-            // Store hit area for click detection (scaled for retina)
+            // Store hit area for click detection
             window.strengthChartLegendAreas.push({
                 cat,
                 x: legendX - 2,
                 y: 2,
-                width: 24 + labelWidth + 4,
-                height: 20
+                width: 18 + labelWidth + 8,
+                height: 24
             });
 
-            legendX += 30 + labelWidth + 12;
+            legendX += 20 + labelWidth + 16;
         });
     }
 
@@ -2882,15 +2886,15 @@ function renderStrengthChart(strengthData, hoveredPoint = null) {
         ctx.setLineDash([]);
 
         // "0%" label
-        ctx.fillStyle = 'rgba(255,255,255,0.6)';
-        ctx.font = 'bold 9px system-ui';
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.font = '600 10px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
         ctx.textAlign = 'right';
-        ctx.fillText('0%', padding.left - 5, zeroY + 3);
+        ctx.fillText('0%', padding.left - 6, zeroY + 4);
     }
 
     // Draw Y-axis labels
-    ctx.fillStyle = 'rgba(255,255,255,0.5)';
-    ctx.font = '9px system-ui';
+    ctx.fillStyle = 'rgba(255,255,255,0.55)';
+    ctx.font = '500 10px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
     ctx.textAlign = 'right';
     for (let i = 0; i <= numGridLines; i++) {
         const value = minStrength + (yAxisStep * i);
@@ -2900,6 +2904,73 @@ function renderStrengthChart(strengthData, hoveredPoint = null) {
             const prefix = value > 0 ? '+' : '';
             ctx.fillText(`${prefix}${value.toFixed(0)}%`, padding.left - 5, y + 3);
         }
+    }
+
+    // Draw goal lines if goals exist
+    if (strengthData.goals) {
+        const goalConfig = {
+            upper: { color: '#F97316', label: 'Upper Goal', goal: strengthData.goals.upper },
+            lower: { color: '#8B5CF6', label: 'Lower Goal', goal: strengthData.goals.lower },
+            cardio: { color: '#22C55E', label: 'Cardio Goal', goal: strengthData.goals.cardio }
+        };
+
+        Object.entries(goalConfig).forEach(([key, config]) => {
+            if (config.goal !== null && config.goal !== undefined) {
+                const goalY = padding.top + chartHeight - ((config.goal - minStrength) / strengthRange * chartHeight);
+
+                // Only draw if within visible range
+                if (goalY >= padding.top && goalY <= padding.top + chartHeight) {
+                    ctx.save();
+
+                    // Draw dashed goal line
+                    ctx.strokeStyle = config.color;
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([8, 4]);
+                    ctx.globalAlpha = 0.5;
+                    ctx.beginPath();
+                    ctx.moveTo(padding.left, goalY);
+                    ctx.lineTo(width - padding.right, goalY);
+                    ctx.stroke();
+
+                    // Draw goal label INSIDE chart at right end
+                    ctx.setLineDash([]);
+                    ctx.globalAlpha = 1;
+
+                    const labelText = `${config.goal}%`;
+                    ctx.font = '700 10px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
+                    const textWidth = ctx.measureText(labelText).width;
+
+                    // Background pill at right end of line, inside chart
+                    const pillPadding = 4;
+                    const pillWidth = textWidth + pillPadding * 2;
+                    const pillHeight = 12;
+                    const pillX = width - padding.right - pillWidth - 4;
+                    const pillY = goalY - pillHeight / 2;
+                    const pillRadius = 3;
+
+                    ctx.fillStyle = hexToRgba(config.color, 0.9);
+                    ctx.beginPath();
+                    ctx.moveTo(pillX + pillRadius, pillY);
+                    ctx.lineTo(pillX + pillWidth - pillRadius, pillY);
+                    ctx.quadraticCurveTo(pillX + pillWidth, pillY, pillX + pillWidth, pillY + pillRadius);
+                    ctx.lineTo(pillX + pillWidth, pillY + pillHeight - pillRadius);
+                    ctx.quadraticCurveTo(pillX + pillWidth, pillY + pillHeight, pillX + pillWidth - pillRadius, pillY + pillHeight);
+                    ctx.lineTo(pillX + pillRadius, pillY + pillHeight);
+                    ctx.quadraticCurveTo(pillX, pillY + pillHeight, pillX, pillY + pillHeight - pillRadius);
+                    ctx.lineTo(pillX, pillY + pillRadius);
+                    ctx.quadraticCurveTo(pillX, pillY, pillX + pillRadius, pillY);
+                    ctx.closePath();
+                    ctx.fill();
+
+                    // White text on colored pill
+                    ctx.fillStyle = '#fff';
+                    ctx.textAlign = 'center';
+                    ctx.fillText(labelText, pillX + pillWidth / 2, goalY + 3);
+
+                    ctx.restore();
+                }
+            }
+        });
     }
 
     // Helper: smooth bezier curve through points (Catmull-Rom spline)
@@ -3077,14 +3148,14 @@ function renderStrengthChart(strengthData, hoveredPoint = null) {
 
     // Draw X-axis labels
     if (referenceData && referenceData.length > 0) {
-        ctx.fillStyle = 'rgba(255,255,255,0.45)';
-        ctx.font = '8px system-ui';
+        ctx.fillStyle = 'rgba(255,255,255,0.5)';
+        ctx.font = '500 10px -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif';
         ctx.textAlign = 'center';
         const labelStep = Math.max(1, Math.ceil(referenceData.length / 6));
         referenceData.forEach((d, i) => {
             if (i % labelStep === 0 || i === referenceData.length - 1) {
                 const x = padding.left + (chartWidth * i / (referenceData.length - 1 || 1));
-                ctx.fillText(d.label, x, height - 5);
+                ctx.fillText(d.label, x, height - 6);
             }
         });
     }
@@ -3127,10 +3198,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         canvas.addEventListener('click', function(e) {
             const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width / 2;
-            const scaleY = canvas.height / rect.height / 2;
-            const x = (e.clientX - rect.left) * scaleX;
-            const y = (e.clientY - rect.top) * scaleY;
+            // Coordinates are in CSS pixels (ctx.scale handles the DPI scaling)
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
 
             // Check if click is in any legend area
             for (const area of window.strengthChartLegendAreas || []) {
@@ -3148,10 +3218,9 @@ document.addEventListener('DOMContentLoaded', function() {
 
         canvas.addEventListener('mousemove', function(e) {
             const rect = canvas.getBoundingClientRect();
-            const scaleX = canvas.width / rect.width / 2;
-            const scaleY = canvas.height / rect.height / 2;
-            const x = (e.clientX - rect.left) * scaleX;
-            const y = (e.clientY - rect.top) * scaleY;
+            // Coordinates are in CSS pixels (ctx.scale handles the DPI scaling)
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
 
             // Check legend hover
             let overLegend = false;
@@ -3274,6 +3343,105 @@ function switchStrengthTab(category) {
     loadStrengthDetails(category);
 }
 
+function updateStrengthGoalSection(category, data) {
+    const goalSection = document.getElementById('strength-goal-section');
+    if (!goalSection) return;
+
+    // Get goal from cached strength data
+    const goals = cachedStrengthData?.goals || {};
+    const goalMap = {
+        upper_body: goals.upper,
+        lower_body: goals.lower,
+        cardio: goals.cardio
+    };
+    const goal = goalMap[category];
+
+    // Get current progress (average across exercises in this category)
+    let currentProgress = 0;
+    if (data?.exercises?.length > 0) {
+        const progressValues = data.exercises.map(ex => ex.progress_pct || 0);
+        currentProgress = Math.round(progressValues.reduce((a, b) => a + b, 0) / progressValues.length);
+    }
+
+    // Category colors
+    const categoryColors = {
+        upper_body: {
+            icon: 'bg-orange-500/20',
+            iconText: 'text-orange-400',
+            progress: 'text-orange-400',
+            bar: 'from-orange-500 to-orange-400'
+        },
+        lower_body: {
+            icon: 'bg-purple-500/20',
+            iconText: 'text-purple-400',
+            progress: 'text-purple-400',
+            bar: 'from-purple-500 to-purple-400'
+        },
+        cardio: {
+            icon: 'bg-green-500/20',
+            iconText: 'text-green-400',
+            progress: 'text-green-400',
+            bar: 'from-green-500 to-green-400'
+        }
+    };
+    const colors = categoryColors[category] || categoryColors.upper_body;
+
+    // If no goal is set, hide the section
+    if (goal === null || goal === undefined) {
+        goalSection.classList.add('hidden');
+        return;
+    }
+
+    // Show the section
+    goalSection.classList.remove('hidden');
+
+    // Update colors
+    const iconEl = document.getElementById('strength-goal-icon');
+    const currentEl = document.getElementById('strength-goal-current');
+    const barEl = document.getElementById('strength-goal-bar');
+
+    if (iconEl) {
+        iconEl.className = `w-8 h-8 rounded-lg ${colors.icon} flex items-center justify-center`;
+        const svg = iconEl.querySelector('svg');
+        if (svg) svg.className = `w-4 h-4 ${colors.iconText}`;
+    }
+    if (currentEl) {
+        currentEl.className = `text-lg font-bold ${colors.progress}`;
+    }
+    if (barEl) {
+        barEl.className = `absolute inset-y-0 left-0 bg-gradient-to-r ${colors.bar} rounded-full transition-all duration-500`;
+    }
+
+    // Update values
+    const targetEl = document.getElementById('strength-goal-target');
+    const statusEl = document.getElementById('strength-goal-status');
+
+    if (targetEl) targetEl.textContent = `+${goal}%`;
+    if (currentEl) {
+        const prefix = currentProgress >= 0 ? '+' : '';
+        currentEl.textContent = `${prefix}${currentProgress}%`;
+    }
+
+    // Calculate progress percentage (capped at 100% for display)
+    let progressPct = goal > 0 ? Math.round((currentProgress / goal) * 100) : 0;
+    const cappedProgressPct = Math.min(progressPct, 100);
+    if (barEl) barEl.style.width = `${cappedProgressPct}%`;
+
+    // Update status text
+    if (statusEl) {
+        if (progressPct >= 100) {
+            statusEl.textContent = '🎉 Goal achieved!';
+            statusEl.className = 'text-xs text-green-400 mt-2 text-center font-semibold';
+        } else if (progressPct >= 80) {
+            statusEl.textContent = `${progressPct}% of goal - Almost there!`;
+            statusEl.className = 'text-xs text-yellow-400 mt-2 text-center';
+        } else {
+            statusEl.textContent = `${progressPct}% of goal reached`;
+            statusEl.className = 'text-xs text-gray-500 mt-2 text-center';
+        }
+    }
+}
+
 async function loadStrengthDetails(category) {
     const listEl = document.getElementById('strength-details-list');
     const loadingEl = document.getElementById('strength-details-loading');
@@ -3304,6 +3472,9 @@ async function loadStrengthDetails(category) {
         strengthDetailsCache[category] = data;
 
         loadingEl?.classList.add('hidden');
+
+        // Update goal section
+        updateStrengthGoalSection(category, data);
 
         if (!data.exercises || data.exercises.length === 0) {
             emptyEl?.classList.remove('hidden');
@@ -5875,6 +6046,69 @@ let metricsWeightChart = null;
 let metricsStrengthChart = null;
 let metricsDietChart = null;
 
+// Toggle strength goals UI visibility
+function toggleStrengthGoalsUI() {
+    const ui = document.getElementById('strength-goals-ui');
+    if (ui) {
+        ui.classList.toggle('hidden');
+    }
+}
+
+// Save strength goals for a client
+async function saveStrengthGoals() {
+    const clientId = document.getElementById('metrics-client-id')?.value;
+    if (!clientId) {
+        showToast('No client selected');
+        return;
+    }
+
+    const upper = document.getElementById('goal-upper')?.value;
+    const lower = document.getElementById('goal-lower')?.value;
+    const cardio = document.getElementById('goal-cardio')?.value;
+
+    try {
+        const response = await fetch(`${apiBase}/api/trainer/client/${clientId}/strength-goals`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                upper: upper ? parseInt(upper) : null,
+                lower: lower ? parseInt(lower) : null,
+                cardio: cardio ? parseInt(cardio) : null
+            })
+        });
+
+        if (!response.ok) throw new Error('Failed to save goals');
+
+        const data = await response.json();
+        showToast('Goals saved!');
+
+        // Hide the UI and refresh the chart
+        toggleStrengthGoalsUI();
+        await fetchAndRenderStrengthChart(clientId);
+    } catch (e) {
+        console.error('Error saving goals:', e);
+        showToast('Error saving goals');
+    }
+}
+
+// Load existing goals into the UI
+async function loadStrengthGoals(clientId) {
+    try {
+        const response = await fetch(`${apiBase}/api/trainer/client/${clientId}/strength-goals`, {
+            credentials: 'include'
+        });
+        if (response.ok) {
+            const goals = await response.json();
+            if (document.getElementById('goal-upper')) document.getElementById('goal-upper').value = goals.upper || '';
+            if (document.getElementById('goal-lower')) document.getElementById('goal-lower').value = goals.lower || '';
+            if (document.getElementById('goal-cardio')) document.getElementById('goal-cardio').value = goals.cardio || '';
+        }
+    } catch (e) {
+        console.error('Error loading goals:', e);
+    }
+}
+
 async function openMetricsModal(clientId = null) {
     if (!clientId) {
         // Try to get from client details modal dataset (most reliable source when opened from client card)
@@ -5913,12 +6147,19 @@ async function openMetricsModal(clientId = null) {
         fetchAndRenderWeightChart(clientId),
         fetchAndRenderStrengthChart(clientId),
         fetchAndRenderDietChart(clientId),
-        fetchAndRenderWeekStreak(clientId)
+        fetchAndRenderWeekStreak(clientId),
+        loadStrengthGoals(clientId)
     ]);
 }
 
 async function fetchAndRenderWeightChart(clientId) {
     try {
+        // Destroy existing chart if it exists
+        if (metricsWeightChart) {
+            metricsWeightChart.destroy();
+            metricsWeightChart = null;
+        }
+
         const response = await fetch(`${apiBase}/api/trainer/client/${clientId}/weight-history?period=month`, {
             credentials: 'include'
         });
@@ -5979,6 +6220,12 @@ async function fetchAndRenderWeightChart(clientId) {
 
 async function fetchAndRenderStrengthChart(clientId) {
     try {
+        // Destroy existing chart if it exists
+        if (metricsStrengthChart) {
+            metricsStrengthChart.destroy();
+            metricsStrengthChart = null;
+        }
+
         const response = await fetch(`${apiBase}/api/trainer/client/${clientId}/strength-progress?period=month`, {
             credentials: 'include'
         });
@@ -6021,17 +6268,22 @@ async function fetchAndRenderStrengthChart(clientId) {
 
         for (const [key, cat] of Object.entries(data.categories)) {
             if (cat.data && cat.data.length > 0) {
-                // Filter out null values and map strength values
                 const validData = cat.data.filter(d => d.strength !== null);
                 if (validData.length > 0) {
                     datasets.push({
                         label: labels[key],
-                        data: cat.data.map(d => d.strength),  // Use 'strength' field, not 'progress'
+                        data: cat.data.map(d => d.strength),
                         borderColor: colors[key],
-                        backgroundColor: 'transparent',
-                        tension: 0.4,
-                        pointRadius: 2,
-                        spanGaps: true  // Connect lines across null values
+                        backgroundColor: colors[key] + '15',  // Subtle fill
+                        borderWidth: 3,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointBackgroundColor: colors[key],
+                        pointBorderColor: '#1a1a1a',
+                        pointBorderWidth: 2,
+                        pointHoverRadius: 6,
+                        fill: true,
+                        spanGaps: true
                     });
                 }
             }
@@ -6041,19 +6293,91 @@ async function fetchAndRenderStrengthChart(clientId) {
         const firstCat = Object.values(data.categories).find(c => c.data && c.data.length > 0);
         const chartLabels = firstCat ? firstCat.data.map(d => d.date.slice(5)) : [];
 
+        // Add goal lines as horizontal dashed datasets (hidden from legend)
+        const goalData = [];
+        if (data.goals) {
+            const goalColors = { upper: '#F97316', lower: '#8B5CF6', cardio: '#22C55E' };
+            const goalLabels = { upper: 'Upper Goal', lower: 'Lower Goal', cardio: 'Cardio Goal' };
+
+            for (const [key, value] of Object.entries(data.goals)) {
+                if (value !== null && value !== undefined) {
+                    goalData.push({ key, value, color: goalColors[key], label: goalLabels[key] });
+                    datasets.push({
+                        label: goalLabels[key],
+                        data: chartLabels.map(() => value),
+                        borderColor: goalColors[key] + '80',  // 50% opacity
+                        backgroundColor: 'transparent',
+                        borderDash: [10, 5],
+                        borderWidth: 2,
+                        pointRadius: 0,
+                        tension: 0,
+                        hidden: false
+                    });
+                }
+            }
+        }
+
         metricsStrengthChart = new Chart(ctx, {
             type: 'line',
             data: { labels: chartLabels, datasets },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                plugins: { legend: { display: true, position: 'top', labels: { boxWidth: 12, font: { size: 9 }, color: '#999' } } },
+                layout: {
+                    padding: { right: 60, top: 10, bottom: 10 }  // Room for goal labels
+                },
+                plugins: {
+                    legend: {
+                        display: true,
+                        position: 'top',
+                        align: 'start',
+                        labels: {
+                            boxWidth: 16,
+                            boxHeight: 3,
+                            font: { size: 12, weight: '500' },
+                            color: '#ccc',
+                            padding: 20,
+                            usePointStyle: false,
+                            filter: (item) => !item.text.includes('Goal')  // Hide goal lines from legend
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0,0,0,0.8)',
+                        titleFont: { size: 13 },
+                        bodyFont: { size: 12 },
+                        padding: 12,
+                        cornerRadius: 8
+                    }
+                },
                 scales: {
-                    x: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#666', font: { size: 9 } } },
-                    y: { grid: { color: 'rgba(255,255,255,0.05)' }, ticks: { color: '#666', font: { size: 9 }, callback: v => v + '%' } }
+                    x: {
+                        grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                        ticks: { color: '#888', font: { size: 11 }, padding: 8 }
+                    },
+                    y: {
+                        grid: { color: 'rgba(255,255,255,0.05)', drawBorder: false },
+                        ticks: {
+                            color: '#888',
+                            font: { size: 11 },
+                            padding: 8,
+                            callback: v => v + '%'
+                        }
+                    }
                 }
             }
         });
+
+        // Add goal labels on the right side of the chart
+        const labelsContainer = document.getElementById('strength-goal-labels');
+        if (labelsContainer && goalData.length > 0) {
+            labelsContainer.innerHTML = goalData.map(g => `
+                <div class="flex items-center gap-1 bg-black/60 px-2 py-1 rounded text-xs" style="color: ${g.color}">
+                    <span class="font-bold">${g.value}%</span>
+                </div>
+            `).join('');
+        } else if (labelsContainer) {
+            labelsContainer.innerHTML = '';
+        }
     } catch (e) {
         console.error('Error fetching strength data:', e);
     }
@@ -6061,6 +6385,12 @@ async function fetchAndRenderStrengthChart(clientId) {
 
 async function fetchAndRenderDietChart(clientId) {
     try {
+        // Destroy existing chart if it exists
+        if (metricsDietChart) {
+            metricsDietChart.destroy();
+            metricsDietChart = null;
+        }
+
         const response = await fetch(`${apiBase}/api/trainer/client/${clientId}/diet-consistency?period=month`, {
             credentials: 'include'
         });

@@ -858,11 +858,20 @@ class ClientService:
 
             legacy_result = calculate_category_progress(all_date_data) if all_date_data else {"data": []}
 
+            # Fetch strength goals set by trainer
+            profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
+            goals = {
+                "upper": profile.strength_goal_upper if profile else None,
+                "lower": profile.strength_goal_lower if profile else None,
+                "cardio": profile.strength_goal_cardio if profile else None
+            }
+
             return {
                 "progress": round(overall_progress, 1),
                 "trend": overall_trend,
                 "data": legacy_result["data"],  # Legacy combined data
-                "categories": categories
+                "categories": categories,
+                "goals": goals
             }
         except Exception as e:
             logger.error(f"Error calculating strength progress: {e}")
@@ -874,7 +883,8 @@ class ClientService:
                     "upper_body": {"progress": 0, "trend": "stable", "data": []},
                     "lower_body": {"progress": 0, "trend": "stable", "data": []},
                     "cardio": {"progress": 0, "trend": "stable", "data": []}
-                }
+                },
+                "goals": {"upper": None, "lower": None, "cardio": None}
             }
         finally:
             db.close()

@@ -293,6 +293,9 @@ class FriendService:
 
     def get_friend_progress(self, user_id: str, friend_id: str) -> dict:
         """Get detailed progress data for a friend (visible only to friends)."""
+        print(f"[FriendProgress] START - Getting progress for friend {friend_id}")
+        logger.info(f"[FriendProgress] Getting progress for friend {friend_id} requested by {user_id}")
+
         # Verify they are actually friends
         if not self.are_friends(user_id, friend_id):
             raise HTTPException(status_code=403, detail="Not friends - cannot view progress")
@@ -310,8 +313,8 @@ class FriendService:
             thirty_days_ago = (datetime.utcnow() - timedelta(days=30)).date().isoformat()
             weight_history = db.query(WeightHistoryORM).filter(
                 WeightHistoryORM.client_id == friend_id,
-                WeightHistoryORM.date >= thirty_days_ago
-            ).order_by(WeightHistoryORM.date.asc()).all()
+                WeightHistoryORM.recorded_at >= thirty_days_ago
+            ).order_by(WeightHistoryORM.recorded_at.asc()).all()
 
             # Get health scores (last 7 days)
             seven_days_ago = (datetime.utcnow() - timedelta(days=7)).date().isoformat()
@@ -337,7 +340,34 @@ class FriendService:
                     "reps": log.reps
                 })
 
-            return {
+            # Get strength goals (with safe attribute access)
+            strength_goals = {
+                "upper": getattr(profile, 'strength_goal_upper', None),
+                "lower": getattr(profile, 'strength_goal_lower', None),
+                "cardio": getattr(profile, 'strength_goal_cardio', None)
+            }
+            logger.info(f"[FriendProgress] Strength goals: {strength_goals}")
+
+            # Calculate category strength percentages (like main strength chart)
+            category_strength = {
+                "categories": {
+                    "upper_body": {"progress": 0, "trend": "stable", "data": []},
+                    "lower_body": {"progress": 0, "trend": "stable", "data": []},
+                    "cardio": {"progress": 0, "trend": "stable", "data": []}
+                },
+                "goals": strength_goals
+            }
+            try:
+                from service_modules.client_service import ClientService
+                client_service = ClientService()
+                strength_response = client_service.get_strength_progress(friend_id, "month")
+                if strength_response:
+                    category_strength = strength_response
+                logger.info(f"[FriendProgress] Got category strength data")
+            except Exception as e:
+                logger.error(f"[FriendProgress] Error getting strength progress: {e}")
+
+            result = {
                 "user_id": friend_id,
                 "username": user.username,
                 "profile_picture": user.profile_picture,
@@ -345,7 +375,7 @@ class FriendService:
                 "gems": profile.gems or 0,
                 "health_score": profile.health_score or 0,
                 "weight_history": [
-                    {"date": w.date, "weight": w.weight}
+                    {"date": w.recorded_at, "weight": w.weight}
                     for w in weight_history
                 ],
                 "weekly_health_scores": [
@@ -353,8 +383,20 @@ class FriendService:
                     for d in diet_summaries
                 ],
                 "strength_progress": strength_data,
+                "strength_by_category": category_strength,
+                "strength_goals": strength_goals,
                 "current_weight": profile.weight
             }
+            logger.info(f"[FriendProgress] Success - returning data for {user.username}")
+            return result
+        except HTTPException:
+            raise
+        except Exception as e:
+            print(f"[FriendProgress] ERROR: {e}")
+            import traceback
+            traceback.print_exc()
+            logger.error(f"[FriendProgress] Unexpected error: {e}", exc_info=True)
+            raise HTTPException(status_code=500, detail=f"Error fetching friend progress: {str(e)}")
         finally:
             db.close()
 

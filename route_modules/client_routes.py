@@ -37,6 +37,12 @@ class FitnessGoalRequest(BaseModel):
     fitness_goal: str  # "cut", "maintain", "bulk"
 
 
+class StrengthGoalsRequest(BaseModel):
+    upper: Optional[int] = None  # Target % increase for upper body
+    lower: Optional[int] = None  # Target % increase for lower body
+    cardio: Optional[int] = None  # Target % increase for cardio
+
+
 @router.get("/api/client/data", response_model=ClientData)
 async def get_client_data(
     service: ClientService = Depends(get_client_service),
@@ -156,6 +162,63 @@ async def toggle_client_premium(
 ):
     """Toggle premium status for a client (trainer access)."""
     return service.toggle_premium_status(client_id)
+
+
+@router.get("/api/trainer/client/{client_id}/strength-goals")
+async def get_client_strength_goals(
+    client_id: str,
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Get a client's strength goals (trainer access)."""
+    if current_user.role != "trainer":
+        raise HTTPException(status_code=403, detail="Only trainers can access client goals")
+
+    db = get_db_session()
+    try:
+        profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
+        if not profile:
+            raise HTTPException(status_code=404, detail="Client not found")
+        return {
+            "upper": profile.strength_goal_upper,
+            "lower": profile.strength_goal_lower,
+            "cardio": profile.strength_goal_cardio
+        }
+    finally:
+        db.close()
+
+
+@router.post("/api/trainer/client/{client_id}/strength-goals")
+async def set_client_strength_goals(
+    client_id: str,
+    request: StrengthGoalsRequest,
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Set strength goals for a client (trainer access)."""
+    if current_user.role != "trainer":
+        raise HTTPException(status_code=403, detail="Only trainers can set client goals")
+
+    db = get_db_session()
+    try:
+        profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
+        if not profile:
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        if request.upper is not None:
+            profile.strength_goal_upper = request.upper
+        if request.lower is not None:
+            profile.strength_goal_lower = request.lower
+        if request.cardio is not None:
+            profile.strength_goal_cardio = request.cardio
+
+        db.commit()
+        return {
+            "message": "Strength goals updated",
+            "upper": profile.strength_goal_upper,
+            "lower": profile.strength_goal_lower,
+            "cardio": profile.strength_goal_cardio
+        }
+    finally:
+        db.close()
 
 
 @router.post("/api/client/quest/toggle")

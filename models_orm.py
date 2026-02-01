@@ -98,6 +98,11 @@ class ClientProfileORM(Base):
     # Physical stats
     weight = Column(Float, nullable=True)  # Weight in kg
 
+    # Strength goals set by trainer (target % increase)
+    strength_goal_upper = Column(Integer, nullable=True)  # Upper body target %
+    strength_goal_lower = Column(Integer, nullable=True)  # Lower body target %
+    strength_goal_cardio = Column(Integer, nullable=True)  # Cardio target %
+
 class WeightHistoryORM(Base):
     __tablename__ = "weight_history"
 
@@ -185,6 +190,9 @@ class ClientDailyDietSummaryORM(Base):
 
     # Meal count
     meal_count = Column(Integer, default=0)
+
+    # Daily health score (calculated from diet adherence)
+    health_score = Column(Integer, default=0)
 
 class ClientExerciseLogORM(Base):
     __tablename__ = "client_exercise_log"
