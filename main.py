@@ -394,7 +394,8 @@ async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "cli
         "mode": mode,
         "token": token,
         "cache_buster": str(int(time.time())),  # Use timestamp directly
-        "static_build": False
+        "static_build": False,
+        "stripe_publishable_key": os.getenv("STRIPE_PUBLISHABLE_KEY", "")
     }
     logger.info(f"Rendering {template_name} with cache_buster={context['cache_buster']}")
     return templates.TemplateResponse(template_name, context)

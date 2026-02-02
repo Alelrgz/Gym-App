@@ -14,8 +14,9 @@
             💬
         </div>
         <div data-action="showModal" data-target="notification-modal"
-            class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect">
+            class="notification-bell w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect relative">
             🔔
+            <span class="notification-badge hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
         </div>
     </div>
 </div>
@@ -831,8 +832,9 @@ function renderFriendHealthBars(data) {
             💬
         </div>
         <div data-action="showModal" data-target="notification-modal"
-            class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect">
+            class="notification-bell w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect relative">
             🔔
+            <span class="notification-badge hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
         </div>
     </div>
 </div>
@@ -1675,8 +1677,9 @@ if (mealForm) {
             💬
         </div>
         <div data-action="showModal" data-target="notification-modal"
-            class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect">
+            class="notification-bell w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect relative">
             🔔
+            <span class="notification-badge hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
         </div>
     </div>
 </div>
@@ -2227,8 +2230,9 @@ setTimeout(() => loadGymAndTrainerInfo(), 100);
             💬
         </div>
         <div data-action="showModal" data-target="notification-modal"
-            class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect">
+            class="notification-bell w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect relative">
             🔔
+            <span class="notification-badge hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
         </div>
     </div>
 </div>
@@ -2324,15 +2328,15 @@ setTimeout(() => loadGymAndTrainerInfo(), 100);
     <div class="space-y-3">
         <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1">Settings</h3>
 
-        <button onclick="showToast('Payment settings feature coming soon!')"
+        <button onclick="openSubscriptionPlans()"
             class="w-full bg-white/5 p-4 rounded-2xl flex items-center justify-between tap-effect group hover:bg-white/10 transition">
             <div class="flex items-center space-x-4">
-                <div class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center text-blue-400">
-                    💳
+                <div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                    ⭐
                 </div>
                 <div class="text-left">
-                    <p class="font-bold text-white group-hover:text-blue-400 transition">Payment Settings</p>
-                    <p class="text-xs text-gray-400">Manage cards & billing</p>
+                    <p class="font-bold text-white group-hover:text-primary transition">Membership Plans</p>
+                    <p id="membership-status-text" class="text-xs text-gray-400">View & manage subscription</p>
                 </div>
             </div>
             <span class="text-gray-500">→</span>
@@ -2594,8 +2598,9 @@ async function selectFitnessGoal(goal) {
             <span id="unread-messages-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center hidden">0</span>
         </div>
         <div data-action="showModal" data-target="notification-modal"
-            class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect">
+            class="notification-bell w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect relative">
             🔔
+            <span class="notification-badge hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
         </div>
     </div>
 </div>
@@ -4119,7 +4124,28 @@ async function uploadProfilePicture(input) {
 // Load profile picture on page load
 document.addEventListener('DOMContentLoaded', () => {
     loadProfilePicture();
+    loadNotificationCount();
+    setInterval(loadNotificationCount, 30000); // Poll every 30 seconds
 });
+
+// --- NOTIFICATION BADGE FUNCTIONS ---
+async function loadNotificationCount() {
+    try {
+        const res = await fetch('/api/notifications/unread-count');
+        const data = await res.json();
+        const badges = document.querySelectorAll('.notification-badge');
+        badges.forEach(badge => {
+            if (data.unread_count > 0) {
+                badge.textContent = data.unread_count > 9 ? '9+' : data.unread_count;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        });
+    } catch (e) {
+        console.error('Error loading notification count:', e);
+    }
+}
 
 // --- TRAINER PROFILE & BROWSE FUNCTIONS ---
 let currentViewingTrainerId = null;

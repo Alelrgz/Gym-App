@@ -5,7 +5,7 @@ from datetime import timedelta
 from .base import (
     HTTPException, uuid, json, logging, datetime,
     get_db_session, CourseORM, CourseLessonORM, UserORM, TrainerScheduleORM,
-    ClientScheduleORM, ClientProfileORM
+    ClientScheduleORM, ClientProfileORM, NotificationORM
 )
 
 logger = logging.getLogger("gym_app")
@@ -104,6 +104,14 @@ class CourseService:
                     course_dict["schedule_entries_created"] = schedule_result.get("created", 0)
                 except Exception as e:
                     logger.warning(f"Failed to auto-generate schedule for course {new_id}: {e}")
+
+            # Notify all gym clients about the new course
+            if gym_id:
+                try:
+                    trainer_name = trainer.username if trainer else "Your trainer"
+                    self._notify_clients_of_new_course(db, gym_id, course, trainer_name)
+                except Exception as e:
+                    logger.warning(f"Failed to send course notifications: {e}")
 
             return course_dict
         except Exception as e:
@@ -600,6 +608,39 @@ class CourseService:
                 return True
 
         return False
+
+    def _notify_clients_of_new_course(self, db, gym_id: str, course: CourseORM, trainer_name: str):
+        """Send notifications to all clients of the gym about a new course."""
+        try:
+            # Get all clients at this gym
+            clients = db.query(ClientProfileORM).filter(
+                ClientProfileORM.gym_id == gym_id
+            ).all()
+
+            # Build course info for notification
+            time_info = f" @ {course.time_slot}" if course.time_slot else ""
+
+            for client in clients:
+                notification = NotificationORM(
+                    user_id=client.id,
+                    type="course",
+                    title="🆕 New Course Available!",
+                    message=f"{trainer_name} added a new course: {course.name}{time_info}",
+                    data=json.dumps({
+                        "course_id": course.id,
+                        "course_name": course.name,
+                        "trainer_name": trainer_name
+                    }),
+                    read=False,
+                    created_at=datetime.utcnow().isoformat()
+                )
+                db.add(notification)
+
+            db.commit()
+            logger.info(f"Sent new course notifications to {len(clients)} clients for course {course.id}")
+
+        except Exception as e:
+            logger.error(f"Error sending course notifications: {e}")
 
     # --- CLIENT-FACING METHODS ---
 

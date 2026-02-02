@@ -1899,3 +1899,143 @@
         </div>
     </div>
 </div>
+
+<!-- Subscription Plans Modal -->
+<div id="subscription-plans-modal"
+    class="fixed inset-0 bg-black/90 z-[70] hidden flex items-center justify-center p-4 backdrop-blur-sm"
+    onclick="hideModal('subscription-plans-modal')">
+    <div class="bg-[#1a1a1a] w-full max-w-lg max-h-[90vh] rounded-3xl overflow-hidden border border-white/10 slide-up"
+        onclick="event.stopPropagation()">
+        <!-- Header -->
+        <div class="p-6 border-b border-white/10 bg-gradient-to-r from-primary/20 to-purple-500/20">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h2 class="text-2xl font-bold text-white">Membership Plans</h2>
+                    <p class="text-sm text-white/60 mt-1">Choose the plan that fits your goals</p>
+                </div>
+                <button onclick="hideModal('subscription-plans-modal')"
+                    class="text-gray-400 hover:text-white text-2xl">✕</button>
+            </div>
+        </div>
+
+        <!-- Current Subscription Banner (hidden if no subscription) -->
+        <div id="current-subscription-banner" class="hidden px-6 py-3 bg-green-500/10 border-b border-green-500/20">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-3">
+                    <span class="text-green-400 text-xl">✓</span>
+                    <div>
+                        <p class="text-sm font-semibold text-green-400">Active Subscription</p>
+                        <p id="current-plan-name" class="text-xs text-green-300/70">Premium Plan</p>
+                    </div>
+                </div>
+                <button onclick="showCancelSubscriptionConfirm()" class="text-xs text-red-400 hover:text-red-300 underline">
+                    Cancel
+                </button>
+            </div>
+        </div>
+
+        <!-- Active Offers Banner -->
+        <div id="active-offers-banner" class="hidden px-6 py-3 bg-gradient-to-r from-green-500/10 to-yellow-500/10 border-b border-green-500/20">
+            <div class="flex items-center gap-3">
+                <span class="text-2xl">🎁</span>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold text-green-400" id="offer-banner-title">Special Offers Available!</p>
+                    <p class="text-xs text-green-300/70" id="offer-banner-description">Check out our current deals</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Plans List -->
+        <div id="subscription-plans-list" class="p-6 space-y-4 overflow-y-auto max-h-[50vh]">
+            <!-- Plans will be loaded here dynamically -->
+            <div class="text-center py-8 text-white/50">
+                <div class="animate-spin text-3xl mb-2">⏳</div>
+                <p>Loading plans...</p>
+            </div>
+        </div>
+
+        <!-- Payment Form (hidden until plan selected) -->
+        <div id="payment-form-section" class="hidden border-t border-white/10">
+            <div class="p-6">
+                <h3 class="text-lg font-bold mb-4 text-white">Payment Details</h3>
+                <div id="selected-plan-summary" class="mb-4 p-3 bg-white/5 rounded-xl border border-white/10">
+                    <div class="flex justify-between items-center">
+                        <span id="selected-plan-name" class="font-semibold">Plan Name</span>
+                        <div class="text-right">
+                            <span id="selected-plan-price" class="text-primary font-bold">$0/mo</span>
+                            <span id="selected-plan-original-price" class="hidden text-sm text-gray-400 line-through ml-2"></span>
+                        </div>
+                    </div>
+                    <div id="applied-discount-info" class="hidden mt-2 text-xs text-green-400">
+                        ✓ <span id="applied-discount-text">Discount applied!</span>
+                    </div>
+                </div>
+
+                <!-- Coupon Code Input -->
+                <div class="mb-4">
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1 block mb-2">Have a coupon code?</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="coupon-code-input"
+                            class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white uppercase focus:border-green-500/50 outline-none transition"
+                            placeholder="Enter code">
+                        <button type="button" onclick="applyCouponCode()"
+                            class="px-4 py-3 bg-green-500/20 text-green-400 rounded-xl hover:bg-green-500/30 transition font-semibold text-sm">
+                            Apply
+                        </button>
+                    </div>
+                    <div id="coupon-message" class="text-xs mt-2 hidden"></div>
+                </div>
+
+                <!-- Stripe Card Element -->
+                <div class="mb-4">
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1 block mb-2">Card Information</label>
+                    <div id="card-element" class="bg-white/5 border border-white/10 rounded-xl p-4 min-h-[44px]">
+                        <!-- Stripe Elements will be inserted here -->
+                    </div>
+                    <div id="card-errors" class="text-red-400 text-xs mt-2 hidden"></div>
+                </div>
+
+                <button id="subscribe-button" onclick="processSubscription()"
+                    class="w-full bg-primary text-white font-bold py-4 rounded-xl hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                    <span id="subscribe-button-text">Subscribe Now</span>
+                    <span id="subscribe-spinner" class="hidden animate-spin">⏳</span>
+                </button>
+
+                <button onclick="cancelPaymentForm()" class="w-full mt-2 text-white/50 hover:text-white text-sm py-2">
+                    ← Back to plans
+                </button>
+
+                <p class="text-[10px] text-white/30 text-center mt-4">
+                    🔒 Secure payment powered by Stripe. Your card details are never stored on our servers.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cancel Subscription Confirmation Modal -->
+<div id="cancel-subscription-modal"
+    class="fixed inset-0 bg-black/90 z-[80] hidden flex items-center justify-center p-4 backdrop-blur-sm"
+    onclick="hideModal('cancel-subscription-modal')">
+    <div class="bg-[#1a1a1a] w-full max-w-sm rounded-3xl p-6 border border-white/10 slide-up"
+        onclick="event.stopPropagation()">
+        <div class="text-center">
+            <span class="text-5xl mb-4 block">⚠️</span>
+            <h3 class="text-xl font-bold text-white mb-2">Cancel Subscription?</h3>
+            <p class="text-sm text-white/60 mb-6">
+                Your subscription will remain active until the end of the current billing period. You can resubscribe anytime.
+            </p>
+
+            <div class="space-y-3">
+                <button onclick="confirmCancelSubscription()"
+                    class="w-full bg-red-500/20 text-red-400 font-bold py-3 rounded-xl hover:bg-red-500/30 transition">
+                    Yes, Cancel Subscription
+                </button>
+                <button onclick="hideModal('cancel-subscription-modal')"
+                    class="w-full bg-white/10 text-white font-bold py-3 rounded-xl hover:bg-white/20 transition">
+                    Keep My Subscription
+                </button>
+            </div>
+        </div>
+    </div>
+</div>

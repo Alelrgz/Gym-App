@@ -31,18 +31,24 @@
     </div>
 </nav>
 
-<div class="p-6 lg:pt-0 pt-10 max-w-6xl mx-auto">
-    <h2 class="text-xl lg:text-2xl font-bold text-center lg:text-left mb-6" id="gym-name-owner">{{ 'Settings' if mode == 'settings' else ('Trainers' if mode == 'trainers' else 'Dashboard') }}</h2>
+<div class="px-5 py-5 lg:pt-0 pt-8 max-w-6xl mx-auto">
+    <!-- Mobile header -->
+    <div class="lg:hidden text-center mb-5">
+        <h1 class="text-2xl font-black tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent" id="gym-name-owner">My Gym</h1>
+        <p class="text-xs text-gray-500 uppercase tracking-widest mt-1" id="section-title-mobile">{{ 'Settings' if mode == 'settings' else ('Trainers' if mode == 'trainers' else 'Dashboard') }}</p>
+    </div>
+    <!-- Desktop header -->
+    <h2 class="hidden lg:block text-2xl font-bold text-left mb-6">{{ 'Settings' if mode == 'settings' else ('Trainers' if mode == 'trainers' else 'Dashboard') }}</h2>
 
     {% if mode == 'settings' %}
     <!-- ==================== SETTINGS MODE ==================== -->
 
     <!-- Gym Code Card - Prominent -->
-    {% call card(classes="p-6 mb-6") %}
+    {% call card(classes="p-5 mb-5") %}
     <div class="text-center">
         <p class="text-xs text-gray-400 uppercase tracking-wider mb-2">Your Gym Code</p>
         <p class="text-4xl font-mono font-black text-primary tracking-widest mb-2" id="gym-code-display">------</p>
-        <p class="text-sm text-gray-500 mb-4">Share this code with trainers and clients to join your gym</p>
+        <p class="text-sm text-gray-500 mb-4">Share this code with trainers and clients</p>
         <button onclick="copyGymCode()" id="copy-gym-code-btn"
             class="bg-primary hover:bg-primary/80 text-white px-6 py-3 rounded-xl transition flex items-center gap-2 mx-auto font-bold">
             <span id="copy-icon">📋</span>
@@ -52,7 +58,7 @@
     {% endcall %}
 
     <!-- Account Info -->
-    {% call card(classes="p-4 mb-6") %}
+    {% call card(classes="p-4 mb-5") %}
     <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Account</h3>
     <div class="space-y-3">
         <div class="flex justify-between items-center">
@@ -62,6 +68,59 @@
         <div class="flex justify-between items-center">
             <span class="text-gray-400">Status</span>
             <span class="text-green-400 font-semibold">Active</span>
+        </div>
+    </div>
+    {% endcall %}
+
+    <!-- Stripe Connect - Payment Setup -->
+    {% call card(classes="p-4 mb-5") %}
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Payment Setup</h3>
+        <span id="stripe-status-badge" class="text-xs px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400">
+            Checking...
+        </span>
+    </div>
+    <div id="stripe-connect-content">
+        <!-- Not Connected State -->
+        <div id="stripe-not-connected" class="hidden">
+            <p class="text-sm text-gray-400 mb-4">
+                Connect your Stripe account to receive payments directly.
+            </p>
+            <button onclick="startStripeConnect()"
+                class="w-full bg-[#635BFF] hover:bg-[#5851DB] text-white py-3 rounded-xl font-bold transition flex items-center justify-center gap-2">
+                <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/>
+                </svg>
+                Connect with Stripe
+            </button>
+        </div>
+
+        <!-- Pending State -->
+        <div id="stripe-pending" class="hidden">
+            <p class="text-sm text-yellow-400 mb-3">
+                ⏳ Setup incomplete. Complete the onboarding.
+            </p>
+            <button onclick="startStripeConnect()"
+                class="w-full bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 py-3 rounded-xl font-bold transition">
+                Continue Setup →
+            </button>
+        </div>
+
+        <!-- Connected State -->
+        <div id="stripe-connected" class="hidden">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <span class="text-green-400 text-xl">✓</span>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-green-400">Payments Enabled</p>
+                    <p class="text-xs text-gray-400">Subscriptions paid to your account</p>
+                </div>
+            </div>
+            <button onclick="openStripeDashboard()"
+                class="w-full bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2">
+                <span>💰</span> View Dashboard
+            </button>
         </div>
     </div>
     {% endcall %}
@@ -76,9 +135,9 @@
 
     <!-- Pending Trainer Approvals -->
     <div id="pending-trainers-section" class="mb-6">
-        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Pending Approvals</h3>
-        <div id="pending-trainers-list" class="space-y-2">
-            <div class="glass-card p-4 text-center text-gray-400 text-sm">
+        <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-3">Pending Approvals</h3>
+        <div id="pending-trainers-list" class="space-y-3">
+            <div class="glass-card p-3 text-center text-gray-400 text-sm">
                 Loading...
             </div>
         </div>
@@ -86,9 +145,9 @@
 
     <!-- Approved Trainers -->
     <div class="mb-6">
-        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Active Trainers</h3>
-        <div id="approved-trainers-list" class="space-y-2">
-            <div class="glass-card p-4 text-center text-gray-400 text-sm">
+        <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-3">Active Trainers</h3>
+        <div id="approved-trainers-list" class="space-y-3">
+            <div class="glass-card p-3 text-center text-gray-400 text-sm">
                 Loading...
             </div>
         </div>
@@ -98,43 +157,59 @@
     <!-- ==================== DASHBOARD MODE (default) ==================== -->
 
     <!-- Pending Staff Approvals - Only show if there are pending -->
-    <div id="pending-trainers-section" class="mb-6 hidden">
-        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Pending Staff Approvals</h3>
-        <div id="pending-trainers-list" class="space-y-2">
+    <div id="pending-trainers-section" class="mb-5 hidden">
+        <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-3">Pending Staff Approvals</h3>
+        <div id="pending-trainers-list" class="space-y-3">
             <!-- Pending trainers will be loaded here -->
         </div>
     </div>
 
     <!-- Revenue Card -->
-    {% call card(classes="p-6 mb-6 relative overflow-hidden") %}
+    {% call card(classes="p-5 mb-5 relative overflow-hidden") %}
     <div class="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent"></div>
     <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Monthly Recurring Revenue</p>
-    <h1 class="text-4xl font-black text-green-400 mb-4" id="revenue-display">$0</h1>
+    <h1 class="text-4xl font-black text-green-400 mb-3" id="revenue-display">$0</h1>
     <div class="flex space-x-4 text-xs text-gray-300">
-        <span><b id="active-subscriptions" class="text-white">0</b> Subscriptions</span>
+        <span><b id="active-subscriptions" class="text-white">0</b> Subs</span>
         <span><b id="active-members" class="text-white">...</b> Active</span>
         <span><b id="staff-active" class="text-white">...</b> Staff</span>
     </div>
     {% endcall %}
 
     <!-- Subscription Plans Section -->
-    <div class="mb-6">
+    <div class="mb-5">
         <div class="flex justify-between items-center mb-3">
-            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1">Subscription Plans</h3>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Subscription Plans</h3>
             <button onclick="openCreatePlanModal()" class="text-xs bg-primary px-3 py-2 rounded-lg hover:bg-primary/80 transition font-semibold">
                 + Create Plan
             </button>
         </div>
         <div id="subscription-plans-list" class="space-y-3">
             <!-- Plans will be loaded here -->
-            <div class="glass-card p-4 text-center text-gray-400 text-sm">
-                No subscription plans yet. Create your first plan to start accepting payments.
+            <div class="glass-card p-3 text-center text-gray-400 text-sm">
+                No subscription plans yet. Create your first plan.
+            </div>
+        </div>
+    </div>
+
+    <!-- Promotional Offers Section -->
+    <div class="mb-5">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">🎁 Promotional Offers</h3>
+            <button onclick="openCreateOfferModal()" class="text-xs bg-green-500 px-3 py-2 rounded-lg hover:bg-green-500/80 transition font-semibold">
+                + Create Offer
+            </button>
+        </div>
+        <div id="offers-list" class="space-y-3">
+            <!-- Offers will be loaded here -->
+            <div class="glass-card p-3 text-center text-gray-400 text-sm">
+                No offers yet. Create offers to attract clients!
             </div>
         </div>
     </div>
 
     <!-- Live Feed Section -->
-    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Live Feed</h3>
+    <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-3">Live Feed</h3>
     <div id="activity-feed" class="space-y-0 glass-card divide-y divide-white/5"></div>
     {% endif %}
 </div>
@@ -206,23 +281,237 @@
     </div>
 </div>
 
+<!-- Create/Edit Offer Modal -->
+<div id="offer-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <h3 class="text-xl font-bold mb-4" id="offer-modal-title">Create Promotional Offer</h3>
+
+        <form id="offer-form" class="space-y-4">
+            <input type="hidden" id="offer-id">
+
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Offer Title</label>
+                <div class="relative">
+                    <input type="text" id="offer-title" required
+                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 pr-10 text-sm text-white outline-none focus:border-green-500/50 transition"
+                        placeholder="e.g., New Year Special, Summer Sale">
+                    <button type="button" onclick="toggleEmojiPicker('offer-title')"
+                        class="absolute right-2 top-1/2 -translate-y-1/2 text-lg hover:scale-110 transition" title="Add emoji">
+                        😀
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Description</label>
+                <div class="relative">
+                    <textarea id="offer-description" rows="2"
+                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 pr-10 text-sm text-white outline-none focus:border-green-500/50 transition"
+                        placeholder="Describe the offer to attract clients"></textarea>
+                    <button type="button" onclick="toggleEmojiPicker('offer-description')"
+                        class="absolute right-2 top-2 text-lg hover:scale-110 transition" title="Add emoji">
+                        😀
+                    </button>
+                </div>
+            </div>
+
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Apply to Plan (optional)</label>
+                <select id="offer-plan-id"
+                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition">
+                    <option value="">All Plans</option>
+                    <!-- Plans will be loaded dynamically -->
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Discount Type</label>
+                    <select id="offer-discount-type" required
+                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition">
+                        <option value="percent">Percentage (%)</option>
+                        <option value="fixed">Fixed Amount (€)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Discount Value</label>
+                    <input type="number" id="offer-discount-value" required step="0.01" min="0"
+                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition"
+                        placeholder="e.g., 20">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Duration (months)</label>
+                    <input type="number" id="offer-duration" min="1" value="1"
+                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition"
+                        placeholder="1">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Coupon Code (optional)</label>
+                    <input type="text" id="offer-coupon"
+                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition uppercase"
+                        placeholder="e.g., SUMMER50">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Expires On (optional)</label>
+                    <input type="date" id="offer-expires"
+                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Max Uses (optional)</label>
+                    <input type="number" id="offer-max-uses" min="1"
+                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition"
+                        placeholder="Unlimited">
+                </div>
+            </div>
+
+            <div class="flex gap-2 mt-6">
+                <button type="button" onclick="closeOfferModal()"
+                    class="flex-1 bg-white/10 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white/20 transition">
+                    Cancel
+                </button>
+                <button type="submit"
+                    class="flex-1 bg-green-500 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-500/80 transition">
+                    <span id="offer-submit-btn">Create Offer</span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Emoji Picker Popup -->
+<div id="emoji-picker" class="fixed z-[60] hidden bg-[#1a1a1a] border border-white/20 rounded-xl shadow-2xl p-3 w-72">
+    <div class="text-xs text-gray-400 uppercase tracking-wider mb-2">Popular</div>
+    <div class="grid grid-cols-8 gap-1 mb-3" id="emoji-popular">
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🎉</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🎁</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">⭐</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🔥</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">💪</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🏆</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">💰</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">✨</button>
+    </div>
+    <div class="text-xs text-gray-400 uppercase tracking-wider mb-2">Fitness</div>
+    <div class="grid grid-cols-8 gap-1 mb-3">
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🏋️</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🏃</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🚴</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🧘</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">💯</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🥇</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🎯</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">❤️</button>
+    </div>
+    <div class="text-xs text-gray-400 uppercase tracking-wider mb-2">Seasonal</div>
+    <div class="grid grid-cols-8 gap-1 mb-3">
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🎄</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🎆</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">☀️</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🌸</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🍂</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">❄️</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🎃</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">💝</button>
+    </div>
+    <div class="text-xs text-gray-400 uppercase tracking-wider mb-2">Other</div>
+    <div class="grid grid-cols-8 gap-1">
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">👍</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🚀</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">💎</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🌟</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">⚡</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🎊</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">📢</button>
+        <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🆓</button>
+    </div>
+</div>
+
 <script>
 // Current mode from server
 const currentMode = "{{ mode }}";
+
+// --- EMOJI PICKER ---
+let currentEmojiTarget = null;
+
+function toggleEmojiPicker(targetId) {
+    const picker = document.getElementById('emoji-picker');
+    const targetEl = document.getElementById(targetId);
+
+    if (!picker || !targetEl) return;
+
+    // If already open for same target, close it
+    if (!picker.classList.contains('hidden') && currentEmojiTarget === targetId) {
+        picker.classList.add('hidden');
+        currentEmojiTarget = null;
+        return;
+    }
+
+    currentEmojiTarget = targetId;
+
+    // Position the picker near the input
+    const rect = targetEl.getBoundingClientRect();
+    picker.style.top = `${rect.bottom + 8}px`;
+    picker.style.left = `${Math.min(rect.left, window.innerWidth - 300)}px`;
+
+    picker.classList.remove('hidden');
+}
+
+// Handle emoji button clicks
+document.addEventListener('click', (e) => {
+    const picker = document.getElementById('emoji-picker');
+
+    // If clicked on emoji button
+    if (e.target.classList.contains('emoji-btn')) {
+        const emoji = e.target.textContent;
+        if (currentEmojiTarget) {
+            const targetEl = document.getElementById(currentEmojiTarget);
+            if (targetEl) {
+                // Insert emoji at cursor position or append
+                const start = targetEl.selectionStart || targetEl.value.length;
+                const end = targetEl.selectionEnd || targetEl.value.length;
+                const text = targetEl.value;
+                targetEl.value = text.substring(0, start) + emoji + text.substring(end);
+                targetEl.focus();
+                // Move cursor after emoji
+                targetEl.selectionStart = targetEl.selectionEnd = start + emoji.length;
+            }
+        }
+        picker.classList.add('hidden');
+        currentEmojiTarget = null;
+        return;
+    }
+
+    // Close picker if clicked outside
+    if (picker && !picker.classList.contains('hidden')) {
+        if (!picker.contains(e.target) && !e.target.closest('[onclick*="toggleEmojiPicker"]')) {
+            picker.classList.add('hidden');
+            currentEmojiTarget = null;
+        }
+    }
+});
 
 // Subscription Plan Management
 let currentPlanId = null;
 
 // Load subscription plans
 async function loadSubscriptionPlans() {
+    console.log('loadSubscriptionPlans called');
     try {
-        const response = await fetch('/api/owner/subscription-plans', {
+        const response = await fetch('/api/owner/subscription-plans?include_inactive=true', {
             credentials: 'include'
         });
 
+        console.log('Plans response status:', response.status);
         if (!response.ok) throw new Error('Failed to load plans');
 
         const plans = await response.json();
+        console.log('Plans loaded:', plans);
         displayPlans(plans);
         updateRevenue(plans);
     } catch (error) {
@@ -232,10 +521,13 @@ async function loadSubscriptionPlans() {
 
 // Display plans in the UI
 function displayPlans(plans) {
+    console.log('displayPlans called with:', plans);
     const container = document.getElementById('subscription-plans-list');
+    console.log('Container found:', !!container);
     if (!container) return;
 
     if (!plans || plans.length === 0) {
+        console.log('No plans to display');
         container.innerHTML = `
             <div class="glass-card p-4 text-center text-gray-400 text-sm">
                 No subscription plans yet. Create your first plan to start accepting payments.
@@ -243,6 +535,7 @@ function displayPlans(plans) {
         `;
         return;
     }
+    console.log('Rendering', plans.length, 'plans');
 
     container.innerHTML = plans.map(plan => `
         <div class="glass-card p-4 rounded-xl ${plan.is_active ? '' : 'opacity-50'}">
@@ -431,6 +724,353 @@ if (planModal) {
     });
 }
 
+// --- PROMOTIONAL OFFERS FUNCTIONS ---
+
+let currentOfferId = null;
+let availablePlansForOffer = [];
+
+async function loadOffers() {
+    try {
+        const response = await fetch('/api/owner/offers', {
+            credentials: 'include'
+        });
+
+        if (!response.ok) throw new Error('Failed to load offers');
+
+        const offers = await response.json();
+        displayOffers(offers);
+    } catch (error) {
+        console.error('Error loading offers:', error);
+    }
+}
+
+function displayOffers(offers) {
+    const container = document.getElementById('offers-list');
+    if (!container) return;
+
+    if (!offers || offers.length === 0) {
+        container.innerHTML = `
+            <div class="glass-card p-3 text-center text-gray-400 text-sm">
+                No offers yet. Create offers to attract clients!
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = offers.map(offer => {
+        const discountText = offer.discount_type === 'percent'
+            ? `${offer.discount_value}%`
+            : `€${offer.discount_value}`;
+        const statusColor = offer.is_active ? 'green' : 'yellow';
+        const statusText = offer.is_active ? 'Active' : 'Draft';
+        const expiryDate = offer.expires_at ? new Date(offer.expires_at).toLocaleDateString() : null;
+
+        return `
+            <div class="glass-card overflow-hidden ${!offer.is_active ? 'border border-yellow-500/20' : ''}">
+                <div class="p-4">
+                    <div class="flex gap-4">
+                        <!-- Discount badge -->
+                        <div class="flex-shrink-0 w-16 h-16 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/10 border border-green-500/20 flex flex-col items-center justify-center">
+                            <span class="text-xl font-bold text-green-400">${discountText}</span>
+                            <span class="text-[10px] uppercase tracking-wider text-green-400/70">off</span>
+                        </div>
+
+                        <!-- Title and info -->
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1">
+                                <h4 class="font-bold text-white leading-tight truncate">${offer.title}</h4>
+                                <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-${statusColor}-500/20 text-${statusColor}-400">${statusText}</span>
+                            </div>
+                            ${offer.description ? `<p class="text-xs text-gray-400 line-clamp-1 mb-1">${offer.description}</p>` : ''}
+                            <div class="flex items-center gap-3 text-xs text-gray-500">
+                                <span>${offer.discount_duration_months} month${offer.discount_duration_months > 1 ? 's' : ''}</span>
+                                ${expiryDate ? `<span>· Until ${expiryDate}</span>` : ''}
+                                ${offer.coupon_code ? `<span class="text-primary font-mono">${offer.coupon_code}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="px-4 py-3 bg-white/[0.02] border-t border-white/5 flex items-center justify-between">
+                    ${!offer.is_active ? `
+                        <span class="text-[10px] text-yellow-400/70">📢 Activating will notify all clients</span>
+                    ` : `
+                        <span></span>
+                    `}
+                    <div class="flex items-center gap-2">
+                        ${offer.is_active ? `
+                            <button onclick="toggleOffer('${offer.id}', false)" class="p-2 rounded-lg hover:bg-yellow-500/10 text-yellow-400 hover:text-yellow-300 transition" title="Pause">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                                </svg>
+                            </button>
+                        ` : `
+                            <button onclick="toggleOffer('${offer.id}', true)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/20 hover:bg-green-500/30 text-green-400 text-xs font-semibold transition" title="Activate & Notify Clients">
+                                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
+                                </svg>
+                                Activate
+                            </button>
+                        `}
+                        <button onclick="deleteOffer('${offer.id}', '${offer.title.replace(/'/g, "\\'")}')" class="p-2 rounded-lg hover:bg-red-500/10 text-red-400 hover:text-red-300 transition" title="Delete">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+async function openCreateOfferModal() {
+    currentOfferId = null;
+    document.getElementById('offer-id').value = '';
+    document.getElementById('offer-modal-title').textContent = 'Create Promotional Offer';
+    document.getElementById('offer-submit-btn').textContent = 'Create Offer';
+
+    // Reset form
+    document.getElementById('offer-form').reset();
+
+    // Load plans for dropdown
+    await loadPlansForOfferDropdown();
+
+    document.getElementById('offer-modal').classList.remove('hidden');
+}
+
+async function loadPlansForOfferDropdown() {
+    const select = document.getElementById('offer-plan-id');
+    if (!select) return;
+
+    try {
+        const response = await fetch('/api/owner/subscription-plans', {
+            credentials: 'include'
+        });
+
+        if (response.ok) {
+            availablePlansForOffer = await response.json();
+            select.innerHTML = '<option value="">All Plans</option>' +
+                availablePlansForOffer.map(p => `<option value="${p.id}">${p.name} - €${p.price}/${p.billing_interval}</option>`).join('');
+        }
+    } catch (e) {
+        console.error('Error loading plans for offer:', e);
+    }
+}
+
+function closeOfferModal() {
+    document.getElementById('offer-modal').classList.add('hidden');
+    currentOfferId = null;
+}
+
+async function toggleOffer(offerId, isActive) {
+    // Confirm activation (since it notifies all clients)
+    if (isActive) {
+        if (!confirm('Activate this offer?\n\nAll gym clients will receive a notification about this offer.')) {
+            return;
+        }
+    }
+
+    try {
+        const response = await fetch(`/api/owner/offers/${offerId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ is_active: isActive })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to update offer');
+        }
+
+        const result = await response.json();
+        if (isActive && result.notifications_sent) {
+            showToast('Offer activated! Clients have been notified 🎉', 'success');
+        } else {
+            showToast(isActive ? 'Offer activated' : 'Offer paused', 'success');
+        }
+        loadOffers();
+    } catch (error) {
+        console.error('Error toggling offer:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+async function deleteOffer(offerId, offerTitle) {
+    if (!confirm(`Are you sure you want to delete the "${offerTitle}" offer?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/owner/offers/${offerId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to delete offer');
+        }
+
+        showToast('Offer deleted successfully', 'success');
+        loadOffers();
+    } catch (error) {
+        console.error('Error deleting offer:', error);
+        showToast(error.message, 'error');
+    }
+}
+
+// Offer form submission
+const offerForm = document.getElementById('offer-form');
+if (offerForm) {
+    offerForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+
+        const offerData = {
+            title: document.getElementById('offer-title').value,
+            description: document.getElementById('offer-description').value,
+            plan_id: document.getElementById('offer-plan-id').value || null,
+            discount_type: document.getElementById('offer-discount-type').value,
+            discount_value: parseFloat(document.getElementById('offer-discount-value').value),
+            discount_duration_months: parseInt(document.getElementById('offer-duration').value) || 1,
+            coupon_code: document.getElementById('offer-coupon').value.toUpperCase() || null,
+            expires_at: document.getElementById('offer-expires').value ? new Date(document.getElementById('offer-expires').value).toISOString() : null,
+            max_redemptions: document.getElementById('offer-max-uses').value ? parseInt(document.getElementById('offer-max-uses').value) : null
+        };
+
+        try {
+            const response = await fetch('/api/owner/offers', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(offerData)
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                throw new Error(error.detail || 'Failed to create offer');
+            }
+
+            showToast('Offer created as draft. Activate to notify clients.', 'success');
+            closeOfferModal();
+            loadOffers();
+        } catch (error) {
+            console.error('Error creating offer:', error);
+            showToast(error.message, 'error');
+        }
+    });
+}
+
+// Close offer modal on background click
+const offerModal = document.getElementById('offer-modal');
+if (offerModal) {
+    offerModal.addEventListener('click', (e) => {
+        if (e.target.id === 'offer-modal') {
+            closeOfferModal();
+        }
+    });
+}
+
+// --- STRIPE CONNECT FUNCTIONS ---
+
+async function loadStripeConnectStatus() {
+    const badge = document.getElementById('stripe-status-badge');
+    const notConnected = document.getElementById('stripe-not-connected');
+    const pending = document.getElementById('stripe-pending');
+    const connected = document.getElementById('stripe-connected');
+
+    if (!badge) return; // Not on settings page
+
+    try {
+        const response = await fetch('/api/owner/stripe-connect/status', {
+            credentials: 'include'
+        });
+
+        if (!response.ok) throw new Error('Failed to check status');
+
+        const data = await response.json();
+
+        // Hide all states first
+        notConnected?.classList.add('hidden');
+        pending?.classList.add('hidden');
+        connected?.classList.add('hidden');
+
+        if (!data.connected) {
+            // Not connected
+            badge.textContent = 'Not Set Up';
+            badge.className = 'text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-400';
+            notConnected?.classList.remove('hidden');
+        } else if (data.can_receive_payments) {
+            // Fully connected
+            badge.textContent = 'Active';
+            badge.className = 'text-xs px-2 py-1 rounded-full bg-green-500/20 text-green-400';
+            connected?.classList.remove('hidden');
+        } else {
+            // Pending verification
+            badge.textContent = 'Pending';
+            badge.className = 'text-xs px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400';
+            pending?.classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error loading Stripe status:', error);
+        badge.textContent = 'Error';
+        badge.className = 'text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-400';
+        notConnected?.classList.remove('hidden');
+    }
+}
+
+async function startStripeConnect() {
+    try {
+        const response = await fetch('/api/owner/stripe-connect/onboard', {
+            method: 'POST',
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to start onboarding');
+        }
+
+        const data = await response.json();
+
+        if (data.onboarding_url) {
+            // Redirect to Stripe onboarding
+            window.location.href = data.onboarding_url;
+        } else {
+            alert('Failed to get onboarding link');
+        }
+    } catch (error) {
+        console.error('Error starting Stripe Connect:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
+async function openStripeDashboard() {
+    try {
+        const response = await fetch('/api/owner/stripe-connect/dashboard', {
+            credentials: 'include'
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to get dashboard link');
+        }
+
+        const data = await response.json();
+
+        if (data.url) {
+            window.open(data.url, '_blank');
+        } else {
+            alert('Failed to get dashboard link');
+        }
+    } catch (error) {
+        console.error('Error opening Stripe dashboard:', error);
+        alert('Error: ' + error.message);
+    }
+}
+
 // --- GYM CODE FUNCTIONS ---
 
 async function loadGymCode() {
@@ -512,7 +1152,10 @@ function displayPendingTrainers(trainers) {
         if (currentMode === 'trainers') {
             // In trainers mode, show empty state
             list.innerHTML = `
-                <div class="glass-card p-4 text-center text-gray-400 text-sm">
+                <div class="glass-card p-3 flex items-center justify-center gap-2 text-gray-400 text-sm">
+                    <svg class="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
                     No pending approvals
                 </div>
             `;
@@ -543,30 +1186,53 @@ function displayPendingTrainers(trainers) {
         return 'bg-orange-500/20 text-orange-400';
     }
 
-    list.innerHTML = trainers.map(trainer => `
-        <div class="glass-card p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/5">
-            <div class="flex justify-between items-center">
-                <div>
-                    <div class="flex items-center gap-2 mb-1">
-                        <p class="font-bold text-white">${trainer.username}</p>
-                        <span class="text-xs px-2 py-0.5 rounded-full ${getRoleBadgeClass(trainer)}">${getRoleLabel(trainer)}</span>
+    list.innerHTML = trainers.map(trainer => {
+        const initials = trainer.username.substring(0, 2).toUpperCase();
+        return `
+        <div class="glass-card overflow-hidden border border-yellow-500/20">
+            <div class="p-4">
+                <div class="flex items-center gap-3">
+                    <!-- Avatar -->
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-500/30 to-orange-500/20 border border-yellow-500/30 flex items-center justify-center flex-shrink-0">
+                        <span class="text-base font-bold text-yellow-400">${initials}</span>
                     </div>
-                    <p class="text-xs text-gray-400">${trainer.email || 'No email'}</p>
-                    <p class="text-xs text-yellow-400 mt-1">Pending approval</p>
+
+                    <!-- Info -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-0.5">
+                            <h4 class="font-bold text-white">${trainer.username}</h4>
+                            <span class="text-xs px-2 py-0.5 rounded-full ${getRoleBadgeClass(trainer)}">${getRoleLabel(trainer)}</span>
+                        </div>
+                        <p class="text-sm text-gray-400 truncate">${trainer.email || 'No email'}</p>
+                    </div>
+
+                    <!-- Pending badge -->
+                    <div class="flex items-center gap-1.5">
+                        <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
+                        <span class="text-xs text-yellow-400">Pending</span>
+                    </div>
                 </div>
-                <div class="flex gap-2">
+
+                <!-- Actions -->
+                <div class="flex gap-2 mt-4">
                     <button onclick="approveTrainer('${trainer.id}')"
-                        class="bg-green-500/20 hover:bg-green-500/30 text-green-400 px-4 py-2 rounded-lg text-sm font-bold transition">
+                        class="flex-1 bg-green-500/20 hover:bg-green-500/30 text-green-400 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                        </svg>
                         Approve
                     </button>
                     <button onclick="rejectTrainer('${trainer.id}', '${trainer.username}')"
-                        class="bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 rounded-lg text-sm font-bold transition">
+                        class="flex-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
                         Reject
                     </button>
                 </div>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 async function loadApprovedTrainers() {
@@ -579,8 +1245,14 @@ async function loadApprovedTrainers() {
             const list = document.getElementById('approved-trainers-list');
             if (list) {
                 list.innerHTML = `
-                    <div class="glass-card p-4 text-center text-gray-400 text-sm">
-                        No active trainers yet
+                    <div class="glass-card p-8 text-center">
+                        <div class="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
+                            </svg>
+                        </div>
+                        <p class="text-gray-400 text-sm">No active trainers yet</p>
+                        <p class="text-gray-500 text-xs mt-1">Share your gym code to invite trainers</p>
                     </div>
                 `;
             }
@@ -594,7 +1266,7 @@ async function loadApprovedTrainers() {
         const list = document.getElementById('approved-trainers-list');
         if (list) {
             list.innerHTML = `
-                <div class="glass-card p-4 text-center text-gray-400 text-sm">
+                <div class="glass-card p-3 text-center text-gray-400 text-sm">
                     No active trainers yet
                 </div>
             `;
@@ -608,25 +1280,46 @@ function displayApprovedTrainers(trainers) {
 
     if (!trainers || trainers.length === 0) {
         list.innerHTML = `
-            <div class="glass-card p-4 text-center text-gray-400 text-sm">
+            <div class="glass-card p-3 text-center text-gray-400 text-sm">
                 No active trainers yet
             </div>
         `;
         return;
     }
 
-    list.innerHTML = trainers.map(trainer => `
-        <div class="glass-card p-4 rounded-xl">
-            <div class="flex justify-between items-center">
-                <div>
-                    <p class="font-bold text-white">${trainer.username}</p>
-                    <p class="text-xs text-gray-400">${trainer.email || 'No email'}</p>
-                    <p class="text-xs text-green-400 mt-1">${trainer.client_count || 0} clients</p>
+    list.innerHTML = trainers.map(trainer => {
+        const initials = trainer.username.substring(0, 2).toUpperCase();
+        const clientCount = trainer.client_count || 0;
+        return `
+        <div class="glass-card overflow-hidden">
+            <div class="p-4">
+                <div class="flex items-center gap-3">
+                    <!-- Avatar -->
+                    <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/30 to-orange-500/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
+                        <span class="text-base font-bold text-primary">${initials}</span>
+                    </div>
+
+                    <!-- Info -->
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center justify-between mb-0.5">
+                            <h4 class="font-bold text-white">${trainer.username}</h4>
+                            <div class="flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-green-400"></span>
+                                <span class="text-xs text-green-400">Active</span>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-400 truncate">${trainer.email || 'No email'}</p>
+                    </div>
+
+                    <!-- Client count -->
+                    <div class="text-right pl-2">
+                        <p class="text-xl font-bold text-primary">${clientCount}</p>
+                        <p class="text-xs text-gray-500">clients</p>
+                    </div>
                 </div>
-                <span class="text-green-400 text-sm">Active</span>
             </div>
         </div>
-    `).join('');
+    `}).join('');
 }
 
 async function approveTrainer(trainerId) {
@@ -687,6 +1380,7 @@ async function rejectTrainer(trainerId, username) {
 // Initialize based on mode
 if (currentMode === 'settings') {
     loadGymCode();
+    loadStripeConnectStatus();
 } else if (currentMode === 'trainers') {
     loadPendingTrainers();
     loadApprovedTrainers();
@@ -694,6 +1388,7 @@ if (currentMode === 'settings') {
     // Dashboard mode (default)
     loadPendingTrainers();
     loadSubscriptionPlans();
+    loadOffers();
 }
 </script>
 {% endblock %}

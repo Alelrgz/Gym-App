@@ -87,6 +87,84 @@ async def delete_subscription_plan(
     return service.delete_plan(plan_id, user.id)
 
 
+# --- PLAN OFFERS (Promotional Discounts) ---
+
+@router.post("/api/owner/offers")
+async def create_offer(
+    offer_data: dict,
+    user = Depends(get_current_user),
+    service: SubscriptionService = Depends(get_subscription_service)
+):
+    """Create a promotional offer (owner only)."""
+    if user.role != "owner":
+        raise HTTPException(status_code=403, detail="Only gym owners can create offers")
+
+    return service.create_offer(user.id, offer_data)
+
+
+@router.get("/api/owner/offers")
+async def get_gym_offers(
+    user = Depends(get_current_user),
+    service: SubscriptionService = Depends(get_subscription_service)
+):
+    """Get all offers for the gym."""
+    if user.role != "owner":
+        raise HTTPException(status_code=403, detail="Only gym owners can view all offers")
+
+    return service.get_gym_offers(user.id, include_inactive=True)
+
+
+@router.put("/api/owner/offers/{offer_id}")
+async def update_offer(
+    offer_id: str,
+    offer_data: dict,
+    user = Depends(get_current_user),
+    service: SubscriptionService = Depends(get_subscription_service)
+):
+    """Update an offer."""
+    if user.role != "owner":
+        raise HTTPException(status_code=403, detail="Only gym owners can update offers")
+
+    return service.update_offer(user.id, offer_id, offer_data)
+
+
+@router.delete("/api/owner/offers/{offer_id}")
+async def delete_offer(
+    offer_id: str,
+    user = Depends(get_current_user),
+    service: SubscriptionService = Depends(get_subscription_service)
+):
+    """Delete (deactivate) an offer."""
+    if user.role != "owner":
+        raise HTTPException(status_code=403, detail="Only gym owners can delete offers")
+
+    return service.delete_offer(user.id, offer_id)
+
+
+@router.get("/api/client/offers/{gym_id}")
+async def get_available_offers(
+    gym_id: str,
+    user = Depends(get_current_user),
+    service: SubscriptionService = Depends(get_subscription_service)
+):
+    """Get active offers available for a client."""
+    return service.get_active_offers_for_client(gym_id)
+
+
+@router.post("/api/client/validate-coupon")
+async def validate_coupon(
+    data: dict,
+    user = Depends(get_current_user),
+    service: SubscriptionService = Depends(get_subscription_service)
+):
+    """Validate a coupon code."""
+    return service.validate_coupon(
+        data.get("gym_id"),
+        data.get("coupon_code"),
+        data.get("plan_id")
+    )
+
+
 # --- CLIENT ENDPOINTS (Subscription Management) ---
 
 @router.get("/api/client/subscription-plans/{gym_id}")
@@ -150,6 +228,52 @@ async def get_my_payment_history(
         raise HTTPException(status_code=403, detail="Only clients can view payment history")
 
     return service.get_payment_history(user.id, gym_id)
+
+
+# --- STRIPE CONNECT (Owner Payment Setup) ---
+
+@router.post("/api/owner/stripe-connect/onboard")
+async def start_stripe_connect_onboarding(
+    request: Request,
+    user = Depends(get_current_user),
+    service: SubscriptionService = Depends(get_subscription_service)
+):
+    """Start Stripe Connect onboarding for a gym owner."""
+    if user.role != "owner":
+        raise HTTPException(status_code=403, detail="Only gym owners can set up payment accounts")
+
+    # Get base URL from request
+    base_url = str(request.base_url).rstrip("/")
+
+    # Return and refresh URLs
+    return_url = f"{base_url}/?role=owner&mode=stripe_success"
+    refresh_url = f"{base_url}/?role=owner&mode=stripe_refresh"
+
+    return service.create_connect_account(user.id, return_url, refresh_url)
+
+
+@router.get("/api/owner/stripe-connect/status")
+async def get_stripe_connect_status(
+    user = Depends(get_current_user),
+    service: SubscriptionService = Depends(get_subscription_service)
+):
+    """Get the status of a gym owner's Stripe Connect account."""
+    if user.role != "owner":
+        raise HTTPException(status_code=403, detail="Only gym owners can check payment account status")
+
+    return service.get_connect_account_status(user.id)
+
+
+@router.get("/api/owner/stripe-connect/dashboard")
+async def get_stripe_dashboard_link(
+    user = Depends(get_current_user),
+    service: SubscriptionService = Depends(get_subscription_service)
+):
+    """Get a login link to the Stripe Express dashboard."""
+    if user.role != "owner":
+        raise HTTPException(status_code=403, detail="Only gym owners can access the payment dashboard")
+
+    return service.create_connect_login_link(user.id)
 
 
 # --- STRIPE WEBHOOK ---

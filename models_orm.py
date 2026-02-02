@@ -25,6 +25,10 @@ class UserORM(Base):
     gym_owner_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)  # For trainers: which gym they belong to
     is_approved = Column(Boolean, default=True)  # For trainers: needs owner approval (False = pending)
 
+    # Stripe Connect (for gym owners to receive payments)
+    stripe_account_id = Column(String, nullable=True)  # Connected Stripe account ID (acct_xxx)
+    stripe_account_status = Column(String, nullable=True)  # pending, active, restricted
+
 # --- EXERCISE & WORKOUT LIBRARY (Global + Personal) ---
 
 class ExerciseORM(Base):
@@ -329,6 +333,38 @@ class PaymentORM(Base):
     # Dates
     paid_at = Column(String, nullable=True)
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
+class PlanOfferORM(Base):
+    """Promotional offers for subscription plans"""
+    __tablename__ = "plan_offers"
+
+    id = Column(String, primary_key=True, index=True)
+    gym_id = Column(String, ForeignKey("users.id"), index=True)
+    plan_id = Column(String, ForeignKey("subscription_plans.id"), index=True, nullable=True)  # Specific plan or all plans if null
+
+    # Offer details
+    title = Column(String)  # e.g. "New Year Special"
+    description = Column(String, nullable=True)  # e.g. "Get 50% off your first 3 months!"
+
+    # Discount configuration
+    discount_type = Column(String)  # "percent" or "fixed"
+    discount_value = Column(Float)  # e.g. 50 for 50% or 10.00 for $10 off
+    discount_duration_months = Column(Integer, default=1)  # How many months discount applies
+
+    # Coupon code (optional)
+    coupon_code = Column(String, nullable=True, index=True)  # e.g. "NEWYEAR50"
+
+    # Validity
+    is_active = Column(Boolean, default=True)
+    starts_at = Column(String)  # ISO date
+    expires_at = Column(String, nullable=True)  # ISO date, null = no expiry
+    max_redemptions = Column(Integer, nullable=True)  # null = unlimited
+    current_redemptions = Column(Integer, default=0)
+
+    # Metadata
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    updated_at = Column(String, default=lambda: datetime.utcnow().isoformat())
 
 
 # --- APPOINTMENT BOOKING MODELS ---

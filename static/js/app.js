@@ -728,7 +728,7 @@ async function init() {
         const gymRes = await fetch(`${apiBase}/api/config/${gymId}`);
         const gymConfig = await gymRes.json();
         document.documentElement.style.setProperty('--primary', gymConfig.primary_color);
-        const nameEls = document.querySelectorAll('#gym-name, #gym-name-owner');
+        const nameEls = document.querySelectorAll('#gym-name, #gym-name-owner, #desktop-gym-name');
         nameEls.forEach(el => el.innerText = gymConfig.logo_text);
 
         if (role === 'client') {
@@ -11014,3 +11014,506 @@ window.deleteCourseExerciseFromDetail = async function() {
         showToast('Failed to delete exercise');
     }
 };
+
+// =====================================================
+// SUBSCRIPTION / STRIPE INTEGRATION
+// =====================================================
+
+let stripeInstance = null;
+let cardElement = null;
+let selectedPlanId = null;
+let currentSubscription = null;
+let selectedPlanData = null;  // Store full plan data
+let appliedOffer = null;  // Store applied coupon/offer
+let activeOffers = [];  // Available offers
+
+// Initialize Stripe
+function initStripe() {
+    const { stripePublishableKey } = window.APP_CONFIG || {};
+    if (stripePublishableKey && typeof Stripe !== 'undefined') {
+        stripeInstance = Stripe(stripePublishableKey);
+        console.log('Stripe initialized');
+    } else {
+        console.log('Stripe not configured or Stripe.js not loaded');
+    }
+}
+
+// Open subscription plans modal
+window.openSubscriptionPlans = async function() {
+    showModal('subscription-plans-modal');
+    await loadSubscriptionPlans();
+};
+
+// Load available subscription plans
+async function loadSubscriptionPlans() {
+    const plansList = document.getElementById('subscription-plans-list');
+    const currentBanner = document.getElementById('current-subscription-banner');
+
+    if (!plansList) return;
+
+    // Show loading
+    plansList.innerHTML = `
+        <div class="text-center py-8 text-white/50">
+            <div class="animate-spin text-3xl mb-2">⏳</div>
+            <p>Loading plans...</p>
+        </div>
+    `;
+
+    try {
+        // First check if client has a gym
+        if (!window.clientGymId) {
+            plansList.innerHTML = `
+                <div class="text-center py-8">
+                    <span class="text-5xl mb-4 block">🏢</span>
+                    <p class="text-white/60">You need to join a gym first to view subscription plans.</p>
+                </div>
+            `;
+            currentBanner.classList.add('hidden');
+            return;
+        }
+
+        // Load current subscription
+        const subRes = await fetch(`${apiBase}/api/client/subscription/${window.clientGymId}`, {
+            credentials: 'include'
+        });
+
+        if (subRes.ok) {
+            const subData = await subRes.json();
+            if (subData && subData.status === 'active') {
+                currentSubscription = subData;
+                currentBanner.classList.remove('hidden');
+                document.getElementById('current-plan-name').textContent = subData.plan_name || 'Active Plan';
+            } else {
+                currentSubscription = null;
+                currentBanner.classList.add('hidden');
+            }
+        } else {
+            currentSubscription = null;
+            currentBanner.classList.add('hidden');
+        }
+
+        // Load available plans
+        const res = await fetch(`${apiBase}/api/client/subscription-plans/${window.clientGymId}`, {
+            credentials: 'include'
+        });
+
+        if (!res.ok) throw new Error('Failed to load plans');
+
+        const plans = await res.json();
+
+        if (!plans || plans.length === 0) {
+            plansList.innerHTML = `
+                <div class="text-center py-8">
+                    <span class="text-5xl mb-4 block">📋</span>
+                    <p class="text-white/60">No subscription plans available at this gym yet.</p>
+                </div>
+            `;
+            return;
+        }
+
+        // Load active offers
+        try {
+            const offersRes = await fetch(`${apiBase}/api/client/offers/${window.clientGymId}`, {
+                credentials: 'include'
+            });
+            if (offersRes.ok) {
+                activeOffers = await offersRes.json();
+                displayOffersBanner(activeOffers);
+            }
+        } catch (offersErr) {
+            console.log('No offers available:', offersErr);
+            activeOffers = [];
+        }
+
+        // Render plans with any applicable offers
+        plansList.innerHTML = plans.map(plan => {
+            const isCurrentPlan = currentSubscription && currentSubscription.plan_id === plan.id;
+            const features = plan.features || [];
+
+            // Check if there's an offer for this plan
+            const planOffer = activeOffers.find(o => !o.plan_id || o.plan_id === plan.id);
+            const hasOffer = planOffer && !isCurrentPlan;
+
+            return `
+                <div class="relative p-4 rounded-2xl border ${isCurrentPlan ? 'border-green-500/50 bg-green-500/10' : hasOffer ? 'border-green-500/30 bg-gradient-to-r from-green-500/5 to-transparent' : 'border-white/10 bg-white/5'} hover:bg-white/10 transition cursor-pointer group"
+                    onclick="${isCurrentPlan ? '' : `selectPlan('${plan.id}', '${plan.name}', ${plan.price}, '${plan.currency}', '${plan.billing_interval}')`}">
+                    ${isCurrentPlan ? '<div class="absolute top-2 right-2 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">Current</div>' : ''}
+                    ${hasOffer ? `<div class="absolute top-2 right-2 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full animate-pulse">🎁 ${planOffer.discount_type === 'percent' ? planOffer.discount_value + '% OFF' : '€' + planOffer.discount_value + ' OFF'}</div>` : ''}
+                    <div class="flex justify-between items-start mb-3">
+                        <div>
+                            <h3 class="font-bold text-lg text-white">${plan.name}</h3>
+                            <p class="text-sm text-white/50">${plan.description || ''}</p>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-2xl font-bold text-primary">${formatCurrency(plan.price, plan.currency)}</div>
+                            <div class="text-xs text-white/40">/${plan.billing_interval}</div>
+                        </div>
+                    </div>
+                    ${features.length > 0 ? `
+                        <ul class="space-y-1 mt-3">
+                            ${features.map(f => `<li class="text-sm text-white/70 flex items-center gap-2"><span class="text-green-400">✓</span> ${f}</li>`).join('')}
+                        </ul>
+                    ` : ''}
+                    ${hasOffer && planOffer.coupon_code ? `
+                        <div class="mt-3 text-xs text-green-400">
+                            Use code: <span class="font-mono bg-green-500/20 px-2 py-0.5 rounded">${planOffer.coupon_code}</span>
+                        </div>
+                    ` : ''}
+                    ${!isCurrentPlan ? `
+                        <div class="mt-4 opacity-0 group-hover:opacity-100 transition">
+                            <div class="text-center text-sm text-primary font-semibold">Click to subscribe →</div>
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }).join('');
+
+    } catch (e) {
+        console.error('Error loading plans:', e);
+        plansList.innerHTML = `
+            <div class="text-center py-8">
+                <span class="text-5xl mb-4 block">⚠️</span>
+                <p class="text-red-400">Failed to load subscription plans</p>
+                <button onclick="loadSubscriptionPlans()" class="mt-4 text-sm text-primary hover:underline">Try again</button>
+            </div>
+        `;
+    }
+}
+
+// Format currency
+function formatCurrency(amount, currency = 'USD') {
+    return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: currency.toUpperCase()
+    }).format(amount);
+}
+
+// Display offers banner
+function displayOffersBanner(offers) {
+    const banner = document.getElementById('active-offers-banner');
+    if (!banner) return;
+
+    if (offers && offers.length > 0) {
+        const firstOffer = offers[0];
+        document.getElementById('offer-banner-title').textContent = firstOffer.title;
+        document.getElementById('offer-banner-description').textContent =
+            firstOffer.description || `Get ${firstOffer.discount_value}${firstOffer.discount_type === 'percent' ? '%' : '€'} off!`;
+        banner.classList.remove('hidden');
+    } else {
+        banner.classList.add('hidden');
+    }
+}
+
+// Apply coupon code
+window.applyCouponCode = async function() {
+    const codeInput = document.getElementById('coupon-code-input');
+    const messageEl = document.getElementById('coupon-message');
+
+    if (!codeInput || !messageEl) return;
+
+    const code = codeInput.value.trim().toUpperCase();
+    if (!code) {
+        messageEl.textContent = 'Please enter a coupon code';
+        messageEl.className = 'text-xs mt-2 text-yellow-400';
+        messageEl.classList.remove('hidden');
+        return;
+    }
+
+    try {
+        const res = await fetch(`${apiBase}/api/client/validate-coupon`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                gym_id: window.clientGymId,
+                coupon_code: code,
+                plan_id: selectedPlanId
+            })
+        });
+
+        const data = await res.json();
+
+        if (data.valid) {
+            appliedOffer = data;
+            messageEl.textContent = `✓ ${data.title} applied!`;
+            messageEl.className = 'text-xs mt-2 text-green-400';
+            messageEl.classList.remove('hidden');
+
+            // Update price display
+            updatePriceWithDiscount();
+        } else {
+            appliedOffer = null;
+            messageEl.textContent = data.error || 'Invalid coupon code';
+            messageEl.className = 'text-xs mt-2 text-red-400';
+            messageEl.classList.remove('hidden');
+
+            // Reset price display
+            resetPriceDisplay();
+        }
+    } catch (e) {
+        console.error('Error validating coupon:', e);
+        messageEl.textContent = 'Error validating coupon';
+        messageEl.className = 'text-xs mt-2 text-red-400';
+        messageEl.classList.remove('hidden');
+    }
+};
+
+// Update price display with discount
+function updatePriceWithDiscount() {
+    if (!selectedPlanData || !appliedOffer) return;
+
+    const priceEl = document.getElementById('selected-plan-price');
+    const originalPriceEl = document.getElementById('selected-plan-original-price');
+    const discountInfoEl = document.getElementById('applied-discount-info');
+    const discountTextEl = document.getElementById('applied-discount-text');
+
+    const originalPrice = selectedPlanData.price;
+    let discountedPrice;
+
+    if (appliedOffer.discount_type === 'percent') {
+        discountedPrice = originalPrice * (1 - appliedOffer.discount_value / 100);
+    } else {
+        discountedPrice = Math.max(0, originalPrice - appliedOffer.discount_value);
+    }
+
+    // Show discounted price
+    priceEl.textContent = `${formatCurrency(discountedPrice, selectedPlanData.currency)}/${selectedPlanData.interval}`;
+    priceEl.classList.add('text-green-400');
+
+    // Show original price crossed out
+    originalPriceEl.textContent = formatCurrency(originalPrice, selectedPlanData.currency);
+    originalPriceEl.classList.remove('hidden');
+
+    // Show discount info
+    discountTextEl.textContent = `${appliedOffer.title} - ${appliedOffer.discount_value}${appliedOffer.discount_type === 'percent' ? '%' : '€'} off for ${appliedOffer.discount_duration_months} month(s)`;
+    discountInfoEl.classList.remove('hidden');
+}
+
+// Reset price display
+function resetPriceDisplay() {
+    if (!selectedPlanData) return;
+
+    const priceEl = document.getElementById('selected-plan-price');
+    const originalPriceEl = document.getElementById('selected-plan-original-price');
+    const discountInfoEl = document.getElementById('applied-discount-info');
+
+    priceEl.textContent = `${formatCurrency(selectedPlanData.price, selectedPlanData.currency)}/${selectedPlanData.interval}`;
+    priceEl.classList.remove('text-green-400');
+    originalPriceEl.classList.add('hidden');
+    discountInfoEl.classList.add('hidden');
+}
+
+// Select a plan and show payment form
+window.selectPlan = function(planId, planName, price, currency, interval) {
+    if (!stripeInstance) {
+        initStripe();
+        if (!stripeInstance) {
+            showToast('Payment system not configured', 'error');
+            return;
+        }
+    }
+
+    selectedPlanId = planId;
+
+    // Store plan data for discount calculations
+    selectedPlanData = {
+        id: planId,
+        name: planName,
+        price: price,
+        currency: currency,
+        interval: interval
+    };
+
+    // Reset coupon state
+    appliedOffer = null;
+    const couponInput = document.getElementById('coupon-code-input');
+    const couponMessage = document.getElementById('coupon-message');
+    if (couponInput) couponInput.value = '';
+    if (couponMessage) couponMessage.classList.add('hidden');
+
+    // Reset discount display
+    const originalPriceEl = document.getElementById('selected-plan-original-price');
+    const discountInfoEl = document.getElementById('applied-discount-info');
+    if (originalPriceEl) originalPriceEl.classList.add('hidden');
+    if (discountInfoEl) discountInfoEl.classList.add('hidden');
+
+    // Check if there's an auto-applicable offer for this plan
+    const autoOffer = activeOffers.find(o => (!o.plan_id || o.plan_id === planId) && o.coupon_code);
+    if (autoOffer && autoOffer.coupon_code) {
+        // Pre-fill the coupon code
+        if (couponInput) couponInput.value = autoOffer.coupon_code;
+    }
+
+    // Update UI
+    document.getElementById('subscription-plans-list').classList.add('hidden');
+    document.getElementById('active-offers-banner')?.classList.add('hidden');
+    document.getElementById('payment-form-section').classList.remove('hidden');
+    document.getElementById('selected-plan-name').textContent = planName;
+    document.getElementById('selected-plan-price').textContent = `${formatCurrency(price, currency)}/${interval}`;
+
+    // Initialize Stripe Elements
+    if (!cardElement) {
+        const elements = stripeInstance.elements();
+        cardElement = elements.create('card', {
+            style: {
+                base: {
+                    color: '#ffffff',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '16px',
+                    '::placeholder': {
+                        color: '#6b7280'
+                    }
+                },
+                invalid: {
+                    color: '#f87171'
+                }
+            }
+        });
+        cardElement.mount('#card-element');
+
+        // Handle errors
+        cardElement.on('change', function(event) {
+            const errorEl = document.getElementById('card-errors');
+            if (event.error) {
+                errorEl.textContent = event.error.message;
+                errorEl.classList.remove('hidden');
+            } else {
+                errorEl.classList.add('hidden');
+            }
+        });
+    }
+};
+
+// Cancel payment form and go back to plans
+window.cancelPaymentForm = function() {
+    document.getElementById('payment-form-section').classList.add('hidden');
+    document.getElementById('subscription-plans-list').classList.remove('hidden');
+
+    // Show offers banner again if there are offers
+    if (activeOffers && activeOffers.length > 0) {
+        document.getElementById('active-offers-banner')?.classList.remove('hidden');
+    }
+
+    // Reset state
+    selectedPlanId = null;
+    selectedPlanData = null;
+    appliedOffer = null;
+};
+
+// Process subscription
+window.processSubscription = async function() {
+    if (!selectedPlanId || !cardElement || !stripeInstance) {
+        showToast('Please select a plan', 'error');
+        return;
+    }
+
+    const button = document.getElementById('subscribe-button');
+    const buttonText = document.getElementById('subscribe-button-text');
+    const spinner = document.getElementById('subscribe-spinner');
+
+    // Disable button and show loading
+    button.disabled = true;
+    buttonText.textContent = 'Processing...';
+    spinner.classList.remove('hidden');
+
+    try {
+        // Create payment method
+        const { paymentMethod, error } = await stripeInstance.createPaymentMethod({
+            type: 'card',
+            card: cardElement
+        });
+
+        if (error) {
+            throw new Error(error.message);
+        }
+
+        // Send to backend
+        const res = await fetch(`${apiBase}/api/client/subscribe`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                plan_id: selectedPlanId,
+                payment_method_id: paymentMethod.id
+            })
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+            throw new Error(data.detail || 'Subscription failed');
+        }
+
+        // Handle 3D Secure if needed
+        if (data.status === 'requires_action' && data.client_secret) {
+            const { error: confirmError } = await stripeInstance.confirmCardPayment(data.client_secret);
+            if (confirmError) {
+                throw new Error(confirmError.message);
+            }
+        }
+
+        // Success!
+        showToast('Subscription activated! 🎉', 'success');
+        hideModal('subscription-plans-modal');
+
+        // Reset state
+        selectedPlanId = null;
+        cancelPaymentForm();
+
+        // Reload client data to reflect subscription
+        if (typeof loadClientData === 'function') {
+            loadClientData();
+        }
+
+    } catch (e) {
+        console.error('Subscription error:', e);
+        showToast(e.message || 'Subscription failed', 'error');
+    } finally {
+        // Re-enable button
+        button.disabled = false;
+        buttonText.textContent = 'Subscribe Now';
+        spinner.classList.add('hidden');
+    }
+};
+
+// Show cancel subscription confirmation
+window.showCancelSubscriptionConfirm = function() {
+    showModal('cancel-subscription-modal');
+};
+
+// Confirm cancel subscription
+window.confirmCancelSubscription = async function() {
+    try {
+        const res = await fetch(`${apiBase}/api/client/cancel-subscription`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                gym_id: window.clientGymId,
+                cancel_immediately: false
+            })
+        });
+
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.detail || 'Failed to cancel');
+        }
+
+        showToast('Subscription will be cancelled at the end of billing period', 'success');
+        hideModal('cancel-subscription-modal');
+
+        // Reload plans to update UI
+        await loadSubscriptionPlans();
+
+    } catch (e) {
+        console.error('Cancel error:', e);
+        showToast(e.message || 'Failed to cancel subscription', 'error');
+    }
+};
+
+// Initialize Stripe when DOM is ready
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initStripe);
+} else {
+    initStripe();
+}

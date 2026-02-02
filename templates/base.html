@@ -15,6 +15,8 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- QuaggaJS for barcode scanning -->
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
+    <!-- Stripe.js for payment processing -->
+    <script src="https://js.stripe.com/v3/"></script>
     <!-- Preload the first video for instant playback -->
     <link rel="preload" href="/static/videos/InclineDBPress.mp4?v=1" as="video" type="video/mp4">
     <link rel="stylesheet" href="/static/css/style.css?v={{ cache_buster }}">
@@ -131,7 +133,8 @@
             role: "{{ role }}",
             apiBase: "{{ 'http://192.168.1.55:9007' if static_build else '' }}",
             isStatic: {{ 'true' if static_build else 'false' }},
-        token: "{{ token }}"
+            token: "{{ token }}",
+            stripePublishableKey: "{{ stripe_publishable_key | default('') }}"
         };
 
         // --- NOTIFICATION FUNCTIONS (Global) ---
@@ -192,7 +195,11 @@
                 'message': '💬',
                 'streak': '🔥',
                 'achievement': '🏆',
-                'reminder': '⏰'
+                'reminder': '⏰',
+                'offer': '🎁',
+                'friend_request': '👋',
+                'coop_workout': '💪',
+                'course': '🏋️'
             };
             return icons[type] || '🔔';
         }

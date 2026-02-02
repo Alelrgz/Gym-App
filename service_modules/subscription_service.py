@@ -5,7 +5,7 @@ from .base import (
     HTTPException, json, logging, date, datetime,
     get_db_session
 )
-from models_orm import SubscriptionPlanORM, ClientSubscriptionORM, PaymentORM
+from models_orm import SubscriptionPlanORM, ClientSubscriptionORM, PaymentORM, UserORM, PlanOfferORM, ClientProfileORM, NotificationORM
 from models import (
     CreateSubscriptionPlanRequest, UpdateSubscriptionPlanRequest,
     CreateSubscriptionRequest, CancelSubscriptionRequest,
@@ -290,17 +290,37 @@ class SubscriptionService:
                     invoice_settings={"default_payment_method": request.payment_method_id}
                 )
 
-            # Create Stripe subscription
-            stripe_sub = stripe.Subscription.create(
-                customer=stripe_customer.id,
-                items=[{"price": plan.stripe_price_id}],
-                trial_period_days=plan.trial_period_days if plan.trial_period_days > 0 else None,
-                metadata={
+            # Get gym's connected Stripe account for payment routing
+            gym_stripe_account = self.get_gym_stripe_account(gym_id)
+
+            # Build subscription parameters
+            sub_params = {
+                "customer": stripe_customer.id,
+                "items": [{"price": plan.stripe_price_id}],
+                "trial_period_days": plan.trial_period_days if plan.trial_period_days > 0 else None,
+                "metadata": {
                     "client_id": client_id,
                     "gym_id": gym_id,
                     "plan_id": plan.id
                 }
-            )
+            }
+
+            # If gym has a connected account, route payments to them
+            if gym_stripe_account:
+                # Use application_fee_percent to take a platform fee (optional)
+                # Set to 0 for no fee, or e.g. 5 for 5% platform fee
+                platform_fee_percent = float(os.environ.get("STRIPE_PLATFORM_FEE_PERCENT", "0"))
+                sub_params["transfer_data"] = {
+                    "destination": gym_stripe_account
+                }
+                if platform_fee_percent > 0:
+                    sub_params["application_fee_percent"] = platform_fee_percent
+                logger.info(f"Routing payments to connected account: {gym_stripe_account}")
+            else:
+                logger.info(f"No connected account for gym {gym_id}, payments go to platform")
+
+            # Create Stripe subscription
+            stripe_sub = stripe.Subscription.create(**sub_params)
 
             # Create subscription in database
             subscription_id = str(uuid.uuid4())
@@ -444,6 +464,499 @@ class SubscriptionService:
                 for p in payments
             ]
 
+        finally:
+            db.close()
+
+    # --- PLAN OFFERS (Promotional discounts) ---
+
+    def create_offer(self, gym_id: str, offer_data: dict) -> dict:
+        """Create a promotional offer for subscription plans."""
+        db = get_db_session()
+        try:
+            offer_id = str(uuid.uuid4())
+
+            # Validate plan_id if provided
+            if offer_data.get("plan_id"):
+                plan = db.query(SubscriptionPlanORM).filter(
+                    SubscriptionPlanORM.id == offer_data["plan_id"],
+                    SubscriptionPlanORM.gym_id == gym_id
+                ).first()
+                if not plan:
+                    raise HTTPException(status_code=404, detail="Plan not found")
+
+            # Create offer (inactive by default - owner must activate to notify clients)
+            offer = PlanOfferORM(
+                id=offer_id,
+                gym_id=gym_id,
+                plan_id=offer_data.get("plan_id"),
+                title=offer_data["title"],
+                description=offer_data.get("description"),
+                discount_type=offer_data["discount_type"],  # "percent" or "fixed"
+                discount_value=offer_data["discount_value"],
+                discount_duration_months=offer_data.get("discount_duration_months", 1),
+                coupon_code=offer_data.get("coupon_code"),
+                is_active=False,  # Created as draft - must be activated to notify clients
+                starts_at=offer_data.get("starts_at", datetime.utcnow().isoformat()),
+                expires_at=offer_data.get("expires_at"),
+                max_redemptions=offer_data.get("max_redemptions"),
+                current_redemptions=0,
+                created_at=datetime.utcnow().isoformat(),
+                updated_at=datetime.utcnow().isoformat()
+            )
+
+            db.add(offer)
+            db.commit()
+
+            logger.info(f"Created offer {offer_id} for gym {gym_id} (inactive - pending activation)")
+
+            return {
+                "offer_id": offer_id,
+                "title": offer.title,
+                "discount_type": offer.discount_type,
+                "discount_value": offer.discount_value
+            }
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error creating offer: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to create offer: {str(e)}")
+        finally:
+            db.close()
+
+    def _notify_clients_of_offer(self, db, gym_id: str, offer: PlanOfferORM):
+        """Send notifications to all clients of the gym about a new offer."""
+        try:
+            # Get all clients associated with this gym
+            clients = db.query(ClientProfileORM).filter(
+                ClientProfileORM.gym_id == gym_id
+            ).all()
+
+            # Get gym owner name for notification
+            owner = db.query(UserORM).filter(UserORM.id == gym_id).first()
+            gym_name = owner.username if owner else "Your gym"
+
+            # Create notification for each client
+            for client in clients:
+                discount_symbol = '%' if offer.discount_type == 'percent' else '€'
+                default_msg = f"Get {offer.discount_value}{discount_symbol} off!"
+                notification = NotificationORM(
+                    user_id=client.id,
+                    type="offer",
+                    title="🎉 New Offer Available!",
+                    message=f"{offer.title}: {offer.description or default_msg}",
+                    data=json.dumps({
+                        "offer_id": offer.id,
+                        "gym_id": gym_id,
+                        "discount_type": offer.discount_type,
+                        "discount_value": offer.discount_value,
+                        "coupon_code": offer.coupon_code
+                    }),
+                    read=False,
+                    created_at=datetime.utcnow().isoformat()
+                )
+                db.add(notification)
+
+            db.commit()
+            logger.info(f"Sent offer notifications to {len(clients)} clients")
+
+        except Exception as e:
+            logger.error(f"Error sending offer notifications: {e}")
+            # Don't fail the offer creation if notifications fail
+
+    def get_gym_offers(self, gym_id: str, include_inactive: bool = False) -> list:
+        """Get all offers for a gym."""
+        db = get_db_session()
+        try:
+            query = db.query(PlanOfferORM).filter(PlanOfferORM.gym_id == gym_id)
+
+            if not include_inactive:
+                query = query.filter(PlanOfferORM.is_active == True)
+
+            offers = query.order_by(PlanOfferORM.created_at.desc()).all()
+
+            return [
+                {
+                    "id": o.id,
+                    "plan_id": o.plan_id,
+                    "title": o.title,
+                    "description": o.description,
+                    "discount_type": o.discount_type,
+                    "discount_value": o.discount_value,
+                    "discount_duration_months": o.discount_duration_months,
+                    "coupon_code": o.coupon_code,
+                    "is_active": o.is_active,
+                    "starts_at": o.starts_at,
+                    "expires_at": o.expires_at,
+                    "max_redemptions": o.max_redemptions,
+                    "current_redemptions": o.current_redemptions,
+                    "created_at": o.created_at
+                }
+                for o in offers
+            ]
+
+        finally:
+            db.close()
+
+    def get_active_offers_for_client(self, gym_id: str) -> list:
+        """Get active offers available for a client to use."""
+        db = get_db_session()
+        try:
+            now = datetime.utcnow().isoformat()
+
+            offers = db.query(PlanOfferORM).filter(
+                PlanOfferORM.gym_id == gym_id,
+                PlanOfferORM.is_active == True,
+                PlanOfferORM.starts_at <= now
+            ).all()
+
+            # Filter out expired and maxed out offers
+            active_offers = []
+            for o in offers:
+                # Check expiry
+                if o.expires_at and o.expires_at < now:
+                    continue
+                # Check max redemptions
+                if o.max_redemptions and o.current_redemptions >= o.max_redemptions:
+                    continue
+
+                # Get plan name if specific plan
+                plan_name = None
+                if o.plan_id:
+                    plan = db.query(SubscriptionPlanORM).filter(
+                        SubscriptionPlanORM.id == o.plan_id
+                    ).first()
+                    plan_name = plan.name if plan else None
+
+                active_offers.append({
+                    "id": o.id,
+                    "plan_id": o.plan_id,
+                    "plan_name": plan_name,
+                    "title": o.title,
+                    "description": o.description,
+                    "discount_type": o.discount_type,
+                    "discount_value": o.discount_value,
+                    "discount_duration_months": o.discount_duration_months,
+                    "coupon_code": o.coupon_code,
+                    "expires_at": o.expires_at
+                })
+
+            return active_offers
+
+        finally:
+            db.close()
+
+    def update_offer(self, gym_id: str, offer_id: str, offer_data: dict) -> dict:
+        """Update an existing offer."""
+        db = get_db_session()
+        try:
+            offer = db.query(PlanOfferORM).filter(
+                PlanOfferORM.id == offer_id,
+                PlanOfferORM.gym_id == gym_id
+            ).first()
+
+            if not offer:
+                raise HTTPException(status_code=404, detail="Offer not found")
+
+            # Track if offer is being activated (for notifications)
+            was_inactive = not offer.is_active
+            is_being_activated = False
+
+            # Update fields
+            if "title" in offer_data:
+                offer.title = offer_data["title"]
+            if "description" in offer_data:
+                offer.description = offer_data["description"]
+            if "is_active" in offer_data:
+                is_being_activated = was_inactive and offer_data["is_active"]
+                offer.is_active = offer_data["is_active"]
+            if "expires_at" in offer_data:
+                offer.expires_at = offer_data["expires_at"]
+
+            offer.updated_at = datetime.utcnow().isoformat()
+
+            db.commit()
+
+            # Send notifications to clients when offer is activated
+            if is_being_activated:
+                self._notify_clients_of_offer(db, gym_id, offer)
+                logger.info(f"Activated offer {offer_id} - notifications sent to gym clients")
+
+            return {"status": "updated", "offer_id": offer_id, "notifications_sent": is_being_activated}
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error updating offer: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to update offer: {str(e)}")
+        finally:
+            db.close()
+
+    def delete_offer(self, gym_id: str, offer_id: str) -> dict:
+        """Delete (deactivate) an offer."""
+        db = get_db_session()
+        try:
+            offer = db.query(PlanOfferORM).filter(
+                PlanOfferORM.id == offer_id,
+                PlanOfferORM.gym_id == gym_id
+            ).first()
+
+            if not offer:
+                raise HTTPException(status_code=404, detail="Offer not found")
+
+            # Soft delete - just deactivate
+            offer.is_active = False
+            offer.updated_at = datetime.utcnow().isoformat()
+
+            db.commit()
+
+            return {"status": "deleted", "offer_id": offer_id}
+
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error deleting offer: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to delete offer: {str(e)}")
+        finally:
+            db.close()
+
+    def validate_coupon(self, gym_id: str, coupon_code: str, plan_id: str = None) -> dict:
+        """Validate a coupon code and return discount info."""
+        db = get_db_session()
+        try:
+            now = datetime.utcnow().isoformat()
+
+            offer = db.query(PlanOfferORM).filter(
+                PlanOfferORM.gym_id == gym_id,
+                PlanOfferORM.coupon_code == coupon_code,
+                PlanOfferORM.is_active == True,
+                PlanOfferORM.starts_at <= now
+            ).first()
+
+            if not offer:
+                return {"valid": False, "error": "Invalid coupon code"}
+
+            # Check expiry
+            if offer.expires_at and offer.expires_at < now:
+                return {"valid": False, "error": "Coupon has expired"}
+
+            # Check max redemptions
+            if offer.max_redemptions and offer.current_redemptions >= offer.max_redemptions:
+                return {"valid": False, "error": "Coupon limit reached"}
+
+            # Check if coupon is for specific plan
+            if offer.plan_id and plan_id and offer.plan_id != plan_id:
+                return {"valid": False, "error": "Coupon not valid for this plan"}
+
+            return {
+                "valid": True,
+                "offer_id": offer.id,
+                "discount_type": offer.discount_type,
+                "discount_value": offer.discount_value,
+                "discount_duration_months": offer.discount_duration_months,
+                "title": offer.title
+            }
+
+        finally:
+            db.close()
+
+    # --- STRIPE CONNECT (for gym owners to receive payments) ---
+
+    def create_connect_account(self, owner_id: str, return_url: str, refresh_url: str) -> dict:
+        """Create a Stripe Connect account for a gym owner and return onboarding link."""
+        if not is_stripe_configured():
+            raise HTTPException(status_code=400, detail="Stripe is not configured")
+
+        db = get_db_session()
+        try:
+            # Get owner
+            owner = db.query(UserORM).filter(
+                UserORM.id == owner_id,
+                UserORM.role == "owner"
+            ).first()
+
+            if not owner:
+                raise HTTPException(status_code=404, detail="Owner not found")
+
+            # Check if already has a connected account
+            if owner.stripe_account_id:
+                # Account exists, create new onboarding link to complete setup if needed
+                account_link = stripe.AccountLink.create(
+                    account=owner.stripe_account_id,
+                    refresh_url=refresh_url,
+                    return_url=return_url,
+                    type="account_onboarding"
+                )
+                return {
+                    "account_id": owner.stripe_account_id,
+                    "onboarding_url": account_link.url,
+                    "status": owner.stripe_account_status or "pending"
+                }
+
+            # Create new Connect account (Express type for easy onboarding)
+            account = stripe.Account.create(
+                type="express",
+                country="IT",  # Default to Italy, can be made dynamic
+                email=owner.email,
+                capabilities={
+                    "card_payments": {"requested": True},
+                    "transfers": {"requested": True},
+                },
+                business_type="company",
+                metadata={
+                    "owner_id": owner_id,
+                    "gym_code": owner.gym_code
+                }
+            )
+
+            # Save account ID to database
+            owner.stripe_account_id = account.id
+            owner.stripe_account_status = "pending"
+            db.commit()
+
+            # Create onboarding link
+            account_link = stripe.AccountLink.create(
+                account=account.id,
+                refresh_url=refresh_url,
+                return_url=return_url,
+                type="account_onboarding"
+            )
+
+            logger.info(f"Created Stripe Connect account for owner {owner_id}: {account.id}")
+
+            return {
+                "account_id": account.id,
+                "onboarding_url": account_link.url,
+                "status": "pending"
+            }
+
+        except stripe.StripeError as e:
+            logger.error(f"Stripe error creating Connect account: {e}")
+            raise HTTPException(status_code=400, detail=f"Stripe error: {str(e)}")
+        finally:
+            db.close()
+
+    def get_connect_account_status(self, owner_id: str) -> dict:
+        """Get the status of a gym owner's Stripe Connect account."""
+        db = get_db_session()
+        try:
+            owner = db.query(UserORM).filter(
+                UserORM.id == owner_id,
+                UserORM.role == "owner"
+            ).first()
+
+            if not owner:
+                raise HTTPException(status_code=404, detail="Owner not found")
+
+            if not owner.stripe_account_id:
+                return {
+                    "connected": False,
+                    "status": None,
+                    "can_receive_payments": False
+                }
+
+            # Get account status from Stripe
+            if is_stripe_configured():
+                try:
+                    account = stripe.Account.retrieve(owner.stripe_account_id)
+
+                    # Check if account can receive payments
+                    can_receive = (
+                        account.charges_enabled and
+                        account.payouts_enabled
+                    )
+
+                    # Update status in database
+                    if can_receive:
+                        owner.stripe_account_status = "active"
+                    elif account.details_submitted:
+                        owner.stripe_account_status = "pending_verification"
+                    else:
+                        owner.stripe_account_status = "pending"
+
+                    db.commit()
+
+                    return {
+                        "connected": True,
+                        "account_id": owner.stripe_account_id,
+                        "status": owner.stripe_account_status,
+                        "can_receive_payments": can_receive,
+                        "charges_enabled": account.charges_enabled,
+                        "payouts_enabled": account.payouts_enabled,
+                        "details_submitted": account.details_submitted
+                    }
+
+                except stripe.StripeError as e:
+                    logger.error(f"Error checking Stripe account: {e}")
+                    return {
+                        "connected": True,
+                        "account_id": owner.stripe_account_id,
+                        "status": owner.stripe_account_status or "unknown",
+                        "can_receive_payments": False,
+                        "error": str(e)
+                    }
+            else:
+                # Test mode
+                return {
+                    "connected": True,
+                    "account_id": owner.stripe_account_id,
+                    "status": "test_mode",
+                    "can_receive_payments": True
+                }
+
+        finally:
+            db.close()
+
+    def get_gym_stripe_account(self, gym_id: str) -> str:
+        """Get the Stripe Connect account ID for a gym (by owner)."""
+        db = get_db_session()
+        try:
+            # Find the owner of this gym
+            owner = db.query(UserORM).filter(
+                UserORM.id == gym_id,  # gym_id is typically the owner's user id
+                UserORM.role == "owner"
+            ).first()
+
+            if not owner:
+                # Try finding by gym_code if gym_id is actually a gym code
+                owner = db.query(UserORM).filter(
+                    UserORM.gym_code == gym_id,
+                    UserORM.role == "owner"
+                ).first()
+
+            if owner and owner.stripe_account_id and owner.stripe_account_status == "active":
+                return owner.stripe_account_id
+
+            return None
+
+        finally:
+            db.close()
+
+    def create_connect_login_link(self, owner_id: str) -> dict:
+        """Create a login link for the owner to access their Stripe dashboard."""
+        if not is_stripe_configured():
+            raise HTTPException(status_code=400, detail="Stripe is not configured")
+
+        db = get_db_session()
+        try:
+            owner = db.query(UserORM).filter(
+                UserORM.id == owner_id,
+                UserORM.role == "owner"
+            ).first()
+
+            if not owner or not owner.stripe_account_id:
+                raise HTTPException(status_code=404, detail="No connected Stripe account found")
+
+            login_link = stripe.Account.create_login_link(owner.stripe_account_id)
+
+            return {"url": login_link.url}
+
+        except stripe.StripeError as e:
+            logger.error(f"Error creating login link: {e}")
+            raise HTTPException(status_code=400, detail=f"Stripe error: {str(e)}")
         finally:
             db.close()
 
