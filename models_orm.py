@@ -569,6 +569,43 @@ class FriendshipORM(Base):
     accepted_at = Column(String, nullable=True)
 
 
+# --- AUTOMATED MESSAGING ---
+
+class AutomatedMessageTemplateORM(Base):
+    """Automated message templates configured by gym owners."""
+    __tablename__ = "automated_message_templates"
+
+    id = Column(String, primary_key=True, index=True)  # UUID
+    gym_id = Column(String, ForeignKey("users.id"), index=True)  # Owner's user ID
+    name = Column(String)  # e.g., "Inactive Client Reminder"
+    trigger_type = Column(String, index=True)  # missed_workout, days_inactive, no_show_appointment
+    trigger_config = Column(Text, nullable=True)  # JSON: {"days_threshold": 5}
+    subject = Column(String, nullable=True)  # For email
+    message_template = Column(Text)  # Supports {client_name}, {days_inactive}, etc.
+    delivery_methods = Column(Text)  # JSON: ["in_app", "email", "whatsapp"]
+    is_enabled = Column(Boolean, default=True)
+    send_delay_hours = Column(Integer, default=0)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    updated_at = Column(String, nullable=True)
+
+
+class AutomatedMessageLogORM(Base):
+    """Log of sent automated messages to prevent duplicates."""
+    __tablename__ = "automated_message_log"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    template_id = Column(String, ForeignKey("automated_message_templates.id"), index=True)
+    client_id = Column(String, ForeignKey("users.id"), index=True)
+    gym_id = Column(String, index=True)
+    trigger_type = Column(String)
+    trigger_reference = Column(String, nullable=True)  # schedule_id or appointment_id
+    delivery_method = Column(String)  # in_app, email, whatsapp
+    status = Column(String, default="sent")  # sent, failed
+    error_message = Column(Text, nullable=True)
+    triggered_at = Column(String)
+    sent_at = Column(String, nullable=True)
+
+
 # --- GROUP COURSES & LESSONS ---
 
 class CourseORM(Base):

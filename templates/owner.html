@@ -20,6 +20,10 @@
            class="px-4 py-2 rounded-xl text-sm font-semibold transition {{ 'bg-primary/20 text-primary border border-primary/30' if mode == 'trainers' else 'text-white/60 hover:bg-white/5' }}">
             👥 Trainers
         </a>
+        <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=automation' }}"
+           class="px-4 py-2 rounded-xl text-sm font-semibold transition {{ 'bg-primary/20 text-primary border border-primary/30' if mode == 'automation' else 'text-white/60 hover:bg-white/5' }}">
+            📬 Automation
+        </a>
         <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=settings' }}"
            class="px-4 py-2 rounded-xl text-sm font-semibold transition {{ 'bg-primary/20 text-primary border border-primary/30' if mode == 'settings' else 'text-white/60 hover:bg-white/5' }}">
             ⚙️ Settings
@@ -35,10 +39,10 @@
     <!-- Mobile header -->
     <div class="lg:hidden text-center mb-5">
         <h1 class="text-2xl font-black tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent" id="gym-name-owner">My Gym</h1>
-        <p class="text-xs text-gray-500 uppercase tracking-widest mt-1" id="section-title-mobile">{{ 'Settings' if mode == 'settings' else ('Trainers' if mode == 'trainers' else 'Dashboard') }}</p>
+        <p class="text-xs text-gray-500 uppercase tracking-widest mt-1" id="section-title-mobile">{{ 'Settings' if mode == 'settings' else ('Trainers' if mode == 'trainers' else ('Automation' if mode == 'automation' else 'Dashboard')) }}</p>
     </div>
     <!-- Desktop header -->
-    <h2 class="hidden lg:block text-2xl font-bold text-left mb-6">{{ 'Settings' if mode == 'settings' else ('Trainers' if mode == 'trainers' else 'Dashboard') }}</h2>
+    <h2 class="hidden lg:block text-2xl font-bold text-left mb-6">{{ 'Settings' if mode == 'settings' else ('Trainers' if mode == 'trainers' else ('Automation' if mode == 'automation' else 'Dashboard')) }}</h2>
 
     {% if mode == 'settings' %}
     <!-- ==================== SETTINGS MODE ==================== -->
@@ -149,6 +153,55 @@
         <div id="approved-trainers-list" class="space-y-3">
             <div class="glass-card p-3 text-center text-gray-400 text-sm">
                 Loading...
+            </div>
+        </div>
+    </div>
+
+    {% elif mode == 'automation' %}
+    <!-- ==================== AUTOMATION MODE ==================== -->
+
+    <!-- Info Card -->
+    {% call card(classes="p-4 mb-5") %}
+    <div class="flex items-center gap-3 mb-3">
+        <div class="w-10 h-10 rounded-xl bg-blue-500/20 flex items-center justify-center">
+            <span class="text-xl">📬</span>
+        </div>
+        <div>
+            <h3 class="font-bold">Automated Messages</h3>
+            <p class="text-xs text-gray-400">Automatically reach out to inactive clients</p>
+        </div>
+    </div>
+    <p class="text-sm text-gray-400">
+        Create message templates that are automatically sent when clients miss workouts, become inactive, or skip appointments.
+    </p>
+    {% endcall %}
+
+    <!-- Templates List -->
+    <div class="mb-5">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Message Templates</h3>
+            <button onclick="openCreateTemplateModal()" class="text-xs bg-primary px-3 py-2 rounded-lg hover:bg-primary/80 transition font-semibold">
+                + Create Template
+            </button>
+        </div>
+        <div id="templates-list" class="space-y-3">
+            <div class="glass-card p-3 text-center text-gray-400 text-sm">
+                Loading templates...
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity Log -->
+    <div class="mb-5">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Recent Activity</h3>
+            <button onclick="manualTriggerCheck()" class="text-xs bg-white/10 px-3 py-2 rounded-lg hover:bg-white/20 transition font-semibold">
+                Run Check Now
+            </button>
+        </div>
+        <div id="message-log" class="space-y-2 max-h-64 overflow-y-auto">
+            <div class="glass-card p-3 text-center text-gray-400 text-sm">
+                Loading activity...
             </div>
         </div>
     </div>
@@ -429,6 +482,108 @@
         <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🎊</button>
         <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">📢</button>
         <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🆓</button>
+    </div>
+</div>
+
+<!-- Create/Edit Template Modal -->
+<div id="template-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-card p-6 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <h3 class="text-xl font-bold mb-4" id="template-modal-title">Create Automated Message</h3>
+
+        <form id="template-form" class="space-y-4" onsubmit="saveTemplate(event)">
+            <input type="hidden" id="template-id">
+
+            <!-- Template Name -->
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Template Name</label>
+                <input type="text" id="template-name" required
+                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                    placeholder="e.g., Inactive Client Reminder">
+            </div>
+
+            <!-- Trigger Type -->
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Trigger</label>
+                <select id="template-trigger" required onchange="updateTriggerConfig()"
+                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition">
+                    <option value="missed_workout">Missed Workout (scheduled but not completed)</option>
+                    <option value="days_inactive">Days Inactive (no workouts in X days)</option>
+                    <option value="no_show_appointment">No-Show Appointment</option>
+                </select>
+            </div>
+
+            <!-- Trigger Config (dynamic) -->
+            <div id="trigger-config-section" class="hidden">
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Days Threshold</label>
+                <input type="number" id="trigger-days-threshold" min="1" value="5"
+                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                    placeholder="5">
+                <p class="text-xs text-gray-500 mt-1">Send message when client hasn't worked out for this many days</p>
+            </div>
+
+            <!-- Delivery Methods -->
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Delivery Methods</label>
+                <div class="space-y-2">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="delivery-in-app" checked class="rounded bg-black/20 border-white/20 text-primary focus:ring-primary/50">
+                        <span class="text-sm">In-App Notification</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer opacity-50">
+                        <input type="checkbox" id="delivery-email" disabled class="rounded bg-black/20 border-white/20">
+                        <span class="text-sm">Email (Coming Soon)</span>
+                    </label>
+                    <label class="flex items-center gap-2 cursor-pointer opacity-50">
+                        <input type="checkbox" id="delivery-whatsapp" disabled class="rounded bg-black/20 border-white/20">
+                        <span class="text-sm">WhatsApp (Coming Soon)</span>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Message Template -->
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Message</label>
+                <textarea id="template-message" rows="4" required
+                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                    placeholder="Hey {client_name}, we noticed you missed your workout..."></textarea>
+                <p class="text-xs text-gray-500 mt-1">
+                    Variables: <span class="text-primary">{client_name}</span>, <span class="text-primary">{days_inactive}</span>, <span class="text-primary">{workout_title}</span>, <span class="text-primary">{trainer_name}</span>
+                </p>
+            </div>
+
+            <!-- Preview Button -->
+            <button type="button" onclick="previewTemplate()"
+                class="w-full bg-white/10 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white/20 transition">
+                Preview Message
+            </button>
+
+            <!-- Preview Output -->
+            <div id="template-preview" class="hidden bg-black/30 rounded-lg p-3 border border-white/10">
+                <p class="text-xs text-gray-400 uppercase mb-2">Preview</p>
+                <p id="preview-output" class="text-sm text-white"></p>
+            </div>
+
+            <!-- Enable Toggle -->
+            <div class="flex items-center justify-between pt-2">
+                <span class="text-sm">Enable this template</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="template-enabled" checked class="sr-only peer">
+                    <div class="w-11 h-6 bg-gray-700 peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                </label>
+            </div>
+
+            <!-- Submit Buttons -->
+            <div class="flex space-x-3 pt-2">
+                <button type="button" onclick="closeTemplateModal()"
+                    class="flex-1 bg-white/10 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white/20 transition">
+                    Cancel
+                </button>
+                <button type="submit"
+                    class="flex-1 bg-primary px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/80 transition">
+                    <span id="template-submit-btn">Create Template</span>
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -1377,6 +1532,335 @@ async function rejectTrainer(trainerId, username) {
     }
 }
 
+// --- AUTOMATED MESSAGES FUNCTIONS ---
+
+let currentTemplateId = null;
+
+async function loadTemplates() {
+    try {
+        const response = await fetch('/api/owner/automated-messages', {
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to load templates');
+        const templates = await response.json();
+        displayTemplates(templates);
+    } catch (error) {
+        console.error('Error loading templates:', error);
+        const container = document.getElementById('templates-list');
+        if (container) {
+            container.innerHTML = `<div class="glass-card p-3 text-center text-red-400 text-sm">Failed to load templates</div>`;
+        }
+    }
+}
+
+function displayTemplates(templates) {
+    const container = document.getElementById('templates-list');
+    if (!container) return;
+
+    if (!templates || templates.length === 0) {
+        container.innerHTML = `
+            <div class="glass-card p-4 text-center text-gray-400 text-sm">
+                No automated messages configured. Create your first template to start engaging inactive clients.
+            </div>
+        `;
+        return;
+    }
+
+    const triggerLabels = {
+        'missed_workout': 'Missed Workout',
+        'days_inactive': 'Days Inactive',
+        'no_show_appointment': 'No-Show Appointment'
+    };
+
+    container.innerHTML = templates.map(t => `
+        <div class="glass-card p-4 ${t.is_enabled ? '' : 'opacity-50'}">
+            <div class="flex justify-between items-start mb-2">
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <h4 class="font-bold">${escapeHtml(t.name)}</h4>
+                        <span class="text-xs px-2 py-0.5 rounded-full ${t.is_enabled ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}">
+                            ${t.is_enabled ? 'Active' : 'Disabled'}
+                        </span>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-1">Trigger: ${triggerLabels[t.trigger_type] || t.trigger_type}${t.trigger_type === 'days_inactive' && t.trigger_config ? ` (${t.trigger_config.days_threshold} days)` : ''}</p>
+                </div>
+                <div class="flex gap-2 flex-shrink-0">
+                    <button onclick="toggleTemplate('${t.id}')" class="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition">
+                        ${t.is_enabled ? 'Disable' : 'Enable'}
+                    </button>
+                    <button onclick="editTemplate('${t.id}')" class="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition">
+                        Edit
+                    </button>
+                    <button onclick="deleteTemplate('${t.id}', '${escapeHtml(t.name)}')" class="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded hover:bg-red-500/30 transition">
+                        Delete
+                    </button>
+                </div>
+            </div>
+            <div class="mt-3 pt-3 border-t border-white/10">
+                <p class="text-xs text-gray-400 line-clamp-2">${escapeHtml(t.message_template)}</p>
+            </div>
+            <div class="mt-2 flex gap-2">
+                ${t.delivery_methods.includes('in_app') ? '<span class="text-xs bg-blue-500/20 text-blue-400 px-2 py-0.5 rounded">In-App</span>' : ''}
+                ${t.delivery_methods.includes('email') ? '<span class="text-xs bg-purple-500/20 text-purple-400 px-2 py-0.5 rounded">Email</span>' : ''}
+                ${t.delivery_methods.includes('whatsapp') ? '<span class="text-xs bg-green-500/20 text-green-400 px-2 py-0.5 rounded">WhatsApp</span>' : ''}
+            </div>
+        </div>
+    `).join('');
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function openCreateTemplateModal() {
+    currentTemplateId = null;
+    document.getElementById('template-modal-title').textContent = 'Create Automated Message';
+    document.getElementById('template-submit-btn').textContent = 'Create Template';
+    document.getElementById('template-form').reset();
+    document.getElementById('template-id').value = '';
+    document.getElementById('template-preview').classList.add('hidden');
+    document.getElementById('delivery-in-app').checked = true;
+    document.getElementById('template-enabled').checked = true;
+    updateTriggerConfig();
+    document.getElementById('template-modal').classList.remove('hidden');
+}
+
+function closeTemplateModal() {
+    document.getElementById('template-modal').classList.add('hidden');
+    currentTemplateId = null;
+}
+
+function updateTriggerConfig() {
+    const trigger = document.getElementById('template-trigger').value;
+    const configSection = document.getElementById('trigger-config-section');
+
+    if (trigger === 'days_inactive') {
+        configSection.classList.remove('hidden');
+    } else {
+        configSection.classList.add('hidden');
+    }
+}
+
+function previewTemplate() {
+    const message = document.getElementById('template-message').value;
+    // Simple client-side preview with sample data
+    const preview = message
+        .replace(/{client_name}/g, 'John Doe')
+        .replace(/{days_inactive}/g, '7')
+        .replace(/{workout_title}/g, 'Push Day')
+        .replace(/{trainer_name}/g, 'Mike');
+
+    document.getElementById('preview-output').textContent = preview;
+    document.getElementById('template-preview').classList.remove('hidden');
+}
+
+async function saveTemplate(event) {
+    event.preventDefault();
+
+    const templateId = document.getElementById('template-id').value;
+    const isEdit = !!templateId;
+
+    const deliveryMethods = [];
+    if (document.getElementById('delivery-in-app').checked) deliveryMethods.push('in_app');
+    if (document.getElementById('delivery-email').checked) deliveryMethods.push('email');
+    if (document.getElementById('delivery-whatsapp').checked) deliveryMethods.push('whatsapp');
+
+    const triggerType = document.getElementById('template-trigger').value;
+    let triggerConfig = null;
+    if (triggerType === 'days_inactive') {
+        triggerConfig = {
+            days_threshold: parseInt(document.getElementById('trigger-days-threshold').value) || 5
+        };
+    }
+
+    const data = {
+        name: document.getElementById('template-name').value,
+        trigger_type: triggerType,
+        trigger_config: triggerConfig,
+        message_template: document.getElementById('template-message').value,
+        delivery_methods: deliveryMethods,
+        is_enabled: document.getElementById('template-enabled').checked
+    };
+
+    try {
+        const url = isEdit
+            ? `/api/owner/automated-messages/${templateId}`
+            : '/api/owner/automated-messages';
+        const method = isEdit ? 'PUT' : 'POST';
+
+        const response = await fetch(url, {
+            method: method,
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(data)
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to save template');
+        }
+
+        showToast(isEdit ? 'Template updated!' : 'Template created!', 'success');
+        closeTemplateModal();
+        loadTemplates();
+    } catch (error) {
+        showToast(error.message, 'error');
+    }
+}
+
+async function editTemplate(templateId) {
+    try {
+        const response = await fetch(`/api/owner/automated-messages/${templateId}`, {
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to load template');
+        const template = await response.json();
+
+        currentTemplateId = templateId;
+        document.getElementById('template-id').value = templateId;
+        document.getElementById('template-modal-title').textContent = 'Edit Automated Message';
+        document.getElementById('template-submit-btn').textContent = 'Save Changes';
+
+        document.getElementById('template-name').value = template.name;
+        document.getElementById('template-trigger').value = template.trigger_type;
+        document.getElementById('template-message').value = template.message_template;
+        document.getElementById('template-enabled').checked = template.is_enabled;
+
+        if (template.trigger_config && template.trigger_config.days_threshold) {
+            document.getElementById('trigger-days-threshold').value = template.trigger_config.days_threshold;
+        }
+
+        document.getElementById('delivery-in-app').checked = template.delivery_methods.includes('in_app');
+
+        updateTriggerConfig();
+        document.getElementById('template-preview').classList.add('hidden');
+        document.getElementById('template-modal').classList.remove('hidden');
+    } catch (error) {
+        showToast('Failed to load template', 'error');
+    }
+}
+
+async function toggleTemplate(templateId) {
+    try {
+        const response = await fetch(`/api/owner/automated-messages/${templateId}/toggle`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to toggle template');
+        const template = await response.json();
+        showToast(`Template ${template.is_enabled ? 'enabled' : 'disabled'}`, 'success');
+        loadTemplates();
+    } catch (error) {
+        showToast('Failed to toggle template', 'error');
+    }
+}
+
+async function deleteTemplate(templateId, templateName) {
+    if (!confirm(`Delete template "${templateName}"? This cannot be undone.`)) return;
+
+    try {
+        const response = await fetch(`/api/owner/automated-messages/${templateId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to delete template');
+        showToast('Template deleted', 'success');
+        loadTemplates();
+    } catch (error) {
+        showToast('Failed to delete template', 'error');
+    }
+}
+
+async function loadMessageLog() {
+    try {
+        const response = await fetch('/api/owner/automated-messages/log?limit=20', {
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to load message log');
+        const logs = await response.json();
+        displayMessageLog(logs);
+    } catch (error) {
+        console.error('Error loading message log:', error);
+        const container = document.getElementById('message-log');
+        if (container) {
+            container.innerHTML = `<div class="glass-card p-3 text-center text-gray-400 text-sm">No recent activity</div>`;
+        }
+    }
+}
+
+function displayMessageLog(logs) {
+    const container = document.getElementById('message-log');
+    if (!container) return;
+
+    if (!logs || logs.length === 0) {
+        container.innerHTML = `
+            <div class="glass-card p-3 text-center text-gray-400 text-sm">
+                No automated messages sent yet.
+            </div>
+        `;
+        return;
+    }
+
+    const triggerLabels = {
+        'missed_workout': 'Missed Workout',
+        'days_inactive': 'Inactive',
+        'no_show_appointment': 'No-Show'
+    };
+
+    container.innerHTML = logs.map(log => `
+        <div class="glass-card p-3 flex items-center gap-3">
+            <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                <span class="text-xs">${log.status === 'sent' ? '✓' : '✗'}</span>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold truncate">${escapeHtml(log.client_name)}</p>
+                <p class="text-xs text-gray-400">${triggerLabels[log.trigger_type] || log.trigger_type} · ${escapeHtml(log.template_name)}</p>
+            </div>
+            <div class="text-right flex-shrink-0">
+                <span class="text-xs px-2 py-0.5 rounded-full ${log.status === 'sent' ? 'bg-green-500/20 text-green-400' : 'bg-red-500/20 text-red-400'}">
+                    ${log.status}
+                </span>
+                <p class="text-xs text-gray-500 mt-1">${formatRelativeTime(log.triggered_at)}</p>
+            </div>
+        </div>
+    `).join('');
+}
+
+function formatRelativeTime(isoString) {
+    if (!isoString) return '';
+    const date = new Date(isoString);
+    const now = new Date();
+    const diffMs = now - date;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+}
+
+async function manualTriggerCheck() {
+    try {
+        showToast('Running trigger check...', 'info');
+        const response = await fetch('/api/owner/automated-messages/trigger-check', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        if (!response.ok) throw new Error('Failed to run trigger check');
+        const result = await response.json();
+        showToast(`Check complete: ${result.messages_sent} messages sent`, 'success');
+        loadMessageLog();
+    } catch (error) {
+        showToast('Failed to run trigger check', 'error');
+    }
+}
+
 // Initialize based on mode
 if (currentMode === 'settings') {
     loadGymCode();
@@ -1384,6 +1868,9 @@ if (currentMode === 'settings') {
 } else if (currentMode === 'trainers') {
     loadPendingTrainers();
     loadApprovedTrainers();
+} else if (currentMode === 'automation') {
+    loadTemplates();
+    loadMessageLog();
 } else {
     // Dashboard mode (default)
     loadPendingTrainers();

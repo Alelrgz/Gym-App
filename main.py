@@ -98,6 +98,11 @@ from route_modules.staff_routes import router as staff_router
 app.include_router(staff_router)
 print("DEBUG: Staff router included")
 
+# Include automated message routes
+from route_modules.automated_message_routes import router as auto_msg_router
+app.include_router(auto_msg_router)
+print("DEBUG: Automated message router included")
+
 
 def run_migrations(engine):
     """Run database migrations to add new columns."""
@@ -210,6 +215,27 @@ def run_migrations(engine):
                 except Exception as e:
                     logger.debug(f"Column base_calories may already exist: {e}")
 
+def background_trigger_checker():
+    """Background thread that periodically checks for automated message triggers."""
+    import time
+    from service_modules.trigger_check_service import get_trigger_check_service
+
+    # Wait 60 seconds before first check to let the app fully initialize
+    time.sleep(60)
+
+    while True:
+        try:
+            logger.info("Running automated message trigger check...")
+            trigger_service = get_trigger_check_service()
+            results = trigger_service.check_all_triggers()
+            logger.info(f"Trigger check complete: {results['messages_sent']} sent, {results['messages_skipped']} skipped")
+        except Exception as e:
+            logger.error(f"Background trigger check error: {e}")
+
+        # Sleep for 15 minutes between checks
+        time.sleep(900)
+
+
 @app.on_event("startup")
 async def startup_event():
     logger.info("Initializing Database...")
@@ -229,6 +255,12 @@ async def startup_event():
             logger.info("Using PostgreSQL Database (Production)")
     except Exception as e:
         logger.error(f"Database initialization failed: {e}")
+
+    # Start background thread for automated message trigger checking
+    import threading
+    trigger_thread = threading.Thread(target=background_trigger_checker, daemon=True)
+    trigger_thread.start()
+    logger.info("Automated message trigger checker started (runs every 15 minutes)")
 
     logger.info("Registered Routes:")
     with open("server_debug.log", "a") as f:
