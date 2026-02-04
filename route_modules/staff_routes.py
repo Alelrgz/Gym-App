@@ -722,6 +722,7 @@ async def onboard_new_client(
 
     # Optional fields
     email = data.get("email", "").strip() or None
+    date_of_birth = data.get("date_of_birth") or None
 
     # Document info
     document_type = data.get("document_type")  # "waiver" or "medical_certificate"
@@ -777,6 +778,7 @@ async def onboard_new_client(
             id=client_id,
             name=name,
             email=email,
+            date_of_birth=date_of_birth,
             gym_id=user.gym_owner_id,
             streak=0,
             gems=0,

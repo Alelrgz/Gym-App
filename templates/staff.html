@@ -471,10 +471,17 @@
                     <input type="tel" id="onboard-phone" placeholder="+1 234 567 8900"
                         class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition">
                 </div>
-                <div>
-                    <label class="block text-xs text-gray-400 mb-1">Email (optional)</label>
-                    <input type="email" id="onboard-email" placeholder="email@example.com"
-                        class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Email (optional)</label>
+                        <input type="email" id="onboard-email" placeholder="email@example.com"
+                            class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Date of Birth *</label>
+                        <input type="date" id="onboard-dob"
+                            class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition">
+                    </div>
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
@@ -1424,6 +1431,7 @@ const onboardingState = {
         name: '',
         phone: '',
         email: '',
+        dateOfBirth: '',
         username: '',
         password: '',
         documentType: 'waiver',
@@ -1444,7 +1452,8 @@ function openOnboardingWizard() {
     // Reset state
     onboardingState.currentStep = 1;
     onboardingState.data = {
-        name: '', phone: '', email: '', username: '', password: '',
+        name: '', phone: '', email: '', dateOfBirth: '',
+        username: '', password: '',
         documentType: 'waiver', documentData: null, waiverText: '',
         planId: null, planName: '', planPrice: 0, planCurrency: '€',
         paymentMethod: null
@@ -1454,6 +1463,7 @@ function openOnboardingWizard() {
     document.getElementById('onboard-name').value = '';
     document.getElementById('onboard-phone').value = '';
     document.getElementById('onboard-email').value = '';
+    document.getElementById('onboard-dob').value = '';
     document.getElementById('onboard-username').value = '';
     document.getElementById('onboard-password').value = '';
 
@@ -1566,6 +1576,7 @@ function saveOnboardStepData(step) {
         onboardingState.data.name = document.getElementById('onboard-name').value.trim();
         onboardingState.data.phone = document.getElementById('onboard-phone').value.trim();
         onboardingState.data.email = document.getElementById('onboard-email').value.trim();
+        onboardingState.data.dateOfBirth = document.getElementById('onboard-dob').value;
         onboardingState.data.username = document.getElementById('onboard-username').value.trim();
         onboardingState.data.password = document.getElementById('onboard-password').value.trim();
     }
@@ -2038,6 +2049,7 @@ async function completeOnboarding() {
             name: onboardingState.data.name,
             phone: onboardingState.data.phone,
             email: onboardingState.data.email || null,
+            date_of_birth: onboardingState.data.dateOfBirth || null,
             username: onboardingState.data.username,
             password: onboardingState.data.password,
             document_type: onboardingState.data.documentType,

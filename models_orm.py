@@ -100,6 +100,11 @@ class ClientProfileORM(Base):
 
     is_premium = Column(Boolean, default=False)
 
+    # Personal info
+    date_of_birth = Column(String, nullable=True)  # Format: YYYY-MM-DD
+    emergency_contact_name = Column(String, nullable=True)
+    emergency_contact_phone = Column(String, nullable=True)
+
     # Privacy setting for client-to-client chat
     privacy_mode = Column(String, default="public")  # "public" or "private"
 
