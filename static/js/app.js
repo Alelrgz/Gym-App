@@ -2315,11 +2315,18 @@ function openWeightModal() {
     const modal = document.getElementById('weight-modal');
     if (modal) {
         modal.classList.remove('hidden');
-        const input = document.getElementById('weight-input');
-        if (input && currentClientWeight) {
-            input.value = currentClientWeight;
+        const weightInput = document.getElementById('weight-input');
+        const bodyFatInput = document.getElementById('body-fat-input');
+        const preview = document.getElementById('composition-preview');
+
+        if (weightInput && currentClientWeight) {
+            weightInput.value = currentClientWeight;
         }
-        input?.focus();
+        // Clear body fat input and preview
+        if (bodyFatInput) bodyFatInput.value = '';
+        if (preview) preview.classList.add('hidden');
+
+        weightInput?.focus();
     }
 }
 
@@ -2331,12 +2338,24 @@ function closeWeightModal() {
 }
 
 async function saveWeight() {
-    const input = document.getElementById('weight-input');
-    const weight = parseFloat(input?.value);
+    const weightInput = document.getElementById('weight-input');
+    const bodyFatInput = document.getElementById('body-fat-input');
+    const weight = parseFloat(weightInput?.value);
+    const bodyFat = bodyFatInput?.value ? parseFloat(bodyFatInput.value) : null;
 
     if (!weight || weight < 20 || weight > 300) {
         showToast('Please enter a valid weight (20-300 kg)', 'error');
         return;
+    }
+
+    if (bodyFat !== null && (bodyFat < 1 || bodyFat > 70)) {
+        showToast('Please enter a valid body fat % (1-70)', 'error');
+        return;
+    }
+
+    const payload = { weight };
+    if (bodyFat !== null) {
+        payload.body_fat_pct = bodyFat;
     }
 
     try {
@@ -2347,24 +2366,41 @@ async function saveWeight() {
                 'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
             },
             credentials: 'include',
-            body: JSON.stringify({ weight: weight })
+            body: JSON.stringify(payload)
         });
 
         if (response.ok) {
             currentClientWeight = weight;
             updateWeightDisplay(weight);
             closeWeightModal();
-            showToast('Weight updated!', 'success');
+            showToast('Body stats updated!', 'success');
             // Reload the weight chart
             loadWeightChart(currentWeightPeriod);
         } else {
-            showToast('Failed to update weight', 'error');
+            showToast('Failed to update stats', 'error');
         }
     } catch (error) {
-        console.error('Error updating weight:', error);
-        showToast('Failed to update weight', 'error');
+        console.error('Error updating stats:', error);
+        showToast('Failed to update stats', 'error');
     }
 }
+
+// Live preview of body composition calculations in modal
+window.updateCompositionPreview = function() {
+    const weight = parseFloat(document.getElementById('weight-input')?.value) || 0;
+    const bodyFat = parseFloat(document.getElementById('body-fat-input')?.value) || 0;
+    const preview = document.getElementById('composition-preview');
+
+    if (weight > 0 && bodyFat > 0 && preview) {
+        const fatMass = (weight * bodyFat / 100).toFixed(1);
+        const leanMass = (weight - fatMass).toFixed(1);
+        document.getElementById('preview-fat-mass').textContent = fatMass;
+        document.getElementById('preview-lean-mass').textContent = leanMass;
+        preview.classList.remove('hidden');
+    } else if (preview) {
+        preview.classList.add('hidden');
+    }
+};
 
 function updateWeightDisplay(weight) {
     const el = document.getElementById('client-weight');
@@ -2425,8 +2461,16 @@ document.addEventListener('DOMContentLoaded', initCarousel);
 let weightChartInstance = null;
 let currentWeightPeriod = 'month';
 let currentTrendView = 'weight'; // 'weight' or 'strength'
+let currentBodyMetric = 'weight'; // 'weight', 'body_fat_pct', or 'lean_mass'
 let cachedWeightData = null;
 let cachedStrengthData = null;
+
+// Metric configuration for body composition charts
+const bodyMetricConfig = {
+    weight: { label: 'Weight', unit: 'kg', color: '#3B82F6', icon: '⚖️', goodDirection: 'down' },
+    body_fat_pct: { label: 'Body Fat', unit: '%', color: '#F59E0B', icon: '🔥', goodDirection: 'down' },
+    lean_mass: { label: 'Lean Mass', unit: 'kg', color: '#10B981', icon: '💪', goodDirection: 'up' }
+};
 
 // Switch between weight and strength views
 function switchTrendView(view) {
@@ -2499,6 +2543,58 @@ function updateTrendBadge(view) {
         }
     }
 }
+
+// Update trend badge for body composition metrics
+function updateBodyMetricBadge(stats, config) {
+    const trendBadge = document.getElementById('weight-trend-badge');
+    if (!trendBadge || !stats) return;
+
+    const change = stats.change || 0;
+    const isGood = config.goodDirection === 'down' ? change < 0 : change > 0;
+    const isBad = config.goodDirection === 'down' ? change > 0 : change < 0;
+
+    if (change !== 0) {
+        const arrow = change > 0 ? '↑' : '↓';
+        trendBadge.textContent = `${arrow} ${Math.abs(change)} ${config.unit}`;
+        trendBadge.className = `text-[10px] px-2 py-0.5 rounded-full font-bold ${isGood ? 'bg-green-500/20 text-green-400' : isBad ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`;
+    } else {
+        trendBadge.textContent = '→ Stable';
+        trendBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold';
+    }
+}
+
+// Switch between body metrics (weight, body fat, lean mass)
+window.switchBodyMetric = function(metric) {
+    currentBodyMetric = metric;
+    const config = bodyMetricConfig[metric];
+
+    // Update metric tab buttons
+    ['weight', 'body_fat_pct', 'lean_mass'].forEach(m => {
+        const btn = document.getElementById(`body-metric-${m}`);
+        if (btn) {
+            if (m === metric) {
+                btn.className = `text-[10px] px-3 py-1 rounded-lg bg-blue-500/20 text-blue-400 font-bold transition`;
+                btn.style.backgroundColor = config.color + '33';
+                btn.style.color = config.color;
+            } else {
+                btn.className = 'text-[10px] px-3 py-1 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition';
+                btn.style.backgroundColor = '';
+                btn.style.color = '';
+            }
+        }
+    });
+
+    // Update metric display in header
+    const metricIcon = document.getElementById('metric-icon');
+    const metricUnit = document.getElementById('metric-unit');
+    if (metricIcon) metricIcon.textContent = config.icon;
+    if (metricUnit) metricUnit.textContent = config.unit;
+
+    // Re-render chart with current data
+    if (cachedWeightData) {
+        renderWeightChart(cachedWeightData.data, cachedWeightData.stats, metric);
+    }
+};
 
 // Load chart based on current view
 function loadTrendChart(period = 'month') {
@@ -3716,9 +3812,12 @@ function renderHeroWeightChart(data, stats) {
     }
 }
 
-function renderWeightChart(data, stats) {
+function renderWeightChart(data, allStats, metric = currentBodyMetric) {
     const canvas = document.getElementById('weight-chart');
     if (!canvas || !data || data.length === 0) return;
+
+    const config = bodyMetricConfig[metric] || bodyMetricConfig.weight;
+    const stats = allStats[metric] || allStats.weight || allStats;
 
     const ctx = canvas.getContext('2d');
     const rect = canvas.getBoundingClientRect();
@@ -3735,11 +3834,20 @@ function renderWeightChart(data, stats) {
     // Clear canvas
     ctx.clearRect(0, 0, width, height);
 
-    // Get min/max for weight scaling
-    const weights = data.map(d => d.weight);
-    const minWeight = Math.min(...weights) - 1;
-    const maxWeight = Math.max(...weights) + 1;
-    const weightRange = maxWeight - minWeight;
+    // Get values for the current metric (filter out nulls)
+    const values = data.map(d => d[metric]).filter(v => v != null);
+    if (values.length === 0) {
+        // No data for this metric
+        ctx.fillStyle = 'rgba(255,255,255,0.3)';
+        ctx.font = '12px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText(`No ${config.label.toLowerCase()} data yet`, width / 2, height / 2);
+        return;
+    }
+
+    const minValue = Math.min(...values) - (metric === 'body_fat_pct' ? 1 : 1);
+    const maxValue = Math.max(...values) + (metric === 'body_fat_pct' ? 1 : 1);
+    const valueRange = maxValue - minValue || 1;
 
     // Draw grid lines
     ctx.strokeStyle = 'rgba(255,255,255,0.05)';
@@ -3752,28 +3860,29 @@ function renderWeightChart(data, stats) {
         ctx.stroke();
     }
 
-    // Draw Y-axis labels (Weight in kg)
-    ctx.fillStyle = 'rgba(59, 130, 246, 0.7)';
+    // Draw Y-axis labels
+    ctx.fillStyle = config.color + 'B3';
     ctx.font = '9px system-ui';
     ctx.textAlign = 'right';
     for (let i = 0; i <= 4; i++) {
-        const weight = maxWeight - (weightRange * i / 4);
+        const value = maxValue - (valueRange * i / 4);
         const y = padding.top + (chartHeight * i / 4);
-        ctx.fillText(weight.toFixed(1), padding.left - 5, y + 3);
+        ctx.fillText(value.toFixed(1), padding.left - 5, y + 3);
     }
 
-    // Calculate weight points
-    const points = data.map((d, i) => ({
-        x: padding.left + (chartWidth * i / (data.length - 1 || 1)),
-        y: padding.top + chartHeight - ((d.weight - minWeight) / weightRange * chartHeight),
+    // Build points array, skipping null values
+    const validData = data.filter(d => d[metric] != null);
+    const points = validData.map((d, i) => ({
+        x: padding.left + (chartWidth * i / (validData.length - 1 || 1)),
+        y: padding.top + chartHeight - ((d[metric] - minValue) / valueRange * chartHeight),
         label: d.label,
-        weight: d.weight
+        value: d[metric]
     }));
 
     // Draw gradient fill
     const gradient = ctx.createLinearGradient(0, padding.top, 0, height - padding.bottom);
-    gradient.addColorStop(0, 'rgba(59, 130, 246, 0.3)');
-    gradient.addColorStop(1, 'rgba(59, 130, 246, 0.0)');
+    gradient.addColorStop(0, config.color + '4D');
+    gradient.addColorStop(1, config.color + '00');
 
     ctx.beginPath();
     ctx.moveTo(points[0].x, height - padding.bottom);
@@ -3787,7 +3896,7 @@ function renderWeightChart(data, stats) {
     ctx.beginPath();
     ctx.moveTo(points[0].x, points[0].y);
     points.forEach(p => ctx.lineTo(p.x, p.y));
-    ctx.strokeStyle = '#3B82F6';
+    ctx.strokeStyle = config.color;
     ctx.lineWidth = 2;
     ctx.stroke();
 
@@ -3795,7 +3904,7 @@ function renderWeightChart(data, stats) {
     points.forEach(p => {
         ctx.beginPath();
         ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
-        ctx.fillStyle = '#3B82F6';
+        ctx.fillStyle = config.color;
         ctx.fill();
     });
 
@@ -3803,29 +3912,42 @@ function renderWeightChart(data, stats) {
     ctx.fillStyle = 'rgba(255,255,255,0.4)';
     ctx.font = '8px system-ui';
     ctx.textAlign = 'center';
-    const labelStep = Math.ceil(data.length / 5);
-    data.forEach((d, i) => {
-        if (i % labelStep === 0 || i === data.length - 1) {
-            const x = padding.left + (chartWidth * i / (data.length - 1 || 1));
+    const labelStep = Math.ceil(validData.length / 5);
+    validData.forEach((d, i) => {
+        if (i % labelStep === 0 || i === validData.length - 1) {
+            const x = padding.left + (chartWidth * i / (validData.length - 1 || 1));
             ctx.fillText(d.label, x, height - 5);
         }
     });
 
-    // Update stats
+    // Update stats display
     const startEl = document.getElementById('weight-stat-start');
     const minEl = document.getElementById('weight-stat-min');
     const maxEl = document.getElementById('weight-stat-max');
     const changeEl = document.getElementById('weight-stat-change');
+    const unit = config.unit;
 
-    if (startEl) startEl.textContent = stats.start ? `${stats.start} kg` : '--';
-    if (minEl) minEl.textContent = stats.min ? `${stats.min} kg` : '--';
-    if (maxEl) maxEl.textContent = stats.max ? `${stats.max} kg` : '--';
+    if (startEl) startEl.textContent = stats.start != null ? `${stats.start} ${unit}` : '--';
+    if (minEl) minEl.textContent = stats.min != null ? `${stats.min} ${unit}` : '--';
+    if (maxEl) maxEl.textContent = stats.max != null ? `${stats.max} ${unit}` : '--';
 
-    if (changeEl && stats.change !== undefined) {
+    if (changeEl && stats.change != null) {
         const sign = stats.change > 0 ? '+' : '';
-        changeEl.textContent = `${sign}${stats.change} kg`;
-        changeEl.className = `text-sm font-bold ${stats.change < 0 ? 'text-green-400' : stats.change > 0 ? 'text-red-400' : 'text-gray-400'}`;
+        changeEl.textContent = `${sign}${stats.change} ${unit}`;
+        // For body fat and weight, decrease is good. For lean mass, increase is good.
+        const isGood = config.goodDirection === 'down' ? stats.change < 0 : stats.change > 0;
+        const isBad = config.goodDirection === 'down' ? stats.change > 0 : stats.change < 0;
+        changeEl.className = `text-sm font-bold ${isGood ? 'text-green-400' : isBad ? 'text-red-400' : 'text-gray-400'}`;
     }
+
+    // Update current value display
+    const clientWeight = document.getElementById('client-weight');
+    if (clientWeight && stats.current != null) {
+        clientWeight.textContent = stats.current;
+    }
+
+    // Update trend badge
+    updateBodyMetricBadge(stats, config);
 }
 
 function openPhysiqueModal() {
@@ -10288,7 +10410,8 @@ let liveClassData = {
     timerSeconds: 0,
     timerInterval: null,
     timerRunning: false,
-    musicPlaying: false
+    musicPlaying: false,
+    autoAdvance: true
 };
 
 // Start live class from course detail
@@ -10522,7 +10645,18 @@ function startTimer() {
         if (liveClassData.timerSeconds <= 0) {
             stopTimer();
             playTimerEndSound();
-            showToast('Timer complete!');
+
+            // Auto-advance to next exercise if enabled
+            if (liveClassData.autoAdvance && liveClassData.currentExerciseIndex < liveClassData.exercises.length - 1) {
+                showToast('Moving to next exercise...');
+                setTimeout(() => {
+                    nextExercise();
+                }, 1500);
+            } else if (liveClassData.autoAdvance && liveClassData.currentExerciseIndex >= liveClassData.exercises.length - 1) {
+                showToast('Workout complete! 🎉');
+            } else {
+                showToast('Timer complete!');
+            }
         }
     }, 1000);
 }
@@ -10543,6 +10677,18 @@ window.resetTimer = function() {
     const exercise = liveClassData.exercises[liveClassData.currentExerciseIndex];
     liveClassData.timerSeconds = exercise?.rest || 60;
     updateTimerDisplay();
+};
+
+window.toggleAutoAdvance = function() {
+    liveClassData.autoAdvance = !liveClassData.autoAdvance;
+    const toggle = document.getElementById('auto-advance-toggle');
+    if (toggle) {
+        toggle.classList.toggle('bg-primary', liveClassData.autoAdvance);
+        toggle.classList.toggle('bg-white/20', !liveClassData.autoAdvance);
+        toggle.querySelector('span').classList.toggle('translate-x-5', liveClassData.autoAdvance);
+        toggle.querySelector('span').classList.toggle('translate-x-0', !liveClassData.autoAdvance);
+    }
+    showToast(liveClassData.autoAdvance ? 'Auto-advance enabled' : 'Auto-advance disabled');
 };
 
 function updateTimerDisplay() {

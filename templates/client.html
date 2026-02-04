@@ -1002,12 +1002,13 @@ function renderFriendHealthBars(data) {
             </div>
         </div>
         <div id="weight-chart-container" class="bg-white/5 rounded-xl p-4">
-            <div class="flex justify-between items-center mb-3">
+            <!-- Top row: Current value and period selector -->
+            <div class="flex justify-between items-center mb-2">
                 <div class="flex items-center gap-2">
                     <button onclick="openWeightModal()" id="weight-update-btn" class="flex items-center gap-1.5 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-500/30 px-3 py-1 rounded-full hover:from-blue-500/30 hover:to-cyan-500/30 transition tap-effect">
-                        <span class="text-xs">⚖️</span>
+                        <span id="metric-icon" class="text-xs">⚖️</span>
                         <span id="client-weight" class="text-sm font-bold text-blue-400">--</span>
-                        <span class="text-xs text-blue-400/70">kg</span>
+                        <span id="metric-unit" class="text-xs text-blue-400/70">kg</span>
                     </button>
                     <span id="weight-trend-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold">--</span>
                 </div>
@@ -1016,6 +1017,12 @@ function renderFriendHealthBars(data) {
                     <button onclick="loadTrendChart('month')" id="weight-period-month" class="text-[10px] px-2 py-1 rounded-lg bg-blue-500/20 text-blue-400 font-bold">Month</button>
                     <button onclick="loadTrendChart('year')" id="weight-period-year" class="text-[10px] px-2 py-1 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition">Year</button>
                 </div>
+            </div>
+            <!-- Metric tabs: Weight / Body Fat / Lean Mass -->
+            <div class="flex justify-center gap-1 mb-3">
+                <button onclick="switchBodyMetric('weight')" id="body-metric-weight" class="text-[10px] px-3 py-1 rounded-lg bg-blue-500/20 text-blue-400 font-bold transition">Weight</button>
+                <button onclick="switchBodyMetric('body_fat_pct')" id="body-metric-body_fat_pct" class="text-[10px] px-3 py-1 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition">Body Fat</button>
+                <button onclick="switchBodyMetric('lean_mass')" id="body-metric-lean_mass" class="text-[10px] px-3 py-1 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition">Lean Mass</button>
             </div>
         <!-- Chart Area - 16:9 aspect ratio container -->
         <div class="relative w-full" style="aspect-ratio: 16/9; min-height: 180px; max-height: 280px;">
@@ -1104,24 +1111,55 @@ function renderFriendHealthBars(data) {
     </div>
 </div>
 
-<!-- Weight Update Modal -->
+<!-- Weight & Body Composition Update Modal -->
 <div id="weight-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
     onclick="if(event.target === this) closeWeightModal()">
-    <div class="glass-card p-6 rounded-2xl max-w-xs w-full">
+    <div class="glass-card p-6 rounded-2xl max-w-sm w-full">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold">Update Weight</h3>
+            <h3 class="text-xl font-bold">Update Body Stats</h3>
             <button onclick="closeWeightModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
         </div>
-        <div class="text-center mb-6">
+
+        <!-- Weight Input -->
+        <div class="text-center mb-4">
+            <label class="text-xs text-gray-400 uppercase tracking-wider block mb-2">Weight</label>
             <div class="relative inline-block">
                 <input type="number" id="weight-input" step="0.1" min="20" max="300"
                     class="text-5xl font-black text-center bg-transparent border-b-2 border-blue-500 w-32 focus:outline-none text-blue-400"
-                    placeholder="--">
+                    placeholder="--" oninput="updateCompositionPreview()">
                 <span class="text-2xl text-blue-400/70 ml-2">kg</span>
             </div>
         </div>
+
+        <!-- Body Fat Input (Optional) -->
+        <div class="text-center mb-4">
+            <label class="text-xs text-gray-400 uppercase tracking-wider block mb-2">Body Fat % <span class="text-gray-500">(optional)</span></label>
+            <div class="relative inline-block">
+                <input type="number" id="body-fat-input" step="0.1" min="1" max="70"
+                    class="text-3xl font-bold text-center bg-transparent border-b-2 border-amber-500 w-24 focus:outline-none text-amber-400"
+                    placeholder="--" oninput="updateCompositionPreview()">
+                <span class="text-xl text-amber-400/70 ml-2">%</span>
+            </div>
+        </div>
+
+        <!-- Calculated Preview -->
+        <div id="composition-preview" class="hidden bg-white/5 rounded-xl p-3 mb-4">
+            <div class="grid grid-cols-2 gap-3 text-center">
+                <div>
+                    <span class="text-xs text-gray-400 block">Fat Mass</span>
+                    <span id="preview-fat-mass" class="text-lg font-bold text-red-400">-</span>
+                    <span class="text-sm text-gray-500">kg</span>
+                </div>
+                <div>
+                    <span class="text-xs text-gray-400 block">Lean Mass</span>
+                    <span id="preview-lean-mass" class="text-lg font-bold text-green-400">-</span>
+                    <span class="text-sm text-gray-500">kg</span>
+                </div>
+            </div>
+        </div>
+
         <button onclick="saveWeight()" class="w-full py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-bold rounded-xl hover:from-blue-400 hover:to-cyan-400 transition tap-effect">
-            Save Weight
+            Save
         </button>
     </div>
 </div>

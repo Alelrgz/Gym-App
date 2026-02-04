@@ -120,6 +120,7 @@ class ClientProfileUpdate(BaseModel):
     email: Optional[str] = None
     password: Optional[str] = None
     weight: Optional[float] = None  # Weight in kg
+    body_fat_pct: Optional[float] = None  # Body fat percentage
 
 # --- TRAINER ---
 

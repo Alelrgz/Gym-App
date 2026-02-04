@@ -101,6 +101,9 @@ class ClientProfileORM(Base):
 
     # Physical stats
     weight = Column(Float, nullable=True)  # Weight in kg
+    body_fat_pct = Column(Float, nullable=True)  # Body fat percentage
+    fat_mass = Column(Float, nullable=True)  # Fat mass in kg
+    lean_mass = Column(Float, nullable=True)  # Lean mass in kg
 
     # Strength goals set by trainer (target % increase)
     strength_goal_upper = Column(Integer, nullable=True)  # Upper body target %
@@ -113,6 +116,9 @@ class WeightHistoryORM(Base):
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     client_id = Column(String, ForeignKey("users.id"), index=True)
     weight = Column(Float)
+    body_fat_pct = Column(Float, nullable=True)  # Body fat percentage
+    fat_mass = Column(Float, nullable=True)  # Fat mass in kg
+    lean_mass = Column(Float, nullable=True)  # Lean mass in kg
     recorded_at = Column(String)  # ISO format datetime
 
 class ClientScheduleORM(Base):

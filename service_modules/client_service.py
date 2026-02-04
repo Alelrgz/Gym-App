@@ -560,10 +560,26 @@ class ClientService:
                 profile.email = profile_update.email
             if profile_update.weight is not None:
                 profile.weight = profile_update.weight
-                # Also log to weight history
+
+                # Calculate body composition if body_fat_pct provided
+                body_fat_pct = getattr(profile_update, 'body_fat_pct', None)
+                fat_mass = None
+                lean_mass = None
+
+                if body_fat_pct is not None:
+                    profile.body_fat_pct = body_fat_pct
+                    fat_mass = round(profile_update.weight * body_fat_pct / 100, 1)
+                    lean_mass = round(profile_update.weight - fat_mass, 1)
+                    profile.fat_mass = fat_mass
+                    profile.lean_mass = lean_mass
+
+                # Also log to weight history with body composition
                 weight_entry = WeightHistoryORM(
                     client_id=client_id,
                     weight=profile_update.weight,
+                    body_fat_pct=body_fat_pct,
+                    fat_mass=fat_mass,
+                    lean_mass=lean_mass,
                     recorded_at=datetime.now().isoformat()
                 )
                 db.add(weight_entry)
@@ -597,37 +613,46 @@ class ClientService:
                 WeightHistoryORM.recorded_at >= start_date.isoformat()
             ).order_by(WeightHistoryORM.recorded_at.asc()).all()
 
-            # Format for chart
+            # Format for chart with body composition
             data = []
             for entry in entries:
                 recorded = datetime.fromisoformat(entry.recorded_at)
                 data.append({
                     "date": recorded.strftime("%Y-%m-%d"),
                     "weight": round(entry.weight, 1),
+                    "body_fat_pct": round(entry.body_fat_pct, 1) if entry.body_fat_pct else None,
+                    "fat_mass": round(entry.fat_mass, 1) if entry.fat_mass else None,
+                    "lean_mass": round(entry.lean_mass, 1) if entry.lean_mass else None,
                     "label": recorded.strftime("%d %b") if period != "year" else recorded.strftime("%b %y")
                 })
 
-            # Calculate stats
-            if data:
-                weights = [d["weight"] for d in data]
-                start_weight = weights[0]
-                current_weight = weights[-1]
-                change = round(current_weight - start_weight, 1)
-                min_weight = min(weights)
-                max_weight = max(weights)
-            else:
-                start_weight = current_weight = change = min_weight = max_weight = 0
+            # Helper to calculate stats for a metric
+            def calc_stats(values):
+                valid = [v for v in values if v is not None]
+                if not valid:
+                    return {"start": None, "current": None, "change": None, "min": None, "max": None}
+                return {
+                    "start": valid[0],
+                    "current": valid[-1],
+                    "change": round(valid[-1] - valid[0], 1),
+                    "min": min(valid),
+                    "max": max(valid)
+                }
+
+            # Calculate stats for each metric
+            weight_stats = calc_stats([d["weight"] for d in data])
+            weight_stats["trend"] = "up" if (weight_stats["change"] or 0) > 0 else "down" if (weight_stats["change"] or 0) < 0 else "stable"
+
+            body_fat_stats = calc_stats([d["body_fat_pct"] for d in data])
+            lean_mass_stats = calc_stats([d["lean_mass"] for d in data])
 
             return {
                 "period": period,
                 "data": data,
                 "stats": {
-                    "start": start_weight,
-                    "current": current_weight,
-                    "change": change,
-                    "trend": "up" if change > 0 else "down" if change < 0 else "stable",
-                    "min": min_weight,
-                    "max": max_weight
+                    "weight": weight_stats,
+                    "body_fat_pct": body_fat_stats,
+                    "lean_mass": lean_mass_stats
                 }
             }
         except Exception as e:

@@ -140,6 +140,32 @@
 </div>
 
 <script>
+// Notification functions
+async function openNotificationsModal() {
+    window.showModal('notification-modal');
+    await loadNotifications();
+}
+
+async function loadNotifications() {
+    const list = document.getElementById('notifications-list');
+    if (!list) return;
+    try {
+        const res = await fetch('/api/notifications?limit=20');
+        const notifications = await res.json();
+        if (notifications.length === 0) {
+            list.innerHTML = '<div class="text-center text-gray-400 py-8"><span class="text-4xl mb-2 block">🔔</span><p class="text-sm">No notifications yet</p></div>';
+            return;
+        }
+        list.innerHTML = notifications.map(n => {
+            const icon = {'appointment_booked':'📅','appointment_canceled':'❌','message':'💬','streak':'🔥','achievement':'🏆','reminder':'⏰','offer':'🎁','friend_request':'👋','coop_workout':'💪','course':'🏋️'}[n.type] || '🔔';
+            const unreadClass = n.read ? 'opacity-60' : 'border-l-2 border-orange-500';
+            return `<div class="flex items-start space-x-3 p-3 bg-white/5 rounded-xl ${unreadClass}"><span class="text-xl">${icon}</span><div class="flex-1 min-w-0"><p class="text-sm font-bold text-white">${n.title}</p><p class="text-xs text-gray-400 truncate">${n.message}</p></div></div>`;
+        }).join('');
+    } catch (e) {
+        console.error('Error loading notifications:', e);
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     // Load courses when page loads
     if (typeof window.loadCoursesPage === 'function') {
