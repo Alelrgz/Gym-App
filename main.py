@@ -73,6 +73,14 @@ async def get_trainer_data_direct(
     with open("server_debug.log", "a") as f:
         f.write(f"DEBUG: get_trainer returned todays_workout: {data.todays_workout}\n")
     return data
+
+@app.get("/api/stripe/publishable-key")
+async def get_stripe_publishable_key():
+    """Get Stripe publishable key for frontend."""
+    key = os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+    if not key or key.startswith("your_"):
+        raise HTTPException(status_code=400, detail="Stripe not configured")
+    return {"publishable_key": key}
 # ---------------------------------------------
 
 app.include_router(router)
@@ -102,6 +110,16 @@ print("DEBUG: Staff router included")
 from route_modules.automated_message_routes import router as auto_msg_router
 app.include_router(auto_msg_router)
 print("DEBUG: Automated message router included")
+
+# Include course routes
+from route_modules.course_routes import router as course_router
+app.include_router(course_router)
+print("DEBUG: Course router included")
+
+# Include trainer matching routes
+from route_modules.trainer_matching_routes import router as trainer_matching_router
+app.include_router(trainer_matching_router)
+print("DEBUG: Trainer matching router included")
 
 
 def run_migrations(engine):

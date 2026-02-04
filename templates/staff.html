@@ -163,6 +163,15 @@
                 </svg>
             </button>
         </div>
+        <button onclick="openOnboardingWizard()" class="bg-green-500 hover:bg-green-600 px-4 py-3 rounded-xl transition flex items-center gap-2 text-white font-semibold">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <circle cx="8.5" cy="7" r="4"/>
+                <line x1="20" y1="8" x2="20" y2="14"/>
+                <line x1="23" y1="11" x2="17" y2="11"/>
+            </svg>
+            <span class="hidden lg:inline">New Client</span>
+        </button>
         <div id="search-results" class="flex-1 space-y-2 hidden"></div>
     </div>
     {% endcall %}
@@ -325,7 +334,12 @@
 
         <!-- Subscription Info -->
         <div class="glass-card p-4 mb-4">
-            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Subscription</h4>
+            <div class="flex justify-between items-center mb-3">
+                <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Subscription</h4>
+                <button onclick="openSubscriptionManager()" class="text-xs text-primary hover:text-primary/80 font-semibold">
+                    Manage →
+                </button>
+            </div>
             <div class="space-y-2 text-sm">
                 <div class="flex justify-between">
                     <span class="text-gray-400">Plan</span>
@@ -338,6 +352,19 @@
                 <div class="flex justify-between">
                     <span class="text-gray-400">Expires</span>
                     <span class="text-white" id="member-sub-expires">-</span>
+                </div>
+            </div>
+            <!-- Quick subscription actions -->
+            <div id="subscription-actions" class="mt-3 pt-3 border-t border-white/10 hidden">
+                <div class="flex gap-2">
+                    <button onclick="openPlanSelector()" id="assign-plan-btn"
+                        class="flex-1 bg-primary/20 hover:bg-primary/30 text-primary py-2 rounded-lg text-xs font-semibold transition">
+                        Assign Plan
+                    </button>
+                    <button onclick="cancelMemberSubscription()" id="cancel-sub-btn"
+                        class="flex-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 py-2 rounded-lg text-xs font-semibold transition hidden">
+                        Cancel
+                    </button>
                 </div>
             </div>
         </div>
@@ -365,6 +392,258 @@
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 </svg>
                 Message
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Subscription Plan Selector Modal -->
+<div id="plan-selector-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4">
+    <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-bold text-white">Select Subscription Plan</h3>
+            <button onclick="closePlanSelector()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+
+        <p class="text-sm text-gray-400 mb-4">
+            For: <span id="plan-for-member" class="text-white font-semibold"></span>
+        </p>
+
+        <!-- Plans List -->
+        <div id="plans-list" class="space-y-3">
+            <div class="text-center py-6">
+                <p class="text-gray-400 text-sm">Loading plans...</p>
+            </div>
+        </div>
+
+        <!-- Manual Entry Option -->
+        <div class="mt-4 pt-4 border-t border-white/10">
+            <p class="text-xs text-gray-500 text-center">
+                Plans are created by the gym owner in Settings → Subscriptions
+            </p>
+        </div>
+    </div>
+</div>
+
+<!-- Client Onboarding Wizard Modal -->
+<div id="onboarding-wizard-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
+    <div class="glass-card p-6 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-bold text-white">New Client Registration</h3>
+            <button onclick="closeOnboardingWizard()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+
+        <!-- Step Indicator -->
+        <div class="flex items-center justify-center gap-2 mb-6">
+            <div class="onboard-step-dot active" data-step="1">
+                <span class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-bold">1</span>
+                <span class="text-xs text-gray-400 mt-1">Info</span>
+            </div>
+            <div class="w-8 h-0.5 bg-white/20"></div>
+            <div class="onboard-step-dot" data-step="2">
+                <span class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white/60 text-sm font-bold">2</span>
+                <span class="text-xs text-gray-400 mt-1">Docs</span>
+            </div>
+            <div class="w-8 h-0.5 bg-white/20"></div>
+            <div class="onboard-step-dot" data-step="3">
+                <span class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white/60 text-sm font-bold">3</span>
+                <span class="text-xs text-gray-400 mt-1">Plan</span>
+            </div>
+            <div class="w-8 h-0.5 bg-white/20"></div>
+            <div class="onboard-step-dot" data-step="4">
+                <span class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white/60 text-sm font-bold">4</span>
+                <span class="text-xs text-gray-400 mt-1">Pay</span>
+            </div>
+        </div>
+
+        <!-- Step 1: Basic Info -->
+        <div id="onboard-step-1" class="onboard-step-content">
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Client Information</h4>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Full Name *</label>
+                    <input type="text" id="onboard-name" placeholder="Enter full name"
+                        class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Phone Number *</label>
+                    <input type="tel" id="onboard-phone" placeholder="+1 234 567 8900"
+                        class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition">
+                </div>
+                <div>
+                    <label class="block text-xs text-gray-400 mb-1">Email (optional)</label>
+                    <input type="email" id="onboard-email" placeholder="email@example.com"
+                        class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Username *</label>
+                        <input type="text" id="onboard-username" placeholder="johndoe"
+                            class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition">
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-400 mb-1">Temp Password *</label>
+                        <input type="text" id="onboard-password" placeholder="temp123"
+                            class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition">
+                    </div>
+                </div>
+                <p class="text-xs text-gray-500">* Client will be asked to change password on first login</p>
+            </div>
+        </div>
+
+        <!-- Step 2: Documents -->
+        <div id="onboard-step-2" class="onboard-step-content hidden">
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Documentation</h4>
+
+            <!-- Document Type Selector -->
+            <div class="flex gap-2 mb-4">
+                <button onclick="selectDocType('waiver')" id="doc-type-waiver"
+                    class="flex-1 py-3 rounded-xl text-sm font-semibold transition bg-primary/20 text-primary border border-primary/30">
+                    Sign Waiver
+                </button>
+                <button onclick="selectDocType('medical')" id="doc-type-medical"
+                    class="flex-1 py-3 rounded-xl text-sm font-semibold transition bg-white/5 text-white/60 border border-white/10 hover:bg-white/10">
+                    Upload Medical Certificate
+                </button>
+            </div>
+
+            <!-- Waiver Section -->
+            <div id="waiver-section">
+                <div class="bg-white/5 rounded-xl p-4 mb-4 max-h-40 overflow-y-auto">
+                    <p id="waiver-text-display" class="text-xs text-gray-300 whitespace-pre-line">Loading waiver...</p>
+                </div>
+                <p class="text-xs text-gray-400 mb-2">Client signature (use finger, stylus, or mouse):</p>
+                <div class="bg-white rounded-xl p-2 mb-2 relative">
+                    <canvas id="signature-canvas" width="400" height="180" class="w-full cursor-crosshair rounded-lg" style="touch-action: none; min-height: 160px;"></canvas>
+                    <div id="signature-placeholder" class="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <span class="text-gray-300 text-sm">Sign here</span>
+                    </div>
+                </div>
+                <button onclick="clearSignature()" class="text-xs text-red-400 hover:text-red-300 transition flex items-center gap-1">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
+                    </svg>
+                    Clear Signature
+                </button>
+            </div>
+
+            <!-- Medical Certificate Section -->
+            <div id="medical-section" class="hidden">
+                <p class="text-xs text-gray-400 mb-2">Upload medical certificate (photo or PDF):</p>
+                <label class="block w-full cursor-pointer">
+                    <div class="border-2 border-dashed border-white/20 rounded-xl p-6 text-center hover:border-primary/50 transition">
+                        <svg class="w-10 h-10 mx-auto text-gray-400 mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                            <polyline points="17 8 12 3 7 8"/>
+                            <line x1="12" y1="3" x2="12" y2="15"/>
+                        </svg>
+                        <p class="text-sm text-gray-400">Click to upload or drag & drop</p>
+                        <p class="text-xs text-gray-500 mt-1">JPG, PNG, PDF (max 10MB)</p>
+                    </div>
+                    <input type="file" id="medical-file" accept="image/*,.pdf" class="hidden" onchange="previewMedicalFile(this)">
+                </label>
+                <div id="medical-preview" class="mt-3 hidden">
+                    <div class="flex items-center gap-3 p-3 bg-white/5 rounded-xl">
+                        <span class="text-2xl">📄</span>
+                        <span id="medical-filename" class="text-sm text-white flex-1 truncate">document.pdf</span>
+                        <button onclick="removeMedicalFile()" class="text-red-400 hover:text-red-300">&times;</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Step 3: Select Plan -->
+        <div id="onboard-step-3" class="onboard-step-content hidden">
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Select Subscription Plan</h4>
+            <div id="onboard-plans-list" class="space-y-3 max-h-64 overflow-y-auto">
+                <p class="text-gray-400 text-sm text-center py-4">Loading plans...</p>
+            </div>
+            <div class="mt-4 pt-4 border-t border-white/10">
+                <button onclick="skipPlanSelection()" class="text-xs text-gray-400 hover:text-white transition">
+                    Skip - register without subscription
+                </button>
+            </div>
+        </div>
+
+        <!-- Step 4: Payment -->
+        <div id="onboard-step-4" class="onboard-step-content hidden">
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Payment & Summary</h4>
+
+            <!-- Summary -->
+            <div class="bg-white/5 rounded-xl p-4 mb-4">
+                <div class="space-y-2 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Client</span>
+                        <span class="text-white font-semibold" id="summary-client-name">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Username</span>
+                        <span class="text-white" id="summary-username">-</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-400">Plan</span>
+                        <span class="text-white" id="summary-plan">No plan selected</span>
+                    </div>
+                    <div class="flex justify-between pt-2 border-t border-white/10">
+                        <span class="text-gray-400">Amount Due</span>
+                        <span class="text-primary font-bold text-lg" id="summary-amount">-</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payment Method -->
+            <div id="payment-method-section">
+                <p class="text-xs text-gray-400 mb-3">Select payment method:</p>
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <button onclick="selectPaymentMethod('cash')" id="pay-cash-btn"
+                        class="p-4 rounded-xl border-2 border-white/20 hover:border-green-500/50 transition text-center">
+                        <span class="text-2xl block mb-1">💵</span>
+                        <span class="text-sm font-semibold text-white">Cash</span>
+                    </button>
+                    <button onclick="selectPaymentMethod('card')" id="pay-card-btn"
+                        class="p-4 rounded-xl border-2 border-white/20 hover:border-blue-500/50 transition text-center">
+                        <span class="text-2xl block mb-1">💳</span>
+                        <span class="text-sm font-semibold text-white">Card</span>
+                    </button>
+                </div>
+
+                <!-- Stripe Card Form (shown when card selected) -->
+                <div id="card-payment-form" class="hidden">
+                    <p class="text-xs text-gray-400 mb-2">Enter card details:</p>
+                    <div class="bg-white rounded-xl p-4 mb-3">
+                        <div id="card-element" class="min-h-[40px]">
+                            <!-- Stripe Elements will insert the card form here -->
+                        </div>
+                    </div>
+                    <div id="card-errors" class="text-red-400 text-xs mb-2 hidden"></div>
+                    <p class="text-xs text-gray-500">Card will be charged immediately upon registration.</p>
+                </div>
+            </div>
+
+            <!-- No Payment Needed -->
+            <div id="no-payment-section" class="hidden">
+                <div class="bg-green-500/10 border border-green-500/30 rounded-xl p-4 text-center">
+                    <span class="text-2xl block mb-2">✓</span>
+                    <p class="text-green-400 font-semibold">No payment required</p>
+                    <p class="text-xs text-gray-400 mt-1">Client will be registered without subscription</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Navigation Buttons -->
+        <div class="flex gap-3 mt-6">
+            <button onclick="onboardPrevStep()" id="onboard-prev-btn"
+                class="flex-1 bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl font-semibold transition hidden">
+                Back
+            </button>
+            <button onclick="onboardNextStep()" id="onboard-next-btn"
+                class="flex-1 bg-primary hover:bg-primary/80 text-white py-3 rounded-xl font-semibold transition">
+                Next
+            </button>
+            <button onclick="completeOnboarding()" id="onboard-complete-btn"
+                class="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-semibold transition hidden">
+                Complete Registration
             </button>
         </div>
     </div>
@@ -865,6 +1144,20 @@ function renderMemberProfile(data) {
 
     document.getElementById('member-sub-expires').textContent = sub.expires || '-';
 
+    // Subscription actions - show automatically for easy access
+    const actionsEl = document.getElementById('subscription-actions');
+    const assignBtn = document.getElementById('assign-plan-btn');
+    const cancelBtn = document.getElementById('cancel-sub-btn');
+
+    actionsEl.classList.remove('hidden');
+    if (sub.status === 'active' || sub.status === 'trialing') {
+        assignBtn.textContent = 'Change Plan';
+        cancelBtn.classList.remove('hidden');
+    } else {
+        assignBtn.textContent = 'Assign Plan';
+        cancelBtn.classList.add('hidden');
+    }
+
     // Check-in button state
     const checkinBtn = document.getElementById('modal-checkin-btn');
     if (data.checked_in_today) {
@@ -947,6 +1240,168 @@ document.getElementById('member-profile-modal')?.addEventListener('click', (e) =
     }
 });
 
+// ========== SUBSCRIPTION MANAGEMENT ==========
+let availablePlans = [];
+
+async function loadSubscriptionPlans() {
+    try {
+        const res = await fetch('/api/staff/subscription-plans', { credentials: 'include' });
+        if (res.ok) {
+            availablePlans = await res.json();
+        }
+    } catch (error) {
+        console.error('Error loading plans:', error);
+    }
+}
+
+function openSubscriptionManager() {
+    const actionsEl = document.getElementById('subscription-actions');
+    const assignBtn = document.getElementById('assign-plan-btn');
+    const cancelBtn = document.getElementById('cancel-sub-btn');
+
+    actionsEl.classList.remove('hidden');
+
+    // Show appropriate buttons based on subscription status
+    const sub = currentMemberData?.subscription || {};
+    if (sub.status === 'active' || sub.status === 'trialing') {
+        assignBtn.textContent = 'Change Plan';
+        cancelBtn.classList.remove('hidden');
+    } else {
+        assignBtn.textContent = 'Assign Plan';
+        cancelBtn.classList.add('hidden');
+    }
+}
+
+function openPlanSelector() {
+    // Load plans first if not loaded
+    if (availablePlans.length === 0) {
+        loadSubscriptionPlans().then(() => showPlanSelectorModal());
+    } else {
+        showPlanSelectorModal();
+    }
+}
+
+function showPlanSelectorModal() {
+    const modal = document.getElementById('plan-selector-modal');
+    const listEl = document.getElementById('plans-list');
+    const memberNameEl = document.getElementById('plan-for-member');
+
+    // Show member name
+    if (currentMemberData && memberNameEl) {
+        memberNameEl.textContent = currentMemberData.name || currentMemberData.username;
+    }
+
+    if (availablePlans.length === 0) {
+        listEl.innerHTML = `
+            <div class="text-center py-8">
+                <p class="text-gray-400">No subscription plans available.</p>
+                <p class="text-xs text-gray-500 mt-2">Ask the gym owner to create plans first.</p>
+            </div>
+        `;
+    } else {
+        listEl.innerHTML = availablePlans.map(plan => `
+            <div class="glass-card p-4 hover:bg-white/10 transition cursor-pointer border border-transparent hover:border-primary/30"
+                onclick="selectPlan('${plan.id}', '${plan.name}')">
+                <div class="flex justify-between items-start mb-2">
+                    <h4 class="font-bold text-white">${plan.name}</h4>
+                    <span class="text-primary font-bold">${plan.currency || '€'}${plan.price}/${plan.billing_interval === 'year' ? 'yr' : 'mo'}</span>
+                </div>
+                <p class="text-sm text-gray-400 mb-2">${plan.description || 'Standard membership plan'}</p>
+                ${plan.features && plan.features.length > 0 ? `
+                    <div class="flex flex-wrap gap-1">
+                        ${plan.features.slice(0, 3).map(f => `
+                            <span class="text-xs bg-white/10 text-gray-300 px-2 py-0.5 rounded">${f}</span>
+                        `).join('')}
+                    </div>
+                ` : ''}
+            </div>
+        `).join('');
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function closePlanSelector() {
+    document.getElementById('plan-selector-modal').classList.add('hidden');
+}
+
+async function selectPlan(planId, planName) {
+    if (!currentMemberData) return;
+
+    const sub = currentMemberData.subscription || {};
+    const endpoint = (sub.status === 'active' || sub.status === 'trialing')
+        ? '/api/staff/change-subscription'
+        : '/api/staff/subscribe-client';
+
+    try {
+        const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                client_id: currentMemberData.id,
+                plan_id: planId
+            })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            showToast(data.message || `Subscribed to ${planName}!`, 'success');
+            closePlanSelector();
+
+            // Refresh member profile
+            await openMemberProfile(currentMemberData.id);
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Failed to update subscription', 'error');
+        }
+    } catch (error) {
+        console.error('Subscription error:', error);
+        showToast('Failed to update subscription', 'error');
+    }
+}
+
+async function cancelMemberSubscription() {
+    if (!currentMemberData) return;
+
+    if (!confirm(`Cancel subscription for ${currentMemberData.name || currentMemberData.username}?`)) {
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/staff/cancel-subscription', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ client_id: currentMemberData.id })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            showToast(data.message || 'Subscription canceled', 'success');
+
+            // Refresh member profile
+            await openMemberProfile(currentMemberData.id);
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Failed to cancel subscription', 'error');
+        }
+    } catch (error) {
+        console.error('Cancel error:', error);
+        showToast('Failed to cancel subscription', 'error');
+    }
+}
+
+// Load plans when page loads
+document.addEventListener('DOMContentLoaded', loadSubscriptionPlans);
+
+// Close plan selector on background click
+document.getElementById('plan-selector-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'plan-selector-modal') {
+        closePlanSelector();
+    }
+});
+
 // Search on Enter key
 document.getElementById('checkin-search')?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') searchMember();
@@ -958,6 +1413,690 @@ document.getElementById('checkin-search')?.addEventListener('input', (e) => {
         searchMember();
     } else {
         document.getElementById('search-results').classList.add('hidden');
+    }
+});
+
+// ========== CLIENT ONBOARDING WIZARD ==========
+const onboardingState = {
+    currentStep: 1,
+    totalSteps: 4,
+    data: {
+        name: '',
+        phone: '',
+        email: '',
+        username: '',
+        password: '',
+        documentType: 'waiver',
+        documentData: null,
+        waiverText: '',
+        planId: null,
+        planName: '',
+        planPrice: 0,
+        planCurrency: '€',
+        paymentMethod: null
+    }
+};
+
+let signatureCanvas, signatureCtx;
+let isDrawing = false;
+
+function openOnboardingWizard() {
+    // Reset state
+    onboardingState.currentStep = 1;
+    onboardingState.data = {
+        name: '', phone: '', email: '', username: '', password: '',
+        documentType: 'waiver', documentData: null, waiverText: '',
+        planId: null, planName: '', planPrice: 0, planCurrency: '€',
+        paymentMethod: null
+    };
+
+    // Clear form fields
+    document.getElementById('onboard-name').value = '';
+    document.getElementById('onboard-phone').value = '';
+    document.getElementById('onboard-email').value = '';
+    document.getElementById('onboard-username').value = '';
+    document.getElementById('onboard-password').value = '';
+
+    // Reset UI
+    showOnboardStep(1);
+    document.getElementById('onboarding-wizard-modal').classList.remove('hidden');
+
+    // Load waiver and plans
+    loadWaiverTemplate();
+    loadOnboardingPlans();
+    // Note: signature canvas is initialized when step 2 becomes visible
+}
+
+function closeOnboardingWizard() {
+    document.getElementById('onboarding-wizard-modal').classList.add('hidden');
+}
+
+function showOnboardStep(step) {
+    onboardingState.currentStep = step;
+
+    // Hide all steps
+    document.querySelectorAll('.onboard-step-content').forEach(el => el.classList.add('hidden'));
+
+    // Show current step
+    document.getElementById(`onboard-step-${step}`).classList.remove('hidden');
+
+    // Initialize signature canvas when step 2 becomes visible
+    if (step === 2) {
+        setTimeout(initSignatureCanvas, 50);
+    }
+
+    // Update step indicators
+    document.querySelectorAll('.onboard-step-dot').forEach((dot, i) => {
+        const stepNum = i + 1;
+        const circle = dot.querySelector('span:first-child');
+        if (stepNum <= step) {
+            circle.className = 'w-8 h-8 rounded-full bg-primary flex items-center justify-center text-white text-sm font-bold';
+        } else {
+            circle.className = 'w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white/60 text-sm font-bold';
+        }
+    });
+
+    // Update navigation buttons
+    const prevBtn = document.getElementById('onboard-prev-btn');
+    const nextBtn = document.getElementById('onboard-next-btn');
+    const completeBtn = document.getElementById('onboard-complete-btn');
+
+    prevBtn.classList.toggle('hidden', step === 1);
+    nextBtn.classList.toggle('hidden', step === 4);
+    completeBtn.classList.toggle('hidden', step !== 4);
+
+    // Update step 4 summary if on last step
+    if (step === 4) {
+        updateOnboardingSummary();
+    }
+}
+
+function onboardNextStep() {
+    if (!validateOnboardStep(onboardingState.currentStep)) return;
+    saveOnboardStepData(onboardingState.currentStep);
+
+    if (onboardingState.currentStep < onboardingState.totalSteps) {
+        showOnboardStep(onboardingState.currentStep + 1);
+    }
+}
+
+function onboardPrevStep() {
+    if (onboardingState.currentStep > 1) {
+        showOnboardStep(onboardingState.currentStep - 1);
+    }
+}
+
+function validateOnboardStep(step) {
+    if (step === 1) {
+        const name = document.getElementById('onboard-name').value.trim();
+        const phone = document.getElementById('onboard-phone').value.trim();
+        const username = document.getElementById('onboard-username').value.trim();
+        const password = document.getElementById('onboard-password').value.trim();
+
+        if (!name) { showToast('Name is required', 'error'); return false; }
+        if (!phone) { showToast('Phone is required', 'error'); return false; }
+        if (!username) { showToast('Username is required', 'error'); return false; }
+        if (!password || password.length < 4) { showToast('Password must be at least 4 characters', 'error'); return false; }
+        return true;
+    }
+
+    if (step === 2) {
+        if (onboardingState.data.documentType === 'waiver') {
+            // Check if signature exists
+            if (!hasSignature()) {
+                showToast('Please have the client sign the waiver', 'error');
+                return false;
+            }
+        } else {
+            // Check if file uploaded
+            const fileInput = document.getElementById('medical-file');
+            if (!fileInput.files || !fileInput.files[0]) {
+                showToast('Please upload the medical certificate', 'error');
+                return false;
+            }
+        }
+        return true;
+    }
+
+    return true; // Steps 3 and 4 have no required validation
+}
+
+function saveOnboardStepData(step) {
+    if (step === 1) {
+        onboardingState.data.name = document.getElementById('onboard-name').value.trim();
+        onboardingState.data.phone = document.getElementById('onboard-phone').value.trim();
+        onboardingState.data.email = document.getElementById('onboard-email').value.trim();
+        onboardingState.data.username = document.getElementById('onboard-username').value.trim();
+        onboardingState.data.password = document.getElementById('onboard-password').value.trim();
+    }
+
+    if (step === 2) {
+        if (onboardingState.data.documentType === 'waiver') {
+            onboardingState.data.documentData = signatureCanvas.toDataURL('image/png');
+            onboardingState.data.waiverText = document.getElementById('waiver-text-display').textContent;
+        } else {
+            // File will be read on submit
+        }
+    }
+}
+
+async function loadWaiverTemplate() {
+    try {
+        const res = await fetch('/api/staff/waiver-template', { credentials: 'include' });
+        if (res.ok) {
+            const data = await res.json();
+            document.getElementById('waiver-text-display').textContent = data.waiver_text;
+        }
+    } catch (e) {
+        console.error('Error loading waiver:', e);
+    }
+}
+
+function loadOnboardingPlans() {
+    const listEl = document.getElementById('onboard-plans-list');
+
+    if (availablePlans.length === 0) {
+        listEl.innerHTML = `
+            <div class="text-center py-6">
+                <p class="text-gray-400">No subscription plans available.</p>
+                <p class="text-xs text-gray-500 mt-2">Client can be registered without a plan.</p>
+            </div>
+        `;
+        return;
+    }
+
+    listEl.innerHTML = availablePlans.map(plan => `
+        <div class="glass-card p-4 cursor-pointer border-2 transition ${onboardingState.data.planId === plan.id ? 'border-primary bg-primary/10' : 'border-transparent hover:border-white/20'}"
+            onclick="selectOnboardPlan('${plan.id}', '${plan.name}', ${plan.price}, '${plan.currency || '€'}')">
+            <div class="flex justify-between items-start">
+                <div>
+                    <h4 class="font-bold text-white">${plan.name}</h4>
+                    <p class="text-xs text-gray-400">${plan.description || 'Membership plan'}</p>
+                </div>
+                <span class="text-primary font-bold">${plan.currency || '€'}${plan.price}/${plan.billing_interval === 'year' ? 'yr' : 'mo'}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+function selectOnboardPlan(planId, planName, price, currency) {
+    onboardingState.data.planId = planId;
+    onboardingState.data.planName = planName;
+    onboardingState.data.planPrice = price;
+    onboardingState.data.planCurrency = currency;
+
+    // Update UI to show selected
+    loadOnboardingPlans();
+}
+
+function skipPlanSelection() {
+    onboardingState.data.planId = null;
+    onboardingState.data.planName = '';
+    onboardingState.data.planPrice = 0;
+    showOnboardStep(4);
+}
+
+function updateOnboardingSummary() {
+    document.getElementById('summary-client-name').textContent = onboardingState.data.name;
+    document.getElementById('summary-username').textContent = onboardingState.data.username;
+
+    if (onboardingState.data.planId) {
+        document.getElementById('summary-plan').textContent = onboardingState.data.planName;
+        document.getElementById('summary-amount').textContent = `${onboardingState.data.planCurrency}${onboardingState.data.planPrice}`;
+        document.getElementById('payment-method-section').classList.remove('hidden');
+        document.getElementById('no-payment-section').classList.add('hidden');
+    } else {
+        document.getElementById('summary-plan').textContent = 'No plan selected';
+        document.getElementById('summary-amount').textContent = '-';
+        document.getElementById('payment-method-section').classList.add('hidden');
+        document.getElementById('no-payment-section').classList.remove('hidden');
+    }
+}
+
+function selectPaymentMethod(method) {
+    onboardingState.data.paymentMethod = method;
+
+    const cashBtn = document.getElementById('pay-cash-btn');
+    const cardBtn = document.getElementById('pay-card-btn');
+    const cardForm = document.getElementById('card-payment-form');
+
+    // Update button styles
+    cashBtn.classList.toggle('border-green-500', method === 'cash');
+    cashBtn.classList.toggle('bg-green-500/10', method === 'cash');
+    cardBtn.classList.toggle('border-blue-500', method === 'card');
+    cardBtn.classList.toggle('bg-blue-500/10', method === 'card');
+
+    // Show/hide card form
+    if (method === 'card') {
+        cardForm.classList.remove('hidden');
+        initStripeElements();
+    } else {
+        cardForm.classList.add('hidden');
+    }
+}
+
+// Document type selection
+function selectDocType(type) {
+    onboardingState.data.documentType = type;
+
+    const waiverBtn = document.getElementById('doc-type-waiver');
+    const medicalBtn = document.getElementById('doc-type-medical');
+    const waiverSection = document.getElementById('waiver-section');
+    const medicalSection = document.getElementById('medical-section');
+
+    if (type === 'waiver') {
+        waiverBtn.className = 'flex-1 py-3 rounded-xl text-sm font-semibold transition bg-primary/20 text-primary border border-primary/30';
+        medicalBtn.className = 'flex-1 py-3 rounded-xl text-sm font-semibold transition bg-white/5 text-white/60 border border-white/10 hover:bg-white/10';
+        waiverSection.classList.remove('hidden');
+        medicalSection.classList.add('hidden');
+    } else {
+        medicalBtn.className = 'flex-1 py-3 rounded-xl text-sm font-semibold transition bg-primary/20 text-primary border border-primary/30';
+        waiverBtn.className = 'flex-1 py-3 rounded-xl text-sm font-semibold transition bg-white/5 text-white/60 border border-white/10 hover:bg-white/10';
+        medicalSection.classList.remove('hidden');
+        waiverSection.classList.add('hidden');
+    }
+}
+
+// Signature canvas - supports mouse, touch, and pen tablets (XP-Pen, Wacom, etc.)
+let lastX = 0, lastY = 0;
+let canvasInitialized = false;
+
+function initSignatureCanvas() {
+    signatureCanvas = document.getElementById('signature-canvas');
+    if (!signatureCanvas) {
+        console.error('Signature canvas not found');
+        return;
+    }
+
+    // Get actual displayed size
+    const rect = signatureCanvas.getBoundingClientRect();
+    console.log('Canvas rect:', rect.width, rect.height);
+
+    // If canvas has no size, it's probably still hidden - retry
+    if (rect.width === 0 || rect.height === 0) {
+        console.log('Canvas has no size, retrying...');
+        setTimeout(initSignatureCanvas, 100);
+        return;
+    }
+
+    // Remove old event listeners if re-initializing
+    if (canvasInitialized) {
+        signatureCanvas.removeEventListener('mousedown', handleMouseDown);
+        signatureCanvas.removeEventListener('mousemove', handleMouseMove);
+        signatureCanvas.removeEventListener('mouseup', handleMouseUp);
+        signatureCanvas.removeEventListener('mouseleave', handleMouseUp);
+    }
+
+    signatureCtx = signatureCanvas.getContext('2d');
+
+    // Set canvas internal size to match displayed size (1:1 for simplicity)
+    signatureCanvas.width = rect.width;
+    signatureCanvas.height = rect.height;
+
+    // Set drawing styles
+    signatureCtx.lineCap = 'round';
+    signatureCtx.lineJoin = 'round';
+    signatureCtx.strokeStyle = '#000';
+    signatureCtx.lineWidth = 2;
+
+    // Clear with white background
+    signatureCtx.fillStyle = '#fff';
+    signatureCtx.fillRect(0, 0, rect.width, rect.height);
+
+    // Mouse events - most pen tablets (XP-Pen, Wacom) work as mouse emulation
+    signatureCanvas.addEventListener('mousedown', handleMouseDown);
+    signatureCanvas.addEventListener('mousemove', handleMouseMove);
+    signatureCanvas.addEventListener('mouseup', handleMouseUp);
+    signatureCanvas.addEventListener('mouseleave', handleMouseUp);
+
+    // Touch events for mobile/tablets
+    signatureCanvas.addEventListener('touchstart', handleTouchStart, { passive: false });
+    signatureCanvas.addEventListener('touchmove', handleTouchMove, { passive: false });
+    signatureCanvas.addEventListener('touchend', handleMouseUp);
+    signatureCanvas.addEventListener('touchcancel', handleMouseUp);
+
+    canvasInitialized = true;
+    console.log('Signature canvas initialized successfully:', rect.width, 'x', rect.height);
+}
+
+function getCanvasCoords(e, isTouch = false) {
+    const rect = signatureCanvas.getBoundingClientRect();
+    if (isTouch && e.touches && e.touches.length > 0) {
+        return {
+            x: e.touches[0].clientX - rect.left,
+            y: e.touches[0].clientY - rect.top
+        };
+    }
+    return {
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top
+    };
+}
+
+function hidePlaceholder() {
+    const placeholder = document.getElementById('signature-placeholder');
+    if (placeholder) placeholder.classList.add('hidden');
+}
+
+// Mouse handlers (works with XP-Pen and other pen tablets)
+function handleMouseDown(e) {
+    e.preventDefault();
+    isDrawing = true;
+    hidePlaceholder();
+
+    const coords = getCanvasCoords(e);
+    lastX = coords.x;
+    lastY = coords.y;
+
+    // Draw initial dot
+    signatureCtx.fillStyle = '#000';
+    signatureCtx.beginPath();
+    signatureCtx.arc(lastX, lastY, 1, 0, Math.PI * 2);
+    signatureCtx.fill();
+}
+
+function handleMouseMove(e) {
+    if (!isDrawing) return;
+    e.preventDefault();
+
+    const coords = getCanvasCoords(e);
+
+    signatureCtx.beginPath();
+    signatureCtx.moveTo(lastX, lastY);
+    signatureCtx.lineTo(coords.x, coords.y);
+    signatureCtx.stroke();
+
+    lastX = coords.x;
+    lastY = coords.y;
+}
+
+function handleMouseUp(e) {
+    isDrawing = false;
+}
+
+// Touch handlers
+function handleTouchStart(e) {
+    e.preventDefault();
+    if (e.touches.length === 0) return;
+
+    isDrawing = true;
+    hidePlaceholder();
+
+    const coords = getCanvasCoords(e, true);
+    lastX = coords.x;
+    lastY = coords.y;
+
+    // Draw initial dot
+    signatureCtx.fillStyle = '#000';
+    signatureCtx.beginPath();
+    signatureCtx.arc(lastX, lastY, 1, 0, Math.PI * 2);
+    signatureCtx.fill();
+}
+
+function handleTouchMove(e) {
+    e.preventDefault();
+    if (!isDrawing || e.touches.length === 0) return;
+
+    const coords = getCanvasCoords(e, true);
+
+    signatureCtx.beginPath();
+    signatureCtx.moveTo(lastX, lastY);
+    signatureCtx.lineTo(coords.x, coords.y);
+    signatureCtx.stroke();
+
+    lastX = coords.x;
+    lastY = coords.y;
+}
+
+function clearSignature() {
+    if (!signatureCanvas || !signatureCtx) return;
+    const rect = signatureCanvas.getBoundingClientRect();
+    signatureCtx.fillStyle = '#fff';
+    signatureCtx.fillRect(0, 0, rect.width, rect.height);
+
+    // Show placeholder text again
+    const placeholder = document.getElementById('signature-placeholder');
+    if (placeholder) placeholder.classList.remove('hidden');
+}
+
+function hasSignature() {
+    if (!signatureCanvas) return false;
+    const ctx = signatureCanvas.getContext('2d');
+    const pixelData = ctx.getImageData(0, 0, signatureCanvas.width, signatureCanvas.height).data;
+
+    // Check if any pixel is not white
+    for (let i = 0; i < pixelData.length; i += 4) {
+        if (pixelData[i] < 250 || pixelData[i + 1] < 250 || pixelData[i + 2] < 250) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// Medical file preview
+function previewMedicalFile(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        document.getElementById('medical-filename').textContent = file.name;
+        document.getElementById('medical-preview').classList.remove('hidden');
+    }
+}
+
+function removeMedicalFile() {
+    document.getElementById('medical-file').value = '';
+    document.getElementById('medical-preview').classList.add('hidden');
+}
+
+// ========== STRIPE INTEGRATION FOR ONBOARDING ==========
+// Using unique variable names to avoid conflict with app.js
+let onboardStripe = null;
+let onboardCard = null;
+let onboardSecret = null;
+
+async function initStripeElements() {
+    // Only initialize once
+    if (onboardStripe && onboardCard) return;
+
+    // Load Stripe.js if not loaded
+    if (!window.Stripe) {
+        console.log('Loading Stripe.js...');
+        await new Promise((resolve, reject) => {
+            const script = document.createElement('script');
+            script.src = 'https://js.stripe.com/v3/';
+            script.onload = resolve;
+            script.onerror = reject;
+            document.head.appendChild(script);
+        });
+    }
+
+    // Get publishable key from server
+    try {
+        const res = await fetch('/api/stripe/publishable-key', { credentials: 'include' });
+        if (!res.ok) {
+            console.error('Could not get Stripe publishable key');
+            showToast('Card payments not available', 'error');
+            return;
+        }
+        const { publishable_key } = await res.json();
+
+        if (!publishable_key || publishable_key.startsWith('your_')) {
+            console.error('Stripe not configured');
+            showToast('Card payments not configured', 'error');
+            return;
+        }
+
+        onboardStripe = Stripe(publishable_key);
+        const elements = onboardStripe.elements();
+
+        onboardCard = elements.create('card', {
+            style: {
+                base: {
+                    fontSize: '16px',
+                    color: '#424770',
+                    '::placeholder': { color: '#aab7c4' }
+                },
+                invalid: { color: '#9e2146' }
+            }
+        });
+
+        onboardCard.mount('#card-element');
+
+        // Handle errors
+        onboardCard.on('change', (event) => {
+            const errorsEl = document.getElementById('card-errors');
+            if (event.error) {
+                errorsEl.textContent = event.error.message;
+                errorsEl.classList.remove('hidden');
+            } else {
+                errorsEl.classList.add('hidden');
+            }
+        });
+
+        console.log('Onboarding Stripe Elements initialized');
+    } catch (e) {
+        console.error('Error initializing Stripe:', e);
+        showToast('Failed to initialize card payment', 'error');
+    }
+}
+
+async function createPaymentIntent() {
+    try {
+        const res = await fetch('/api/staff/create-payment-intent', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                plan_id: onboardingState.data.planId,
+                client_name: onboardingState.data.name
+            })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Failed to create payment');
+        }
+
+        const data = await res.json();
+        onboardSecret = data.client_secret;
+        return data;
+    } catch (e) {
+        console.error('Error creating payment intent:', e);
+        throw e;
+    }
+}
+
+async function processCardPayment() {
+    if (!onboardStripe || !onboardCard || !onboardSecret) {
+        throw new Error('Card payment not initialized');
+    }
+
+    const { error, paymentIntent } = await onboardStripe.confirmCardPayment(onboardSecret, {
+        payment_method: {
+            card: onboardCard,
+            billing_details: {
+                name: onboardingState.data.name,
+                email: onboardingState.data.email || undefined
+            }
+        }
+    });
+
+    if (error) {
+        throw new Error(error.message);
+    }
+
+    return paymentIntent;
+}
+
+// Complete onboarding
+async function completeOnboarding() {
+    // Validate payment method if plan selected
+    if (onboardingState.data.planId && !onboardingState.data.paymentMethod) {
+        showToast('Please select a payment method', 'error');
+        return;
+    }
+
+    const completeBtn = document.getElementById('onboard-complete-btn');
+    completeBtn.disabled = true;
+
+    try {
+        // If card payment, process payment first
+        if (onboardingState.data.paymentMethod === 'card') {
+            completeBtn.textContent = 'Processing payment...';
+
+            // Create payment intent
+            await createPaymentIntent();
+
+            // Process the card payment
+            const paymentIntent = await processCardPayment();
+            console.log('Payment successful:', paymentIntent.id);
+        }
+
+        completeBtn.textContent = 'Registering...';
+
+        // Prepare data
+        const payload = {
+            name: onboardingState.data.name,
+            phone: onboardingState.data.phone,
+            email: onboardingState.data.email || null,
+            username: onboardingState.data.username,
+            password: onboardingState.data.password,
+            document_type: onboardingState.data.documentType,
+            plan_id: onboardingState.data.planId,
+            payment_method: onboardingState.data.paymentMethod || 'none'
+        };
+
+        // Add document data
+        if (onboardingState.data.documentType === 'waiver') {
+            payload.document_data = signatureCanvas.toDataURL('image/png');
+            payload.waiver_text = document.getElementById('waiver-text-display').textContent;
+        } else {
+            // Read file as base64
+            const fileInput = document.getElementById('medical-file');
+            if (fileInput.files && fileInput.files[0]) {
+                payload.document_data = await fileToBase64(fileInput.files[0]);
+            }
+        }
+
+        const res = await fetch('/api/staff/onboard-client', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            showToast(data.message || 'Client registered successfully!', 'success');
+            closeOnboardingWizard();
+
+            // Refresh members list
+            await loadStaffData();
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Registration failed', 'error');
+        }
+    } catch (error) {
+        console.error('Onboarding error:', error);
+        showToast(error.message || 'Registration failed', 'error');
+    } finally {
+        completeBtn.disabled = false;
+        completeBtn.textContent = 'Complete Registration';
+    }
+}
+
+function fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+// Close onboarding wizard on background click
+document.getElementById('onboarding-wizard-modal')?.addEventListener('click', (e) => {
+    if (e.target.id === 'onboarding-wizard-modal') {
+        closeOnboardingWizard();
     }
 });
 </script>

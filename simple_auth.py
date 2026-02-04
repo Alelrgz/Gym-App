@@ -32,6 +32,9 @@ def hash_password(password: str) -> str:
     hashed = bcrypt.hashpw(pwd_bytes, salt)
     return hashed.decode('utf-8')
 
+# Alias for compatibility
+get_password_hash = hash_password
+
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     # bcrypt requires bytes for both
     pwd_bytes = plain_password.encode('utf-8')
@@ -110,6 +113,27 @@ async def do_login(request: Request, db: Session = Depends(get_db)):
             "role": "client",
             "mode": "auth"
         })
+
+    # Check if user must change password (first login after staff registration)
+    if hasattr(user, 'must_change_password') and user.must_change_password:
+        # Create token but redirect to setup-account
+        token = create_token(user.username, user.role)
+
+        if is_json:
+            from fastapi.responses import JSONResponse
+            return JSONResponse(content={
+                "access_token": token,
+                "token_type": "bearer",
+                "role": user.role,
+                "username": user.username,
+                "user_id": user.id,
+                "must_change_password": True,
+                "redirect": "/auth/setup-account"
+            })
+
+        response = RedirectResponse(url="/auth/setup-account", status_code=302)
+        response.set_cookie(key="access_token", value=token, httponly=True)
+        return response
 
     # 3. Success - Create token
     token = create_token(user.username, user.role)
@@ -312,3 +336,112 @@ async def do_logout():
     response = RedirectResponse(url="/auth/login", status_code=302)
     response.delete_cookie("access_token")
     return response
+
+
+# --- SETUP ACCOUNT (First Login Password Change) ---
+@simple_auth_router.get("/setup-account", response_class=HTMLResponse)
+async def show_setup_account(request: Request, db: Session = Depends(get_db)):
+    """Show the setup account page for users who need to change their password"""
+    # Get current user from token
+    token = request.cookies.get("access_token")
+    if not token:
+        return RedirectResponse(url="/auth/login", status_code=302)
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if not username:
+            return RedirectResponse(url="/auth/login", status_code=302)
+
+        user = db.query(User).filter(User.username == username).first()
+        if not user:
+            return RedirectResponse(url="/auth/login", status_code=302)
+
+        # If user doesn't need to change password, redirect to dashboard
+        if not getattr(user, 'must_change_password', False):
+            return RedirectResponse(url=f"/?role={user.role}", status_code=302)
+
+        return templates.TemplateResponse("setup_account.html", {
+            "request": request,
+            "current_username": user.username,
+            "gym_id": user.gym_owner_id or "iron_gym",
+            "role": user.role,
+            "mode": "auth"
+        })
+    except jwt.ExpiredSignatureError:
+        return RedirectResponse(url="/auth/login", status_code=302)
+    except jwt.InvalidTokenError:
+        return RedirectResponse(url="/auth/login", status_code=302)
+
+
+@simple_auth_router.post("/setup-account")
+async def do_setup_account(request: Request, db: Session = Depends(get_db)):
+    """Handle setup account form submission"""
+    # Get current user from token
+    token = request.cookies.get("access_token")
+    if not token:
+        return RedirectResponse(url="/auth/login", status_code=302)
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username = payload.get("sub")
+        if not username:
+            return RedirectResponse(url="/auth/login", status_code=302)
+
+        user = db.query(User).filter(User.username == username).first()
+        if not user:
+            return RedirectResponse(url="/auth/login", status_code=302)
+
+        # Parse form data
+        form = await request.form()
+        new_username = form.get("new_username", "").strip()
+        new_password = form.get("new_password", "").strip()
+        confirm_password = form.get("confirm_password", "").strip()
+
+        # Validation
+        errors = []
+        if not new_username:
+            errors.append("Username is required")
+        elif len(new_username) < 3:
+            errors.append("Username must be at least 3 characters")
+        elif new_username != username:
+            # Check if new username is taken
+            existing = db.query(User).filter(User.username == new_username).first()
+            if existing:
+                errors.append("Username already taken")
+
+        if not new_password:
+            errors.append("Password is required")
+        elif len(new_password) < 4:
+            errors.append("Password must be at least 4 characters")
+        elif new_password != confirm_password:
+            errors.append("Passwords do not match")
+
+        if errors:
+            return templates.TemplateResponse("setup_account.html", {
+                "request": request,
+                "current_username": user.username,
+                "error": ". ".join(errors),
+                "gym_id": user.gym_owner_id or "iron_gym",
+                "role": user.role,
+                "mode": "auth"
+            })
+
+        # Update user
+        user.username = new_username
+        user.hashed_password = get_password_hash(new_password)
+        user.must_change_password = False
+        db.commit()
+
+        # Create new token with updated username
+        new_token = create_token(new_username, user.role)
+
+        # Redirect to dashboard
+        response = RedirectResponse(url=f"/?role={user.role}", status_code=302)
+        response.set_cookie(key="access_token", value=new_token, httponly=True)
+        return response
+
+    except jwt.ExpiredSignatureError:
+        return RedirectResponse(url="/auth/login", status_code=302)
+    except jwt.InvalidTokenError:
+        return RedirectResponse(url="/auth/login", status_code=302)

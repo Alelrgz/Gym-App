@@ -5,9 +5,10 @@ Staff/Reception API routes for gym management
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db_session
-from models_orm import UserORM, AppointmentORM, CheckInORM, ClientProfileORM
-from auth import get_current_user
-from datetime import datetime, date
+from models_orm import UserORM, AppointmentORM, CheckInORM, ClientProfileORM, SubscriptionPlanORM, ClientSubscriptionORM, ClientDocumentORM
+from auth import get_current_user, get_password_hash
+from datetime import datetime, date, timedelta
+from service_modules.subscription_service import subscription_service
 import logging
 
 logger = logging.getLogger("gym_app")
@@ -378,10 +379,14 @@ async def get_member_details(
 
         if sub:
             plan = db.query(SubscriptionPlanORM).filter(SubscriptionPlanORM.id == sub.plan_id).first()
+            # Format expiry date
+            expires = sub.current_period_end
+            if expires and "T" in expires:
+                expires = expires.split("T")[0]
             subscription_info = {
                 "plan": plan.name if plan else "Unknown Plan",
                 "status": sub.status,
-                "expires": sub.end_date
+                "expires": expires
             }
     except Exception:
         pass
@@ -410,3 +415,544 @@ async def get_member_details(
         "subscription": subscription_info,
         "documents": []  # Placeholder for future document feature
     }
+
+
+# ============ SUBSCRIPTION MANAGEMENT FOR STAFF ============
+
+@router.get("/subscription-plans")
+async def get_gym_subscription_plans(
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all subscription plans for the gym (for staff to assign to clients)"""
+    if user.role != "staff":
+        raise HTTPException(status_code=403, detail="Staff access only")
+
+    if not user.gym_owner_id:
+        return []
+
+    plans = db.query(SubscriptionPlanORM).filter(
+        SubscriptionPlanORM.gym_id == user.gym_owner_id,
+        SubscriptionPlanORM.is_active == True
+    ).all()
+
+    return [
+        {
+            "id": p.id,
+            "name": p.name,
+            "description": p.description,
+            "price": p.price,
+            "currency": p.currency,
+            "billing_interval": p.billing_interval,
+            "trial_period_days": p.trial_period_days,
+            "features": eval(p.features_json) if p.features_json else []
+        }
+        for p in plans
+    ]
+
+
+@router.post("/subscribe-client")
+async def subscribe_client_to_plan(
+    data: dict,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Subscribe a client to a plan (staff-initiated, no payment required)"""
+    if user.role != "staff":
+        raise HTTPException(status_code=403, detail="Staff access only")
+
+    client_id = data.get("client_id")
+    plan_id = data.get("plan_id")
+
+    if not client_id or not plan_id:
+        raise HTTPException(status_code=400, detail="client_id and plan_id required")
+
+    # Verify client belongs to same gym
+    client = db.query(UserORM).filter(
+        UserORM.id == client_id,
+        UserORM.gym_owner_id == user.gym_owner_id,
+        UserORM.role == "client"
+    ).first()
+
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    # Verify plan exists and belongs to same gym
+    plan = db.query(SubscriptionPlanORM).filter(
+        SubscriptionPlanORM.id == plan_id,
+        SubscriptionPlanORM.gym_id == user.gym_owner_id,
+        SubscriptionPlanORM.is_active == True
+    ).first()
+
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    # Check if client already has active subscription
+    existing = db.query(ClientSubscriptionORM).filter(
+        ClientSubscriptionORM.client_id == client_id,
+        ClientSubscriptionORM.gym_id == user.gym_owner_id,
+        ClientSubscriptionORM.status.in_(["active", "trialing"])
+    ).first()
+
+    if existing:
+        raise HTTPException(status_code=400, detail="Client already has an active subscription")
+
+    # Create subscription (staff-initiated = no Stripe, marked as active immediately)
+    import uuid
+    now = datetime.utcnow().isoformat()
+
+    # Calculate period end based on billing interval
+    period_end = datetime.utcnow()
+    if plan.billing_interval == "year":
+        period_end += timedelta(days=365)
+    else:
+        period_end += timedelta(days=30)
+
+    subscription = ClientSubscriptionORM(
+        id=str(uuid.uuid4()),
+        client_id=client_id,
+        plan_id=plan_id,
+        gym_id=user.gym_owner_id,
+        status="active",
+        start_date=now,
+        current_period_start=now,
+        current_period_end=period_end.isoformat(),
+        created_at=now,
+        updated_at=now
+    )
+    db.add(subscription)
+    db.commit()
+
+    logger.info(f"Staff {user.id} subscribed client {client_id} to plan {plan.name}")
+
+    return {
+        "status": "success",
+        "message": f"{client.username} subscribed to {plan.name}",
+        "subscription_id": subscription.id
+    }
+
+
+@router.post("/cancel-subscription")
+async def cancel_client_subscription(
+    data: dict,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Cancel a client's subscription (staff-initiated)"""
+    if user.role != "staff":
+        raise HTTPException(status_code=403, detail="Staff access only")
+
+    client_id = data.get("client_id")
+    if not client_id:
+        raise HTTPException(status_code=400, detail="client_id required")
+
+    # Verify client belongs to same gym
+    client = db.query(UserORM).filter(
+        UserORM.id == client_id,
+        UserORM.gym_owner_id == user.gym_owner_id,
+        UserORM.role == "client"
+    ).first()
+
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    # Find active subscription
+    subscription = db.query(ClientSubscriptionORM).filter(
+        ClientSubscriptionORM.client_id == client_id,
+        ClientSubscriptionORM.gym_id == user.gym_owner_id,
+        ClientSubscriptionORM.status.in_(["active", "trialing"])
+    ).first()
+
+    if not subscription:
+        raise HTTPException(status_code=404, detail="No active subscription found")
+
+    # Cancel immediately
+    subscription.status = "canceled"
+    subscription.canceled_at = datetime.utcnow().isoformat()
+    subscription.updated_at = datetime.utcnow().isoformat()
+    db.commit()
+
+    logger.info(f"Staff {user.id} canceled subscription for client {client_id}")
+
+    return {
+        "status": "success",
+        "message": f"Subscription canceled for {client.username}"
+    }
+
+
+@router.post("/change-subscription")
+async def change_client_subscription(
+    data: dict,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Change a client's subscription to a different plan"""
+    if user.role != "staff":
+        raise HTTPException(status_code=403, detail="Staff access only")
+
+    client_id = data.get("client_id")
+    new_plan_id = data.get("plan_id")
+
+    if not client_id or not new_plan_id:
+        raise HTTPException(status_code=400, detail="client_id and plan_id required")
+
+    # Verify client belongs to same gym
+    client = db.query(UserORM).filter(
+        UserORM.id == client_id,
+        UserORM.gym_owner_id == user.gym_owner_id,
+        UserORM.role == "client"
+    ).first()
+
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    # Verify new plan exists
+    new_plan = db.query(SubscriptionPlanORM).filter(
+        SubscriptionPlanORM.id == new_plan_id,
+        SubscriptionPlanORM.gym_id == user.gym_owner_id,
+        SubscriptionPlanORM.is_active == True
+    ).first()
+
+    if not new_plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    # Find and update existing subscription
+    subscription = db.query(ClientSubscriptionORM).filter(
+        ClientSubscriptionORM.client_id == client_id,
+        ClientSubscriptionORM.gym_id == user.gym_owner_id,
+        ClientSubscriptionORM.status.in_(["active", "trialing"])
+    ).first()
+
+    if subscription:
+        # Update existing subscription to new plan
+        subscription.plan_id = new_plan_id
+        subscription.updated_at = datetime.utcnow().isoformat()
+        db.commit()
+        logger.info(f"Staff {user.id} changed client {client_id} to plan {new_plan.name}")
+    else:
+        # Create new subscription
+        import uuid
+        now = datetime.utcnow().isoformat()
+        period_end = datetime.utcnow()
+        if new_plan.billing_interval == "year":
+            period_end += timedelta(days=365)
+        else:
+            period_end += timedelta(days=30)
+
+        subscription = ClientSubscriptionORM(
+            id=str(uuid.uuid4()),
+            client_id=client_id,
+            plan_id=new_plan_id,
+            gym_id=user.gym_owner_id,
+            status="active",
+            start_date=now,
+            current_period_start=now,
+            current_period_end=period_end.isoformat(),
+            created_at=now,
+            updated_at=now
+        )
+        db.add(subscription)
+        db.commit()
+        logger.info(f"Staff {user.id} subscribed client {client_id} to plan {new_plan.name}")
+
+    return {
+        "status": "success",
+        "message": f"{client.username} now on {new_plan.name} plan"
+    }
+
+
+# ============ CLIENT ONBOARDING ============
+
+@router.get("/waiver-template")
+async def get_waiver_template(
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get the gym's waiver template text for signing"""
+    if user.role != "staff":
+        raise HTTPException(status_code=403, detail="Staff access only")
+
+    # Default waiver text - gyms can customize this later
+    waiver_text = """
+ASSUMPTION OF RISK AND WAIVER OF LIABILITY
+
+I hereby acknowledge that I have voluntarily chosen to participate in fitness activities at this gym facility.
+
+I understand that physical exercise can be strenuous and subject to risk of serious injury, illness, and death. I understand that these risks include but are not limited to:
+- Injuries from exercise equipment
+- Sprains, strains, and muscle injuries
+- Cardiovascular events
+- Falls and collisions
+
+I hereby assume all risks associated with my participation in fitness activities and release this gym, its owners, employees, and staff from any liability for injuries or damages that may occur.
+
+I confirm that:
+- I am physically fit to participate in exercise programs
+- I will consult a physician before beginning any exercise program if I have any health concerns
+- I will follow all safety rules and instructions provided by staff
+- I will report any injuries or health issues immediately
+
+By signing below, I acknowledge that I have read and understood this waiver and agree to its terms.
+""".strip()
+
+    return {
+        "waiver_text": waiver_text
+    }
+
+
+@router.post("/onboard-client")
+async def onboard_new_client(
+    data: dict,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Complete client onboarding - creates user, profile, document, and subscription in one transaction.
+    """
+    if user.role != "staff":
+        raise HTTPException(status_code=403, detail="Staff access only")
+
+    import uuid
+
+    # Extract required fields
+    name = data.get("name", "").strip()
+    phone = data.get("phone", "").strip()
+    username = data.get("username", "").strip()
+    password = data.get("password", "").strip()
+
+    # Optional fields
+    email = data.get("email", "").strip() or None
+
+    # Document info
+    document_type = data.get("document_type")  # "waiver" or "medical_certificate"
+    document_data = data.get("document_data")  # Base64 signature or file data
+    waiver_text = data.get("waiver_text")  # Waiver text if signing
+
+    # Subscription info
+    plan_id = data.get("plan_id")
+    payment_method = data.get("payment_method", "cash")  # "cash" or "card"
+
+    # Validation
+    if not name:
+        raise HTTPException(status_code=400, detail="Name is required")
+    if not phone:
+        raise HTTPException(status_code=400, detail="Phone is required")
+    if not username:
+        raise HTTPException(status_code=400, detail="Username is required")
+    if not password or len(password) < 4:
+        raise HTTPException(status_code=400, detail="Password must be at least 4 characters")
+
+    # Check username uniqueness
+    existing_user = db.query(UserORM).filter(UserORM.username == username).first()
+    if existing_user:
+        raise HTTPException(status_code=400, detail="Username already taken")
+
+    # Check email uniqueness if provided
+    if email:
+        existing_email = db.query(UserORM).filter(UserORM.email == email).first()
+        if existing_email:
+            raise HTTPException(status_code=400, detail="Email already registered")
+
+    try:
+        now = datetime.utcnow().isoformat()
+        client_id = str(uuid.uuid4())
+
+        # 1. Create user account
+        new_user = UserORM(
+            id=client_id,
+            username=username,
+            email=email,
+            hashed_password=get_password_hash(password),
+            role="client",
+            is_active=True,
+            gym_owner_id=user.gym_owner_id,
+            phone=phone,
+            must_change_password=True,  # Force password change on first login
+            created_at=now
+        )
+        db.add(new_user)
+
+        # 2. Create client profile
+        new_profile = ClientProfileORM(
+            id=client_id,
+            name=name,
+            email=email,
+            gym_id=user.gym_owner_id,
+            streak=0,
+            gems=0,
+            health_score=50
+        )
+        db.add(new_profile)
+
+        # 3. Store document (waiver or medical certificate)
+        if document_type and document_data:
+            doc_id = str(uuid.uuid4())
+
+            if document_type == "waiver":
+                # Store waiver signature
+                new_doc = ClientDocumentORM(
+                    id=doc_id,
+                    client_id=client_id,
+                    gym_id=user.gym_owner_id,
+                    document_type="waiver",
+                    signature_data=document_data,  # Base64 signature
+                    waiver_text=waiver_text,
+                    signed_at=now,
+                    uploaded_by=user.id,
+                    created_at=now
+                )
+            else:
+                # Store medical certificate file path
+                # Save the file to disk
+                import base64
+                import os
+
+                upload_dir = f"static/uploads/documents/{client_id}"
+                os.makedirs(upload_dir, exist_ok=True)
+
+                # Determine file extension from data URL or default to pdf
+                file_ext = "pdf"
+                if document_data.startswith("data:image/"):
+                    file_ext = document_data.split(";")[0].split("/")[1]
+                    document_data = document_data.split(",")[1]
+                elif document_data.startswith("data:application/pdf"):
+                    document_data = document_data.split(",")[1]
+
+                file_path = f"{upload_dir}/medical_certificate.{file_ext}"
+
+                with open(file_path, "wb") as f:
+                    f.write(base64.b64decode(document_data))
+
+                new_doc = ClientDocumentORM(
+                    id=doc_id,
+                    client_id=client_id,
+                    gym_id=user.gym_owner_id,
+                    document_type="medical_certificate",
+                    file_path=file_path,
+                    uploaded_by=user.id,
+                    created_at=now
+                )
+
+            db.add(new_doc)
+
+        # 4. Create subscription if plan selected
+        subscription_id = None
+        plan_name = None
+        if plan_id:
+            plan = db.query(SubscriptionPlanORM).filter(
+                SubscriptionPlanORM.id == plan_id,
+                SubscriptionPlanORM.gym_id == user.gym_owner_id,
+                SubscriptionPlanORM.is_active == True
+            ).first()
+
+            if plan:
+                plan_name = plan.name
+                subscription_id = str(uuid.uuid4())
+
+                # Calculate period end
+                period_end = datetime.utcnow()
+                if plan.billing_interval == "year":
+                    period_end += timedelta(days=365)
+                else:
+                    period_end += timedelta(days=30)
+
+                new_subscription = ClientSubscriptionORM(
+                    id=subscription_id,
+                    client_id=client_id,
+                    plan_id=plan_id,
+                    gym_id=user.gym_owner_id,
+                    status="active",
+                    start_date=now,
+                    current_period_start=now,
+                    current_period_end=period_end.isoformat(),
+                    created_at=now,
+                    updated_at=now
+                )
+                db.add(new_subscription)
+
+                # Update profile premium status
+                new_profile.is_premium = True
+
+        db.commit()
+
+        logger.info(f"Staff {user.id} onboarded new client: {username} (ID: {client_id})")
+
+        return {
+            "status": "success",
+            "client_id": client_id,
+            "username": username,
+            "name": name,
+            "subscription_id": subscription_id,
+            "plan_name": plan_name,
+            "payment_method": payment_method,
+            "message": f"Client {name} registered successfully!"
+        }
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Onboarding error: {e}")
+        raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+
+
+@router.post("/create-payment-intent")
+async def create_onboarding_payment_intent(
+    data: dict,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a Stripe PaymentIntent for onboarding card payment."""
+    if user.role != "staff":
+        raise HTTPException(status_code=403, detail="Staff access only")
+
+    import stripe
+    import os
+
+    stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+    if not stripe.api_key or stripe.api_key.startswith("your_"):
+        raise HTTPException(status_code=400, detail="Stripe is not configured for this gym")
+
+    plan_id = data.get("plan_id")
+    client_name = data.get("client_name", "New Client")
+
+    if not plan_id:
+        raise HTTPException(status_code=400, detail="plan_id is required")
+
+    # Get the plan
+    plan = db.query(SubscriptionPlanORM).filter(
+        SubscriptionPlanORM.id == plan_id,
+        SubscriptionPlanORM.gym_id == user.gym_owner_id,
+        SubscriptionPlanORM.is_active == True
+    ).first()
+
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    try:
+        # Convert price to cents (Stripe uses smallest currency unit)
+        amount_cents = int(plan.price * 100)
+
+        # Create PaymentIntent
+        intent = stripe.PaymentIntent.create(
+            amount=amount_cents,
+            currency=plan.currency.lower() if plan.currency else "eur",
+            metadata={
+                "gym_id": user.gym_owner_id,
+                "plan_id": plan_id,
+                "plan_name": plan.name,
+                "client_name": client_name,
+                "onboarding": "true"
+            },
+            description=f"Gym membership: {plan.name} for {client_name}"
+        )
+
+        logger.info(f"Created PaymentIntent {intent.id} for onboarding, amount: {amount_cents}")
+
+        return {
+            "client_secret": intent.client_secret,
+            "amount": plan.price,
+            "currency": plan.currency or "EUR"
+        }
+
+    except stripe.StripeError as e:
+        logger.error(f"Stripe error creating PaymentIntent: {e}")
+        raise HTTPException(status_code=400, detail=f"Payment setup failed: {str(e)}")

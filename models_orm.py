@@ -29,6 +29,10 @@ class UserORM(Base):
     stripe_account_id = Column(String, nullable=True)  # Connected Stripe account ID (acct_xxx)
     stripe_account_status = Column(String, nullable=True)  # pending, active, restricted
 
+    # Onboarding fields
+    phone = Column(String, nullable=True)  # Phone number
+    must_change_password = Column(Boolean, default=False)  # Force password change on first login
+
 # --- EXERCISE & WORKOUT LIBRARY (Global + Personal) ---
 
 class ExerciseORM(Base):
@@ -109,6 +113,27 @@ class ClientProfileORM(Base):
     strength_goal_upper = Column(Integer, nullable=True)  # Upper body target %
     strength_goal_lower = Column(Integer, nullable=True)  # Lower body target %
     strength_goal_cardio = Column(Integer, nullable=True)  # Cardio target %
+
+
+class ClientDocumentORM(Base):
+    """Stores client documents like medical certificates and signed waivers"""
+    __tablename__ = "client_documents"
+
+    id = Column(String, primary_key=True, index=True)
+    client_id = Column(String, ForeignKey("users.id"), index=True)
+    gym_id = Column(String, ForeignKey("users.id"), index=True)
+
+    document_type = Column(String)  # "medical_certificate", "waiver"
+    file_path = Column(String, nullable=True)  # For uploaded files
+    signature_data = Column(Text, nullable=True)  # Base64 signature for waivers
+
+    uploaded_by = Column(String, ForeignKey("users.id"))  # Staff who uploaded
+    created_at = Column(String)
+
+    # Waiver-specific fields
+    waiver_text = Column(Text, nullable=True)  # The waiver content they signed
+    signed_at = Column(String, nullable=True)
+
 
 class WeightHistoryORM(Base):
     __tablename__ = "weight_history"

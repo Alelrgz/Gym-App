@@ -9153,7 +9153,7 @@ window.loadCoursesPage = async function() {
         // Calculate average engagement
         document.getElementById('avg-engagement').textContent = '-';
 
-        // Render own courses
+        // Render own courses grouped by type
         if (ownCourses.length === 0) {
             ownCoursesContainer.innerHTML = `
                 <div class="glass-card p-8 text-center">
@@ -9163,10 +9163,10 @@ window.loadCoursesPage = async function() {
                 </div>
             `;
         } else {
-            ownCoursesContainer.innerHTML = ownCourses.map(c => renderCourseCard(c, true)).join('');
+            ownCoursesContainer.innerHTML = renderCoursesGroupedByType(ownCourses, true);
         }
 
-        // Render shared courses
+        // Render shared courses grouped by type
         if (sharedCoursesContainer) {
             if (sharedCourses.length === 0) {
                 sharedCoursesContainer.innerHTML = `
@@ -9175,7 +9175,7 @@ window.loadCoursesPage = async function() {
                     </div>
                 `;
             } else {
-                sharedCoursesContainer.innerHTML = sharedCourses.map(c => renderCourseCard(c, false)).join('');
+                sharedCoursesContainer.innerHTML = renderCoursesGroupedByType(sharedCourses, false);
             }
         }
     } catch (e) {
@@ -9187,6 +9187,77 @@ window.loadCoursesPage = async function() {
         `;
     }
 };
+
+// Course type icons and labels
+const COURSE_TYPE_INFO = {
+    yoga: { icon: '🧘', label: 'Yoga', color: 'purple' },
+    pilates: { icon: '🩰', label: 'Pilates', color: 'pink' },
+    hiit: { icon: '🔥', label: 'HIIT', color: 'orange' },
+    dance: { icon: '💃', label: 'Dance', color: 'red' },
+    spin: { icon: '🚴', label: 'Spinning', color: 'blue' },
+    strength: { icon: '💪', label: 'Strength', color: 'green' },
+    stretch: { icon: '🦁', label: 'Stretch', color: 'yellow' },
+    cardio: { icon: '🏃', label: 'Cardio', color: 'cyan' }
+};
+
+// Group courses by type and render with section headers
+function renderCoursesGroupedByType(courses, isOwner) {
+    // Group courses by course_type
+    const grouped = {};
+    const uncategorized = [];
+
+    courses.forEach(course => {
+        const type = course.course_type || 'other';
+        if (COURSE_TYPE_INFO[type]) {
+            if (!grouped[type]) grouped[type] = [];
+            grouped[type].push(course);
+        } else {
+            uncategorized.push(course);
+        }
+    });
+
+    // Define order of sections
+    const typeOrder = ['yoga', 'pilates', 'hiit', 'dance', 'spin', 'strength', 'stretch', 'cardio'];
+
+    let html = '';
+
+    // Render each type section
+    typeOrder.forEach(type => {
+        if (grouped[type] && grouped[type].length > 0) {
+            const info = COURSE_TYPE_INFO[type];
+            html += `
+                <div class="mb-6">
+                    <div class="flex items-center gap-2 mb-3 px-1">
+                        <span class="text-xl">${info.icon}</span>
+                        <h4 class="text-sm font-bold text-white/80 uppercase tracking-wider">${info.label}</h4>
+                        <span class="text-xs text-white/40">(${grouped[type].length})</span>
+                    </div>
+                    <div class="space-y-3">
+                        ${grouped[type].map(c => renderCourseCard(c, isOwner)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+    });
+
+    // Render uncategorized courses
+    if (uncategorized.length > 0) {
+        html += `
+            <div class="mb-6">
+                <div class="flex items-center gap-2 mb-3 px-1">
+                    <span class="text-xl">📚</span>
+                    <h4 class="text-sm font-bold text-white/80 uppercase tracking-wider">Other Courses</h4>
+                    <span class="text-xs text-white/40">(${uncategorized.length})</span>
+                </div>
+                <div class="space-y-3">
+                    ${uncategorized.map(c => renderCourseCard(c, isOwner)).join('')}
+                </div>
+            </div>
+        `;
+    }
+
+    return html;
+}
 
 // Render a course card for the courses page
 function renderCourseCard(course, isOwner) {
