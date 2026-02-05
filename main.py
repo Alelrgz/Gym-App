@@ -233,6 +233,31 @@ def run_migrations(engine):
                 except Exception as e:
                     logger.debug(f"Column base_calories may already exist: {e}")
 
+    # Add session_type to appointments
+    if 'appointments' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('appointments')]
+        if 'session_type' not in columns:
+            with engine.connect() as conn:
+                try:
+                    conn.execute(text("ALTER TABLE appointments ADD COLUMN session_type TEXT"))
+                    conn.commit()
+                    logger.info("Added column session_type to appointments table")
+                except Exception as e:
+                    logger.debug(f"Column session_type may already exist: {e}")
+
+    # Add new columns to client_profile
+    if 'client_profile' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('client_profile')]
+        for col in ["date_of_birth", "emergency_contact_name", "emergency_contact_phone"]:
+            if col not in columns:
+                with engine.connect() as conn:
+                    try:
+                        conn.execute(text(f"ALTER TABLE client_profile ADD COLUMN {col} TEXT"))
+                        conn.commit()
+                        logger.info(f"Added column {col} to client_profile table")
+                    except Exception as e:
+                        logger.debug(f"Column {col} may already exist: {e}")
+
 def background_trigger_checker():
     """Background thread that periodically checks for automated message triggers."""
     import time

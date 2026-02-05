@@ -10,6 +10,7 @@ from auth import get_current_user, get_password_hash
 from datetime import datetime, date, timedelta
 from service_modules.subscription_service import subscription_service
 import logging
+import os
 
 logger = logging.getLogger("gym_app")
 
@@ -729,6 +730,9 @@ async def onboard_new_client(
     document_data = data.get("document_data")  # Base64 signature or file data
     waiver_text = data.get("waiver_text")  # Waiver text if signing
 
+    # Profile photo (optional, base64 data URL)
+    profile_photo = data.get("profile_photo")
+
     # Subscription info
     plan_id = data.get("plan_id")
     payment_method = data.get("payment_method", "cash")  # "cash" or "card"
@@ -874,6 +878,30 @@ async def onboard_new_client(
 
                 # Update profile premium status
                 new_profile.is_premium = True
+
+        # 5. Save profile photo if provided
+        if profile_photo and profile_photo.startswith("data:image/"):
+            import base64 as b64
+            try:
+                # Parse data URL
+                header, photo_b64 = profile_photo.split(",", 1)
+                ext = header.split("/")[1].split(";")[0]
+                if ext not in ("png", "jpg", "jpeg", "webp"):
+                    ext = "jpg"
+
+                upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "uploads", "profiles")
+                os.makedirs(upload_dir, exist_ok=True)
+
+                photo_filename = f"{client_id}.{ext}"
+                photo_path = os.path.join(upload_dir, photo_filename)
+
+                with open(photo_path, "wb") as pf:
+                    pf.write(b64.b64decode(photo_b64))
+
+                # Update user record with profile picture path
+                new_user.profile_picture = f"/static/uploads/profiles/{photo_filename}"
+            except Exception as photo_err:
+                logger.warning(f"Failed to save profile photo: {photo_err}")
 
         db.commit()
 

@@ -453,6 +453,11 @@
             <div class="w-8 h-0.5 bg-white/20"></div>
             <div class="onboard-step-dot" data-step="4">
                 <span class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white/60 text-sm font-bold">4</span>
+                <span class="text-xs text-gray-400 mt-1">Photo</span>
+            </div>
+            <div class="w-8 h-0.5 bg-white/20"></div>
+            <div class="onboard-step-dot" data-step="5">
+                <span class="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center text-white/60 text-sm font-bold">5</span>
                 <span class="text-xs text-gray-400 mt-1">Pay</span>
             </div>
         </div>
@@ -573,8 +578,44 @@
             </div>
         </div>
 
-        <!-- Step 4: Payment -->
+        <!-- Step 4: Profile Photo -->
         <div id="onboard-step-4" class="onboard-step-content hidden">
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Profile Photo</h4>
+            <div class="flex flex-col items-center">
+                <!-- Photo Preview -->
+                <div id="onboard-photo-preview" class="w-32 h-32 rounded-full bg-white/10 border-2 border-dashed border-white/20 flex items-center justify-center mb-4 overflow-hidden relative">
+                    <div id="onboard-photo-placeholder" class="text-center">
+                        <svg class="w-10 h-10 text-gray-500 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
+                        </svg>
+                        <span class="text-xs text-gray-500">No photo</span>
+                    </div>
+                    <img id="onboard-photo-img" src="" alt="Profile" class="w-full h-full object-cover hidden">
+                </div>
+
+                <!-- Upload Button -->
+                <label class="cursor-pointer mb-3">
+                    <div class="bg-primary/20 hover:bg-primary/30 text-primary px-6 py-2.5 rounded-xl text-sm font-semibold transition flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        </svg>
+                        Take or Upload Photo
+                    </div>
+                    <input type="file" id="onboard-photo-input" accept="image/*" capture="user" class="hidden" onchange="previewOnboardPhoto(this)">
+                </label>
+
+                <!-- Remove Button -->
+                <button id="onboard-photo-remove-btn" onclick="removeOnboardPhoto()" class="text-xs text-red-400 hover:text-red-300 transition hidden">
+                    Remove photo
+                </button>
+
+                <p class="text-xs text-gray-500 mt-3 text-center">Optional - client can also set their photo later from the app</p>
+            </div>
+        </div>
+
+        <!-- Step 5: Payment -->
+        <div id="onboard-step-5" class="onboard-step-content hidden">
             <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Payment & Summary</h4>
 
             <!-- Summary -->
@@ -1426,7 +1467,7 @@ document.getElementById('checkin-search')?.addEventListener('input', (e) => {
 // ========== CLIENT ONBOARDING WIZARD ==========
 const onboardingState = {
     currentStep: 1,
-    totalSteps: 4,
+    totalSteps: 5,
     data: {
         name: '',
         phone: '',
@@ -1441,6 +1482,7 @@ const onboardingState = {
         planName: '',
         planPrice: 0,
         planCurrency: '€',
+        profilePhoto: null,
         paymentMethod: null
     }
 };
@@ -1456,7 +1498,7 @@ function openOnboardingWizard() {
         username: '', password: '',
         documentType: 'waiver', documentData: null, waiverText: '',
         planId: null, planName: '', planPrice: 0, planCurrency: '€',
-        paymentMethod: null
+        profilePhoto: null, paymentMethod: null
     };
 
     // Clear form fields
@@ -1466,6 +1508,7 @@ function openOnboardingWizard() {
     document.getElementById('onboard-dob').value = '';
     document.getElementById('onboard-username').value = '';
     document.getElementById('onboard-password').value = '';
+    removeOnboardPhoto();
 
     // Reset UI
     showOnboardStep(1);
@@ -1512,11 +1555,11 @@ function showOnboardStep(step) {
     const completeBtn = document.getElementById('onboard-complete-btn');
 
     prevBtn.classList.toggle('hidden', step === 1);
-    nextBtn.classList.toggle('hidden', step === 4);
-    completeBtn.classList.toggle('hidden', step !== 4);
+    nextBtn.classList.toggle('hidden', step === 5);
+    completeBtn.classList.toggle('hidden', step !== 5);
 
-    // Update step 4 summary if on last step
-    if (step === 4) {
+    // Update step 5 summary if on last step
+    if (step === 5) {
         updateOnboardingSummary();
     }
 }
@@ -2054,7 +2097,8 @@ async function completeOnboarding() {
             password: onboardingState.data.password,
             document_type: onboardingState.data.documentType,
             plan_id: onboardingState.data.planId,
-            payment_method: onboardingState.data.paymentMethod || 'none'
+            payment_method: onboardingState.data.paymentMethod || 'none',
+            profile_photo: onboardingState.data.profilePhoto || null
         };
 
         // Add document data
@@ -2103,6 +2147,45 @@ function fileToBase64(file) {
         reader.onerror = reject;
         reader.readAsDataURL(file);
     });
+}
+
+function previewOnboardPhoto(input) {
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        if (file.size > 5 * 1024 * 1024) {
+            showToast('Photo must be under 5MB', 'error');
+            input.value = '';
+            return;
+        }
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            onboardingState.data.profilePhoto = e.target.result;
+            document.getElementById('onboard-photo-img').src = e.target.result;
+            document.getElementById('onboard-photo-img').classList.remove('hidden');
+            document.getElementById('onboard-photo-placeholder').classList.add('hidden');
+            document.getElementById('onboard-photo-preview').classList.remove('border-dashed', 'border-white/20');
+            document.getElementById('onboard-photo-preview').classList.add('border-solid', 'border-primary/50');
+            document.getElementById('onboard-photo-remove-btn').classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+    }
+}
+
+function removeOnboardPhoto() {
+    onboardingState.data.profilePhoto = null;
+    const input = document.getElementById('onboard-photo-input');
+    if (input) input.value = '';
+    const img = document.getElementById('onboard-photo-img');
+    if (img) { img.src = ''; img.classList.add('hidden'); }
+    const placeholder = document.getElementById('onboard-photo-placeholder');
+    if (placeholder) placeholder.classList.remove('hidden');
+    const preview = document.getElementById('onboard-photo-preview');
+    if (preview) {
+        preview.classList.add('border-dashed', 'border-white/20');
+        preview.classList.remove('border-solid', 'border-primary/50');
+    }
+    const removeBtn = document.getElementById('onboard-photo-remove-btn');
+    if (removeBtn) removeBtn.classList.add('hidden');
 }
 
 // Close onboarding wizard on background click
