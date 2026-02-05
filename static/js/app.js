@@ -670,6 +670,24 @@ window.togglePremium = async (clientId, currentState, event) => {
     }
 };
 
+// Certificate status cache for trainer client list
+let clientCertificateMap = {};
+
+async function loadClientCertificates() {
+    try {
+        const res = await fetch(`${apiBase}/api/medical/certificates/overview`, { credentials: 'include' });
+        if (res.ok) {
+            const data = await res.json();
+            clientCertificateMap = {};
+            (data.clients || []).forEach(c => { clientCertificateMap[c.client_id] = c.status; });
+            // Re-render if clients already loaded
+            if (allClients && allClients.length > 0) renderClientList(allClients);
+        }
+    } catch (e) {
+        console.log('Could not load certificate status:', e);
+    }
+}
+
 function renderClientList(clients) {
     const list = document.getElementById('client-list');
     if (!list) return;
@@ -680,6 +698,13 @@ function renderClientList(clients) {
         list.innerHTML = '<p class="text-gray-500 text-xs text-center py-4">No clients found.</p>';
         return;
     }
+
+    const certBadge = {
+        valid: '<span class="w-2 h-2 rounded-full bg-green-400 inline-block ml-1" title="Certificate valid"></span>',
+        expiring: '<span class="w-2 h-2 rounded-full bg-yellow-400 inline-block ml-1" title="Certificate expiring soon"></span>',
+        expired: '<span class="w-2 h-2 rounded-full bg-red-400 inline-block ml-1" title="Certificate expired"></span>',
+        missing: '<span class="w-2 h-2 rounded-full bg-gray-500 inline-block ml-1" title="No certificate"></span>'
+    };
 
     clients.forEach(c => {
         const div = document.createElement('div');
@@ -692,16 +717,14 @@ function renderClientList(clients) {
         // Premium Tag Logic - PRO means this client selected this trainer as their personal trainer
         let premiumBtn = '';
         if (c.is_premium) {
-            // Show PRO badge (non-clickable) for clients who selected this trainer
             premiumBtn = `<span class="ml-2 bg-yellow-500/20 text-yellow-500 border border-yellow-500 px-2 py-0.5 rounded text-[10px] font-bold">PRO</span>`;
         }
-        // COMMENTED OUT: Manual "Make PRO" button - now handled automatically when client selects trainer
-        // else {
-        //     premiumBtn = `<button onclick="window.togglePremium('${c.id}', false, event)" class="ml-2 bg-white/5 text-gray-500 border border-white/10 px-2 py-0.5 rounded text-[10px] font-bold hover:bg-white/20 hover:text-white transition">Make PRO</button>`;
-        // }
+
+        const certStatus = clientCertificateMap[c.id] || 'missing';
+        const certDot = certBadge[certStatus] || certBadge.missing;
 
         const avatarUrl = c.profile_picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.name}`;
-        div.innerHTML = `<div class="flex items-center"><div class="w-10 h-10 rounded-full bg-white/10 mr-3 overflow-hidden"><img src="${avatarUrl}" class="w-full h-full object-cover" /></div><div><p class="font-bold text-sm text-white flex items-center">${c.name} ${premiumBtn}</p><p class="text-[10px] text-gray-400">${c.plan} • Seen ${c.last_seen}</p></div></div><span class="text-xs font-bold ${statusColor}">${c.status}</span>`;
+        div.innerHTML = `<div class="flex items-center"><div class="w-10 h-10 rounded-full bg-white/10 mr-3 overflow-hidden"><img src="${avatarUrl}" class="w-full h-full object-cover" /></div><div><p class="font-bold text-sm text-white flex items-center">${c.name} ${premiumBtn} ${certDot}</p><p class="text-[10px] text-gray-400">${c.plan} • Seen ${c.last_seen}</p></div></div><span class="text-xs font-bold ${statusColor}">${c.status}</span>`;
         list.appendChild(div);
     });
 
@@ -1128,6 +1151,7 @@ async function init() {
             if (data.clients) {
                 allClients = data.clients;
                 renderClientList(allClients);
+                loadClientCertificates();
 
                 // Setup Search Listener
                 const searchInput = document.getElementById('client-search');

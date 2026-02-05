@@ -5,7 +5,7 @@ Staff/Reception API routes for gym management
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db_session
-from models_orm import UserORM, AppointmentORM, CheckInORM, ClientProfileORM, SubscriptionPlanORM, ClientSubscriptionORM, ClientDocumentORM
+from models_orm import UserORM, AppointmentORM, CheckInORM, ClientProfileORM, SubscriptionPlanORM, ClientSubscriptionORM, ClientDocumentORM, MedicalCertificateORM
 from auth import get_current_user, get_password_hash
 from datetime import datetime, date, timedelta
 from service_modules.subscription_service import subscription_service
@@ -401,6 +401,36 @@ async def get_member_details(
         except Exception:
             pass
 
+    # Get medical certificate
+    cert_info = None
+    try:
+        cert = db.query(MedicalCertificateORM).filter(
+            MedicalCertificateORM.client_id == member_id
+        ).order_by(MedicalCertificateORM.id.desc()).first()
+
+        if cert:
+            cert_status = "valid"
+            if cert.expiration_date:
+                try:
+                    exp = datetime.strptime(cert.expiration_date, "%Y-%m-%d")
+                    days_left = (exp - datetime.now()).days
+                    if days_left < 0:
+                        cert_status = "expired"
+                    elif days_left <= 30:
+                        cert_status = "expiring"
+                except ValueError:
+                    pass
+
+            cert_info = {
+                "id": cert.id,
+                "filename": cert.filename,
+                "file_url": cert.file_path,
+                "expiration_date": cert.expiration_date,
+                "status": cert_status
+            }
+    except Exception:
+        pass
+
     return {
         "id": member.id,
         "username": member.username,
@@ -414,7 +444,7 @@ async def get_member_details(
         "last_checkin": last_checkin,
         "checked_in_today": checked_in_today,
         "subscription": subscription_info,
-        "documents": []  # Placeholder for future document feature
+        "medical_certificate": cert_info
     }
 
 
@@ -716,13 +746,13 @@ async def onboard_new_client(
     import uuid
 
     # Extract required fields
-    name = data.get("name", "").strip()
-    phone = data.get("phone", "").strip()
-    username = data.get("username", "").strip()
-    password = data.get("password", "").strip()
+    name = (data.get("name") or "").strip()
+    phone = (data.get("phone") or "").strip()
+    username = (data.get("username") or "").strip()
+    password = (data.get("password") or "").strip()
 
     # Optional fields
-    email = data.get("email", "").strip() or None
+    email = (data.get("email") or "").strip() or None
     date_of_birth = data.get("date_of_birth") or None
 
     # Document info

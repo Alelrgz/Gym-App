@@ -3,7 +3,7 @@ Profile Routes - API endpoints for user profile management including profile pic
 """
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from auth import get_current_user
-from models_orm import UserORM, PhysiquePhotoORM, ClientProfileORM
+from models_orm import UserORM, PhysiquePhotoORM, ClientProfileORM, MedicalCertificateORM
 from database import get_db_session
 import os
 import uuid
@@ -475,5 +475,300 @@ async def get_physique_photos(
                 for p in photos
             ]
         }
+    finally:
+        db.close()
+
+
+# ============ MEDICAL CERTIFICATES ============
+
+CERT_ALLOWED_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
+MAX_CERT_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+
+
+def allowed_cert_file(filename: str) -> bool:
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in CERT_ALLOWED_EXTENSIONS
+
+
+def can_view_certificate(user: UserORM, client_id: str, db) -> bool:
+    """Check if user can view a client's medical certificate."""
+    if str(user.id) == str(client_id):
+        return True
+    if user.role == 'owner':
+        profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
+        if profile and str(profile.gym_id) == str(user.id):
+            return True
+    if user.role in ['trainer', 'nutritionist']:
+        profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
+        if profile and str(profile.trainer_id) == str(user.id):
+            return True
+    if user.role == 'staff':
+        member = db.query(UserORM).filter(UserORM.id == client_id).first()
+        if member and member.gym_owner_id and member.gym_owner_id == user.gym_owner_id:
+            return True
+    return False
+
+
+@router.post("/api/medical/certificate")
+async def upload_medical_certificate(
+    file: UploadFile = File(...),
+    expiration_date: Optional[str] = Form(None),
+    user: UserORM = Depends(get_current_user)
+):
+    """Upload a medical certificate (certificato medico sportivo)."""
+    if user.role != 'client':
+        raise HTTPException(status_code=403, detail="Only clients can upload medical certificates")
+
+    if not file.filename or not allowed_cert_file(file.filename):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Invalid file type. Allowed: {', '.join(CERT_ALLOWED_EXTENSIONS)}"
+        )
+
+    content = await file.read()
+
+    if len(content) > MAX_CERT_FILE_SIZE:
+        raise HTTPException(
+            status_code=400,
+            detail=f"File too large. Maximum size: {MAX_CERT_FILE_SIZE // (1024*1024)}MB"
+        )
+
+    ext = file.filename.rsplit('.', 1)[1].lower()
+    if ext == 'jpeg':
+        ext = 'jpg'
+
+    unique_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
+    filename = f"{unique_id}.{ext}"
+
+    uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'uploads', 'certificates', str(user.id))
+    os.makedirs(uploads_dir, exist_ok=True)
+
+    file_path = os.path.join(uploads_dir, filename)
+    db = None
+
+    try:
+        # For images, optimize with Pillow
+        if ext != 'pdf':
+            try:
+                from PIL import Image
+                import io
+                img = Image.open(io.BytesIO(content))
+                if img.mode in ('RGBA', 'P'):
+                    img = img.convert('RGB')
+                    ext = 'jpg'
+                    filename = f"{unique_id}.{ext}"
+                    file_path = os.path.join(uploads_dir, filename)
+                max_size = (1600, 2200)
+                img.thumbnail(max_size, Image.Resampling.LANCZOS)
+                img.save(file_path, quality=85, optimize=True)
+            except ImportError:
+                with open(file_path, 'wb') as f:
+                    f.write(content)
+        else:
+            with open(file_path, 'wb') as f:
+                f.write(content)
+
+        relative_path = f"/static/uploads/certificates/{user.id}/{filename}"
+
+        db = get_db_session()
+
+        # Delete old certificate(s) for this client
+        old_certs = db.query(MedicalCertificateORM).filter(
+            MedicalCertificateORM.client_id == str(user.id)
+        ).all()
+        for old in old_certs:
+            old_full_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), old.file_path.lstrip('/'))
+            if os.path.exists(old_full_path):
+                try:
+                    os.remove(old_full_path)
+                except:
+                    pass
+            db.delete(old)
+
+        cert = MedicalCertificateORM(
+            client_id=str(user.id),
+            filename=file.filename,
+            file_path=relative_path,
+            expiration_date=expiration_date
+        )
+        db.add(cert)
+        db.commit()
+        db.refresh(cert)
+
+        return {
+            "success": True,
+            "certificate": {
+                "id": cert.id,
+                "filename": cert.filename,
+                "file_url": relative_path + f"?t={int(datetime.now().timestamp())}",
+                "expiration_date": cert.expiration_date,
+                "uploaded_at": cert.uploaded_at
+            },
+            "message": "Medical certificate uploaded"
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        if os.path.exists(file_path):
+            try:
+                os.remove(file_path)
+            except:
+                pass
+        if db:
+            db.rollback()
+        raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
+    finally:
+        if db:
+            db.close()
+
+
+@router.get("/api/medical/certificate")
+async def get_medical_certificate(
+    client_id: Optional[str] = None,
+    user: UserORM = Depends(get_current_user)
+):
+    """Get medical certificate. Client sees own, owner/trainer sees by client_id."""
+    db = get_db_session()
+    try:
+        target_id = client_id or str(user.id)
+
+        if not can_view_certificate(user, target_id, db):
+            raise HTTPException(status_code=403, detail="Not authorized to view this certificate")
+
+        cert = db.query(MedicalCertificateORM).filter(
+            MedicalCertificateORM.client_id == target_id
+        ).order_by(MedicalCertificateORM.id.desc()).first()
+
+        if not cert:
+            return {"certificate": None}
+
+        # Calculate status based on expiration
+        status = "valid"
+        if cert.expiration_date:
+            try:
+                exp = datetime.strptime(cert.expiration_date, "%Y-%m-%d")
+                days_left = (exp - datetime.now()).days
+                if days_left < 0:
+                    status = "expired"
+                elif days_left <= 30:
+                    status = "expiring"
+            except ValueError:
+                pass
+
+        return {
+            "certificate": {
+                "id": cert.id,
+                "filename": cert.filename,
+                "file_url": cert.file_path,
+                "expiration_date": cert.expiration_date,
+                "uploaded_at": cert.uploaded_at,
+                "status": status
+            }
+        }
+    finally:
+        db.close()
+
+
+@router.delete("/api/medical/certificate/{cert_id}")
+async def delete_medical_certificate(
+    cert_id: int,
+    user: UserORM = Depends(get_current_user)
+):
+    """Delete a medical certificate."""
+    db = get_db_session()
+    try:
+        cert = db.query(MedicalCertificateORM).filter(MedicalCertificateORM.id == cert_id).first()
+        if not cert:
+            raise HTTPException(status_code=404, detail="Certificate not found")
+
+        if str(cert.client_id) != str(user.id) and user.role != 'owner':
+            raise HTTPException(status_code=403, detail="Not authorized to delete this certificate")
+
+        full_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), cert.file_path.lstrip('/'))
+        if os.path.exists(full_path):
+            os.remove(full_path)
+
+        db.delete(cert)
+        db.commit()
+        return {"success": True, "message": "Certificate deleted"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=f"Failed to delete: {str(e)}")
+    finally:
+        db.close()
+
+
+@router.get("/api/medical/certificates/overview")
+async def get_certificates_overview(
+    user: UserORM = Depends(get_current_user)
+):
+    """Get certificate status for all clients in the gym (owner/trainer only)."""
+    if user.role not in ['owner', 'trainer', 'staff']:
+        raise HTTPException(status_code=403, detail="Not authorized")
+
+    db = get_db_session()
+    try:
+        # Get all clients in this gym
+        if user.role == 'owner':
+            clients = db.query(ClientProfileORM).filter(
+                ClientProfileORM.gym_id == str(user.id)
+            ).all()
+        elif user.role == 'staff':
+            # Staff sees all clients in their gym
+            gym_clients = db.query(UserORM).filter(
+                UserORM.gym_owner_id == user.gym_owner_id,
+                UserORM.role == 'client'
+            ).all()
+            client_ids = [c.id for c in gym_clients]
+            clients = db.query(ClientProfileORM).filter(
+                ClientProfileORM.id.in_(client_ids)
+            ).all() if client_ids else []
+        else:
+            clients = db.query(ClientProfileORM).filter(
+                ClientProfileORM.trainer_id == str(user.id)
+            ).all()
+
+        results = []
+        for client in clients:
+            cert = db.query(MedicalCertificateORM).filter(
+                MedicalCertificateORM.client_id == client.id
+            ).order_by(MedicalCertificateORM.id.desc()).first()
+
+            client_user = db.query(UserORM).filter(UserORM.id == client.id).first()
+            name = client.name or (client_user.username if client_user else "Unknown")
+
+            status = "missing"
+            expiration_date = None
+            file_url = None
+            if cert:
+                file_url = cert.file_path
+                expiration_date = cert.expiration_date
+                status = "valid"
+                if cert.expiration_date:
+                    try:
+                        exp = datetime.strptime(cert.expiration_date, "%Y-%m-%d")
+                        days_left = (exp - datetime.now()).days
+                        if days_left < 0:
+                            status = "expired"
+                        elif days_left <= 30:
+                            status = "expiring"
+                    except ValueError:
+                        pass
+
+            results.append({
+                "client_id": client.id,
+                "name": name,
+                "status": status,
+                "expiration_date": expiration_date,
+                "file_url": file_url
+            })
+
+        # Sort: expired first, then expiring, then missing, then valid
+        order = {"expired": 0, "expiring": 1, "missing": 2, "valid": 3}
+        results.sort(key=lambda x: order.get(x["status"], 4))
+
+        return {"clients": results}
     finally:
         db.close()

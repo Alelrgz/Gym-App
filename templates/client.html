@@ -1904,7 +1904,191 @@ if (mealForm) {
         </div>
     </div>
     {% endcall %}
+
+    <!-- Medical Certificate Section -->
+    {% call card(classes="p-6 space-y-4") %}
+    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Medical Certificate</h3>
+
+    <!-- Certificate Status -->
+    <div id="cert-status-container">
+        <div id="cert-loading" class="text-gray-400 text-sm">Loading...</div>
+
+        <!-- No certificate uploaded -->
+        <div id="cert-empty" class="hidden">
+            <div class="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
+                <div class="w-10 h-10 rounded-full bg-gray-500/20 flex items-center justify-center text-xl">📋</div>
+                <div class="flex-1">
+                    <p class="text-white font-semibold text-sm">No certificate uploaded</p>
+                    <p class="text-xs text-gray-400">Upload your certificato medico sportivo</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Certificate uploaded -->
+        <div id="cert-uploaded" class="hidden">
+            <div id="cert-card" class="flex items-center gap-3 p-4 rounded-xl border">
+                <div id="cert-icon" class="w-10 h-10 rounded-full flex items-center justify-center text-xl"></div>
+                <div class="flex-1 min-w-0">
+                    <p id="cert-filename" class="text-white font-semibold text-sm truncate"></p>
+                    <p id="cert-expiry-text" class="text-xs"></p>
+                </div>
+                <div class="flex gap-2">
+                    <button onclick="viewCertificate()" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 transition flex items-center justify-center" title="View">
+                        <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path></svg>
+                    </button>
+                    <button onclick="deleteCertificate()" class="w-8 h-8 rounded-lg bg-red-500/20 hover:bg-red-500/30 transition flex items-center justify-center" title="Delete">
+                        <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path></svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Upload Form -->
+    <div class="space-y-3 mt-4">
+        <div>
+            <label class="text-xs text-gray-500 uppercase font-bold block mb-2">Expiration Date</label>
+            <input type="date" id="cert-expiration-date"
+                class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+        </div>
+        <input type="file" id="cert-file-input" accept=".pdf,.png,.jpg,.jpeg" class="hidden"
+            onchange="uploadCertificate()">
+        <button onclick="document.getElementById('cert-file-input').click()"
+            class="w-full py-4 bg-primary text-black font-bold rounded-xl tap-effect hover:bg-primary/90 transition flex items-center justify-center gap-2">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+            UPLOAD CERTIFICATE
+        </button>
+        <p class="text-xs text-gray-500 text-center">PDF, PNG, or JPG — max 10MB</p>
+    </div>
+    {% endcall %}
 </div>
+
+<script>
+// --- MEDICAL CERTIFICATE ---
+
+let currentCertificate = null;
+
+async function loadMedicalCertificate() {
+    try {
+        const response = await fetch('/api/medical/certificate', { credentials: 'include' });
+        if (response.ok) {
+            const data = await response.json();
+            currentCertificate = data.certificate;
+            displayCertificateStatus();
+        }
+    } catch (error) {
+        console.error('Error loading certificate:', error);
+    }
+}
+
+function displayCertificateStatus() {
+    document.getElementById('cert-loading').classList.add('hidden');
+
+    if (!currentCertificate) {
+        document.getElementById('cert-empty').classList.remove('hidden');
+        document.getElementById('cert-uploaded').classList.add('hidden');
+        return;
+    }
+
+    document.getElementById('cert-empty').classList.add('hidden');
+    document.getElementById('cert-uploaded').classList.remove('hidden');
+
+    const card = document.getElementById('cert-card');
+    const icon = document.getElementById('cert-icon');
+    const filename = document.getElementById('cert-filename');
+    const expiryText = document.getElementById('cert-expiry-text');
+
+    filename.textContent = currentCertificate.filename;
+
+    const status = currentCertificate.status;
+    if (status === 'valid') {
+        card.className = 'flex items-center gap-3 p-4 rounded-xl border border-green-500/30 bg-green-500/10';
+        icon.className = 'w-10 h-10 rounded-full flex items-center justify-center text-xl bg-green-500/20';
+        icon.textContent = '✓';
+        const exp = currentCertificate.expiration_date;
+        expiryText.textContent = exp ? `Valid until ${new Date(exp).toLocaleDateString()}` : 'Uploaded';
+        expiryText.className = 'text-xs text-green-400';
+    } else if (status === 'expiring') {
+        card.className = 'flex items-center gap-3 p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10';
+        icon.className = 'w-10 h-10 rounded-full flex items-center justify-center text-xl bg-yellow-500/20';
+        icon.textContent = '⚠';
+        const exp = currentCertificate.expiration_date;
+        const daysLeft = Math.ceil((new Date(exp) - new Date()) / (1000 * 60 * 60 * 24));
+        expiryText.textContent = `Expires in ${daysLeft} days (${new Date(exp).toLocaleDateString()})`;
+        expiryText.className = 'text-xs text-yellow-400';
+    } else if (status === 'expired') {
+        card.className = 'flex items-center gap-3 p-4 rounded-xl border border-red-500/30 bg-red-500/10';
+        icon.className = 'w-10 h-10 rounded-full flex items-center justify-center text-xl bg-red-500/20';
+        icon.textContent = '✗';
+        expiryText.textContent = `Expired on ${new Date(currentCertificate.expiration_date).toLocaleDateString()}`;
+        expiryText.className = 'text-xs text-red-400';
+    }
+}
+
+async function uploadCertificate() {
+    const fileInput = document.getElementById('cert-file-input');
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const expirationDate = document.getElementById('cert-expiration-date').value;
+
+    const formData = new FormData();
+    formData.append('file', file);
+    if (expirationDate) {
+        formData.append('expiration_date', expirationDate);
+    }
+
+    try {
+        const response = await fetch('/api/medical/certificate', {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+
+        if (response.ok) {
+            const data = await response.json();
+            currentCertificate = data.certificate;
+            displayCertificateStatus();
+            showToast('Certificate uploaded successfully', 'success');
+        } else {
+            const err = await response.json();
+            showToast(err.detail || 'Upload failed', 'error');
+        }
+    } catch (error) {
+        console.error('Error uploading certificate:', error);
+        showToast('Upload failed', 'error');
+    }
+
+    fileInput.value = '';
+}
+
+function viewCertificate() {
+    if (currentCertificate && currentCertificate.file_url) {
+        window.open(currentCertificate.file_url, '_blank');
+    }
+}
+
+async function deleteCertificate() {
+    if (!currentCertificate) return;
+    if (!confirm('Delete your medical certificate?')) return;
+
+    try {
+        const response = await fetch(`/api/medical/certificate/${currentCertificate.id}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+
+        if (response.ok) {
+            currentCertificate = null;
+            displayCertificateStatus();
+            showToast('Certificate deleted', 'success');
+        }
+    } catch (error) {
+        console.error('Error deleting certificate:', error);
+        showToast('Delete failed', 'error');
+    }
+}
+</script>
 
 <script>
 // --- PRIVACY SETTINGS ---
@@ -2061,8 +2245,9 @@ async function respondToRequest(requestId, accept) {
     }
 }
 
-// Load privacy settings on page load
+// Load privacy settings and medical certificate on page load
 loadPrivacySettings();
+loadMedicalCertificate();
 
 // --- GYM & TRAINER ASSIGNMENT (Account Settings Page) ---
 

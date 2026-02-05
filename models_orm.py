@@ -534,6 +534,24 @@ class PhysiquePhotoORM(Base):
     updated_at = Column(String, nullable=True)
 
 
+class MedicalCertificateORM(Base):
+    """Medical certificates uploaded by clients (certificato medico sportivo)."""
+    __tablename__ = "medical_certificates"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    client_id = Column(String, nullable=False, index=True)
+
+    # File info
+    filename = Column(String, nullable=False)  # Original filename
+    file_path = Column(String, nullable=False)  # Relative path to the file
+
+    # Expiration tracking
+    expiration_date = Column(String, nullable=True)  # YYYY-MM-DD
+
+    # Timestamps
+    uploaded_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
 class CheckInORM(Base):
     """Member check-in records for gym reception/staff."""
     __tablename__ = "checkins"

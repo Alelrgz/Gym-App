@@ -116,10 +116,15 @@ from route_modules.course_routes import router as course_router
 app.include_router(course_router)
 print("DEBUG: Course router included")
 
-# Include trainer matching routes
-from route_modules.trainer_matching_routes import router as trainer_matching_router
-app.include_router(trainer_matching_router)
-print("DEBUG: Trainer matching router included")
+# Include trainer matching routes (module not yet available)
+# from route_modules.trainer_matching_routes import router as trainer_matching_router
+# app.include_router(trainer_matching_router)
+# print("DEBUG: Trainer matching router included")
+
+# Include CRM routes
+from route_modules.crm_routes import router as crm_router
+app.include_router(crm_router)
+print("DEBUG: CRM router included")
 
 
 def run_migrations(engine):
@@ -248,15 +253,59 @@ def run_migrations(engine):
     # Add new columns to client_profile
     if 'client_profile' in inspector.get_table_names():
         columns = [col['name'] for col in inspector.get_columns('client_profile')]
-        for col in ["date_of_birth", "emergency_contact_name", "emergency_contact_phone"]:
-            if col not in columns:
+        profile_new_cols = [
+            ("date_of_birth", "TEXT"),
+            ("emergency_contact_name", "TEXT"),
+            ("emergency_contact_phone", "TEXT"),
+            ("is_premium", "BOOLEAN DEFAULT 0"),
+            ("privacy_mode", "TEXT DEFAULT 'public'"),
+            ("weight", "REAL"),
+            ("body_fat_pct", "REAL"),
+            ("fat_mass", "REAL"),
+            ("lean_mass", "REAL"),
+            ("strength_goal_upper", "INTEGER"),
+            ("strength_goal_lower", "INTEGER"),
+            ("strength_goal_cardio", "INTEGER"),
+        ]
+        for col_name, col_type in profile_new_cols:
+            if col_name not in columns:
                 with engine.connect() as conn:
                     try:
-                        conn.execute(text(f"ALTER TABLE client_profile ADD COLUMN {col} TEXT"))
+                        conn.execute(text(f"ALTER TABLE client_profile ADD COLUMN {col_name} {col_type}"))
                         conn.commit()
-                        logger.info(f"Added column {col} to client_profile table")
+                        logger.info(f"Added column {col_name} to client_profile table")
                     except Exception as e:
-                        logger.debug(f"Column {col} may already exist: {e}")
+                        logger.debug(f"Column {col_name} may already exist: {e}")
+
+    # Add phone and must_change_password to users table
+    if 'users' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('users')]
+        user_new_cols = [
+            ('phone', 'TEXT'),
+            ('must_change_password', 'BOOLEAN DEFAULT 0'),
+        ]
+        for col_name, col_type in user_new_cols:
+            if col_name not in columns:
+                with engine.connect() as conn:
+                    try:
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
+                        conn.commit()
+                        logger.info(f"Added column {col_name} to users table")
+                    except Exception as e:
+                        logger.debug(f"Column {col_name} may already exist: {e}")
+
+    # Add health_score to client_daily_diet_summary
+    if 'client_daily_diet_summary' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('client_daily_diet_summary')]
+
+        if 'health_score' not in columns:
+            with engine.connect() as conn:
+                try:
+                    conn.execute(text("ALTER TABLE client_daily_diet_summary ADD COLUMN health_score INTEGER DEFAULT 0"))
+                    conn.commit()
+                    logger.info("Added column health_score to client_daily_diet_summary table")
+                except Exception as e:
+                    logger.debug(f"Column health_score may already exist: {e}")
 
 def background_trigger_checker():
     """Background thread that periodically checks for automated message triggers."""

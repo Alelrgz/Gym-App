@@ -369,11 +369,11 @@
             </div>
         </div>
 
-        <!-- Documents -->
+        <!-- Medical Certificate -->
         <div class="glass-card p-4 mb-4">
-            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Documents</h4>
-            <div id="member-documents" class="space-y-2">
-                <p class="text-gray-500 text-sm">No documents uploaded</p>
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Medical Certificate</h4>
+            <div id="member-certificate" class="space-y-2">
+                <p class="text-gray-500 text-sm">No certificate uploaded</p>
             </div>
         </div>
 
@@ -1228,17 +1228,35 @@ function renderMemberProfile(data) {
         `;
     }
 
-    // Documents (placeholder for now)
-    const docsEl = document.getElementById('member-documents');
-    if (data.documents && data.documents.length > 0) {
-        docsEl.innerHTML = data.documents.map(doc => `
-            <div class="flex items-center justify-between p-2 bg-white/5 rounded-lg">
-                <span class="text-white text-sm">${doc.name}</span>
-                <button class="text-primary text-sm">View</button>
+    // Medical Certificate
+    const certEl = document.getElementById('member-certificate');
+    const cert = data.medical_certificate;
+    if (cert) {
+        const statusConfig = {
+            valid: { bg: 'bg-green-500/20', border: 'border-green-500/30', text: 'text-green-400', label: 'Valid', icon: '✓' },
+            expiring: { bg: 'bg-yellow-500/20', border: 'border-yellow-500/30', text: 'text-yellow-400', label: 'Expiring Soon', icon: '⚠' },
+            expired: { bg: 'bg-red-500/20', border: 'border-red-500/30', text: 'text-red-400', label: 'Expired', icon: '✗' }
+        };
+        const cfg = statusConfig[cert.status] || statusConfig.valid;
+        const expiryText = cert.expiration_date ? `Expires: ${new Date(cert.expiration_date).toLocaleDateString()}` : '';
+
+        certEl.innerHTML = `
+            <div class="flex items-center gap-3 p-3 rounded-xl ${cfg.bg} border ${cfg.border}">
+                <div class="w-8 h-8 rounded-full ${cfg.bg} flex items-center justify-center flex-shrink-0">
+                    <span class="font-bold ${cfg.text}">${cfg.icon}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-white text-sm font-semibold truncate">${cert.filename}</p>
+                    <p class="text-xs ${cfg.text}">${expiryText}</p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <a href="${cert.file_url}" target="_blank" class="text-xs ${cfg.text} hover:underline">View</a>
+                    <span class="text-xs px-2 py-1 rounded-full ${cfg.bg} ${cfg.text}">${cfg.label}</span>
+                </div>
             </div>
-        `).join('');
+        `;
     } else {
-        docsEl.innerHTML = '<p class="text-gray-500 text-sm">No documents uploaded</p>';
+        certEl.innerHTML = '<p class="text-gray-500 text-sm">No certificate uploaded</p>';
     }
 }
 
