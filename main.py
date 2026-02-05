@@ -5,7 +5,8 @@ import json
 import logging
 from dotenv import load_dotenv
 
-load_dotenv()
+# Load .env from the same directory as main.py
+load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
 # Trigger reload v6.5 - friend routes added
 
 # Set up logging to see errors in the console

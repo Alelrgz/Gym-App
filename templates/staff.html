@@ -658,14 +658,12 @@
 
                 <!-- Stripe Card Form (shown when card selected) -->
                 <div id="card-payment-form" class="hidden">
-                    <p class="text-xs text-gray-400 mb-2">Enter card details:</p>
-                    <div class="bg-white rounded-xl p-4 mb-3">
-                        <div id="card-element" class="min-h-[40px]">
-                            <!-- Stripe Elements will insert the card form here -->
-                        </div>
+                    <p class="text-sm text-gray-400 mb-3">Enter card details:</p>
+                    <div class="mb-3 rounded-xl border-2 border-gray-400" style="background: #ffffff; padding: 24px 20px; min-height: 80px;">
+                        <div id="stripe-card-element" style="min-height: 32px; line-height: 32px;"></div>
                     </div>
-                    <div id="card-errors" class="text-red-400 text-xs mb-2 hidden"></div>
-                    <p class="text-xs text-gray-500">Card will be charged immediately upon registration.</p>
+                    <div id="onboard-card-errors" class="text-red-400 text-xs mb-2 hidden"></div>
+                    <p class="text-xs text-gray-500">Test card: 4242 4242 4242 4242, any future date, any CVC</p>
                 </div>
             </div>
 
@@ -1960,14 +1958,13 @@ function removeMedicalFile() {
 }
 
 // ========== STRIPE INTEGRATION FOR ONBOARDING ==========
-// Using unique variable names to avoid conflict with app.js
 let onboardStripe = null;
-let onboardCard = null;
+let onboardCardElement = null;
 let onboardSecret = null;
 
 async function initStripeElements() {
     // Only initialize once
-    if (onboardStripe && onboardCard) return;
+    if (onboardStripe && onboardCardElement) return;
 
     // Load Stripe.js if not loaded
     if (!window.Stripe) {
@@ -1998,33 +1995,46 @@ async function initStripeElements() {
         }
 
         onboardStripe = Stripe(publishable_key);
+
+        // Create Elements instance
         const elements = onboardStripe.elements();
 
-        onboardCard = elements.create('card', {
+        // Create card element with explicit styling
+        onboardCardElement = elements.create('card', {
             style: {
                 base: {
-                    fontSize: '16px',
-                    color: '#424770',
-                    '::placeholder': { color: '#aab7c4' }
+                    color: '#1a1a1a',
+                    fontFamily: 'system-ui, -apple-system, sans-serif',
+                    fontSmoothing: 'antialiased',
+                    fontSize: '18px',
+                    lineHeight: '24px',
+                    '::placeholder': {
+                        color: '#6b7280'
+                    }
                 },
-                invalid: { color: '#9e2146' }
+                invalid: {
+                    color: '#ef4444',
+                    iconColor: '#ef4444'
+                }
             }
         });
 
-        onboardCard.mount('#card-element');
+        // Mount to the container
+        onboardCardElement.mount('#stripe-card-element');
 
-        // Handle errors
-        onboardCard.on('change', (event) => {
-            const errorsEl = document.getElementById('card-errors');
+        // Handle validation errors
+        onboardCardElement.on('change', (event) => {
+            const errorsEl = document.getElementById('onboard-card-errors');
             if (event.error) {
                 errorsEl.textContent = event.error.message;
                 errorsEl.classList.remove('hidden');
             } else {
+                errorsEl.textContent = '';
                 errorsEl.classList.add('hidden');
             }
         });
 
-        console.log('Onboarding Stripe Elements initialized');
+        console.log('Stripe card element mounted successfully');
     } catch (e) {
         console.error('Error initializing Stripe:', e);
         showToast('Failed to initialize card payment', 'error');
@@ -2058,17 +2068,19 @@ async function createPaymentIntent() {
 }
 
 async function processCardPayment() {
-    if (!onboardStripe || !onboardCard || !onboardSecret) {
+    if (!onboardStripe || !onboardCardElement || !onboardSecret) {
         throw new Error('Card payment not initialized');
+    }
+
+    const billingDetails = { name: onboardingState.data.name };
+    if (onboardingState.data.email && onboardingState.data.email.includes('@')) {
+        billingDetails.email = onboardingState.data.email;
     }
 
     const { error, paymentIntent } = await onboardStripe.confirmCardPayment(onboardSecret, {
         payment_method: {
-            card: onboardCard,
-            billing_details: {
-                name: onboardingState.data.name,
-                email: onboardingState.data.email || undefined
-            }
+            card: onboardCardElement,
+            billing_details: billingDetails
         }
     });
 
