@@ -774,8 +774,8 @@ async def onboard_new_client(
         raise HTTPException(status_code=400, detail="Phone is required")
     if not username:
         raise HTTPException(status_code=400, detail="Username is required")
-    if not password or len(password) < 4:
-        raise HTTPException(status_code=400, detail="Password must be at least 4 characters")
+    if not password or len(password) < 12:
+        raise HTTPException(status_code=400, detail="Password must be at least 12 characters")
 
     # Check username uniqueness
     existing_user = db.query(UserORM).filter(UserORM.username == username).first()

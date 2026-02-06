@@ -48,13 +48,23 @@ app = FastAPI()
 # Cache busting - timestamp changes on every server restart
 CACHE_BUSTER = str(int(time.time()))
 
+# CORS configuration - use CORS_ORIGINS env var in production
+cors_origins_str = os.getenv("CORS_ORIGINS", "*")
+cors_origins = cors_origins_str.split(",") if cors_origins_str != "*" else ["*"]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Allow all origins for development
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Health check endpoint for monitoring
+@app.get("/health")
+async def health_check():
+    """Health check endpoint for load balancers and monitoring."""
+    return {"status": "ok"}
 
 # Mount static and templates
 app.mount("/static", StaticFiles(directory="static"), name="static")

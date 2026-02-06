@@ -135,19 +135,35 @@ import shutil
 import os
 import uuid
 
+UPLOAD_ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf'}
+MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
+
 @router.post("/api/upload")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(
+    file: UploadFile = File(...),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Upload a file (requires authentication)."""
     upload_dir = "static/uploads"
     os.makedirs(upload_dir, exist_ok=True)
-    
+
+    # Validate file extension
+    file_ext = os.path.splitext(file.filename)[1].lower()
+    if file_ext not in UPLOAD_ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=400, detail=f"File type not allowed. Allowed: {', '.join(UPLOAD_ALLOWED_EXTENSIONS)}")
+
+    # Read and validate file size
+    content = await file.read()
+    if len(content) > MAX_UPLOAD_SIZE:
+        raise HTTPException(status_code=400, detail="File too large. Maximum size is 10MB")
+
     # Generate unique filename
-    file_ext = os.path.splitext(file.filename)[1]
     unique_filename = f"{uuid.uuid4()}{file_ext}"
     file_path = os.path.join(upload_dir, unique_filename)
-    
+
     with open(file_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-        
+        buffer.write(content)
+
     return {"url": f"/static/uploads/{unique_filename}", "filename": unique_filename}
 
 # Force reload: v2

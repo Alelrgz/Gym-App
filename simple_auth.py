@@ -412,8 +412,8 @@ async def do_setup_account(request: Request, db: Session = Depends(get_db)):
 
         if not new_password:
             errors.append("Password is required")
-        elif len(new_password) < 4:
-            errors.append("Password must be at least 4 characters")
+        elif len(new_password) < 12:
+            errors.append("Password must be at least 12 characters")
         elif new_password != confirm_password:
             errors.append("Passwords do not match")
 
