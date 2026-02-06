@@ -56,6 +56,4 @@ async def assign_split(
     current_user: UserORM = Depends(get_current_user)
 ):
     """Assign a split to a client or trainer's own schedule."""
-    with open("server_debug.log", "a") as f:
-        f.write(f"[ROUTE] assign_split called: assignment={assignment}, trainer_id={current_user.id}\n")
     return service.assign_split(assignment, current_user.id)

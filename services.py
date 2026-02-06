@@ -149,7 +149,6 @@ class UserService:
             db.close()
 
     def register_user(self, user_data: dict):
-        print(f"DEBUG: register_user called for {user_data.get('username')}")
         db = get_db_session()
         try:
             # Handle empty email as None
@@ -362,18 +361,14 @@ class UserService:
                                 todays_workout["exercises"] = saved_exercises
                             except Exception as e:
                                 print(f"Error loading saved trainer workout snapshot: {e}")
-            except Exception as e:
-                with open("server_debug.log", "a") as f:
-                    f.write(f"Error fetching trainer workout: {e}\n")
+            except Exception:
+                pass
 
             # --- CALCULATE STREAK ---
             streak = 0
             try:
                 today = datetime.now().date()
                 current_date = today
-
-                with open("server_debug.log", "a") as f:
-                    f.write(f"[STREAK] Starting streak calculation for trainer {trainer_id}, today={today}\n")
 
                 # Go backwards from today, counting consecutive days
                 while True:
@@ -386,49 +381,22 @@ class UserService:
                         TrainerScheduleORM.workout_id != None
                     ).first()
 
-                    with open("server_debug.log", "a") as f:
-                        f.write(f"[STREAK] {date_str}: day_event={day_event is not None}, completed={day_event.completed if day_event else 'N/A'}\n")
-
                     if day_event:
                         # There's a workout scheduled for this day
                         if day_event.completed:
-                            # Workout completed, continue streak
                             streak += 1
-                            with open("server_debug.log", "a") as f:
-                                f.write(f"[STREAK] {date_str}: Completed! Streak now = {streak}\n")
                         else:
-                            # Workout not completed
                             if current_date < today:
-                                # Past day with incomplete workout - break streak
-                                with open("server_debug.log", "a") as f:
-                                    f.write(f"[STREAK] {date_str}: Past day not completed, breaking streak\n")
                                 break
-                            else:
-                                # Today's workout not done yet - don't count but don't break
-                                with open("server_debug.log", "a") as f:
-                                    f.write(f"[STREAK] {date_str}: Today not completed yet, not counting\n")
-                                pass
-                    else:
-                        # No workout scheduled (rest day)
-                        with open("server_debug.log", "a") as f:
-                            f.write(f"[STREAK] {date_str}: Rest day, continuing\n")
+                    # No workout scheduled (rest day) - continue
 
                     # Move to previous day
                     current_date = current_date - timedelta(days=1)
 
                     # Safety limit: don't go back more than 365 days
                     if (today - current_date).days > 365:
-                        with open("server_debug.log", "a") as f:
-                            f.write(f"[STREAK] Reached 365 day limit, stopping. Final streak = {streak}\n")
                         break
-
-                with open("server_debug.log", "a") as f:
-                    f.write(f"[STREAK] Final calculated streak = {streak}\n")
-            except Exception as e:
-                with open("server_debug.log", "a") as f:
-                    f.write(f"[STREAK] Error calculating trainer streak: {e}\n")
-                    import traceback
-                    f.write(f"[STREAK] Traceback: {traceback.format_exc()}\n")
+            except Exception:
                 streak = 0
 
             video_library = TRAINER_DATA["video_library"]

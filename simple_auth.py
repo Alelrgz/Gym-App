@@ -12,6 +12,14 @@ from datetime import datetime, timedelta
 import os
 from typing import Optional
 
+# Rate limiting
+try:
+    from slowapi import Limiter
+    from slowapi.util import get_remote_address
+    limiter = Limiter(key_func=get_remote_address)
+except ImportError:
+    limiter = None
+
 # Setup
 templates = Jinja2Templates(directory="templates")
 simple_auth_router = APIRouter()
@@ -57,7 +65,14 @@ async def show_login(request: Request):
     })
 
 # --- LOGIN POST ---
+# Rate limited: 5 attempts per minute per IP
+def _rate_limit_login(func):
+    if limiter:
+        return limiter.limit("5/minute")(func)
+    return func
+
 @simple_auth_router.post("/login")
+@_rate_limit_login
 async def do_login(request: Request, db: Session = Depends(get_db)):
     # 1. Manually parse body based on Content-Type
     content_type = request.headers.get("Content-Type", "")

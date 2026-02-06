@@ -38,12 +38,21 @@ try:
     from auth import get_current_user
     from fastapi import Depends, HTTPException
     from models_orm import UserORM
+    # Rate limiting
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.util import get_remote_address
+    from slowapi.errors import RateLimitExceeded
 except ImportError as e:
     logger.error(f"Missing dependency: {e}")
-    logger.info("Please run: pip install fastapi uvicorn sqlalchemy jinja2 python-multipart")
+    logger.info("Please run: pip install fastapi uvicorn sqlalchemy jinja2 python-multipart slowapi")
     sys.exit(1)
 
+# Rate limiter instance
+limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI()
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 # Cache busting - timestamp changes on every server restart
 CACHE_BUSTER = str(int(time.time()))
@@ -78,11 +87,7 @@ async def get_trainer_data_direct(
     service: UserService = Depends(get_user_service),
     current_user: UserORM = Depends(get_current_user)
 ):
-    with open("server_debug.log", "a") as f:
-        f.write(f"DEBUG: Hit get_trainer_data_direct for {current_user.username}\n")
     data = service.get_trainer(current_user.id)
-    with open("server_debug.log", "a") as f:
-        f.write(f"DEBUG: get_trainer returned todays_workout: {data.todays_workout}\n")
     return data
 
 @app.get("/api/stripe/publishable-key")
@@ -395,12 +400,8 @@ async def startup_event():
     logger.info("Automated message trigger checker started (runs every 15 minutes)")
 
     logger.info("Registered Routes:")
-    with open("server_debug.log", "a") as f:
-        f.write("\n--- REGISTERED ROUTES ---\n")
-        for route in app.routes:
-            logger.info(f"{route.path} [{route.name}]")
-            f.write(f"{route.path} [{route.name}]\n")
-        f.write("-------------------------\n")
+    for route in app.routes:
+        logger.info(f"{route.path} [{route.name}]")
 
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
@@ -492,35 +493,25 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
 
 @app.middleware("http")
 async def log_requests(request: Request, call_next):
-    with open("server_debug.log", "a") as f:
-        f.write(f"MIDDLEWARE: {request.method} {request.url.path} at {time.time()}\n")
-    
     try:
         response = await call_next(request)
-        with open("server_debug.log", "a") as f:
-            f.write(f"COMPLETED: {request.method} {request.url.path} - Status: {response.status_code}\n")
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0, private"
         return response
     except Exception as e:
-        with open("server_debug.log", "a") as f:
-            f.write(f"ERROR: {request.method} {request.url.path} - Exception: {e}\n")
+        logger.error(f"Request error: {request.method} {request.url.path} - {e}")
         raise e
 
 # Removed conflicting login/register routes (now handled by simple_auth with /auth prefix)
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "client", mode: str = "dashboard"):
-    print("DEBUG: Root hit! Checking tokens...")
     token = request.cookies.get("access_token")
     if not token:
-        print("DEBUG: No token found, redirecting...")
         return RedirectResponse(url="/auth/login", status_code=302)
-    
+
     try:
         jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        print("DEBUG: Token valid.")
-    except JWTError as e:
-        print(f"DEBUG: Token invalid: {e}")
+    except JWTError:
         return RedirectResponse(url="/auth/login", status_code=302)
 
     # Determine which template to render based on role
@@ -528,18 +519,10 @@ async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "cli
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         token_role = payload.get("role")
-        if token_role and role == "client": # Only override if default
+        if token_role and role == "client":
             role = token_role
-            print(f"DEBUG: Overriding role from token: {role}")
-    except Exception as e:
-        print(f"DEBUG: Could not extract role from token: {e}")
-
-    # CHECK FOR ACCOUNT SETTINGS MODE
-    if mode == "account_settings":
-        print("ITWORKS1! Account settings page accessed!")
-        logger.info("ITWORKS1! Account settings page accessed!")
-        with open("server_debug.log", "a") as f:
-            f.write("ITWORKS1! Account settings page accessed!\n")
+    except Exception:
+        pass
 
     template_name = "client.html"
     if mode == "workout":
@@ -572,8 +555,6 @@ async def add_trainer_event_direct(
     service: UserService = Depends(get_user_service),
     current_user: UserORM = Depends(get_current_user)
 ):
-    with open("server_debug.log", "a") as f:
-        f.write(f"DEBUG: Hit add_trainer_event_direct for user {current_user.id}. Data: {event_data}\n")
     return service.add_trainer_event(event_data, current_user.id)
 
 @app.delete("/api/trainer/events/{event_id}")
@@ -582,7 +563,6 @@ async def delete_trainer_event_direct(
     service: UserService = Depends(get_user_service),
     current_user: UserORM = Depends(get_current_user)
 ):
-    print(f"DEBUG: Hit delete_trainer_event_direct for {event_id}")
     return service.remove_trainer_event(event_id, current_user.id)
 
 @app.post("/api/trainer/schedule/complete")
@@ -591,7 +571,6 @@ async def complete_trainer_schedule_direct(
     service: UserService = Depends(get_user_service),
     current_user: UserORM = Depends(get_current_user)
 ):
-    print(f"DEBUG: Hit complete_trainer_schedule_direct for {current_user.id}")
     return service.complete_trainer_schedule_item(payload, current_user.id)
 
 # Moved to top

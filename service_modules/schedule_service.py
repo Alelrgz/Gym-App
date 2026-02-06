@@ -94,15 +94,10 @@ class ScheduleService:
                 ).all()
 
                 for existing_event in existing_workout_events:
-                    with open("server_debug.log", "a") as f:
-                        f.write(f"[ADD_EVENT] Deleting existing workout event: {existing_event.title} on {existing_event.date}\n")
                     db.delete(existing_event)
 
                 # Commit the deletions before adding the new event
                 db.commit()
-
-                with open("server_debug.log", "a") as f:
-                    f.write(f"[ADD_EVENT] Adding new workout event: {event_data['title']} on {event_data['date']}\n")
             else:
                 # For non-workout events (calendar events, consultations, etc.), check for conflicts
                 has_conflict, conflict = self._check_schedule_conflict(
@@ -114,8 +109,6 @@ class ScheduleService:
                 )
 
                 if has_conflict:
-                    with open("server_debug.log", "a") as f:
-                        f.write(f"[ADD_EVENT] Conflict detected: {event_data['title']} conflicts with {conflict['title']}\n")
                     raise HTTPException(
                         status_code=409,
                         detail=f"Schedule conflict with '{conflict['title']}' at {conflict['time']} ({conflict['duration']} min)"

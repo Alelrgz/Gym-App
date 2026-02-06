@@ -19,3 +19,4 @@ broadcaster
 google-generativeai
 stripe
 Pillow
+slowapi

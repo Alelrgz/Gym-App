@@ -91,8 +91,6 @@ async def get_trainer_data(
     service: UserService = Depends(get_user_service),
     current_user: UserORM = Depends(get_current_user)
 ):
-    with open("server_debug.log", "a") as f:
-        f.write(f"DEBUG: ROUTE HIT: get_trainer_data for {current_user.username}\n")
     return service.get_trainer(current_user.id)
 
 # Trainer event routes moved to route_modules/schedule_routes.py

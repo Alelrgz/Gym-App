@@ -41,7 +41,6 @@ class SplitService:
 
     def create_split(self, split_data: dict, trainer_id: str) -> dict:
         """Create a new weekly split."""
-        print(f"DEBUG: create_split called with: {split_data}")
         db = get_db_session()
         try:
             new_id = str(uuid.uuid4())
@@ -150,16 +149,10 @@ class SplitService:
         split_id = assignment.get("split_id")
         start_date_str = assignment.get("start_date")
 
-        with open("server_debug.log", "a") as f:
-            f.write(f"[ASSIGN_SPLIT] Called with client_id={client_id} (type={type(client_id)}), trainer_id={trainer_id} (type={type(trainer_id)})\n")
-
         db = get_db_session()
         try:
             # Check if trainer is assigning to themselves
             is_self_assignment = (client_id == trainer_id)
-
-            with open("server_debug.log", "a") as f:
-                f.write(f"[ASSIGN_SPLIT] is_self_assignment={is_self_assignment}\n")
 
             # 1. Fetch Split (DB or Memory)
             split_schedule = None
@@ -198,9 +191,6 @@ class SplitService:
             if not user:
                 raise HTTPException(status_code=404, detail="User not found")
 
-            with open("server_debug.log", "a") as f:
-                f.write(f"[ASSIGN_SPLIT] Assigning split {split_id} to {'trainer (self)' if is_self_assignment else 'client'} {client_id}\n")
-
             for day_offset in range(28):  # 4 Weeks
                 current_date = start_date + timedelta(days=day_offset)
                 day_name = weekday_map[current_date.weekday()]
@@ -223,8 +213,6 @@ class SplitService:
                             ).all()
 
                             for existing in existing_workouts:
-                                with open("server_debug.log", "a") as f:
-                                    f.write(f"[ASSIGN_SPLIT] Deleting existing trainer workout on {current_date}: {existing.title}\n")
                                 db.delete(existing)
 
                             # Get workout title for the event
@@ -244,9 +232,6 @@ class SplitService:
                             )
                             db.add(new_event)
                             db.commit()
-
-                            with open("server_debug.log", "a") as f:
-                                f.write(f"[ASSIGN_SPLIT] Added trainer workout on {current_date}: {workout_title}\n")
 
                             logs.append(f"Assigned {workout_title} to {current_date}")
                         else:
