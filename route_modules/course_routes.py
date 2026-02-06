@@ -136,3 +136,76 @@ async def get_gym_courses_for_client(
 ):
     """Get all courses available at the client's gym."""
     return service.get_gym_courses_for_client(current_user.id)
+
+
+# --- ENROLLMENT & WAITLIST ENDPOINTS ---
+
+@router.get("/api/lessons/{lesson_id}/availability")
+async def get_lesson_availability(
+    lesson_id: int,
+    service: CourseService = Depends(get_course_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Get enrollment status and availability for a lesson."""
+    return service.get_lesson_availability(lesson_id, current_user.id)
+
+
+@router.post("/api/lessons/{lesson_id}/enroll")
+async def enroll_in_lesson(
+    lesson_id: int,
+    service: CourseService = Depends(get_course_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Enroll in a lesson. If full, adds to waitlist."""
+    return service.enroll_in_lesson(lesson_id, current_user.id)
+
+
+@router.post("/api/lessons/{lesson_id}/cancel")
+async def cancel_enrollment(
+    lesson_id: int,
+    service: CourseService = Depends(get_course_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Cancel enrollment in a lesson."""
+    return service.cancel_enrollment(lesson_id, current_user.id)
+
+
+@router.post("/api/waitlist/{waitlist_id}/accept")
+async def accept_waitlist_spot(
+    waitlist_id: int,
+    add_to_calendar: bool = True,
+    service: CourseService = Depends(get_course_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Accept a waitlist spot when notified."""
+    return service.accept_waitlist_spot(waitlist_id, current_user.id, add_to_calendar)
+
+
+@router.post("/api/waitlist/{waitlist_id}/decline")
+async def decline_waitlist_spot(
+    waitlist_id: int,
+    service: CourseService = Depends(get_course_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Decline a waitlist spot."""
+    return service.decline_waitlist_spot(waitlist_id, current_user.id)
+
+
+@router.get("/api/trainer/lessons/{lesson_id}/enrollments")
+async def get_lesson_enrollments(
+    lesson_id: int,
+    service: CourseService = Depends(get_course_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Get all enrollments for a lesson (trainer only)."""
+    return service.get_lesson_enrollments(lesson_id, current_user.id)
+
+
+@router.get("/api/trainer/lessons/{lesson_id}/waitlist")
+async def get_lesson_waitlist(
+    lesson_id: int,
+    service: CourseService = Depends(get_course_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Get waitlist for a lesson (trainer only)."""
+    return service.get_lesson_waitlist(lesson_id, current_user.id)

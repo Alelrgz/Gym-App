@@ -5,7 +5,8 @@ from datetime import timedelta
 from .base import (
     HTTPException, uuid, json, logging, datetime,
     get_db_session, CourseORM, CourseLessonORM, UserORM, TrainerScheduleORM,
-    ClientScheduleORM, ClientProfileORM, NotificationORM
+    ClientScheduleORM, ClientProfileORM, NotificationORM,
+    LessonEnrollmentORM, LessonWaitlistORM
 )
 
 logger = logging.getLogger("gym_app")
@@ -89,7 +90,9 @@ class CourseService:
                 is_shared=course_data.get("is_shared", False),
                 course_type=course_data.get("course_type"),
                 cover_image_url=course_data.get("cover_image_url"),
-                trailer_url=course_data.get("trailer_url")
+                trailer_url=course_data.get("trailer_url"),
+                max_capacity=course_data.get("max_capacity"),
+                waitlist_enabled=course_data.get("waitlist_enabled", True)
             )
             db.add(course)
             db.commit()
@@ -156,6 +159,10 @@ class CourseService:
                 course.cover_image_url = updates["cover_image_url"]
             if "trailer_url" in updates:
                 course.trailer_url = updates["trailer_url"]
+            if "max_capacity" in updates:
+                course.max_capacity = updates["max_capacity"]
+            if "waitlist_enabled" in updates and updates["waitlist_enabled"] is not None:
+                course.waitlist_enabled = updates["waitlist_enabled"]
 
             # Track if schedule-related fields changed
             schedule_changed = any(k in updates for k in ["days_of_week", "day_of_week", "time_slot", "duration", "name"])
@@ -565,6 +572,8 @@ class CourseService:
             "course_type": getattr(course, 'course_type', None),
             "cover_image_url": getattr(course, 'cover_image_url', None),
             "trailer_url": getattr(course, 'trailer_url', None),
+            "max_capacity": getattr(course, 'max_capacity', None),
+            "waitlist_enabled": getattr(course, 'waitlist_enabled', True),
             "created_at": course.created_at,
             "updated_at": course.updated_at
         }
@@ -705,6 +714,421 @@ class CourseService:
                 ).count()
                 course_dict["upcoming_lessons"] = upcoming_lessons
                 result.append(course_dict)
+
+            return result
+        finally:
+            db.close()
+
+    # --- ENROLLMENT & WAITLIST MANAGEMENT ---
+
+    def get_lesson_availability(self, lesson_id: int, client_id: str = None) -> dict:
+        """Get enrollment status and availability for a lesson."""
+        db = get_db_session()
+        try:
+            lesson = db.query(CourseLessonORM).filter(CourseLessonORM.id == lesson_id).first()
+            if not lesson:
+                raise HTTPException(status_code=404, detail="Lesson not found")
+
+            course = db.query(CourseORM).filter(CourseORM.id == lesson.course_id).first()
+
+            # Determine capacity (lesson override or course default)
+            max_capacity = lesson.max_capacity if lesson.max_capacity else (course.max_capacity if course else None)
+
+            # Count enrollments
+            enrolled_count = db.query(LessonEnrollmentORM).filter(
+                LessonEnrollmentORM.lesson_id == lesson_id,
+                LessonEnrollmentORM.status == "confirmed"
+            ).count()
+
+            # Count waitlist
+            waitlist_count = db.query(LessonWaitlistORM).filter(
+                LessonWaitlistORM.lesson_id == lesson_id,
+                LessonWaitlistORM.status == "waiting"
+            ).count()
+
+            # Calculate spots available
+            spots_available = None
+            if max_capacity:
+                spots_available = max(0, max_capacity - enrolled_count)
+
+            # Check client's status if provided
+            user_status = None
+            if client_id:
+                enrollment = db.query(LessonEnrollmentORM).filter(
+                    LessonEnrollmentORM.lesson_id == lesson_id,
+                    LessonEnrollmentORM.client_id == client_id,
+                    LessonEnrollmentORM.status == "confirmed"
+                ).first()
+                if enrollment:
+                    user_status = "enrolled"
+                else:
+                    waitlist_entry = db.query(LessonWaitlistORM).filter(
+                        LessonWaitlistORM.lesson_id == lesson_id,
+                        LessonWaitlistORM.client_id == client_id,
+                        LessonWaitlistORM.status.in_(["waiting", "notified"])
+                    ).first()
+                    if waitlist_entry:
+                        user_status = "waitlisted"
+
+            return {
+                "lesson_id": lesson_id,
+                "course_name": course.name if course else None,
+                "date": lesson.date,
+                "time": lesson.time,
+                "max_capacity": max_capacity,
+                "enrolled_count": enrolled_count,
+                "waitlist_count": waitlist_count,
+                "spots_available": spots_available,
+                "user_status": user_status,
+                "waitlist_enabled": course.waitlist_enabled if course else True
+            }
+        finally:
+            db.close()
+
+    def enroll_in_lesson(self, lesson_id: int, client_id: str) -> dict:
+        """Enroll a client in a lesson. Returns enrollment or waitlist entry."""
+        db = get_db_session()
+        try:
+            lesson = db.query(CourseLessonORM).filter(CourseLessonORM.id == lesson_id).first()
+            if not lesson:
+                raise HTTPException(status_code=404, detail="Lesson not found")
+
+            course = db.query(CourseORM).filter(CourseORM.id == lesson.course_id).first()
+
+            # Check if already enrolled
+            existing = db.query(LessonEnrollmentORM).filter(
+                LessonEnrollmentORM.lesson_id == lesson_id,
+                LessonEnrollmentORM.client_id == client_id,
+                LessonEnrollmentORM.status == "confirmed"
+            ).first()
+            if existing:
+                raise HTTPException(status_code=400, detail="Already enrolled in this lesson")
+
+            # Check if already on waitlist
+            existing_waitlist = db.query(LessonWaitlistORM).filter(
+                LessonWaitlistORM.lesson_id == lesson_id,
+                LessonWaitlistORM.client_id == client_id,
+                LessonWaitlistORM.status.in_(["waiting", "notified"])
+            ).first()
+            if existing_waitlist:
+                raise HTTPException(status_code=400, detail="Already on waitlist for this lesson")
+
+            # Check capacity
+            max_capacity = lesson.max_capacity if lesson.max_capacity else (course.max_capacity if course else None)
+            enrolled_count = db.query(LessonEnrollmentORM).filter(
+                LessonEnrollmentORM.lesson_id == lesson_id,
+                LessonEnrollmentORM.status == "confirmed"
+            ).count()
+
+            if max_capacity and enrolled_count >= max_capacity:
+                # Class is full - add to waitlist if enabled
+                if not course or not course.waitlist_enabled:
+                    raise HTTPException(status_code=400, detail="Class is full and waitlist is disabled")
+
+                # Get next position in waitlist
+                max_position = db.query(LessonWaitlistORM).filter(
+                    LessonWaitlistORM.lesson_id == lesson_id
+                ).count()
+
+                waitlist_entry = LessonWaitlistORM(
+                    lesson_id=lesson_id,
+                    client_id=client_id,
+                    position=max_position + 1,
+                    status="waiting"
+                )
+                db.add(waitlist_entry)
+                db.commit()
+                db.refresh(waitlist_entry)
+
+                logger.info(f"Client {client_id} added to waitlist for lesson {lesson_id} at position {waitlist_entry.position}")
+                return {
+                    "status": "waitlisted",
+                    "position": waitlist_entry.position,
+                    "message": f"Class is full. You're #{waitlist_entry.position} on the waitlist."
+                }
+
+            # Enroll directly
+            enrollment = LessonEnrollmentORM(
+                lesson_id=lesson_id,
+                client_id=client_id,
+                status="confirmed"
+            )
+            db.add(enrollment)
+            db.commit()
+            db.refresh(enrollment)
+
+            logger.info(f"Client {client_id} enrolled in lesson {lesson_id}")
+            return {
+                "status": "enrolled",
+                "enrollment_id": enrollment.id,
+                "message": "Successfully enrolled in class!"
+            }
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to enroll in lesson: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            db.close()
+
+    def cancel_enrollment(self, lesson_id: int, client_id: str) -> dict:
+        """Cancel a client's enrollment and process waitlist."""
+        db = get_db_session()
+        try:
+            enrollment = db.query(LessonEnrollmentORM).filter(
+                LessonEnrollmentORM.lesson_id == lesson_id,
+                LessonEnrollmentORM.client_id == client_id,
+                LessonEnrollmentORM.status == "confirmed"
+            ).first()
+
+            if not enrollment:
+                raise HTTPException(status_code=404, detail="Enrollment not found")
+
+            enrollment.status = "cancelled"
+            enrollment.cancelled_at = datetime.utcnow().isoformat()
+            db.commit()
+
+            logger.info(f"Client {client_id} cancelled enrollment in lesson {lesson_id}")
+
+            # Process waitlist - notify first person
+            self._process_waitlist(db, lesson_id)
+
+            return {"status": "success", "message": "Enrollment cancelled"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to cancel enrollment: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            db.close()
+
+    def _process_waitlist(self, db, lesson_id: int):
+        """Notify the first person on waitlist that a spot is available."""
+        # Get first person on waitlist
+        first_in_line = db.query(LessonWaitlistORM).filter(
+            LessonWaitlistORM.lesson_id == lesson_id,
+            LessonWaitlistORM.status == "waiting"
+        ).order_by(LessonWaitlistORM.position).first()
+
+        if not first_in_line:
+            return  # No one on waitlist
+
+        # Get lesson and course info for notification
+        lesson = db.query(CourseLessonORM).filter(CourseLessonORM.id == lesson_id).first()
+        course = db.query(CourseORM).filter(CourseORM.id == lesson.course_id).first() if lesson else None
+
+        # Mark as notified with expiration (24 hours to respond)
+        now = datetime.utcnow()
+        expires = now + timedelta(hours=24)
+
+        first_in_line.status = "notified"
+        first_in_line.notified_at = now.isoformat()
+        first_in_line.notification_expires_at = expires.isoformat()
+
+        # Create notification
+        notification = NotificationORM(
+            user_id=first_in_line.client_id,
+            type="waitlist_spot",
+            title="A spot opened up!",
+            message=f"A spot is available for {course.name if course else 'your class'} on {lesson.date if lesson else 'upcoming date'}. Claim it now!",
+            data=json.dumps({
+                "waitlist_id": first_in_line.id,
+                "lesson_id": lesson_id,
+                "action": "accept_waitlist_spot",
+                "action_url": f"/lessons/{lesson_id}/accept-spot",
+                "expires_at": expires.isoformat()
+            })
+        )
+        db.add(notification)
+        db.commit()
+
+        logger.info(f"Notified client {first_in_line.client_id} about available spot in lesson {lesson_id}")
+
+    def accept_waitlist_spot(self, waitlist_id: int, client_id: str, add_to_calendar: bool = True) -> dict:
+        """Accept a waitlist spot and convert to enrollment."""
+        db = get_db_session()
+        try:
+            waitlist_entry = db.query(LessonWaitlistORM).filter(
+                LessonWaitlistORM.id == waitlist_id,
+                LessonWaitlistORM.client_id == client_id
+            ).first()
+
+            if not waitlist_entry:
+                raise HTTPException(status_code=404, detail="Waitlist entry not found")
+
+            if waitlist_entry.status == "accepted":
+                raise HTTPException(status_code=400, detail="Spot already accepted")
+
+            if waitlist_entry.status == "expired":
+                raise HTTPException(status_code=400, detail="This offer has expired")
+
+            if waitlist_entry.status != "notified":
+                raise HTTPException(status_code=400, detail="No spot available to accept")
+
+            # Check if offer expired
+            if waitlist_entry.notification_expires_at:
+                expires = datetime.fromisoformat(waitlist_entry.notification_expires_at)
+                if datetime.utcnow() > expires:
+                    waitlist_entry.status = "expired"
+                    db.commit()
+                    # Process next person in line
+                    self._process_waitlist(db, waitlist_entry.lesson_id)
+                    raise HTTPException(status_code=400, detail="This offer has expired")
+
+            # Create enrollment
+            enrollment = LessonEnrollmentORM(
+                lesson_id=waitlist_entry.lesson_id,
+                client_id=client_id,
+                status="confirmed",
+                added_to_calendar=add_to_calendar
+            )
+            db.add(enrollment)
+
+            # Update waitlist entry
+            waitlist_entry.status = "accepted"
+
+            # Reorder remaining waitlist
+            remaining = db.query(LessonWaitlistORM).filter(
+                LessonWaitlistORM.lesson_id == waitlist_entry.lesson_id,
+                LessonWaitlistORM.status == "waiting",
+                LessonWaitlistORM.position > waitlist_entry.position
+            ).all()
+            for entry in remaining:
+                entry.position -= 1
+
+            db.commit()
+            db.refresh(enrollment)
+
+            # Get lesson info for response
+            lesson = db.query(CourseLessonORM).filter(CourseLessonORM.id == waitlist_entry.lesson_id).first()
+            course = db.query(CourseORM).filter(CourseORM.id == lesson.course_id).first() if lesson else None
+
+            logger.info(f"Client {client_id} accepted waitlist spot for lesson {waitlist_entry.lesson_id}")
+
+            return {
+                "status": "enrolled",
+                "enrollment_id": enrollment.id,
+                "lesson_date": lesson.date if lesson else None,
+                "lesson_time": lesson.time if lesson else None,
+                "course_name": course.name if course else None,
+                "added_to_calendar": add_to_calendar,
+                "message": "You're in! The class has been added to your calendar." if add_to_calendar else "You're in!"
+            }
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to accept waitlist spot: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            db.close()
+
+    def decline_waitlist_spot(self, waitlist_id: int, client_id: str) -> dict:
+        """Decline a waitlist spot and notify next person."""
+        db = get_db_session()
+        try:
+            waitlist_entry = db.query(LessonWaitlistORM).filter(
+                LessonWaitlistORM.id == waitlist_id,
+                LessonWaitlistORM.client_id == client_id
+            ).first()
+
+            if not waitlist_entry:
+                raise HTTPException(status_code=404, detail="Waitlist entry not found")
+
+            if waitlist_entry.status != "notified":
+                raise HTTPException(status_code=400, detail="No spot to decline")
+
+            lesson_id = waitlist_entry.lesson_id
+
+            # Mark as declined
+            waitlist_entry.status = "declined"
+
+            # Reorder remaining waitlist
+            remaining = db.query(LessonWaitlistORM).filter(
+                LessonWaitlistORM.lesson_id == lesson_id,
+                LessonWaitlistORM.status == "waiting",
+                LessonWaitlistORM.position > waitlist_entry.position
+            ).all()
+            for entry in remaining:
+                entry.position -= 1
+
+            db.commit()
+
+            # Process next person in line
+            self._process_waitlist(db, lesson_id)
+
+            logger.info(f"Client {client_id} declined waitlist spot for lesson {lesson_id}")
+            return {"status": "success", "message": "Spot declined. The next person has been notified."}
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to decline waitlist spot: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            db.close()
+
+    def get_lesson_enrollments(self, lesson_id: int, trainer_id: str) -> list:
+        """Get all enrollments for a lesson (trainer only)."""
+        db = get_db_session()
+        try:
+            lesson = db.query(CourseLessonORM).filter(CourseLessonORM.id == lesson_id).first()
+            if not lesson:
+                raise HTTPException(status_code=404, detail="Lesson not found")
+
+            if lesson.trainer_id != trainer_id:
+                raise HTTPException(status_code=403, detail="Access denied")
+
+            enrollments = db.query(LessonEnrollmentORM).filter(
+                LessonEnrollmentORM.lesson_id == lesson_id,
+                LessonEnrollmentORM.status == "confirmed"
+            ).all()
+
+            result = []
+            for e in enrollments:
+                client = db.query(UserORM).filter(UserORM.id == e.client_id).first()
+                result.append({
+                    "id": e.id,
+                    "client_id": e.client_id,
+                    "client_name": client.username if client else "Unknown",
+                    "status": e.status,
+                    "enrolled_at": e.enrolled_at
+                })
+
+            return result
+        finally:
+            db.close()
+
+    def get_lesson_waitlist(self, lesson_id: int, trainer_id: str) -> list:
+        """Get waitlist for a lesson (trainer only)."""
+        db = get_db_session()
+        try:
+            lesson = db.query(CourseLessonORM).filter(CourseLessonORM.id == lesson_id).first()
+            if not lesson:
+                raise HTTPException(status_code=404, detail="Lesson not found")
+
+            if lesson.trainer_id != trainer_id:
+                raise HTTPException(status_code=403, detail="Access denied")
+
+            waitlist = db.query(LessonWaitlistORM).filter(
+                LessonWaitlistORM.lesson_id == lesson_id,
+                LessonWaitlistORM.status.in_(["waiting", "notified"])
+            ).order_by(LessonWaitlistORM.position).all()
+
+            result = []
+            for w in waitlist:
+                client = db.query(UserORM).filter(UserORM.id == w.client_id).first()
+                result.append({
+                    "id": w.id,
+                    "client_id": w.client_id,
+                    "client_name": client.username if client else "Unknown",
+                    "position": w.position,
+                    "status": w.status,
+                    "added_at": w.added_at,
+                    "notified_at": w.notified_at
+                })
 
             return result
         finally:

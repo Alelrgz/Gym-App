@@ -308,6 +308,35 @@ def run_migrations(engine):
                 except Exception as e:
                     logger.debug(f"Column health_score may already exist: {e}")
 
+    # Add capacity columns to courses table
+    if 'courses' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('courses')]
+        capacity_cols = [
+            ('max_capacity', 'INTEGER'),
+            ('waitlist_enabled', 'BOOLEAN DEFAULT 1'),
+        ]
+        for col_name, col_type in capacity_cols:
+            if col_name not in columns:
+                with engine.connect() as conn:
+                    try:
+                        conn.execute(text(f"ALTER TABLE courses ADD COLUMN {col_name} {col_type}"))
+                        conn.commit()
+                        logger.info(f"Added column {col_name} to courses table")
+                    except Exception as e:
+                        logger.debug(f"Column {col_name} may already exist: {e}")
+
+    # Add max_capacity to course_lessons table
+    if 'course_lessons' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('course_lessons')]
+        if 'max_capacity' not in columns:
+            with engine.connect() as conn:
+                try:
+                    conn.execute(text("ALTER TABLE course_lessons ADD COLUMN max_capacity INTEGER"))
+                    conn.commit()
+                    logger.info("Added column max_capacity to course_lessons table")
+                except Exception as e:
+                    logger.debug(f"Column max_capacity may already exist: {e}")
+
 def background_trigger_checker():
     """Background thread that periodically checks for automated message triggers."""
     import time

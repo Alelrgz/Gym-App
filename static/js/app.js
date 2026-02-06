@@ -9439,6 +9439,83 @@ window.adjustDuration = function(delta) {
     if (display) display.innerText = val;
 };
 
+// Adjust capacity
+window.adjustCapacity = function(delta) {
+    const input = document.getElementById('course-max-capacity');
+    const display = document.getElementById('course-capacity-display');
+    const unlimitedBtn = document.getElementById('unlimited-capacity-btn');
+
+    // If currently unlimited, set to a starting value
+    if (input.value === '' || input.value === 'null') {
+        input.value = '20';
+    }
+
+    let val = parseInt(input.value) || 20;
+    val = Math.max(1, Math.min(500, val + delta));
+    input.value = val;
+    if (display) display.innerText = val;
+
+    // Update unlimited button state
+    if (unlimitedBtn) {
+        unlimitedBtn.classList.remove('bg-green-500', 'text-white');
+        unlimitedBtn.classList.add('bg-white/10', 'text-white/60');
+    }
+};
+
+// Toggle unlimited capacity
+window.toggleUnlimitedCapacity = function() {
+    const input = document.getElementById('course-max-capacity');
+    const display = document.getElementById('course-capacity-display');
+    const unlimitedBtn = document.getElementById('unlimited-capacity-btn');
+
+    const isUnlimited = input.value === '' || input.value === 'null';
+
+    if (isUnlimited) {
+        // Switch to limited
+        input.value = '20';
+        if (display) display.innerText = '20';
+        if (unlimitedBtn) {
+            unlimitedBtn.classList.remove('bg-green-500', 'text-white');
+            unlimitedBtn.classList.add('bg-white/10', 'text-white/60');
+        }
+    } else {
+        // Switch to unlimited
+        input.value = '';
+        if (display) display.innerText = '∞';
+        if (unlimitedBtn) {
+            unlimitedBtn.classList.remove('bg-white/10', 'text-white/60');
+            unlimitedBtn.classList.add('bg-green-500', 'text-white');
+        }
+    }
+};
+
+// Toggle waitlist
+window.toggleWaitlist = function() {
+    const input = document.getElementById('course-waitlist-enabled');
+    const toggle = document.getElementById('waitlist-toggle');
+    const dot = document.getElementById('waitlist-dot');
+
+    const isEnabled = input.value === 'true';
+
+    if (isEnabled) {
+        // Switch to disabled
+        input.value = 'false';
+        toggle.classList.remove('bg-green-500');
+        toggle.classList.add('bg-white/10');
+        dot.style.transform = 'translateX(0)';
+        dot.classList.remove('right-1');
+        dot.classList.add('left-1');
+    } else {
+        // Switch to enabled
+        input.value = 'true';
+        toggle.classList.remove('bg-white/10');
+        toggle.classList.add('bg-green-500');
+        dot.style.transform = 'translateX(20px)';
+        dot.classList.remove('left-1');
+        dot.classList.add('right-1');
+    }
+};
+
 // Toggle course visibility
 window.toggleCourseVisibility = function() {
     const input = document.getElementById('course-shared');
@@ -9754,6 +9831,31 @@ window.openCreateCourseModal = function() {
     document.getElementById('course-shared').value = 'false';
     document.getElementById('course-color').value = 'purple';
 
+    // Reset capacity fields
+    const capacityInput = document.getElementById('course-max-capacity');
+    const capacityDisplay = document.getElementById('course-capacity-display');
+    const unlimitedBtn = document.getElementById('unlimited-capacity-btn');
+    const waitlistInput = document.getElementById('course-waitlist-enabled');
+    const waitlistToggle = document.getElementById('waitlist-toggle');
+    const waitlistDot = document.getElementById('waitlist-dot');
+
+    if (capacityInput) capacityInput.value = '20';
+    if (capacityDisplay) capacityDisplay.innerText = '20';
+    if (unlimitedBtn) {
+        unlimitedBtn.classList.remove('bg-green-500', 'text-white');
+        unlimitedBtn.classList.add('bg-white/10', 'text-white/60');
+    }
+    if (waitlistInput) waitlistInput.value = 'true';
+    if (waitlistToggle) {
+        waitlistToggle.classList.remove('bg-white/10');
+        waitlistToggle.classList.add('bg-green-500');
+    }
+    if (waitlistDot) {
+        waitlistDot.classList.remove('left-1');
+        waitlistDot.classList.add('right-1');
+        waitlistDot.style.transform = 'translateX(20px)';
+    }
+
     resetCourseModal();
     populateCourseTrainerProfile();
     setupCourseNamePreviewListener();
@@ -9855,6 +9957,55 @@ window.openEditCourse = async function(courseId) {
             previewTrailer(course.trailer_url);
         }
 
+        // Set capacity fields
+        const capacityInput = document.getElementById('course-max-capacity');
+        const capacityDisplay = document.getElementById('course-capacity-display');
+        const unlimitedBtn = document.getElementById('unlimited-capacity-btn');
+        const waitlistInput = document.getElementById('course-waitlist-enabled');
+        const waitlistToggle = document.getElementById('waitlist-toggle');
+        const waitlistDot = document.getElementById('waitlist-dot');
+
+        if (course.max_capacity !== null && course.max_capacity !== undefined) {
+            if (capacityInput) capacityInput.value = course.max_capacity;
+            if (capacityDisplay) capacityDisplay.innerText = course.max_capacity;
+            if (unlimitedBtn) {
+                unlimitedBtn.classList.remove('bg-green-500', 'text-white');
+                unlimitedBtn.classList.add('bg-white/10', 'text-white/60');
+            }
+        } else {
+            // Unlimited
+            if (capacityInput) capacityInput.value = '';
+            if (capacityDisplay) capacityDisplay.innerText = '∞';
+            if (unlimitedBtn) {
+                unlimitedBtn.classList.remove('bg-white/10', 'text-white/60');
+                unlimitedBtn.classList.add('bg-green-500', 'text-white');
+            }
+        }
+
+        // Set waitlist toggle
+        const waitlistEnabled = course.waitlist_enabled !== false;
+        if (waitlistInput) waitlistInput.value = waitlistEnabled ? 'true' : 'false';
+        if (waitlistToggle) {
+            if (waitlistEnabled) {
+                waitlistToggle.classList.remove('bg-white/10');
+                waitlistToggle.classList.add('bg-green-500');
+            } else {
+                waitlistToggle.classList.remove('bg-green-500');
+                waitlistToggle.classList.add('bg-white/10');
+            }
+        }
+        if (waitlistDot) {
+            if (waitlistEnabled) {
+                waitlistDot.classList.remove('left-1');
+                waitlistDot.classList.add('right-1');
+                waitlistDot.style.transform = 'translateX(20px)';
+            } else {
+                waitlistDot.classList.remove('right-1');
+                waitlistDot.classList.add('left-1');
+                waitlistDot.style.transform = 'translateX(0)';
+            }
+        }
+
         // Populate trainer profile in preview
         populateCourseTrainerProfile();
         setupCourseNamePreviewListener();
@@ -9934,6 +10085,11 @@ window.saveCourse = async function() {
     const coverImageUrl = document.getElementById('course-cover-url').value || null;
     const trailerUrl = document.getElementById('course-trailer-url').value || null;
 
+    // Get capacity and waitlist fields
+    const capacityInput = document.getElementById('course-max-capacity');
+    const maxCapacity = capacityInput && capacityInput.value !== '' ? parseInt(capacityInput.value) : null;
+    const waitlistEnabled = document.getElementById('course-waitlist-enabled')?.value === 'true';
+
     const payload = {
         name,
         description: description || null,
@@ -9947,7 +10103,9 @@ window.saveCourse = async function() {
         color: color,
         course_type: selectedCourseType,
         cover_image_url: coverImageUrl,
-        trailer_url: trailerUrl
+        trailer_url: trailerUrl,
+        max_capacity: maxCapacity,
+        waitlist_enabled: waitlistEnabled
     };
 
     try {

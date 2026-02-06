@@ -692,6 +692,10 @@ class CourseORM(Base):
     cover_image_url = Column(String, nullable=True)  # Cover image for client view
     trailer_url = Column(String, nullable=True)  # YouTube/Vimeo trailer URL
 
+    # Capacity management
+    max_capacity = Column(Integer, nullable=True)  # Max participants (None = unlimited)
+    waitlist_enabled = Column(Boolean, default=True)  # Allow waitlist when full
+
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
     updated_at = Column(String, nullable=True)
 
@@ -710,6 +714,9 @@ class CourseLessonORM(Base):
 
     trainer_id = Column(String, ForeignKey("users.id"), index=True)
 
+    # Capacity (overrides course default if set)
+    max_capacity = Column(Integer, nullable=True)  # None = use course default
+
     # Lesson content (can override course defaults)
     exercises_json = Column(String, nullable=True)  # Optional override
     music_links_json = Column(String, nullable=True)  # Optional override
@@ -724,3 +731,40 @@ class CourseLessonORM(Base):
     attendee_count = Column(Integer, nullable=True)
 
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
+# --- LESSON ENROLLMENT & WAITLIST ---
+
+class LessonEnrollmentORM(Base):
+    """Tracks client enrollments in course lessons."""
+    __tablename__ = "lesson_enrollments"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    lesson_id = Column(Integer, ForeignKey("course_lessons.id"), index=True)
+    client_id = Column(String, ForeignKey("users.id"), index=True)
+
+    status = Column(String, default="confirmed")  # confirmed, cancelled, attended, no_show
+    enrolled_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    cancelled_at = Column(String, nullable=True)
+
+    # For calendar integration
+    added_to_calendar = Column(Boolean, default=False)
+    calendar_event_id = Column(String, nullable=True)  # External calendar event ID
+
+
+class LessonWaitlistORM(Base):
+    """Tracks clients on waitlist for full lessons."""
+    __tablename__ = "lesson_waitlist"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    lesson_id = Column(Integer, ForeignKey("course_lessons.id"), index=True)
+    client_id = Column(String, ForeignKey("users.id"), index=True)
+
+    position = Column(Integer)  # 1 = first in line
+    added_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+    # Notification tracking
+    notified_at = Column(String, nullable=True)  # When spot became available
+    notification_expires_at = Column(String, nullable=True)  # Deadline to accept
+
+    status = Column(String, default="waiting")  # waiting, notified, accepted, declined, expired

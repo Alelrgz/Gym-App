@@ -387,6 +387,8 @@ class CreateCourseRequest(BaseModel):
     time_slot: Optional[str] = None
     duration: int = 60
     is_shared: bool = False
+    max_capacity: Optional[int] = None  # None = unlimited
+    waitlist_enabled: bool = True
 
 class UpdateCourseRequest(BaseModel):
     name: Optional[str] = None
@@ -397,6 +399,8 @@ class UpdateCourseRequest(BaseModel):
     time_slot: Optional[str] = None
     duration: Optional[int] = None
     is_shared: Optional[bool] = None
+    max_capacity: Optional[int] = None
+    waitlist_enabled: Optional[bool] = None
 
 class CourseLesson(BaseModel):
     id: Optional[int] = None
@@ -426,3 +430,59 @@ class CompleteLessonRequest(BaseModel):
     engagement_level: int  # 1-5 required
     notes: Optional[str] = None
     attendee_count: Optional[int] = None
+
+
+# --- LESSON ENROLLMENT & WAITLIST ---
+
+class LessonEnrollment(BaseModel):
+    id: Optional[int] = None
+    lesson_id: int
+    client_id: str
+    client_name: Optional[str] = None
+    status: str = "confirmed"  # confirmed, cancelled, attended, no_show
+    enrolled_at: Optional[str] = None
+    cancelled_at: Optional[str] = None
+    added_to_calendar: bool = False
+
+class LessonWaitlistEntry(BaseModel):
+    id: Optional[int] = None
+    lesson_id: int
+    client_id: str
+    client_name: Optional[str] = None
+    position: int
+    added_at: Optional[str] = None
+    notified_at: Optional[str] = None
+    notification_expires_at: Optional[str] = None
+    status: str = "waiting"  # waiting, notified, accepted, declined, expired
+
+class EnrollLessonRequest(BaseModel):
+    lesson_id: int
+
+class WaitlistAcceptRequest(BaseModel):
+    waitlist_id: int
+    add_to_calendar: bool = True
+
+class LessonAvailability(BaseModel):
+    lesson_id: int
+    course_name: str
+    date: str
+    time: str
+    max_capacity: Optional[int] = None
+    enrolled_count: int = 0
+    waitlist_count: int = 0
+    spots_available: Optional[int] = None  # None if unlimited
+    user_status: Optional[str] = None  # enrolled, waitlisted, or None
+
+class Notification(BaseModel):
+    id: Optional[int] = None
+    user_id: str
+    type: str  # waitlist_spot, class_reminder, payment_due, etc.
+    title: str
+    message: str
+    action_data: Optional[dict] = None
+    action_url: Optional[str] = None
+    read: bool = False
+    read_at: Optional[str] = None
+    acted_on: bool = False
+    created_at: Optional[str] = None
+    expires_at: Optional[str] = None

@@ -16,7 +16,8 @@ from models_orm import (
     TrainerScheduleORM, TrainerNoteORM, DailyQuestCompletionORM, NotificationORM,
     WeightHistoryORM, CourseORM, CourseLessonORM, FriendshipORM,
     AutomatedMessageTemplateORM, AutomatedMessageLogORM,
-    ClientSubscriptionORM, AppointmentORM
+    ClientSubscriptionORM, AppointmentORM,
+    LessonEnrollmentORM, LessonWaitlistORM
 )
 
 # Re-export for convenience
@@ -29,7 +30,8 @@ __all__ = [
     'TrainerScheduleORM', 'TrainerNoteORM', 'DailyQuestCompletionORM', 'NotificationORM',
     'WeightHistoryORM', 'CourseORM', 'CourseLessonORM', 'FriendshipORM',
     'AutomatedMessageTemplateORM', 'AutomatedMessageLogORM',
-    'ClientSubscriptionORM', 'AppointmentORM'
+    'ClientSubscriptionORM', 'AppointmentORM',
+    'LessonEnrollmentORM', 'LessonWaitlistORM'
 ]
 
 logger = logging.getLogger("gym_app")
