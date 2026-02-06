@@ -69,11 +69,24 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# App info
+APP_NAME = "FitOS"
+APP_VERSION = "1.0.0"
+
 # Health check endpoint for monitoring
 @app.get("/health")
 async def health_check():
     """Health check endpoint for load balancers and monitoring."""
     return {"status": "ok"}
+
+@app.get("/api/version")
+async def get_version():
+    """Get app version info for debugging deployed instances."""
+    return {
+        "name": APP_NAME,
+        "version": APP_VERSION,
+        "environment": "production" if os.getenv("DATABASE_URL", "").startswith("postgres") else "development"
+    }
 
 # Mount static and templates
 app.mount("/static", StaticFiles(directory="static"), name="static")
