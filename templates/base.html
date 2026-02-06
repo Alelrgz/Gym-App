@@ -262,12 +262,15 @@
         let globalSelectedTrainerId = null;
         let globalSelectedDate = null;
         let globalSelectedTime = null;
+        let globalBookingTrainerRate = null;
+        let globalBookingPaymentMethod = null;
+        let globalBookingCardElement = null;
+        let globalBookingStripePaymentIntentId = null;
 
         async function loadTrainerSessionTypes() {
             const sessionTypeSelect = document.getElementById('appointment-session-type');
             if (!sessionTypeSelect) return;
 
-            // Category labels - use global if available (from client.html), otherwise use local
             const labels = (typeof categoryLabels !== 'undefined') ? categoryLabels : {
                 'bodybuilding': '💪 Bodybuilding',
                 'crossfit': '🏋️ Crossfit',
@@ -279,29 +282,20 @@
                 'rehabilitation': '🩹 Rehabilitation'
             };
 
-            // Get trainer ID
             const trainerId = globalSelectedTrainerId || (typeof selectedTrainerId !== 'undefined' ? selectedTrainerId : null);
             if (!trainerId) {
                 sessionTypeSelect.innerHTML = '<option value="" disabled selected>No trainer selected</option>';
                 return;
             }
 
-            // Clear all options and show loading
             sessionTypeSelect.innerHTML = '<option value="" disabled selected>Loading...</option>';
 
             try {
-                const response = await fetch(`/api/client/trainer/${trainerId}/session-types`, {
-                    credentials: 'include'
-                });
-
+                const response = await fetch(`/api/client/trainer/${trainerId}/session-types`, { credentials: 'include' });
                 if (response.ok) {
                     const specialties = await response.json();
-
-                    // Clear and add placeholder
                     sessionTypeSelect.innerHTML = '<option value="" disabled selected>Choose session type...</option>';
-
                     if (specialties && specialties.length > 0) {
-                        // Add trainer's specialties as options
                         specialties.forEach(specialty => {
                             const option = document.createElement('option');
                             const key = specialty.toLowerCase();
@@ -310,11 +304,9 @@
                             sessionTypeSelect.appendChild(option);
                         });
                     } else {
-                        // Trainer hasn't set specialties - show general option
                         sessionTypeSelect.innerHTML = '<option value="general" selected>General Training</option>';
                     }
                 } else {
-                    // Fallback to general training
                     sessionTypeSelect.innerHTML = '<option value="general" selected>General Training</option>';
                 }
             } catch (error) {
@@ -324,7 +316,6 @@
         }
 
         async function initBookingTrainerId() {
-            // Try to get trainer ID from client data
             try {
                 const response = await fetch('/api/client/gym-info', { credentials: 'include' });
                 if (response.ok) {
@@ -338,144 +329,234 @@
             }
         }
 
-        async function openBookingModal() {
-            // Use global or page-specific trainer ID
-            const trainerId = globalSelectedTrainerId || (typeof selectedTrainerId !== 'undefined' ? selectedTrainerId : null);
+        // Only define base versions if client.html hasn't already defined them
+        if (typeof openBookingModal === 'undefined') {
+            window.openBookingModal = async function() {
+                const trainerId = globalSelectedTrainerId || (typeof selectedTrainerId !== 'undefined' ? selectedTrainerId : null);
+                if (!trainerId) { showToast('No trainer assigned', 'error'); return; }
+                globalSelectedTrainerId = trainerId;
 
-            if (!trainerId) {
-                showToast('No trainer assigned', 'error');
-                return;
-            }
+                const today = new Date().toISOString().split('T')[0];
+                document.getElementById('appointment-date').min = today;
+                document.getElementById('appointment-date').value = '';
 
-            globalSelectedTrainerId = trainerId;
+                globalSelectedDate = null;
+                globalSelectedTime = null;
+                globalBookingPaymentMethod = null;
+                globalBookingTrainerRate = null;
+                globalBookingStripePaymentIntentId = null;
 
-            // Set min date to today
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('appointment-date').min = today;
-            document.getElementById('appointment-date').value = '';
+                // Hide sections
+                document.getElementById('booking-time-section').classList.add('hidden');
+                document.getElementById('booking-duration-section').classList.add('hidden');
+                document.getElementById('booking-notes-section').classList.add('hidden');
+                document.getElementById('booking-payment-section').classList.add('hidden');
+                document.getElementById('booking-free-section').classList.add('hidden');
+                document.getElementById('confirm-booking-btn').classList.add('hidden');
+                document.getElementById('time-slots-list').innerHTML = '';
+                document.getElementById('no-slots-message').classList.add('hidden');
 
-            // Load trainer's session types
-            await loadTrainerSessionTypes();
+                // Fetch trainer rate
+                try {
+                    const rateRes = await fetch(`/api/client/trainers/${trainerId}/session-rate`, { credentials: 'include' });
+                    if (rateRes.ok) {
+                        const rateData = await rateRes.json();
+                        globalBookingTrainerRate = rateData.session_rate;
+                    }
+                } catch (e) {}
 
-            document.getElementById('booking-modal').classList.remove('hidden');
-            document.getElementById('booking-step-1').classList.remove('hidden');
-            document.getElementById('booking-step-2').classList.add('hidden');
-            document.body.style.overflow = 'hidden';
+                document.getElementById('booking-modal').classList.remove('hidden');
+                document.body.style.overflow = 'hidden';
+            };
         }
 
-        function closeBookingModal() {
-            document.getElementById('booking-modal').classList.add('hidden');
-            document.body.style.overflow = '';
-            globalSelectedDate = null;
-            globalSelectedTime = null;
+        if (typeof closeBookingModal === 'undefined') {
+            window.closeBookingModal = function() {
+                document.getElementById('booking-modal').classList.add('hidden');
+                document.body.style.overflow = '';
+                globalSelectedDate = null;
+                globalSelectedTime = null;
+                globalBookingPaymentMethod = null;
+            };
         }
 
-        function backToDateSelection() {
-            document.getElementById('booking-step-1').classList.remove('hidden');
-            document.getElementById('booking-step-2').classList.add('hidden');
-        }
+        // Auto-load slots when date changes (base.html fallback)
+        if (typeof onBookingDateSelected === 'undefined') {
+            window.onBookingDateSelected = async function() {
+                const dateInput = document.getElementById('appointment-date');
+                globalSelectedDate = dateInput.value;
+                globalSelectedTime = null;
+                if (!globalSelectedDate) return;
 
-        async function loadAvailableSlots() {
-            const dateInput = document.getElementById('appointment-date');
-            globalSelectedDate = dateInput.value;
-            const checkBtn = document.getElementById('check-availability-btn');
-            const noSlotsMsg = document.getElementById('no-slots-message');
-
-            if (!globalSelectedDate) {
-                showToast('Please select a date', 'error');
-                return;
-            }
-
-            noSlotsMsg.classList.add('hidden');
-
-            try {
-                const response = await fetch(`/api/client/trainers/${globalSelectedTrainerId}/available-slots?date=${globalSelectedDate}`, {
-                    credentials: 'include'
-                });
-
-                if (!response.ok) {
-                    throw new Error('Failed to load available slots');
-                }
-
-                const slots = await response.json();
-
-                if (slots.length === 0) {
-                    noSlotsMsg.classList.remove('hidden');
-                    checkBtn.style.animation = 'wiggle 0.5s ease-in-out';
-                    setTimeout(() => { checkBtn.style.animation = ''; }, 500);
-                    return;
-                }
-
+                const trainerId = globalSelectedTrainerId || (typeof selectedTrainerId !== 'undefined' ? selectedTrainerId : null);
+                const timeSection = document.getElementById('booking-time-section');
                 const slotsList = document.getElementById('time-slots-list');
-                slotsList.innerHTML = slots.map(slot => `
-                    <button onclick="selectTimeSlot('${slot.start_time}', this)"
-                        class="time-slot-btn w-full bg-white/10 hover:bg-orange-500/30 border border-white/10 hover:border-orange-500 px-4 py-3 rounded-lg text-sm font-bold transition tap-effect"
-                        data-time="${slot.start_time}">
-                        ${slot.start_time} - ${slot.end_time}
-                    </button>
-                `).join('');
+                const noSlotsMsg = document.getElementById('no-slots-message');
+                const loadingEl = document.getElementById('booking-slots-loading');
 
-                document.getElementById('booking-step-1').classList.add('hidden');
-                document.getElementById('booking-step-2').classList.remove('hidden');
-            } catch (error) {
-                console.error('Error loading slots:', error);
-                showToast(error.message, 'error');
-            }
+                timeSection.classList.remove('hidden');
+                loadingEl.classList.remove('hidden');
+                noSlotsMsg.classList.add('hidden');
+                slotsList.innerHTML = '';
+                document.getElementById('booking-duration-section').classList.add('hidden');
+                document.getElementById('booking-notes-section').classList.add('hidden');
+                document.getElementById('booking-payment-section').classList.add('hidden');
+                document.getElementById('booking-free-section').classList.add('hidden');
+                document.getElementById('confirm-booking-btn').classList.add('hidden');
+
+                try {
+                    const response = await fetch(`/api/client/trainers/${trainerId}/available-slots?date=${globalSelectedDate}`, { credentials: 'include' });
+                    loadingEl.classList.add('hidden');
+                    if (!response.ok) throw new Error('Failed to load available slots');
+                    const slots = await response.json();
+                    if (slots.length === 0) { noSlotsMsg.classList.remove('hidden'); return; }
+                    slotsList.innerHTML = slots.map(slot => `
+                        <button onclick="selectTimeSlot('${slot.start_time}', this)"
+                            class="time-slot-btn bg-white/10 hover:bg-primary/30 border border-white/10 hover:border-primary px-3 py-2 rounded-lg text-sm font-bold transition tap-effect">
+                            ${slot.start_time}
+                        </button>
+                    `).join('');
+                } catch (error) {
+                    loadingEl.classList.add('hidden');
+                    showToast(error.message, 'error');
+                }
+            };
         }
 
-        function selectTimeSlot(time, clickedBtn) {
-            globalSelectedTime = time;
-            document.querySelectorAll('.time-slot-btn').forEach(btn => {
-                btn.classList.remove('bg-orange-500', 'border-orange-500', 'text-white');
-                btn.classList.add('bg-white/10', 'border-white/10');
-            });
-            if (clickedBtn) {
-                clickedBtn.classList.remove('bg-white/10', 'border-white/10');
-                clickedBtn.classList.add('bg-orange-500', 'border-orange-500', 'text-white');
-            }
-        }
-
-        async function confirmBooking() {
-            if (!globalSelectedTime) {
-                showToast('Please select a time slot', 'error');
-                return;
-            }
-
-            const notes = document.getElementById('appointment-notes').value;
-            const sessionTypeSelect = document.getElementById('appointment-session-type');
-            const sessionType = sessionTypeSelect ? sessionTypeSelect.value : 'general';
-
-            try {
-                const response = await fetch('/api/client/appointments', {
-                    method: 'POST',
-                    credentials: 'include',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        trainer_id: globalSelectedTrainerId,
-                        date: globalSelectedDate,
-                        start_time: globalSelectedTime,
-                        duration: 60,
-                        session_type: sessionType,
-                        notes: notes
-                    })
+        if (typeof selectTimeSlot === 'undefined') {
+            window.selectTimeSlot = function(time, clickedBtn) {
+                globalSelectedTime = time;
+                document.querySelectorAll('.time-slot-btn').forEach(btn => {
+                    btn.classList.remove('bg-orange-500', 'border-orange-500', 'text-white');
+                    btn.classList.add('bg-white/10', 'border-white/10');
                 });
-
-                if (!response.ok) {
-                    const error = await response.json();
-                    throw new Error(error.detail || 'Failed to book appointment');
+                if (clickedBtn) {
+                    clickedBtn.classList.remove('bg-white/10', 'border-white/10');
+                    clickedBtn.classList.add('bg-orange-500', 'border-orange-500', 'text-white');
                 }
-
-                showToast('Appointment booked successfully! 🎉', 'success');
-                closeBookingModal();
-
-                // Reload appointments if the function exists
-                if (typeof loadAppointments === 'function') {
-                    loadAppointments();
+                document.getElementById('booking-duration-section').classList.remove('hidden');
+                document.getElementById('booking-notes-section').classList.remove('hidden');
+                document.getElementById('confirm-booking-btn').classList.remove('hidden');
+                if (typeof updateBookingPriceDisplay === 'function') updateBookingPriceDisplay();
+                else {
+                    // Inline price display for base.html
+                    const ps = document.getElementById('booking-payment-section');
+                    const fs = document.getElementById('booking-free-section');
+                    if (globalBookingTrainerRate && globalBookingTrainerRate > 0) {
+                        const dur = parseInt(document.getElementById('booking-duration').value) || 60;
+                        const price = (globalBookingTrainerRate * (dur / 60)).toFixed(2);
+                        if (ps) ps.classList.remove('hidden');
+                        if (fs) fs.classList.add('hidden');
+                        const pd = document.getElementById('booking-price-display');
+                        if (pd) pd.textContent = `$${price}`;
+                    } else {
+                        if (ps) ps.classList.add('hidden');
+                        if (fs) fs.classList.remove('hidden');
+                    }
                 }
-            } catch (error) {
-                console.error('Error booking appointment:', error);
-                showToast(error.message, 'error');
-            }
+            };
+        }
+
+        if (typeof onBookingDurationChanged === 'undefined') {
+            window.onBookingDurationChanged = function() {
+                if (typeof updateBookingPriceDisplay === 'function') updateBookingPriceDisplay();
+                else if (typeof selectTimeSlot !== 'undefined') {
+                    // Recalculate price inline
+                    const ps = document.getElementById('booking-payment-section');
+                    if (globalBookingTrainerRate && globalBookingTrainerRate > 0) {
+                        const dur = parseInt(document.getElementById('booking-duration').value) || 60;
+                        const price = (globalBookingTrainerRate * (dur / 60)).toFixed(2);
+                        const pd = document.getElementById('booking-price-display');
+                        if (pd) pd.textContent = `$${price}`;
+                    }
+                }
+            };
+        }
+
+        if (typeof selectBookingPayment === 'undefined') {
+            window.selectBookingPayment = function(method) {
+                globalBookingPaymentMethod = method;
+                const cardBtn = document.getElementById('booking-pay-card-btn');
+                const cashBtn = document.getElementById('booking-pay-cash-btn');
+                const cardForm = document.getElementById('booking-card-form');
+                const cashInfo = document.getElementById('booking-cash-info');
+
+                cardBtn.classList.remove('border-blue-500', 'bg-blue-500/20'); cardBtn.classList.add('border-white/20');
+                cashBtn.classList.remove('border-green-500', 'bg-green-500/20'); cashBtn.classList.add('border-white/20');
+                cardForm.classList.add('hidden');
+                cashInfo.classList.add('hidden');
+
+                if (method === 'card') {
+                    cardBtn.classList.remove('border-white/20'); cardBtn.classList.add('border-blue-500', 'bg-blue-500/20');
+                    cardForm.classList.remove('hidden');
+                    // Init card element
+                    if (!window.stripeInstance && typeof Stripe !== 'undefined') {
+                        const { stripePublishableKey } = window.APP_CONFIG || {};
+                        if (stripePublishableKey) window.stripeInstance = Stripe(stripePublishableKey);
+                    }
+                    if (window.stripeInstance) {
+                        if (typeof initBookingCardElement === 'function') {
+                            initBookingCardElement();
+                        }
+                    }
+                } else if (method === 'cash') {
+                    cashBtn.classList.remove('border-white/20'); cashBtn.classList.add('border-green-500', 'bg-green-500/20');
+                    cashInfo.classList.remove('hidden');
+                }
+            };
+        }
+
+        if (typeof confirmBooking === 'undefined') {
+            window.confirmBooking = async function() {
+                if (!globalSelectedTime) { showToast('Please select a time slot', 'error'); return; }
+
+                const duration = parseInt(document.getElementById('booking-duration').value) || 60;
+                const notes = document.getElementById('appointment-notes').value;
+                const trainerId = globalSelectedTrainerId;
+                const hasPaid = globalBookingTrainerRate && globalBookingTrainerRate > 0;
+
+                if (hasPaid && !globalBookingPaymentMethod) { showToast('Please select a payment method', 'error'); return; }
+
+                const btn = document.getElementById('confirm-booking-btn');
+                btn.disabled = true; btn.textContent = 'Processing...';
+
+                try {
+                    globalBookingStripePaymentIntentId = null;
+                    if (hasPaid && globalBookingPaymentMethod === 'card') {
+                        if (!window.stripeInstance || !bookingCardElement) { showToast('Card not ready', 'error'); return; }
+                        const intentRes = await fetch('/api/client/appointment-payment-intent', {
+                            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+                            body: JSON.stringify({ trainer_id: trainerId, duration })
+                        });
+                        if (!intentRes.ok) { const err = await intentRes.json(); throw new Error(err.detail || 'Payment failed'); }
+                        const intentData = await intentRes.json();
+                        const { paymentIntent, error } = await window.stripeInstance.confirmCardPayment(intentData.client_secret, { payment_method: { card: bookingCardElement } });
+                        if (error) throw new Error(error.message);
+                        globalBookingStripePaymentIntentId = paymentIntent.id;
+                    }
+
+                    const response = await fetch('/api/client/appointments', {
+                        method: 'POST', credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            trainer_id: trainerId, date: globalSelectedDate, start_time: globalSelectedTime,
+                            duration, notes,
+                            payment_method: hasPaid ? globalBookingPaymentMethod : null,
+                            stripe_payment_intent_id: globalBookingStripePaymentIntentId
+                        })
+                    });
+                    if (!response.ok) { const error = await response.json(); throw new Error(error.detail || 'Failed to book'); }
+
+                    showToast('Appointment booked successfully!', 'success');
+                    closeBookingModal();
+                    if (typeof loadAppointments === 'function') loadAppointments();
+                } catch (error) {
+                    console.error('Error booking:', error);
+                    showToast(error.message, 'error');
+                } finally {
+                    btn.disabled = false; btn.textContent = 'Book Appointment';
+                }
+            };
         }
 
         // Initialize trainer ID for booking on page load

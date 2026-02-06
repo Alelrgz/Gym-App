@@ -265,6 +265,7 @@ class ClientSubscription(BaseModel):
 class CreateSubscriptionRequest(BaseModel):
     plan_id: str
     payment_method_id: Optional[str] = None  # Stripe payment method ID
+    coupon_code: Optional[str] = None  # Coupon code for discount
 
 class CancelSubscriptionRequest(BaseModel):
     subscription_id: str
@@ -332,6 +333,8 @@ class BookAppointmentRequest(BaseModel):
     duration: int = 60
     session_type: Optional[str] = None  # e.g., "bodybuilding", "crossfit", "calisthenics", or custom
     notes: Optional[str] = None
+    payment_method: Optional[str] = None  # "card", "cash", or None (free)
+    stripe_payment_intent_id: Optional[str] = None  # From frontend card payment
 
 class CancelAppointmentRequest(BaseModel):
     cancellation_reason: Optional[str] = None

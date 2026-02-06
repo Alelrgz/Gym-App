@@ -293,6 +293,22 @@ class SubscriptionService:
             # Get gym's connected Stripe account for payment routing
             gym_stripe_account = self.get_gym_stripe_account(gym_id)
 
+            # Resolve coupon if provided
+            stripe_coupon_id = None
+            if request.coupon_code:
+                coupon_result = self.validate_coupon(gym_id, request.coupon_code, request.plan_id)
+                if coupon_result.get("valid"):
+                    # Find the offer to get Stripe coupon ID
+                    offer = db.query(PlanOfferORM).filter(
+                        PlanOfferORM.id == coupon_result["offer_id"]
+                    ).first()
+                    if offer and offer.stripe_coupon_id:
+                        stripe_coupon_id = offer.stripe_coupon_id
+                    # Increment redemption count
+                    if offer:
+                        offer.current_redemptions = (offer.current_redemptions or 0) + 1
+                        db.commit()
+
             # Build subscription parameters
             sub_params = {
                 "customer": stripe_customer.id,
@@ -304,6 +320,11 @@ class SubscriptionService:
                     "plan_id": plan.id
                 }
             }
+
+            # Apply Stripe coupon if available
+            if stripe_coupon_id:
+                sub_params["coupon"] = stripe_coupon_id
+                logger.info(f"Applying Stripe coupon {stripe_coupon_id} to subscription")
 
             # If gym has a connected account, route payments to them
             if gym_stripe_account:
@@ -484,6 +505,35 @@ class SubscriptionService:
                 if not plan:
                     raise HTTPException(status_code=404, detail="Plan not found")
 
+            # Create Stripe Coupon if Stripe is configured
+            stripe_coupon_id = None
+            if is_stripe_configured():
+                try:
+                    coupon_params = {
+                        "name": offer_data["title"],
+                        "duration": "repeating" if offer_data.get("discount_duration_months", 1) > 1 else "once",
+                        "metadata": {"gym_id": gym_id, "offer_id": offer_id}
+                    }
+
+                    if offer_data.get("discount_duration_months", 1) > 1:
+                        coupon_params["duration_in_months"] = offer_data["discount_duration_months"]
+
+                    if offer_data["discount_type"] == "percent":
+                        coupon_params["percent_off"] = float(offer_data["discount_value"])
+                    else:
+                        # Fixed amount off - need currency
+                        coupon_params["amount_off"] = int(float(offer_data["discount_value"]) * 100)
+                        coupon_params["currency"] = "usd"
+
+                    if offer_data.get("max_redemptions"):
+                        coupon_params["max_redemptions"] = offer_data["max_redemptions"]
+
+                    stripe_coupon = stripe.Coupon.create(**coupon_params)
+                    stripe_coupon_id = stripe_coupon.id
+                    logger.info(f"Created Stripe coupon: {stripe_coupon_id}")
+                except stripe.StripeError as e:
+                    logger.warning(f"Failed to create Stripe coupon: {e}")
+
             # Create offer (inactive by default - owner must activate to notify clients)
             offer = PlanOfferORM(
                 id=offer_id,
@@ -495,6 +545,7 @@ class SubscriptionService:
                 discount_value=offer_data["discount_value"],
                 discount_duration_months=offer_data.get("discount_duration_months", 1),
                 coupon_code=offer_data.get("coupon_code"),
+                stripe_coupon_id=stripe_coupon_id,
                 is_active=False,  # Created as draft - must be activated to notify clients
                 starts_at=offer_data.get("starts_at", datetime.utcnow().isoformat()),
                 expires_at=offer_data.get("expires_at"),
@@ -513,7 +564,8 @@ class SubscriptionService:
                 "offer_id": offer_id,
                 "title": offer.title,
                 "discount_type": offer.discount_type,
-                "discount_value": offer.discount_value
+                "discount_value": offer.discount_value,
+                "stripe_coupon_id": stripe_coupon_id
             }
 
         except HTTPException:

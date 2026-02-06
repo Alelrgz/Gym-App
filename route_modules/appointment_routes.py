@@ -8,6 +8,8 @@ from models import (
     BookAppointmentRequest, UpdateAvailabilityRequest,
     CancelAppointmentRequest
 )
+from database import get_db_session
+from models_orm import UserORM
 
 router = APIRouter()
 
@@ -206,3 +208,133 @@ async def cancel_appointment(
 ):
     """Cancel an appointment (both clients and trainers can cancel)."""
     return service.cancel_appointment(appointment_id, user.id, request)
+
+
+# --- TRAINER SESSION RATE ---
+
+@router.get("/api/trainer/session-rate")
+async def get_session_rate(
+    user = Depends(get_current_user)
+):
+    """Get trainer's hourly session rate."""
+    if user.role != "trainer":
+        raise HTTPException(status_code=403, detail="Only trainers can view their rate")
+
+    return {"session_rate": getattr(user, 'session_rate', None)}
+
+
+@router.post("/api/trainer/session-rate")
+async def set_session_rate(
+    data: dict,
+    user = Depends(get_current_user)
+):
+    """Set trainer's hourly session rate."""
+    if user.role != "trainer":
+        raise HTTPException(status_code=403, detail="Only trainers can set their rate")
+
+    rate = data.get("session_rate")
+    if rate is not None and rate < 0:
+        raise HTTPException(status_code=400, detail="Rate cannot be negative")
+
+    db = get_db_session()
+    try:
+        trainer = db.query(UserORM).filter(UserORM.id == user.id).first()
+        trainer.session_rate = float(rate) if rate is not None else None
+        db.commit()
+        return {"status": "success", "session_rate": trainer.session_rate}
+    finally:
+        db.close()
+
+
+@router.get("/api/client/trainers/{trainer_id}/session-rate")
+async def get_trainer_rate_for_client(
+    trainer_id: str,
+    user = Depends(get_current_user)
+):
+    """Get a trainer's session rate (for clients viewing pricing)."""
+    db = get_db_session()
+    try:
+        trainer = db.query(UserORM).filter(
+            UserORM.id == trainer_id,
+            UserORM.role == "trainer"
+        ).first()
+        if not trainer:
+            raise HTTPException(status_code=404, detail="Trainer not found")
+
+        return {
+            "trainer_id": trainer_id,
+            "session_rate": getattr(trainer, 'session_rate', None),
+            "trainer_name": trainer.username
+        }
+    finally:
+        db.close()
+
+
+# --- APPOINTMENT PAYMENT ---
+
+@router.post("/api/client/appointment-payment-intent")
+async def create_appointment_payment_intent(
+    data: dict,
+    user = Depends(get_current_user)
+):
+    """Create a Stripe PaymentIntent for a 1-on-1 session booking."""
+    if user.role != "client":
+        raise HTTPException(status_code=403, detail="Only clients can create appointment payments")
+
+    import stripe
+    import os
+
+    stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+    if not stripe.api_key or stripe.api_key.startswith("your_"):
+        raise HTTPException(status_code=400, detail="Stripe is not configured")
+
+    trainer_id = data.get("trainer_id")
+    duration = data.get("duration", 60)
+
+    if not trainer_id:
+        raise HTTPException(status_code=400, detail="trainer_id is required")
+
+    db = get_db_session()
+    try:
+        trainer = db.query(UserORM).filter(
+            UserORM.id == trainer_id,
+            UserORM.role == "trainer"
+        ).first()
+
+        if not trainer:
+            raise HTTPException(status_code=404, detail="Trainer not found")
+
+        session_rate = getattr(trainer, 'session_rate', None)
+        if not session_rate or session_rate <= 0:
+            raise HTTPException(status_code=400, detail="Trainer has no session rate configured")
+
+        # Calculate price based on duration
+        price = round(session_rate * (duration / 60), 2)
+        amount_cents = int(price * 100)
+
+        if amount_cents < 50:
+            amount_cents = 50
+
+        intent = stripe.PaymentIntent.create(
+            amount=amount_cents,
+            currency="usd",
+            metadata={
+                "type": "appointment",
+                "trainer_id": trainer_id,
+                "client_id": user.id,
+                "duration": str(duration),
+                "trainer_name": trainer.username
+            },
+            description=f"1-on-1 session with {trainer.username} ({duration} min)"
+        )
+
+        return {
+            "client_secret": intent.client_secret,
+            "amount": price,
+            "currency": "USD"
+        }
+
+    except stripe.StripeError as e:
+        raise HTTPException(status_code=400, detail=f"Payment setup failed: {str(e)}")
+    finally:
+        db.close()

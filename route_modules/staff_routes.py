@@ -5,7 +5,7 @@ Staff/Reception API routes for gym management
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from database import get_db_session
-from models_orm import UserORM, AppointmentORM, CheckInORM, ClientProfileORM, SubscriptionPlanORM, ClientSubscriptionORM, ClientDocumentORM, MedicalCertificateORM
+from models_orm import UserORM, AppointmentORM, CheckInORM, ClientProfileORM, SubscriptionPlanORM, ClientSubscriptionORM, ClientDocumentORM, MedicalCertificateORM, PaymentORM
 from auth import get_current_user, get_password_hash
 from datetime import datetime, date, timedelta
 from service_modules.subscription_service import subscription_service
@@ -765,7 +765,8 @@ async def onboard_new_client(
 
     # Subscription info
     plan_id = data.get("plan_id")
-    payment_method = data.get("payment_method", "cash")  # "cash" or "card"
+    payment_method = data.get("payment_method", "cash")  # "cash", "card", or "terminal"
+    stripe_payment_intent_id = data.get("stripe_payment_intent_id")  # From card payment
 
     # Validation
     if not name:
@@ -901,10 +902,30 @@ async def onboard_new_client(
                     start_date=now,
                     current_period_start=now,
                     current_period_end=period_end.isoformat(),
+                    stripe_payment_intent_id=stripe_payment_intent_id,
                     created_at=now,
                     updated_at=now
                 )
                 db.add(new_subscription)
+
+                # Create payment record if payment was made
+                if payment_method in ("card", "cash", "terminal") and plan.price > 0:
+                    payment_id = str(uuid.uuid4())
+                    payment_record = PaymentORM(
+                        id=payment_id,
+                        client_id=client_id,
+                        subscription_id=subscription_id,
+                        gym_id=user.gym_owner_id,
+                        amount=plan.price,
+                        currency=plan.currency or "usd",
+                        status="succeeded" if payment_method in ("card", "terminal") else "recorded",
+                        stripe_payment_intent_id=stripe_payment_intent_id,
+                        description=f"Onboarding: {plan.name}",
+                        payment_method=payment_method,
+                        paid_at=now,
+                        created_at=now
+                    )
+                    db.add(payment_record)
 
                 # Update profile premium status
                 new_profile.is_premium = True
@@ -973,6 +994,7 @@ async def create_onboarding_payment_intent(
 
     plan_id = data.get("plan_id")
     client_name = data.get("client_name", "New Client")
+    coupon_code = data.get("coupon_code")
 
     if not plan_id:
         raise HTTPException(status_code=400, detail="plan_id is required")
@@ -988,8 +1010,27 @@ async def create_onboarding_payment_intent(
         raise HTTPException(status_code=404, detail="Plan not found")
 
     try:
+        # Calculate amount with coupon discount if applicable
+        amount = plan.price
+        discount_applied = None
+
+        if coupon_code:
+            coupon_result = subscription_service.validate_coupon(user.gym_owner_id, coupon_code, plan_id)
+            if coupon_result.get("valid"):
+                if coupon_result["discount_type"] == "percent":
+                    discount = amount * (coupon_result["discount_value"] / 100)
+                    amount = max(0, amount - discount)
+                    discount_applied = f"{coupon_result['discount_value']}% off"
+                else:
+                    amount = max(0, amount - coupon_result["discount_value"])
+                    discount_applied = f"${coupon_result['discount_value']} off"
+
         # Convert price to cents (Stripe uses smallest currency unit)
-        amount_cents = int(plan.price * 100)
+        amount_cents = int(amount * 100)
+
+        if amount_cents < 50:
+            # Stripe minimum is 50 cents
+            amount_cents = 50
 
         # Create PaymentIntent
         intent = stripe.PaymentIntent.create(
@@ -1000,7 +1041,9 @@ async def create_onboarding_payment_intent(
                 "plan_id": plan_id,
                 "plan_name": plan.name,
                 "client_name": client_name,
-                "onboarding": "true"
+                "onboarding": "true",
+                "coupon_code": coupon_code or "",
+                "discount_applied": discount_applied or ""
             },
             description=f"Gym membership: {plan.name} for {client_name}"
         )
@@ -1009,7 +1052,9 @@ async def create_onboarding_payment_intent(
 
         return {
             "client_secret": intent.client_secret,
-            "amount": plan.price,
+            "amount": amount,
+            "original_amount": plan.price,
+            "discount_applied": discount_applied,
             "currency": plan.currency or "EUR"
         }
 

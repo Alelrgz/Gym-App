@@ -29,6 +29,9 @@ class UserORM(Base):
     stripe_account_id = Column(String, nullable=True)  # Connected Stripe account ID (acct_xxx)
     stripe_account_status = Column(String, nullable=True)  # pending, active, restricted
 
+    # Trainer pricing
+    session_rate = Column(Float, nullable=True)  # Hourly rate for 1-on-1 sessions
+
     # Onboarding fields
     phone = Column(String, nullable=True)  # Phone number
     must_change_password = Column(Boolean, default=False)  # Force password change on first login
@@ -327,6 +330,7 @@ class ClientSubscriptionORM(Base):
     # Stripe integration
     stripe_subscription_id = Column(String, nullable=True, unique=True)
     stripe_customer_id = Column(String, nullable=True)
+    stripe_payment_intent_id = Column(String, nullable=True)  # For one-time payments (onboarding)
 
     # Subscription status
     status = Column(String, default="active")  # active, canceled, past_due, trialing, incomplete
@@ -391,6 +395,9 @@ class PlanOfferORM(Base):
     # Coupon code (optional)
     coupon_code = Column(String, nullable=True, index=True)  # e.g. "NEWYEAR50"
 
+    # Stripe coupon integration
+    stripe_coupon_id = Column(String, nullable=True)  # Stripe coupon ID for applying discounts
+
     # Validity
     is_active = Column(Boolean, default=True)
     starts_at = Column(String)  # ISO date
@@ -444,6 +451,12 @@ class AppointmentORM(Base):
     session_type = Column(String, nullable=True)  # bodybuilding, crossfit, calisthenics, or custom
     notes = Column(String, nullable=True)  # Client's notes/goals for the session
     trainer_notes = Column(String, nullable=True)  # Trainer's notes after session
+
+    # Payment
+    price = Column(Float, nullable=True)  # Session price at time of booking
+    payment_method = Column(String, nullable=True)  # card, cash, or null (free)
+    payment_status = Column(String, default="pending")  # pending, paid, refunded, free
+    stripe_payment_intent_id = Column(String, nullable=True)
 
     # Status
     status = Column(String, default="scheduled")  # scheduled, completed, canceled, no_show

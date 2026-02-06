@@ -308,53 +308,108 @@
 <!-- Book Appointment Modal (Global) -->
 <div id="booking-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
     onclick="if(event.target === this) closeBookingModal()">
-    <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
+    <div class="bg-[#1a1a1a] p-6 rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto border border-white/10">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-xl font-bold">Book 1-on-1 Session</h3>
             <button onclick="closeBookingModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
         </div>
 
-        <!-- Step 1: Select Session Type & Date -->
-        <div id="booking-step-1">
-            <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Session Type</label>
-            <select id="appointment-session-type"
-                class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition mb-4 appearance-none cursor-pointer"
-                style="background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%2216%22%20height%3D%2216%22%20fill%3D%22white%22%20viewBox%3D%220%200%2016%2016%22%3E%3Cpath%20d%3D%22M7.247%2011.14%202.451%205.658C1.885%205.013%202.345%204%203.204%204h9.592a1%201%200%200%201%20.753%201.659l-4.796%205.48a1%201%200%200%201-1.506%200z%22%2F%3E%3C%2Fsvg%3E'); background-repeat: no-repeat; background-position: right 12px center;">
-                <option value="" disabled selected>Loading categories...</option>
-            </select>
-
+        <!-- Date -->
+        <div class="mb-4">
             <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Select Date</label>
-            <input type="date" id="appointment-date"
-                class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition mb-4"
+            <input type="date" id="appointment-date" onchange="onBookingDateSelected()"
+                class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
                 min="">
+        </div>
 
-            <div id="no-slots-message" class="hidden text-center text-red-400 text-sm mb-3 p-2 bg-red-500/10 rounded-lg">
+        <!-- Time Slots (auto-loaded when date is selected) -->
+        <div id="booking-time-section" class="hidden mb-4">
+            <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Available Times</label>
+            <div id="booking-slots-loading" class="hidden text-center py-3">
+                <div class="animate-spin text-xl inline-block">⏳</div>
+                <p class="text-xs text-gray-400 mt-1">Loading slots...</p>
+            </div>
+            <div id="no-slots-message" class="hidden text-center text-red-400 text-sm p-2 bg-red-500/10 rounded-lg">
                 No available slots for this date. Try another day!
             </div>
-
-            <button id="check-availability-btn" onclick="loadAvailableSlots()" class="w-full bg-orange-500 px-4 py-3 rounded-lg font-bold hover:bg-orange-600 transition">
-                Check Availability
-            </button>
-        </div>
-
-        <!-- Step 2: Select Time Slot -->
-        <div id="booking-step-2" class="hidden">
-            <button onclick="backToDateSelection()" class="text-sm text-gray-400 hover:text-white mb-3">&larr; Back</button>
-
-            <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Available Time Slots</label>
-            <div id="time-slots-list" class="space-y-2 mb-4 max-h-60 overflow-y-auto">
+            <div id="time-slots-list" class="grid grid-cols-3 gap-2">
                 <!-- Time slots will be loaded here -->
             </div>
-
-            <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Notes (Optional)</label>
-            <textarea id="appointment-notes" rows="3"
-                class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition mb-4"
-                placeholder="What would you like to work on?"></textarea>
-
-            <button onclick="confirmBooking()" class="w-full bg-orange-500 px-4 py-3 rounded-lg font-bold hover:bg-orange-600 transition">
-                Confirm Booking
-            </button>
         </div>
+
+        <!-- Duration -->
+        <div id="booking-duration-section" class="hidden mb-4">
+            <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Duration</label>
+            <select id="booking-duration" onchange="onBookingDurationChanged()"
+                class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition">
+                <option value="30">30 min</option>
+                <option value="60" selected>1 hour</option>
+                <option value="90">1.5 hours</option>
+                <option value="120">2 hours</option>
+            </select>
+        </div>
+
+        <!-- Notes -->
+        <div id="booking-notes-section" class="hidden mb-4">
+            <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Notes (Optional)</label>
+            <textarea id="appointment-notes" rows="2"
+                class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                placeholder="What would you like to work on?"></textarea>
+        </div>
+
+        <!-- Payment Section (shown when trainer has a rate) -->
+        <div id="booking-payment-section" class="hidden mb-4">
+            <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Payment</label>
+            <div class="bg-white/5 border border-white/10 rounded-xl p-3 mb-3 flex justify-between items-center">
+                <span class="text-sm text-gray-400">Session Price</span>
+                <span id="booking-price-display" class="text-lg font-bold text-primary">-</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mb-3">
+                <button onclick="selectBookingPayment('card')" id="booking-pay-card-btn"
+                    class="p-3 rounded-xl border-2 border-white/20 hover:border-blue-500/50 transition text-center">
+                    <span class="text-xl block mb-1">💳</span>
+                    <span class="text-xs font-semibold text-white">Card</span>
+                </button>
+                <button onclick="selectBookingPayment('cash')" id="booking-pay-cash-btn"
+                    class="p-3 rounded-xl border-2 border-white/20 hover:border-green-500/50 transition text-center">
+                    <span class="text-xl block mb-1">💵</span>
+                    <span class="text-xs font-semibold text-white">Cash at Session</span>
+                </button>
+            </div>
+
+            <!-- Card Form -->
+            <div id="booking-card-form" class="hidden">
+                <div class="mb-2">
+                    <div id="booking-card-element" class="bg-white/5 border border-white/10 rounded-xl p-4 min-h-[44px]">
+                        <!-- Stripe Card Element mounts here -->
+                    </div>
+                </div>
+                <div id="booking-card-errors" class="text-red-400 text-xs mb-2 hidden"></div>
+                <p class="text-xs text-gray-500">Test: 4242 4242 4242 4242</p>
+            </div>
+
+            <!-- Cash Info -->
+            <div id="booking-cash-info" class="hidden">
+                <div class="bg-green-500/10 border border-green-500/30 rounded-xl p-3 text-center">
+                    <p class="text-green-400 text-xs font-semibold">Pay cash at the gym before your session</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Free Session Info -->
+        <div id="booking-free-section" class="hidden mb-4">
+            <div class="bg-green-500/10 border border-green-500/30 rounded-xl p-3 text-center">
+                <span class="text-lg block mb-1">✓</span>
+                <p class="text-green-400 text-sm font-semibold">Free Session</p>
+            </div>
+        </div>
+
+        <!-- Confirm Button -->
+        <button onclick="confirmBooking()" id="confirm-booking-btn"
+            class="w-full bg-orange-500 px-4 py-3 rounded-lg font-bold hover:bg-orange-600 transition hidden">
+            Book Appointment
+        </button>
     </div>
 </div>
 
@@ -1112,9 +1167,10 @@
 
             <div>
                 <label class="text-xs text-gray-500 uppercase font-bold ml-1">Duration</label>
-                <select id="client-book-duration"
+                <select id="client-book-duration" onchange="appointmentDurationChanged()"
                     class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-blue-500 outline-none transition">
-                    <option value="60">1 hour</option>
+                    <option value="30">30 minutes</option>
+                    <option value="60" selected>1 hour</option>
                     <option value="90">1.5 hours</option>
                     <option value="120">2 hours</option>
                 </select>
@@ -1127,7 +1183,56 @@
                     placeholder="What would you like to focus on in this session?"></textarea>
             </div>
 
-            <button onclick="confirmClientBookAppointment()"
+            <!-- Payment Section (shown when trainer has a rate) -->
+            <div id="appointment-payment-section" class="hidden">
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Payment</label>
+
+                <!-- Price Display -->
+                <div class="bg-white/5 border border-white/10 rounded-xl p-3 mb-3 flex justify-between items-center">
+                    <span class="text-sm text-gray-400">Session Price</span>
+                    <span id="appointment-price-display" class="text-lg font-bold text-primary">-</span>
+                </div>
+
+                <!-- Payment Method -->
+                <div class="grid grid-cols-2 gap-3 mb-3">
+                    <button onclick="selectAppointmentPayment('card')" id="appt-pay-card-btn"
+                        class="p-3 rounded-xl border-2 border-white/20 hover:border-blue-500/50 transition text-center">
+                        <span class="text-xl block mb-1">💳</span>
+                        <span class="text-xs font-semibold text-white">Card</span>
+                    </button>
+                    <button onclick="selectAppointmentPayment('cash')" id="appt-pay-cash-btn"
+                        class="p-3 rounded-xl border-2 border-white/20 hover:border-green-500/50 transition text-center">
+                        <span class="text-xl block mb-1">💵</span>
+                        <span class="text-xs font-semibold text-white">Cash at Session</span>
+                    </button>
+                </div>
+
+                <!-- Card Form -->
+                <div id="appointment-card-form" class="hidden">
+                    <div class="mb-2 rounded-xl border-2 border-gray-400" style="background: #ffffff; padding: 20px 16px; min-height: 60px;">
+                        <div id="appointment-card-element" style="min-height: 24px; line-height: 24px;"></div>
+                    </div>
+                    <div id="appointment-card-errors" class="text-red-400 text-xs mb-2 hidden"></div>
+                    <p class="text-xs text-gray-500">Test: 4242 4242 4242 4242</p>
+                </div>
+
+                <!-- Cash Confirmation -->
+                <div id="appointment-cash-info" class="hidden">
+                    <div class="bg-green-500/10 border border-green-500/30 rounded-xl p-3 text-center">
+                        <p class="text-green-400 text-xs font-semibold">Pay cash at the gym before your session</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Free Session Info -->
+            <div id="appointment-free-section" class="hidden">
+                <div class="bg-green-500/10 border border-green-500/30 rounded-xl p-3 text-center">
+                    <span class="text-lg block mb-1">✓</span>
+                    <p class="text-green-400 text-sm font-semibold">Free Session</p>
+                </div>
+            </div>
+
+            <button onclick="confirmClientBookAppointment()" id="book-appointment-btn"
                 class="w-full py-3 bg-blue-500 hover:bg-blue-600 text-white font-bold rounded-xl transition">
                 Book Appointment
             </button>
@@ -1323,7 +1428,9 @@
                                 <button type="button" onclick="adjustCapacity(-5)"
                                     class="w-8 h-10 rounded-lg bg-white/10 text-white/60 hover:bg-white/20 transition text-lg">-</button>
                                 <div class="flex-1 text-center">
-                                    <span id="course-capacity-display" class="text-xl font-bold text-white">20</span>
+                                    <input type="number" id="course-capacity-input"
+                                        class="w-16 bg-transparent text-xl font-bold text-white text-center outline-none border-b-2 border-transparent focus:border-primary appearance-none [-moz-appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                                        value="20" min="1" max="500" oninput="onCapacityInput(this)">
                                     <span class="text-xs text-white/40 ml-1">spots</span>
                                 </div>
                                 <button type="button" onclick="adjustCapacity(5)"
@@ -1348,8 +1455,8 @@
                         </div>
                     </div>
                     <button type="button" onclick="toggleWaitlist()" id="waitlist-toggle"
-                        class="w-12 h-7 rounded-full bg-green-500 relative transition-colors">
-                        <span id="waitlist-dot" class="absolute right-1 top-1 w-5 h-5 rounded-full bg-white transition-transform"></span>
+                        class="w-12 h-7 rounded-full bg-green-500 relative transition-colors flex-shrink-0">
+                        <span id="waitlist-dot" class="absolute top-1 w-5 h-5 rounded-full bg-white transition-all duration-200" style="right: 4px;"></span>
                     </button>
                     <input type="hidden" id="course-waitlist-enabled" value="true">
                 </div>

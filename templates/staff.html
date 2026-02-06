@@ -643,7 +643,7 @@
             <!-- Payment Method -->
             <div id="payment-method-section">
                 <p class="text-xs text-gray-400 mb-3">Select payment method:</p>
-                <div class="grid grid-cols-2 gap-3 mb-4">
+                <div class="grid grid-cols-3 gap-3 mb-4">
                     <button onclick="selectPaymentMethod('cash')" id="pay-cash-btn"
                         class="p-4 rounded-xl border-2 border-white/20 hover:border-green-500/50 transition text-center">
                         <span class="text-2xl block mb-1">💵</span>
@@ -653,6 +653,11 @@
                         class="p-4 rounded-xl border-2 border-white/20 hover:border-blue-500/50 transition text-center">
                         <span class="text-2xl block mb-1">💳</span>
                         <span class="text-sm font-semibold text-white">Card</span>
+                    </button>
+                    <button onclick="selectPaymentMethod('terminal')" id="pay-terminal-btn"
+                        class="p-4 rounded-xl border-2 border-white/20 hover:border-purple-500/50 transition text-center">
+                        <span class="text-2xl block mb-1">📱</span>
+                        <span class="text-sm font-semibold text-white">Tap to Pay</span>
                     </button>
                 </div>
 
@@ -664,6 +669,22 @@
                     </div>
                     <div id="onboard-card-errors" class="text-red-400 text-xs mb-2 hidden"></div>
                     <p class="text-xs text-gray-500">Test card: 4242 4242 4242 4242, any future date, any CVC</p>
+                </div>
+
+                <!-- Terminal/Tap to Pay confirmation (shown when terminal selected) -->
+                <div id="terminal-payment-form" class="hidden">
+                    <div class="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 text-center">
+                        <span class="text-3xl block mb-2">📱</span>
+                        <p class="text-purple-400 font-semibold mb-1">Tap to Pay</p>
+                        <p class="text-xs text-gray-400 mb-3">Collect payment using Stripe Terminal on your phone, then confirm below</p>
+                        <div class="flex items-center justify-center gap-2 text-xs text-gray-500">
+                            <span>1. Open Stripe Terminal app</span>
+                            <span>→</span>
+                            <span>2. Collect payment</span>
+                            <span>→</span>
+                            <span>3. Confirm here</span>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1728,20 +1749,33 @@ function selectPaymentMethod(method) {
 
     const cashBtn = document.getElementById('pay-cash-btn');
     const cardBtn = document.getElementById('pay-card-btn');
+    const terminalBtn = document.getElementById('pay-terminal-btn');
     const cardForm = document.getElementById('card-payment-form');
+    const terminalForm = document.getElementById('terminal-payment-form');
 
-    // Update button styles
-    cashBtn.classList.toggle('border-green-500', method === 'cash');
-    cashBtn.classList.toggle('bg-green-500/10', method === 'cash');
-    cardBtn.classList.toggle('border-blue-500', method === 'card');
-    cardBtn.classList.toggle('bg-blue-500/10', method === 'card');
+    // Reset all button styles
+    cashBtn.classList.remove('border-green-500', 'bg-green-500/10');
+    cardBtn.classList.remove('border-blue-500', 'bg-blue-500/10');
+    terminalBtn.classList.remove('border-purple-500', 'bg-purple-500/10');
 
-    // Show/hide card form
+    // Update selected button style
+    if (method === 'cash') {
+        cashBtn.classList.add('border-green-500', 'bg-green-500/10');
+    } else if (method === 'card') {
+        cardBtn.classList.add('border-blue-500', 'bg-blue-500/10');
+    } else if (method === 'terminal') {
+        terminalBtn.classList.add('border-purple-500', 'bg-purple-500/10');
+    }
+
+    // Show/hide payment forms
+    cardForm.classList.add('hidden');
+    terminalForm.classList.add('hidden');
+
     if (method === 'card') {
         cardForm.classList.remove('hidden');
         initStripeElements();
-    } else {
-        cardForm.classList.add('hidden');
+    } else if (method === 'terminal') {
+        terminalForm.classList.remove('hidden');
     }
 }
 
@@ -2101,6 +2135,7 @@ async function completeOnboarding() {
 
     const completeBtn = document.getElementById('onboard-complete-btn');
     completeBtn.disabled = true;
+    let stripePaymentIntentId = null;
 
     try {
         // If card payment, process payment first
@@ -2112,7 +2147,13 @@ async function completeOnboarding() {
 
             // Process the card payment
             const paymentIntent = await processCardPayment();
+            stripePaymentIntentId = paymentIntent.id;
             console.log('Payment successful:', paymentIntent.id);
+        }
+
+        // If terminal payment, confirm staff collected via Stripe Terminal app
+        if (onboardingState.data.paymentMethod === 'terminal') {
+            completeBtn.textContent = 'Confirming payment...';
         }
 
         completeBtn.textContent = 'Registering...';
@@ -2128,7 +2169,8 @@ async function completeOnboarding() {
             document_type: onboardingState.data.documentType,
             plan_id: onboardingState.data.planId,
             payment_method: onboardingState.data.paymentMethod || 'none',
-            profile_photo: onboardingState.data.profilePhoto || null
+            profile_photo: onboardingState.data.profilePhoto || null,
+            stripe_payment_intent_id: stripePaymentIntentId
         };
 
         // Add document data

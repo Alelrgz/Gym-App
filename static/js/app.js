@@ -8794,6 +8794,10 @@ async function confirmBookAppointment() {
 
 let selectedTrainerForBooking = null;
 let availableTrainers = [];
+let appointmentCardElement = null;
+let appointmentPaymentMethod = null;
+let appointmentTrainerRate = null;
+let appointmentStripePaymentIntentId = null;
 
 window.openClientBookAppointmentModal = async function() {
     try {
@@ -8884,6 +8888,19 @@ window.openClientBookAppointmentModal = async function() {
         document.getElementById('client-book-duration').value = '60';
         document.getElementById('client-book-notes').value = '';
         selectedTrainerForBooking = null;
+        appointmentPaymentMethod = null;
+        appointmentTrainerRate = null;
+        appointmentStripePaymentIntentId = null;
+
+        // Reset payment section
+        const paymentSection = document.getElementById('appointment-payment-section');
+        const freeSection = document.getElementById('appointment-free-section');
+        if (paymentSection) paymentSection.classList.add('hidden');
+        if (freeSection) freeSection.classList.add('hidden');
+        const cardForm = document.getElementById('appointment-card-form');
+        const cashInfo = document.getElementById('appointment-cash-info');
+        if (cardForm) cardForm.classList.add('hidden');
+        if (cashInfo) cashInfo.classList.add('hidden');
 
         // Set min date to today
         const dateInput = document.getElementById('client-book-date');
@@ -8934,7 +8951,7 @@ function updateCollapsedTrainerView(trainerId, trainerName, trainerPicture) {
     }
 }
 
-function selectTrainerForBooking(trainerId, trainerName) {
+async function selectTrainerForBooking(trainerId, trainerName) {
     selectedTrainerForBooking = trainerId;
     document.getElementById('client-book-trainer').value = trainerId;
 
@@ -8965,13 +8982,140 @@ function selectTrainerForBooking(trainerId, trainerName) {
     document.getElementById('client-book-date').value = '';
     document.getElementById('client-book-time').innerHTML = '<option value="">Select time...</option>';
 
+    // Fetch trainer's session rate and show payment section
+    appointmentPaymentMethod = null;
+    appointmentTrainerRate = null;
+    appointmentStripePaymentIntentId = null;
+    try {
+        const rateRes = await fetch(`${apiBase}/api/client/trainers/${trainerId}/session-rate`, {
+            credentials: 'include'
+        });
+        if (rateRes.ok) {
+            const rateData = await rateRes.json();
+            appointmentTrainerRate = rateData.session_rate;
+        }
+    } catch (e) {
+        console.log('Could not fetch trainer rate:', e);
+    }
+
+    updateAppointmentPriceDisplay();
     showToast(`Selected ${trainerName}`);
+}
+
+function updateAppointmentPriceDisplay() {
+    const paymentSection = document.getElementById('appointment-payment-section');
+    const freeSection = document.getElementById('appointment-free-section');
+    const priceDisplay = document.getElementById('appointment-price-display');
+    const cardForm = document.getElementById('appointment-card-form');
+    const cashInfo = document.getElementById('appointment-cash-info');
+
+    // Reset payment method selection visuals
+    appointmentPaymentMethod = null;
+    if (cardForm) cardForm.classList.add('hidden');
+    if (cashInfo) cashInfo.classList.add('hidden');
+    const cardBtn = document.getElementById('appt-pay-card-btn');
+    const cashBtn = document.getElementById('appt-pay-cash-btn');
+    if (cardBtn) {
+        cardBtn.classList.remove('border-blue-500', 'bg-blue-500/20');
+        cardBtn.classList.add('border-white/20');
+    }
+    if (cashBtn) {
+        cashBtn.classList.remove('border-green-500', 'bg-green-500/20');
+        cashBtn.classList.add('border-white/20');
+    }
+
+    if (appointmentTrainerRate && appointmentTrainerRate > 0) {
+        const duration = parseInt(document.getElementById('client-book-duration').value) || 60;
+        const price = (appointmentTrainerRate * (duration / 60)).toFixed(2);
+
+        if (paymentSection) paymentSection.classList.remove('hidden');
+        if (freeSection) freeSection.classList.add('hidden');
+        if (priceDisplay) priceDisplay.textContent = `$${price}`;
+    } else {
+        if (paymentSection) paymentSection.classList.add('hidden');
+        if (freeSection) freeSection.classList.remove('hidden');
+    }
 }
 
 function clientTrainerSelected() {
     // This function is kept for compatibility but selection is now handled by selectTrainerForBooking
     const trainerId = document.getElementById('client-book-trainer').value;
     selectedTrainerForBooking = trainerId;
+}
+
+// Handle duration change - recalculate price
+window.appointmentDurationChanged = function() {
+    if (appointmentTrainerRate && appointmentTrainerRate > 0) {
+        updateAppointmentPriceDisplay();
+    }
+};
+
+// Select payment method for appointment
+window.selectAppointmentPayment = function(method) {
+    appointmentPaymentMethod = method;
+
+    const cardBtn = document.getElementById('appt-pay-card-btn');
+    const cashBtn = document.getElementById('appt-pay-cash-btn');
+    const cardForm = document.getElementById('appointment-card-form');
+    const cashInfo = document.getElementById('appointment-cash-info');
+
+    // Reset styles
+    cardBtn.classList.remove('border-blue-500', 'bg-blue-500/20');
+    cardBtn.classList.add('border-white/20');
+    cashBtn.classList.remove('border-green-500', 'bg-green-500/20');
+    cashBtn.classList.add('border-white/20');
+    cardForm.classList.add('hidden');
+    cashInfo.classList.add('hidden');
+
+    if (method === 'card') {
+        cardBtn.classList.remove('border-white/20');
+        cardBtn.classList.add('border-blue-500', 'bg-blue-500/20');
+        cardForm.classList.remove('hidden');
+        initAppointmentCardElement();
+    } else if (method === 'cash') {
+        cashBtn.classList.remove('border-white/20');
+        cashBtn.classList.add('border-green-500', 'bg-green-500/20');
+        cashInfo.classList.remove('hidden');
+    }
+};
+
+function initAppointmentCardElement() {
+    if (!stripeInstance) {
+        initStripe();
+    }
+    if (!stripeInstance) {
+        showToast('Stripe is not configured');
+        return;
+    }
+
+    // Only create a new element if we don't have one
+    if (!appointmentCardElement) {
+        const elements = stripeInstance.elements();
+        appointmentCardElement = elements.create('card', {
+            style: {
+                base: {
+                    color: '#ffffff',
+                    fontFamily: 'Inter, sans-serif',
+                    fontSize: '16px',
+                    '::placeholder': { color: '#6b7280' }
+                },
+                invalid: { color: '#f87171' }
+            },
+            hidePostalCode: true
+        });
+        appointmentCardElement.mount('#appointment-card-element');
+
+        appointmentCardElement.on('change', function(event) {
+            const errorsEl = document.getElementById('appointment-card-errors');
+            if (event.error) {
+                errorsEl.textContent = event.error.message;
+                errorsEl.classList.remove('hidden');
+            } else {
+                errorsEl.textContent = '';
+                errorsEl.classList.add('hidden');
+            }
+        });
+    }
 }
 
 async function clientDateSelected() {
@@ -9029,18 +9173,72 @@ async function confirmClientBookAppointment() {
         return;
     }
 
+    // Validate payment method if trainer has a rate
+    const hasPaidSession = appointmentTrainerRate && appointmentTrainerRate > 0;
+    if (hasPaidSession && !appointmentPaymentMethod) {
+        showToast('Please select a payment method');
+        return;
+    }
+
+    const bookBtn = document.getElementById('book-appointment-btn');
+    if (bookBtn) {
+        bookBtn.disabled = true;
+        bookBtn.textContent = 'Processing...';
+    }
+
     try {
+        // Process card payment first if card selected
+        appointmentStripePaymentIntentId = null;
+        if (hasPaidSession && appointmentPaymentMethod === 'card') {
+            if (!stripeInstance || !appointmentCardElement) {
+                showToast('Card payment not ready. Please try again.');
+                return;
+            }
+
+            // Create payment intent
+            const intentRes = await fetch(`${apiBase}/api/client/appointment-payment-intent`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    trainer_id: trainerId,
+                    duration: duration
+                })
+            });
+
+            if (!intentRes.ok) {
+                const err = await intentRes.json();
+                throw new Error(err.detail || 'Failed to create payment');
+            }
+
+            const intentData = await intentRes.json();
+
+            // Confirm card payment
+            const { paymentIntent, error } = await stripeInstance.confirmCardPayment(
+                intentData.client_secret,
+                { payment_method: { card: appointmentCardElement } }
+            );
+
+            if (error) {
+                throw new Error(error.message);
+            }
+
+            appointmentStripePaymentIntentId = paymentIntent.id;
+        }
+
+        // Book the appointment
         const res = await fetch(`${apiBase}/api/client/appointments`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify({
                 trainer_id: trainerId,
                 date: date,
                 start_time: time,
                 duration: duration,
-                notes: notes
+                notes: notes,
+                payment_method: hasPaidSession ? appointmentPaymentMethod : null,
+                stripe_payment_intent_id: appointmentStripePaymentIntentId
             })
         });
 
@@ -9052,10 +9250,10 @@ async function confirmClientBookAppointment() {
         const result = await res.json();
 
         // Get trainer name for toast
-        const trainerSelect = document.getElementById('client-book-trainer');
-        const trainerName = trainerSelect.options[trainerSelect.selectedIndex].text.split(' (')[0];
+        const trainer = availableTrainers.find(t => t.id === trainerId);
+        const trainerName = trainer ? trainer.name : 'trainer';
 
-        showToast(`Appointment booked with ${trainerName}! 📅`);
+        showToast(`Appointment booked with ${trainerName}!`);
         hideModal('client-book-appointment-modal');
 
         // Refresh calendar if open
@@ -9065,6 +9263,11 @@ async function confirmClientBookAppointment() {
     } catch (e) {
         console.error('Error booking appointment:', e);
         showToast('Failed to book appointment: ' + e.message);
+    } finally {
+        if (bookBtn) {
+            bookBtn.disabled = false;
+            bookBtn.textContent = 'Book Appointment';
+        }
     }
 }
 
@@ -9441,19 +9644,19 @@ window.adjustDuration = function(delta) {
 
 // Adjust capacity
 window.adjustCapacity = function(delta) {
-    const input = document.getElementById('course-max-capacity');
-    const display = document.getElementById('course-capacity-display');
+    const hidden = document.getElementById('course-max-capacity');
+    const visibleInput = document.getElementById('course-capacity-input');
     const unlimitedBtn = document.getElementById('unlimited-capacity-btn');
 
     // If currently unlimited, set to a starting value
-    if (input.value === '' || input.value === 'null') {
-        input.value = '20';
+    if (hidden.value === '' || hidden.value === 'null') {
+        hidden.value = '20';
     }
 
-    let val = parseInt(input.value) || 20;
+    let val = parseInt(hidden.value) || 20;
     val = Math.max(1, Math.min(500, val + delta));
-    input.value = val;
-    if (display) display.innerText = val;
+    hidden.value = val;
+    if (visibleInput) visibleInput.value = val;
 
     // Update unlimited button state
     if (unlimitedBtn) {
@@ -9462,26 +9665,40 @@ window.adjustCapacity = function(delta) {
     }
 };
 
+// Handle manual capacity typing
+window.onCapacityInput = function(el) {
+    const hidden = document.getElementById('course-max-capacity');
+    const unlimitedBtn = document.getElementById('unlimited-capacity-btn');
+    let val = parseInt(el.value);
+    if (isNaN(val) || val < 1) val = 1;
+    if (val > 500) val = 500;
+    hidden.value = val;
+    if (unlimitedBtn) {
+        unlimitedBtn.classList.remove('bg-green-500', 'text-white');
+        unlimitedBtn.classList.add('bg-white/10', 'text-white/60');
+    }
+};
+
 // Toggle unlimited capacity
 window.toggleUnlimitedCapacity = function() {
-    const input = document.getElementById('course-max-capacity');
-    const display = document.getElementById('course-capacity-display');
+    const hidden = document.getElementById('course-max-capacity');
+    const visibleInput = document.getElementById('course-capacity-input');
     const unlimitedBtn = document.getElementById('unlimited-capacity-btn');
 
-    const isUnlimited = input.value === '' || input.value === 'null';
+    const isUnlimited = hidden.value === '' || hidden.value === 'null';
 
     if (isUnlimited) {
         // Switch to limited
-        input.value = '20';
-        if (display) display.innerText = '20';
+        hidden.value = '20';
+        if (visibleInput) { visibleInput.value = '20'; visibleInput.disabled = false; }
         if (unlimitedBtn) {
             unlimitedBtn.classList.remove('bg-green-500', 'text-white');
             unlimitedBtn.classList.add('bg-white/10', 'text-white/60');
         }
     } else {
         // Switch to unlimited
-        input.value = '';
-        if (display) display.innerText = '∞';
+        hidden.value = '';
+        if (visibleInput) { visibleInput.value = '∞'; visibleInput.disabled = true; }
         if (unlimitedBtn) {
             unlimitedBtn.classList.remove('bg-white/10', 'text-white/60');
             unlimitedBtn.classList.add('bg-green-500', 'text-white');
@@ -9502,17 +9719,15 @@ window.toggleWaitlist = function() {
         input.value = 'false';
         toggle.classList.remove('bg-green-500');
         toggle.classList.add('bg-white/10');
-        dot.style.transform = 'translateX(0)';
-        dot.classList.remove('right-1');
-        dot.classList.add('left-1');
+        dot.style.right = 'auto';
+        dot.style.left = '4px';
     } else {
         // Switch to enabled
         input.value = 'true';
         toggle.classList.remove('bg-white/10');
         toggle.classList.add('bg-green-500');
-        dot.style.transform = 'translateX(20px)';
-        dot.classList.remove('left-1');
-        dot.classList.add('right-1');
+        dot.style.left = 'auto';
+        dot.style.right = '4px';
     }
 };
 
@@ -9832,15 +10047,15 @@ window.openCreateCourseModal = function() {
     document.getElementById('course-color').value = 'purple';
 
     // Reset capacity fields
-    const capacityInput = document.getElementById('course-max-capacity');
-    const capacityDisplay = document.getElementById('course-capacity-display');
+    const capacityHidden = document.getElementById('course-max-capacity');
+    const capacityVisible = document.getElementById('course-capacity-input');
     const unlimitedBtn = document.getElementById('unlimited-capacity-btn');
     const waitlistInput = document.getElementById('course-waitlist-enabled');
     const waitlistToggle = document.getElementById('waitlist-toggle');
     const waitlistDot = document.getElementById('waitlist-dot');
 
-    if (capacityInput) capacityInput.value = '20';
-    if (capacityDisplay) capacityDisplay.innerText = '20';
+    if (capacityHidden) capacityHidden.value = '20';
+    if (capacityVisible) { capacityVisible.value = '20'; capacityVisible.disabled = false; }
     if (unlimitedBtn) {
         unlimitedBtn.classList.remove('bg-green-500', 'text-white');
         unlimitedBtn.classList.add('bg-white/10', 'text-white/60');
@@ -9851,9 +10066,8 @@ window.openCreateCourseModal = function() {
         waitlistToggle.classList.add('bg-green-500');
     }
     if (waitlistDot) {
-        waitlistDot.classList.remove('left-1');
-        waitlistDot.classList.add('right-1');
-        waitlistDot.style.transform = 'translateX(20px)';
+        waitlistDot.style.left = 'auto';
+        waitlistDot.style.right = '4px';
     }
 
     resetCourseModal();
@@ -9958,24 +10172,24 @@ window.openEditCourse = async function(courseId) {
         }
 
         // Set capacity fields
-        const capacityInput = document.getElementById('course-max-capacity');
-        const capacityDisplay = document.getElementById('course-capacity-display');
+        const capacityHidden = document.getElementById('course-max-capacity');
+        const capacityVisible = document.getElementById('course-capacity-input');
         const unlimitedBtn = document.getElementById('unlimited-capacity-btn');
         const waitlistInput = document.getElementById('course-waitlist-enabled');
         const waitlistToggle = document.getElementById('waitlist-toggle');
         const waitlistDot = document.getElementById('waitlist-dot');
 
         if (course.max_capacity !== null && course.max_capacity !== undefined) {
-            if (capacityInput) capacityInput.value = course.max_capacity;
-            if (capacityDisplay) capacityDisplay.innerText = course.max_capacity;
+            if (capacityHidden) capacityHidden.value = course.max_capacity;
+            if (capacityVisible) { capacityVisible.value = course.max_capacity; capacityVisible.disabled = false; }
             if (unlimitedBtn) {
                 unlimitedBtn.classList.remove('bg-green-500', 'text-white');
                 unlimitedBtn.classList.add('bg-white/10', 'text-white/60');
             }
         } else {
             // Unlimited
-            if (capacityInput) capacityInput.value = '';
-            if (capacityDisplay) capacityDisplay.innerText = '∞';
+            if (capacityHidden) capacityHidden.value = '';
+            if (capacityVisible) { capacityVisible.value = '∞'; capacityVisible.disabled = true; }
             if (unlimitedBtn) {
                 unlimitedBtn.classList.remove('bg-white/10', 'text-white/60');
                 unlimitedBtn.classList.add('bg-green-500', 'text-white');
@@ -9996,13 +10210,11 @@ window.openEditCourse = async function(courseId) {
         }
         if (waitlistDot) {
             if (waitlistEnabled) {
-                waitlistDot.classList.remove('left-1');
-                waitlistDot.classList.add('right-1');
-                waitlistDot.style.transform = 'translateX(20px)';
+                waitlistDot.style.left = 'auto';
+                waitlistDot.style.right = '4px';
             } else {
-                waitlistDot.classList.remove('right-1');
-                waitlistDot.classList.add('left-1');
-                waitlistDot.style.transform = 'translateX(0)';
+                waitlistDot.style.right = 'auto';
+                waitlistDot.style.left = '4px';
             }
         }
 
@@ -11826,15 +12038,20 @@ window.processSubscription = async function() {
             throw new Error(error.message);
         }
 
-        // Send to backend
+        // Send to backend (include coupon if applied)
+        const subscribePayload = {
+            plan_id: selectedPlanId,
+            payment_method_id: paymentMethod.id
+        };
+        if (appliedOffer && appliedOffer.coupon_code) {
+            subscribePayload.coupon_code = appliedOffer.coupon_code;
+        }
+
         const res = await fetch(`${apiBase}/api/client/subscribe`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({
-                plan_id: selectedPlanId,
-                payment_method_id: paymentMethod.id
-            })
+            body: JSON.stringify(subscribePayload)
         });
 
         const data = await res.json();

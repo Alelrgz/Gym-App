@@ -621,6 +621,14 @@
             </div>
         </div>
 
+        <!-- Session Rate -->
+        <div class="mt-4 bg-white/5 rounded-xl p-3">
+            <label class="text-sm font-bold text-white mb-2 block">Hourly Session Rate ($)</label>
+            <p class="text-[10px] text-gray-400 mb-2">Clients will see this price when booking. Leave empty for free sessions.</p>
+            <input type="number" id="trainer-session-rate" min="0" step="0.01" placeholder="e.g. 50.00"
+                class="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm">
+        </div>
+
         <button onclick="saveAvailability()"
             class="w-full mt-4 py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition">
             Save Availability
@@ -1026,6 +1034,18 @@ async function loadAvailability() {
             }
         });
     } catch (e) { console.error('Error loading availability:', e); }
+
+    // Load session rate
+    try {
+        const rateRes = await fetch('/api/trainer/session-rate');
+        if (rateRes.ok) {
+            const rateData = await rateRes.json();
+            const rateInput = document.getElementById('trainer-session-rate');
+            if (rateInput && rateData.session_rate != null) {
+                rateInput.value = rateData.session_rate;
+            }
+        }
+    } catch (e) { console.error('Error loading session rate:', e); }
 }
 
 window.saveAvailability = async function() {
@@ -1048,9 +1068,19 @@ window.saveAvailability = async function() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ availability })
         });
+
+        // Save session rate
+        const rateInput = document.getElementById('trainer-session-rate');
+        const rateValue = rateInput.value ? parseFloat(rateInput.value) : null;
+        await fetch('/api/trainer/session-rate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ session_rate: rateValue })
+        });
+
         if (res.ok) {
             closeAvailabilityModal();
-            alert('Availability saved!');
+            alert('Availability & rate saved!');
         }
     } catch (e) { console.error('Error saving availability:', e); }
 };

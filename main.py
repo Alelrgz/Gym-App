@@ -365,6 +365,61 @@ def run_migrations(engine):
                 except Exception as e:
                     logger.debug(f"Column max_capacity may already exist: {e}")
 
+    # Add stripe_coupon_id to plan_offers table
+    if 'plan_offers' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('plan_offers')]
+        if 'stripe_coupon_id' not in columns:
+            with engine.connect() as conn:
+                try:
+                    conn.execute(text("ALTER TABLE plan_offers ADD COLUMN stripe_coupon_id TEXT"))
+                    conn.commit()
+                    logger.info("Added column stripe_coupon_id to plan_offers table")
+                except Exception as e:
+                    logger.debug(f"Column stripe_coupon_id may already exist: {e}")
+
+    # Add stripe_payment_intent_id to client_subscriptions table
+    if 'client_subscriptions' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('client_subscriptions')]
+        if 'stripe_payment_intent_id' not in columns:
+            with engine.connect() as conn:
+                try:
+                    conn.execute(text("ALTER TABLE client_subscriptions ADD COLUMN stripe_payment_intent_id TEXT"))
+                    conn.commit()
+                    logger.info("Added column stripe_payment_intent_id to client_subscriptions table")
+                except Exception as e:
+                    logger.debug(f"Column stripe_payment_intent_id may already exist: {e}")
+
+    # Add session_rate to users table
+    if 'users' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('users')]
+        if 'session_rate' not in columns:
+            with engine.connect() as conn:
+                try:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN session_rate REAL"))
+                    conn.commit()
+                    logger.info("Added column session_rate to users table")
+                except Exception as e:
+                    logger.debug(f"Column session_rate may already exist: {e}")
+
+    # Add payment columns to appointments table
+    if 'appointments' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('appointments')]
+        appt_new_cols = {
+            'price': 'REAL',
+            'payment_method': 'TEXT',
+            'payment_status': "TEXT DEFAULT 'free'",
+            'stripe_payment_intent_id': 'TEXT'
+        }
+        for col_name, col_type in appt_new_cols.items():
+            if col_name not in columns:
+                with engine.connect() as conn:
+                    try:
+                        conn.execute(text(f"ALTER TABLE appointments ADD COLUMN {col_name} {col_type}"))
+                        conn.commit()
+                        logger.info(f"Added column {col_name} to appointments table")
+                    except Exception as e:
+                        logger.debug(f"Column {col_name} may already exist: {e}")
+
 def background_trigger_checker():
     """Background thread that periodically checks for automated message triggers."""
     import time

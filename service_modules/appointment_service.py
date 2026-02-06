@@ -57,7 +57,8 @@ class AppointmentService:
                     "profile_picture": trainer.profile_picture,
                     "bio": trainer.bio,
                     "specialties": specialties_list,
-                    "has_availability": availability_count > 0
+                    "has_availability": availability_count > 0,
+                    "session_rate": getattr(trainer, 'session_rate', None)
                 })
 
             logger.info(f"Found {len(trainer_list)} trainers for client {client_id} in gym {profile.gym_id}")
@@ -280,6 +281,23 @@ class AppointmentService:
             # Convert to 12-hour format for trainer calendar
             time_12hr = start_datetime.strftime("%I:%M %p")
 
+            # Calculate session price
+            session_price = None
+            trainer_rate = getattr(trainer, 'session_rate', None)
+            if trainer_rate and trainer_rate > 0:
+                session_price = round(trainer_rate * (request.duration / 60), 2)
+
+            # Determine payment status
+            payment_method = getattr(request, 'payment_method', None)
+            payment_status = "free"
+            if session_price and session_price > 0:
+                if payment_method == "card":
+                    payment_status = "paid"  # Card already processed on frontend
+                elif payment_method == "cash":
+                    payment_status = "pending"  # Cash to be collected at session
+                else:
+                    payment_status = "pending"
+
             # Create appointment record
             appointment_id = str(uuid.uuid4())
             session_type = request.session_type or "general"
@@ -293,7 +311,11 @@ class AppointmentService:
                 duration=request.duration,
                 session_type=session_type,
                 notes=request.notes,
-                status="scheduled"
+                status="scheduled",
+                price=session_price,
+                payment_method=payment_method,
+                payment_status=payment_status,
+                stripe_payment_intent_id=getattr(request, 'stripe_payment_intent_id', None)
             )
 
             db.add(appointment)
@@ -349,16 +371,35 @@ class AppointmentService:
             )
             db.add(notification)
 
+            # Create payment record if paid by card
+            if payment_method == "card" and session_price and session_price > 0:
+                from models_orm import PaymentORM
+                payment_record = PaymentORM(
+                    id=str(uuid.uuid4()),
+                    client_id=client_id,
+                    gym_id=trainer.gym_owner_id,
+                    amount=session_price,
+                    currency="usd",
+                    status="succeeded",
+                    stripe_payment_intent_id=getattr(request, 'stripe_payment_intent_id', None),
+                    description=f"1-on-1 {session_label} Session with {trainer.username}",
+                    payment_method="card",
+                    paid_at=datetime.utcnow().isoformat(),
+                    created_at=datetime.utcnow().isoformat()
+                )
+                db.add(payment_record)
+
             db.commit()
             db.refresh(appointment)
 
-            logger.info(f"Appointment booked: {appointment_id} - Client: {client_id}, Trainer: {request.trainer_id}")
-            logger.info(f"Added to trainer calendar - Entry ID: {trainer_calendar_entry.id}")
-            logger.info(f"Notification sent to trainer: {request.trainer_id}")
+            logger.info(f"Appointment booked: {appointment_id} - Client: {client_id}, Trainer: {request.trainer_id}, Price: {session_price}")
 
             return {
                 "status": "success",
                 "appointment_id": appointment_id,
+                "price": session_price,
+                "payment_method": payment_method,
+                "payment_status": payment_status,
                 "message": "Appointment booked successfully"
             }
 
