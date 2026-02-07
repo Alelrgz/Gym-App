@@ -28,7 +28,7 @@ services:
     name: gym-db
     plan: free
     bgUser: admin
-    bgPassword: password
+    bgPassword: "DayOfDevelopment:07-02-2026"
     envVars:
       - key: POSTGRES_USER
         value: gym_user
