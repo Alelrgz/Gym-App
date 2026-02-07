@@ -19,6 +19,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@ericblade/quagga2@1.8.4/dist/quagga.min.js"></script>
     <!-- Stripe.js for payment processing -->
     <script src="https://js.stripe.com/v3/"></script>
+    <!-- Stripe Terminal for POS payments -->
+    <script src="https://js.stripe.com/terminal/v1/"></script>
     <!-- Preload the first video for instant playback -->
     <link rel="preload" href="/static/videos/InclineDBPress.mp4?v=1" as="video" type="video/mp4">
     <link rel="stylesheet" href="/static/css/style.css?v={{ cache_buster }}">
@@ -264,8 +266,6 @@
         let globalSelectedTime = null;
         let globalBookingTrainerRate = null;
         let globalBookingPaymentMethod = null;
-        let globalBookingCardElement = null;
-        let globalBookingStripePaymentIntentId = null;
 
         async function loadTrainerSessionTypes() {
             const sessionTypeSelect = document.getElementById('appointment-session-type');
@@ -478,27 +478,14 @@
                 globalBookingPaymentMethod = method;
                 const cardBtn = document.getElementById('booking-pay-card-btn');
                 const cashBtn = document.getElementById('booking-pay-cash-btn');
-                const cardForm = document.getElementById('booking-card-form');
                 const cashInfo = document.getElementById('booking-cash-info');
 
                 cardBtn.classList.remove('border-blue-500', 'bg-blue-500/20'); cardBtn.classList.add('border-white/20');
                 cashBtn.classList.remove('border-green-500', 'bg-green-500/20'); cashBtn.classList.add('border-white/20');
-                cardForm.classList.add('hidden');
                 cashInfo.classList.add('hidden');
 
                 if (method === 'card') {
                     cardBtn.classList.remove('border-white/20'); cardBtn.classList.add('border-blue-500', 'bg-blue-500/20');
-                    cardForm.classList.remove('hidden');
-                    // Init card element
-                    if (!window.stripeInstance && typeof Stripe !== 'undefined') {
-                        const { stripePublishableKey } = window.APP_CONFIG || {};
-                        if (stripePublishableKey) window.stripeInstance = Stripe(stripePublishableKey);
-                    }
-                    if (window.stripeInstance) {
-                        if (typeof initBookingCardElement === 'function') {
-                            initBookingCardElement();
-                        }
-                    }
                 } else if (method === 'cash') {
                     cashBtn.classList.remove('border-white/20'); cashBtn.classList.add('border-green-500', 'bg-green-500/20');
                     cashInfo.classList.remove('hidden');
@@ -521,18 +508,15 @@
                 btn.disabled = true; btn.textContent = 'Processing...';
 
                 try {
-                    globalBookingStripePaymentIntentId = null;
                     if (hasPaid && globalBookingPaymentMethod === 'card') {
-                        if (!window.stripeInstance || !bookingCardElement) { showToast('Card not ready', 'error'); return; }
-                        const intentRes = await fetch('/api/client/appointment-payment-intent', {
+                        const res = await fetch('/api/client/appointment-checkout-session', {
                             method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-                            body: JSON.stringify({ trainer_id: trainerId, duration })
+                            body: JSON.stringify({ trainer_id: trainerId, date: globalSelectedDate, start_time: globalSelectedTime, duration, notes })
                         });
-                        if (!intentRes.ok) { const err = await intentRes.json(); throw new Error(err.detail || 'Payment failed'); }
-                        const intentData = await intentRes.json();
-                        const { paymentIntent, error } = await window.stripeInstance.confirmCardPayment(intentData.client_secret, { payment_method: { card: bookingCardElement } });
-                        if (error) throw new Error(error.message);
-                        globalBookingStripePaymentIntentId = paymentIntent.id;
+                        if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Failed to create checkout'); }
+                        const { checkout_url } = await res.json();
+                        window.location.href = checkout_url;
+                        return;
                     }
 
                     const response = await fetch('/api/client/appointments', {
@@ -542,7 +526,7 @@
                             trainer_id: trainerId, date: globalSelectedDate, start_time: globalSelectedTime,
                             duration, notes,
                             payment_method: hasPaid ? globalBookingPaymentMethod : null,
-                            stripe_payment_intent_id: globalBookingStripePaymentIntentId
+                            stripe_payment_intent_id: null
                         })
                     });
                     if (!response.ok) { const error = await response.json(); throw new Error(error.detail || 'Failed to book'); }

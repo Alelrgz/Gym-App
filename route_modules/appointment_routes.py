@@ -1,7 +1,8 @@
 """
 Appointment Routes - API endpoints for trainer availability and 1-on-1 booking
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import RedirectResponse
 from auth import get_current_user
 from service_modules.appointment_service import get_appointment_service, AppointmentService
 from models import (
@@ -9,7 +10,7 @@ from models import (
     CancelAppointmentRequest
 )
 from database import get_db_session
-from models_orm import UserORM
+from models_orm import UserORM, AppointmentORM
 
 router = APIRouter()
 
@@ -338,3 +339,137 @@ async def create_appointment_payment_intent(
         raise HTTPException(status_code=400, detail=f"Payment setup failed: {str(e)}")
     finally:
         db.close()
+
+
+@router.post("/api/client/appointment-checkout-session")
+async def create_appointment_checkout_session(
+    data: dict,
+    request: Request,
+    user = Depends(get_current_user)
+):
+    """Create a Stripe Checkout Session for a 1-on-1 session booking."""
+    if user.role != "client":
+        raise HTTPException(status_code=403, detail="Only clients can create appointment payments")
+
+    import stripe
+    import os
+
+    stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+    if not stripe.api_key or stripe.api_key.startswith("your_"):
+        raise HTTPException(status_code=400, detail="Stripe is not configured")
+
+    trainer_id = data.get("trainer_id")
+    duration = data.get("duration", 60)
+    date = data.get("date")
+    start_time = data.get("start_time")
+    notes = data.get("notes", "")
+
+    if not trainer_id or not date or not start_time:
+        raise HTTPException(status_code=400, detail="trainer_id, date, and start_time are required")
+
+    db = get_db_session()
+    try:
+        trainer = db.query(UserORM).filter(
+            UserORM.id == trainer_id,
+            UserORM.role == "trainer"
+        ).first()
+
+        if not trainer:
+            raise HTTPException(status_code=404, detail="Trainer not found")
+
+        session_rate = getattr(trainer, 'session_rate', None)
+        if not session_rate or session_rate <= 0:
+            raise HTTPException(status_code=400, detail="Trainer has no session rate configured")
+
+        price = round(session_rate * (duration / 60), 2)
+        amount_cents = int(price * 100)
+        if amount_cents < 50:
+            amount_cents = 50
+
+        base_url = str(request.base_url).rstrip("/")
+        success_url = f"{base_url}/api/client/appointment-checkout-success?session_id={{CHECKOUT_SESSION_ID}}"
+        cancel_url = f"{base_url}/?role=client&booking_canceled=true"
+
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            mode="payment",
+            line_items=[{
+                "price_data": {
+                    "currency": "usd",
+                    "product_data": {
+                        "name": f"1-on-1 Session with {trainer.username} ({duration} min)",
+                    },
+                    "unit_amount": amount_cents,
+                },
+                "quantity": 1,
+            }],
+            metadata={
+                "type": "appointment",
+                "client_id": user.id,
+                "trainer_id": trainer_id,
+                "date": date,
+                "start_time": start_time,
+                "duration": str(duration),
+                "notes": (notes or "")[:500],
+                "trainer_name": trainer.username,
+            },
+            success_url=success_url,
+            cancel_url=cancel_url,
+        )
+
+        return {"checkout_url": checkout_session.url}
+
+    except stripe.StripeError as e:
+        raise HTTPException(status_code=400, detail=f"Payment setup failed: {str(e)}")
+    finally:
+        db.close()
+
+
+@router.get("/api/client/appointment-checkout-success")
+async def appointment_checkout_success(
+    session_id: str,
+    service: AppointmentService = Depends(get_appointment_service)
+):
+    """Handle redirect from Stripe Checkout — create the appointment."""
+    import stripe
+    import os
+
+    stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+
+    try:
+        checkout_session = stripe.checkout.Session.retrieve(session_id)
+    except stripe.StripeError:
+        return RedirectResponse(url="/?role=client&booking_error=payment_verification_failed")
+
+    if checkout_session.payment_status != "paid":
+        return RedirectResponse(url="/?role=client&booking_error=payment_not_completed")
+
+    meta = checkout_session.metadata
+
+    # Idempotency: check if appointment already created for this payment
+    db = get_db_session()
+    try:
+        existing = db.query(AppointmentORM).filter(
+            AppointmentORM.stripe_payment_intent_id == checkout_session.payment_intent
+        ).first()
+        if existing:
+            return RedirectResponse(url="/?role=client&booking_success=true")
+    finally:
+        db.close()
+
+    booking_request = BookAppointmentRequest(
+        trainer_id=meta.get("trainer_id"),
+        date=meta.get("date"),
+        start_time=meta.get("start_time"),
+        duration=int(meta.get("duration", 60)),
+        notes=meta.get("notes") or None,
+        payment_method="card",
+        stripe_payment_intent_id=checkout_session.payment_intent,
+    )
+
+    try:
+        service.book_appointment(meta.get("client_id"), booking_request)
+    except HTTPException as e:
+        return RedirectResponse(url=f"/?role=client&booking_error={e.detail}")
+
+    return RedirectResponse(url="/?role=client&booking_success=true")

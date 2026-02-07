@@ -671,18 +671,21 @@
                     <p class="text-xs text-gray-500">Test card: 4242 4242 4242 4242, any future date, any CVC</p>
                 </div>
 
-                <!-- Terminal/Tap to Pay confirmation (shown when terminal selected) -->
+                <!-- Terminal/Tap to Pay (shown when terminal selected) -->
                 <div id="terminal-payment-form" class="hidden">
                     <div class="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 text-center">
                         <span class="text-3xl block mb-2">📱</span>
                         <p class="text-purple-400 font-semibold mb-1">Tap to Pay</p>
-                        <p class="text-xs text-gray-400 mb-3">Collect payment using Stripe Terminal on your phone, then confirm below</p>
-                        <div class="flex items-center justify-center gap-2 text-xs text-gray-500">
-                            <span>1. Open Stripe Terminal app</span>
-                            <span>→</span>
-                            <span>2. Collect payment</span>
-                            <span>→</span>
-                            <span>3. Confirm here</span>
+                        <div id="terminal-status" class="mt-2">
+                            <p class="text-xs text-gray-400">Connecting to reader...</p>
+                            <div class="animate-spin text-lg inline-block mt-1">⏳</div>
+                        </div>
+                        <div id="terminal-ready" class="hidden mt-2">
+                            <p class="text-xs text-green-400 font-semibold">Reader connected (simulated)</p>
+                            <p class="text-xs text-gray-500 mt-1">Payment will be collected when you complete registration</p>
+                        </div>
+                        <div id="terminal-error" class="hidden mt-2">
+                            <p class="text-xs text-red-400" id="terminal-error-msg">Failed to connect reader</p>
                         </div>
                     </div>
                 </div>
@@ -1776,6 +1779,86 @@ function selectPaymentMethod(method) {
         initStripeElements();
     } else if (method === 'terminal') {
         terminalForm.classList.remove('hidden');
+        initStripeTerminal();
+    }
+}
+
+// --- STRIPE TERMINAL (Tap to Pay) ---
+let stripeTerminal = null;
+let terminalConnectedReader = null;
+
+async function initStripeTerminal() {
+    // Only initialize once
+    if (stripeTerminal) {
+        return;
+    }
+
+    const statusEl = document.getElementById('terminal-status');
+    const readyEl = document.getElementById('terminal-ready');
+    const errorEl = document.getElementById('terminal-error');
+    const errorMsg = document.getElementById('terminal-error-msg');
+
+    statusEl.classList.remove('hidden');
+    readyEl.classList.add('hidden');
+    errorEl.classList.add('hidden');
+
+    try {
+        if (typeof StripeTerminal === 'undefined') {
+            throw new Error('Stripe Terminal SDK not loaded');
+        }
+
+        stripeTerminal = StripeTerminal.create({
+            onFetchConnectionToken: async () => {
+                const res = await fetch('/api/staff/terminal/connection-token', {
+                    method: 'POST',
+                    credentials: 'include'
+                });
+                if (!res.ok) {
+                    throw new Error('Failed to fetch connection token');
+                }
+                const data = await res.json();
+                return data.secret;
+            },
+            onUnexpectedReaderDisconnect: () => {
+                showToast('Reader disconnected', 'error');
+                terminalConnectedReader = null;
+                statusEl.classList.add('hidden');
+                readyEl.classList.add('hidden');
+                errorEl.classList.remove('hidden');
+                errorMsg.textContent = 'Reader disconnected. Select Tap to Pay again.';
+            }
+        });
+
+        // Discover simulated reader for testing
+        const discoverResult = await stripeTerminal.discoverReaders({
+            simulated: true
+        });
+
+        if (discoverResult.error) {
+            throw new Error(discoverResult.error.message);
+        }
+
+        if (discoverResult.discoveredReaders.length === 0) {
+            throw new Error('No readers found');
+        }
+
+        // Connect to the first discovered reader
+        const connectResult = await stripeTerminal.connectReader(discoverResult.discoveredReaders[0]);
+
+        if (connectResult.error) {
+            throw new Error(connectResult.error.message);
+        }
+
+        terminalConnectedReader = connectResult.reader;
+        console.log('Connected to reader:', terminalConnectedReader.label);
+
+        statusEl.classList.add('hidden');
+        readyEl.classList.remove('hidden');
+    } catch (e) {
+        console.error('Terminal init error:', e);
+        statusEl.classList.add('hidden');
+        errorEl.classList.remove('hidden');
+        errorMsg.textContent = e.message || 'Failed to connect reader';
     }
 }
 
@@ -2151,9 +2234,54 @@ async function completeOnboarding() {
             console.log('Payment successful:', paymentIntent.id);
         }
 
-        // If terminal payment, confirm staff collected via Stripe Terminal app
+        // If terminal payment, collect via connected reader
         if (onboardingState.data.paymentMethod === 'terminal') {
-            completeBtn.textContent = 'Confirming payment...';
+            if (!stripeTerminal || !terminalConnectedReader) {
+                showToast('Terminal reader not connected. Please reconnect.', 'error');
+                completeBtn.disabled = false;
+                completeBtn.textContent = 'Complete Registration';
+                return;
+            }
+
+            completeBtn.textContent = 'Creating payment...';
+
+            // Create PaymentIntent with terminal flag
+            const intentRes = await fetch('/api/staff/create-payment-intent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    plan_id: onboardingState.data.planId,
+                    client_name: onboardingState.data.name,
+                    terminal: true
+                })
+            });
+
+            if (!intentRes.ok) {
+                const err = await intentRes.json();
+                throw new Error(err.detail || 'Failed to create terminal payment');
+            }
+
+            const intentData = await intentRes.json();
+
+            completeBtn.textContent = 'Collecting payment...';
+
+            // Collect payment from the terminal reader
+            const collectResult = await stripeTerminal.collectPaymentMethod(intentData.client_secret);
+            if (collectResult.error) {
+                throw new Error(collectResult.error.message);
+            }
+
+            completeBtn.textContent = 'Processing payment...';
+
+            // Process the payment
+            const processResult = await stripeTerminal.processPayment(collectResult.paymentIntent);
+            if (processResult.error) {
+                throw new Error(processResult.error.message);
+            }
+
+            stripePaymentIntentId = processResult.paymentIntent.id;
+            console.log('Terminal payment successful:', stripePaymentIntentId);
         }
 
         completeBtn.textContent = 'Registering...';

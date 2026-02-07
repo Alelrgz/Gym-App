@@ -3683,8 +3683,6 @@ async function loadAppointments() {
 
 let bookingTrainerRate = null;
 let bookingPaymentMethod = null;
-let bookingCardElement = null;
-let bookingStripePaymentIntentId = null;
 
 window.openBookingModal = async function() {
     if (!selectedTrainerId) {
@@ -3900,72 +3898,22 @@ window.selectBookingPayment = function(method) {
     bookingPaymentMethod = method;
     const cardBtn = document.getElementById('booking-pay-card-btn');
     const cashBtn = document.getElementById('booking-pay-cash-btn');
-    const cardForm = document.getElementById('booking-card-form');
     const cashInfo = document.getElementById('booking-cash-info');
 
     cardBtn.classList.remove('border-blue-500', 'bg-blue-500/20');
     cardBtn.classList.add('border-white/20');
     cashBtn.classList.remove('border-green-500', 'bg-green-500/20');
     cashBtn.classList.add('border-white/20');
-    cardForm.classList.add('hidden');
     cashInfo.classList.add('hidden');
 
     if (method === 'card') {
         cardBtn.classList.remove('border-white/20');
         cardBtn.classList.add('border-blue-500', 'bg-blue-500/20');
-        cardForm.classList.remove('hidden');
-        initBookingCardElement();
     } else if (method === 'cash') {
         cashBtn.classList.remove('border-white/20');
         cashBtn.classList.add('border-green-500', 'bg-green-500/20');
         cashInfo.classList.remove('hidden');
     }
-};
-
-window.initBookingCardElement = function() {
-    if (!window.stripeInstance && typeof initStripe === 'function') {
-        initStripe();
-    }
-    if (!window.stripeInstance && typeof Stripe !== 'undefined') {
-        const { stripePublishableKey } = window.APP_CONFIG || {};
-        if (stripePublishableKey) window.stripeInstance = Stripe(stripePublishableKey);
-    }
-    if (!window.stripeInstance) {
-        showToast('Stripe is not configured', 'error');
-        return;
-    }
-
-    // Always destroy and recreate fresh (matches subscription card pattern)
-    if (bookingCardElement) {
-        bookingCardElement.destroy();
-        bookingCardElement = null;
-    }
-
-    const elements = window.stripeInstance.elements();
-    bookingCardElement = elements.create('card', {
-        style: {
-            base: {
-                color: '#ffffff',
-                fontFamily: 'Inter, sans-serif',
-                fontSize: '16px',
-                '::placeholder': { color: '#6b7280' }
-            },
-            invalid: { color: '#f87171' }
-        },
-        hidePostalCode: true
-    });
-    bookingCardElement.mount('#booking-card-element');
-
-    bookingCardElement.on('change', function(event) {
-        const errorsEl = document.getElementById('booking-card-errors');
-        if (event.error) {
-            errorsEl.textContent = event.error.message;
-            errorsEl.classList.remove('hidden');
-        } else {
-            errorsEl.textContent = '';
-            errorsEl.classList.add('hidden');
-        }
-    });
 };
 
 window.confirmBooking = async function() {
@@ -3988,37 +3936,32 @@ window.confirmBooking = async function() {
     confirmBtn.textContent = 'Processing...';
 
     try {
-        // Process card payment first if card selected
-        bookingStripePaymentIntentId = null;
         if (hasPaidSession && bookingPaymentMethod === 'card') {
-            if (!window.stripeInstance || !bookingCardElement) {
-                showToast('Card payment not ready', 'error');
-                return;
-            }
-
-            const intentRes = await fetch('/api/client/appointment-payment-intent', {
+            // Redirect to Stripe Checkout
+            const res = await fetch('/api/client/appointment-checkout-session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
-                body: JSON.stringify({ trainer_id: selectedTrainerId, duration: duration })
+                body: JSON.stringify({
+                    trainer_id: selectedTrainerId,
+                    date: selectedDate,
+                    start_time: selectedTime,
+                    duration: duration,
+                    notes: notes,
+                })
             });
 
-            if (!intentRes.ok) {
-                const err = await intentRes.json();
-                throw new Error(err.detail || 'Failed to create payment');
+            if (!res.ok) {
+                const err = await res.json();
+                throw new Error(err.detail || 'Failed to create checkout session');
             }
 
-            const intentData = await intentRes.json();
-
-            const { paymentIntent, error } = await window.stripeInstance.confirmCardPayment(
-                intentData.client_secret,
-                { payment_method: { card: bookingCardElement } }
-            );
-
-            if (error) throw new Error(error.message);
-            bookingStripePaymentIntentId = paymentIntent.id;
+            const { checkout_url } = await res.json();
+            window.location.href = checkout_url;
+            return;
         }
 
+        // Cash or free booking
         const response = await fetch('/api/client/appointments', {
             method: 'POST',
             credentials: 'include',
@@ -4030,7 +3973,7 @@ window.confirmBooking = async function() {
                 duration: duration,
                 notes: notes,
                 payment_method: hasPaidSession ? bookingPaymentMethod : null,
-                stripe_payment_intent_id: bookingStripePaymentIntentId
+                stripe_payment_intent_id: null
             })
         });
 
@@ -4507,6 +4450,30 @@ async function uploadProfilePicture(input) {
         input.value = '';
     }
 }
+
+// Check for booking redirect results (from Stripe Checkout)
+document.addEventListener('DOMContentLoaded', function() {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('booking_success') === 'true') {
+        showToast('Appointment booked successfully!', 'success');
+        const url = new URL(window.location);
+        url.searchParams.delete('booking_success');
+        window.history.replaceState({}, '', url);
+        if (typeof loadAppointments === 'function') loadAppointments();
+    }
+    if (params.get('booking_error')) {
+        showToast('Booking failed: ' + params.get('booking_error'), 'error');
+        const url = new URL(window.location);
+        url.searchParams.delete('booking_error');
+        window.history.replaceState({}, '', url);
+    }
+    if (params.get('booking_canceled') === 'true') {
+        showToast('Payment was canceled', 'error');
+        const url = new URL(window.location);
+        url.searchParams.delete('booking_canceled');
+        window.history.replaceState({}, '', url);
+    }
+});
 
 // Load profile picture on page load
 document.addEventListener('DOMContentLoaded', () => {

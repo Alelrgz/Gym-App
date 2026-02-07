@@ -975,13 +975,35 @@ async def onboard_new_client(
         raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
 
+@router.post("/terminal/connection-token")
+async def create_terminal_connection_token(
+    user: UserORM = Depends(get_current_user)
+):
+    """Create a Stripe Terminal connection token for POS readers."""
+    if user.role != "staff":
+        raise HTTPException(status_code=403, detail="Staff access only")
+
+    import stripe
+    import os
+
+    stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+    if not stripe.api_key or stripe.api_key.startswith("your_"):
+        raise HTTPException(status_code=400, detail="Stripe is not configured")
+
+    try:
+        connection_token = stripe.terminal.ConnectionToken.create()
+        return {"secret": connection_token.secret}
+    except stripe.StripeError as e:
+        raise HTTPException(status_code=400, detail=f"Failed to create connection token: {str(e)}")
+
+
 @router.post("/create-payment-intent")
 async def create_onboarding_payment_intent(
     data: dict,
     user: UserORM = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create a Stripe PaymentIntent for onboarding card payment."""
+    """Create a Stripe PaymentIntent for onboarding card/terminal payment."""
     if user.role != "staff":
         raise HTTPException(status_code=403, detail="Staff access only")
 
@@ -995,6 +1017,7 @@ async def create_onboarding_payment_intent(
     plan_id = data.get("plan_id")
     client_name = data.get("client_name", "New Client")
     coupon_code = data.get("coupon_code")
+    is_terminal = data.get("terminal", False)
 
     if not plan_id:
         raise HTTPException(status_code=400, detail="plan_id is required")
@@ -1032,11 +1055,11 @@ async def create_onboarding_payment_intent(
             # Stripe minimum is 50 cents
             amount_cents = 50
 
-        # Create PaymentIntent
-        intent = stripe.PaymentIntent.create(
-            amount=amount_cents,
-            currency=plan.currency.lower() if plan.currency else "eur",
-            metadata={
+        # Create PaymentIntent (with terminal-specific params if POS)
+        intent_params = {
+            "amount": amount_cents,
+            "currency": plan.currency.lower() if plan.currency else "eur",
+            "metadata": {
                 "gym_id": user.gym_owner_id,
                 "plan_id": plan_id,
                 "plan_name": plan.name,
@@ -1045,8 +1068,14 @@ async def create_onboarding_payment_intent(
                 "coupon_code": coupon_code or "",
                 "discount_applied": discount_applied or ""
             },
-            description=f"Gym membership: {plan.name} for {client_name}"
-        )
+            "description": f"Gym membership: {plan.name} for {client_name}"
+        }
+
+        if is_terminal:
+            intent_params["payment_method_types"] = ["card_present"]
+            intent_params["capture_method"] = "automatic"
+
+        intent = stripe.PaymentIntent.create(**intent_params)
 
         logger.info(f"Created PaymentIntent {intent.id} for onboarding, amount: {amount_cents}")
 

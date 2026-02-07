@@ -8794,10 +8794,8 @@ async function confirmBookAppointment() {
 
 let selectedTrainerForBooking = null;
 let availableTrainers = [];
-let appointmentCardElement = null;
 let appointmentPaymentMethod = null;
 let appointmentTrainerRate = null;
-let appointmentStripePaymentIntentId = null;
 
 window.openClientBookAppointmentModal = async function() {
     try {
@@ -9056,7 +9054,6 @@ window.selectAppointmentPayment = function(method) {
 
     const cardBtn = document.getElementById('appt-pay-card-btn');
     const cashBtn = document.getElementById('appt-pay-cash-btn');
-    const cardForm = document.getElementById('appointment-card-form');
     const cashInfo = document.getElementById('appointment-cash-info');
 
     // Reset styles
@@ -9064,59 +9061,17 @@ window.selectAppointmentPayment = function(method) {
     cardBtn.classList.add('border-white/20');
     cashBtn.classList.remove('border-green-500', 'bg-green-500/20');
     cashBtn.classList.add('border-white/20');
-    cardForm.classList.add('hidden');
     cashInfo.classList.add('hidden');
 
     if (method === 'card') {
         cardBtn.classList.remove('border-white/20');
         cardBtn.classList.add('border-blue-500', 'bg-blue-500/20');
-        cardForm.classList.remove('hidden');
-        initAppointmentCardElement();
     } else if (method === 'cash') {
         cashBtn.classList.remove('border-white/20');
         cashBtn.classList.add('border-green-500', 'bg-green-500/20');
         cashInfo.classList.remove('hidden');
     }
 };
-
-function initAppointmentCardElement() {
-    if (!stripeInstance) {
-        initStripe();
-    }
-    if (!stripeInstance) {
-        showToast('Stripe is not configured');
-        return;
-    }
-
-    // Only create a new element if we don't have one
-    if (!appointmentCardElement) {
-        const elements = stripeInstance.elements();
-        appointmentCardElement = elements.create('card', {
-            style: {
-                base: {
-                    color: '#ffffff',
-                    fontFamily: 'Inter, sans-serif',
-                    fontSize: '16px',
-                    '::placeholder': { color: '#6b7280' }
-                },
-                invalid: { color: '#f87171' }
-            },
-            hidePostalCode: true
-        });
-        appointmentCardElement.mount('#appointment-card-element');
-
-        appointmentCardElement.on('change', function(event) {
-            const errorsEl = document.getElementById('appointment-card-errors');
-            if (event.error) {
-                errorsEl.textContent = event.error.message;
-                errorsEl.classList.remove('hidden');
-            } else {
-                errorsEl.textContent = '';
-                errorsEl.classList.add('hidden');
-            }
-        });
-    }
-}
 
 async function clientDateSelected() {
     const trainerId = selectedTrainerForBooking;
@@ -9187,46 +9142,32 @@ async function confirmClientBookAppointment() {
     }
 
     try {
-        // Process card payment first if card selected
-        appointmentStripePaymentIntentId = null;
         if (hasPaidSession && appointmentPaymentMethod === 'card') {
-            if (!stripeInstance || !appointmentCardElement) {
-                showToast('Card payment not ready. Please try again.');
-                return;
-            }
-
-            // Create payment intent
-            const intentRes = await fetch(`${apiBase}/api/client/appointment-payment-intent`, {
+            // Redirect to Stripe Checkout
+            const checkoutRes = await fetch(`${apiBase}/api/client/appointment-checkout-session`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({
                     trainer_id: trainerId,
-                    duration: duration
+                    date: date,
+                    start_time: time,
+                    duration: duration,
+                    notes: notes,
                 })
             });
 
-            if (!intentRes.ok) {
-                const err = await intentRes.json();
-                throw new Error(err.detail || 'Failed to create payment');
+            if (!checkoutRes.ok) {
+                const err = await checkoutRes.json();
+                throw new Error(err.detail || 'Failed to create checkout session');
             }
 
-            const intentData = await intentRes.json();
-
-            // Confirm card payment
-            const { paymentIntent, error } = await stripeInstance.confirmCardPayment(
-                intentData.client_secret,
-                { payment_method: { card: appointmentCardElement } }
-            );
-
-            if (error) {
-                throw new Error(error.message);
-            }
-
-            appointmentStripePaymentIntentId = paymentIntent.id;
+            const { checkout_url } = await checkoutRes.json();
+            window.location.href = checkout_url;
+            return;
         }
 
-        // Book the appointment
+        // Cash or free booking
         const res = await fetch(`${apiBase}/api/client/appointments`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -9238,7 +9179,7 @@ async function confirmClientBookAppointment() {
                 duration: duration,
                 notes: notes,
                 payment_method: hasPaidSession ? appointmentPaymentMethod : null,
-                stripe_payment_intent_id: appointmentStripePaymentIntentId
+                stripe_payment_intent_id: null
             })
         });
 
