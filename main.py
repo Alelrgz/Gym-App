@@ -82,10 +82,13 @@ async def health_check():
 @app.get("/api/version")
 async def get_version():
     """Get app version info for debugging deployed instances."""
+    from service_modules.storage_service import get_storage_info
+    storage = get_storage_info()
     return {
         "name": APP_NAME,
         "version": APP_VERSION,
-        "environment": "production" if os.getenv("DATABASE_URL", "").startswith("postgres") else "development"
+        "environment": "production" if os.getenv("DATABASE_URL", "").startswith("postgres") else "development",
+        "storage": storage["provider"]
     }
 
 # Mount static and templates

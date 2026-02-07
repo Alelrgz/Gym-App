@@ -132,19 +132,18 @@ async def get_leaderboard_data(
 import shutil
 import os
 import uuid
+from service_modules.storage_service import upload_file as storage_upload, get_storage_info
 
 UPLOAD_ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.pdf'}
 MAX_UPLOAD_SIZE = 10 * 1024 * 1024  # 10MB
 
 @router.post("/api/upload")
-async def upload_file(
+async def upload_file_endpoint(
     file: UploadFile = File(...),
+    upload_type: str = "general",
     current_user: UserORM = Depends(get_current_user)
 ):
-    """Upload a file (requires authentication)."""
-    upload_dir = "static/uploads"
-    os.makedirs(upload_dir, exist_ok=True)
-
+    """Upload a file (requires authentication). Uses Cloudinary in production, local in development."""
     # Validate file extension
     file_ext = os.path.splitext(file.filename)[1].lower()
     if file_ext not in UPLOAD_ALLOWED_EXTENSIONS:
@@ -155,14 +154,28 @@ async def upload_file(
     if len(content) > MAX_UPLOAD_SIZE:
         raise HTTPException(status_code=400, detail="File too large. Maximum size is 10MB")
 
-    # Generate unique filename
-    unique_filename = f"{uuid.uuid4()}{file_ext}"
-    file_path = os.path.join(upload_dir, unique_filename)
+    # Validate upload_type
+    valid_types = {"general", "profile", "certificate", "document"}
+    if upload_type not in valid_types:
+        upload_type = "general"
 
-    with open(file_path, "wb") as buffer:
-        buffer.write(content)
+    # Upload using storage service (Cloudinary or local)
+    success, url_or_error, public_id = await storage_upload(
+        file_content=content,
+        filename=file.filename,
+        upload_type=upload_type,
+        user_id=current_user.id
+    )
 
-    return {"url": f"/static/uploads/{unique_filename}", "filename": unique_filename}
+    if not success:
+        raise HTTPException(status_code=500, detail=url_or_error)
+
+    return {
+        "url": url_or_error,
+        "filename": file.filename,
+        "public_id": public_id,
+        "storage": get_storage_info()["provider"]
+    }
 
 # Force reload: v2
 # Trigger reload v16 - friend routes
