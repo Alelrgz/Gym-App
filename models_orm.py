@@ -11,9 +11,9 @@ class UserORM(Base):
     username = Column(String, unique=True, index=True)
     email = Column(String, unique=True, index=True, nullable=True)
     hashed_password = Column(String)
-    role = Column(String) # client, trainer, owner
+    role = Column(String, index=True) # client, trainer, owner
     sub_role = Column(String, nullable=True) # trainer: trainer/nutritionist/both, owner: owner/staff
-    is_active = Column(Boolean, default=True)
+    is_active = Column(Boolean, default=True, index=True)
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
     settings = Column(String, nullable=True) # JSON string
     profile_picture = Column(String, nullable=True)  # Path to profile image
@@ -23,7 +23,7 @@ class UserORM(Base):
     # Gym code system
     gym_code = Column(String(6), unique=True, nullable=True, index=True)  # 6-char code for owners
     gym_owner_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)  # For trainers: which gym they belong to
-    is_approved = Column(Boolean, default=True)  # For trainers: needs owner approval (False = pending)
+    is_approved = Column(Boolean, default=True, index=True)  # For trainers: needs owner approval (False = pending)
 
     # Stripe Connect (for gym owners to receive payments)
     stripe_account_id = Column(String, nullable=True)  # Connected Stripe account ID (acct_xxx)
@@ -333,7 +333,7 @@ class ClientSubscriptionORM(Base):
     stripe_payment_intent_id = Column(String, nullable=True)  # For one-time payments (onboarding)
 
     # Subscription status
-    status = Column(String, default="active")  # active, canceled, past_due, trialing, incomplete
+    status = Column(String, default="active", index=True)  # active, canceled, past_due, trialing, incomplete
 
     # Dates
     start_date = Column(String)  # ISO format
@@ -360,7 +360,7 @@ class PaymentORM(Base):
     # Payment details
     amount = Column(Float)
     currency = Column(String, default="usd")
-    status = Column(String)  # succeeded, pending, failed, refunded
+    status = Column(String, index=True)  # succeeded, pending, failed, refunded
 
     # Stripe integration
     stripe_payment_intent_id = Column(String, nullable=True, unique=True)
@@ -459,7 +459,7 @@ class AppointmentORM(Base):
     stripe_payment_intent_id = Column(String, nullable=True)
 
     # Status
-    status = Column(String, default="scheduled")  # scheduled, completed, canceled, no_show
+    status = Column(String, default="scheduled", index=True)  # scheduled, completed, canceled, no_show
 
     # Cancellation
     canceled_by = Column(String, nullable=True)  # user_id of who canceled
@@ -600,7 +600,7 @@ class NotificationORM(Base):
     title = Column(String)
     message = Column(String)
     data = Column(Text, nullable=True)  # JSON data for additional context
-    read = Column(Boolean, default=False)
+    read = Column(Boolean, default=False, index=True)
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
 
 
