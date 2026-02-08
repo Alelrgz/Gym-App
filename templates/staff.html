@@ -654,10 +654,10 @@
                         <span class="text-2xl block mb-1">💳</span>
                         <span class="text-sm font-semibold text-white">Card</span>
                     </button>
-                    <button onclick="selectPaymentMethod('terminal')" id="pay-terminal-btn"
+                    <button onclick="selectPaymentMethod('qr')" id="pay-qr-btn"
                         class="p-4 rounded-xl border-2 border-white/20 hover:border-purple-500/50 transition text-center">
-                        <span class="text-2xl block mb-1">📱</span>
-                        <span class="text-sm font-semibold text-white">Tap to Pay</span>
+                        <span class="text-2xl block mb-1">📷</span>
+                        <span class="text-sm font-semibold text-white">QR Code</span>
                     </button>
                 </div>
 
@@ -671,21 +671,33 @@
                     <p class="text-xs text-gray-500">Test card: 4242 4242 4242 4242, any future date, any CVC</p>
                 </div>
 
-                <!-- Terminal/Tap to Pay (shown when terminal selected) -->
-                <div id="terminal-payment-form" class="hidden">
+                <!-- QR Code Payment (shown when QR selected) -->
+                <div id="qr-payment-form" class="hidden">
                     <div class="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 text-center">
-                        <span class="text-3xl block mb-2">📱</span>
-                        <p class="text-purple-400 font-semibold mb-1">Tap to Pay</p>
-                        <div id="terminal-status" class="mt-2">
-                            <p class="text-xs text-gray-400">Connecting to reader...</p>
-                            <div class="animate-spin text-lg inline-block mt-1">⏳</div>
+                        <div id="qr-initial" class="py-2">
+                            <span class="text-3xl block mb-2">📷</span>
+                            <p class="text-purple-400 font-semibold mb-1">QR Code Payment</p>
+                            <p class="text-xs text-gray-400">A QR code will be generated when you click Complete Registration.</p>
+                            <p class="text-xs text-gray-400 mt-1">The client scans it with their phone to pay.</p>
                         </div>
-                        <div id="terminal-ready" class="hidden mt-2">
-                            <p class="text-xs text-green-400 font-semibold">Reader connected (simulated)</p>
-                            <p class="text-xs text-gray-500 mt-1">Payment will be collected when you complete registration</p>
+                        <div id="qr-loading" class="hidden py-4">
+                            <div class="animate-spin text-2xl inline-block">⏳</div>
+                            <p class="text-xs text-gray-400 mt-2">Generating QR code...</p>
                         </div>
-                        <div id="terminal-error" class="hidden mt-2">
-                            <p class="text-xs text-red-400" id="terminal-error-msg">Failed to connect reader</p>
+                        <div id="qr-display" class="hidden py-2">
+                            <p class="text-purple-400 font-semibold mb-3">Scan to Pay</p>
+                            <div id="qr-code-container" class="bg-white rounded-xl p-4 inline-block mx-auto mb-3"></div>
+                            <p class="text-xs text-gray-400 mt-2">Waiting for payment...</p>
+                            <div class="animate-pulse text-purple-400 text-sm mt-1" id="qr-polling-indicator">Checking payment status...</div>
+                        </div>
+                        <div id="qr-paid" class="hidden py-4">
+                            <span class="text-4xl block mb-2 text-green-400">&#10003;</span>
+                            <p class="text-green-400 font-semibold">Payment Received!</p>
+                            <p class="text-xs text-gray-400 mt-1">Completing registration...</p>
+                        </div>
+                        <div id="qr-error" class="hidden py-2">
+                            <p class="text-xs text-red-400" id="qr-error-msg">Payment setup failed</p>
+                            <button onclick="retryQrPayment()" class="text-xs text-purple-400 underline mt-2">Try Again</button>
                         </div>
                     </div>
                 </div>
@@ -1561,6 +1573,7 @@ function openOnboardingWizard() {
 }
 
 function closeOnboardingWizard() {
+    stopPollingPayment();
     document.getElementById('onboarding-wizard-modal').classList.add('hidden');
 }
 
@@ -1752,114 +1765,200 @@ function selectPaymentMethod(method) {
 
     const cashBtn = document.getElementById('pay-cash-btn');
     const cardBtn = document.getElementById('pay-card-btn');
-    const terminalBtn = document.getElementById('pay-terminal-btn');
+    const qrBtn = document.getElementById('pay-qr-btn');
     const cardForm = document.getElementById('card-payment-form');
-    const terminalForm = document.getElementById('terminal-payment-form');
+    const qrForm = document.getElementById('qr-payment-form');
 
     // Reset all button styles
     cashBtn.classList.remove('border-green-500', 'bg-green-500/10');
     cardBtn.classList.remove('border-blue-500', 'bg-blue-500/10');
-    terminalBtn.classList.remove('border-purple-500', 'bg-purple-500/10');
+    qrBtn.classList.remove('border-purple-500', 'bg-purple-500/10');
 
     // Update selected button style
     if (method === 'cash') {
         cashBtn.classList.add('border-green-500', 'bg-green-500/10');
     } else if (method === 'card') {
         cardBtn.classList.add('border-blue-500', 'bg-blue-500/10');
-    } else if (method === 'terminal') {
-        terminalBtn.classList.add('border-purple-500', 'bg-purple-500/10');
+    } else if (method === 'qr') {
+        qrBtn.classList.add('border-purple-500', 'bg-purple-500/10');
     }
 
     // Show/hide payment forms
     cardForm.classList.add('hidden');
-    terminalForm.classList.add('hidden');
+    qrForm.classList.add('hidden');
 
     if (method === 'card') {
         cardForm.classList.remove('hidden');
         initStripeElements();
-    } else if (method === 'terminal') {
-        terminalForm.classList.remove('hidden');
-        initStripeTerminal();
+    } else if (method === 'qr') {
+        qrForm.classList.remove('hidden');
+        // Reset QR form to initial state
+        document.getElementById('qr-initial').classList.remove('hidden');
+        document.getElementById('qr-loading').classList.add('hidden');
+        document.getElementById('qr-display').classList.add('hidden');
+        document.getElementById('qr-paid').classList.add('hidden');
+        document.getElementById('qr-error').classList.add('hidden');
     }
 }
 
-// --- STRIPE TERMINAL (Tap to Pay) ---
-let stripeTerminal = null;
-let terminalConnectedReader = null;
+// --- QR CODE PAYMENT ---
+let qrCheckoutSessionId = null;
+let qrPollingInterval = null;
 
-async function initStripeTerminal() {
-    // Only initialize once
-    if (stripeTerminal) {
-        return;
-    }
+async function startQrPayment() {
+    const initialEl = document.getElementById('qr-initial');
+    const loadingEl = document.getElementById('qr-loading');
+    const displayEl = document.getElementById('qr-display');
+    const paidEl = document.getElementById('qr-paid');
+    const errorEl = document.getElementById('qr-error');
+    const errorMsg = document.getElementById('qr-error-msg');
 
-    const statusEl = document.getElementById('terminal-status');
-    const readyEl = document.getElementById('terminal-ready');
-    const errorEl = document.getElementById('terminal-error');
-    const errorMsg = document.getElementById('terminal-error-msg');
-
-    statusEl.classList.remove('hidden');
-    readyEl.classList.add('hidden');
+    initialEl.classList.add('hidden');
+    loadingEl.classList.remove('hidden');
+    displayEl.classList.add('hidden');
+    paidEl.classList.add('hidden');
     errorEl.classList.add('hidden');
 
     try {
-        if (typeof StripeTerminal === 'undefined') {
-            throw new Error('Stripe Terminal SDK not loaded');
-        }
-
-        stripeTerminal = StripeTerminal.create({
-            onFetchConnectionToken: async () => {
-                const res = await fetch('/api/staff/terminal/connection-token', {
-                    method: 'POST',
-                    credentials: 'include'
-                });
-                if (!res.ok) {
-                    throw new Error('Failed to fetch connection token');
-                }
-                const data = await res.json();
-                return data.secret;
-            },
-            onUnexpectedReaderDisconnect: () => {
-                showToast('Reader disconnected', 'error');
-                terminalConnectedReader = null;
-                statusEl.classList.add('hidden');
-                readyEl.classList.add('hidden');
-                errorEl.classList.remove('hidden');
-                errorMsg.textContent = 'Reader disconnected. Select Tap to Pay again.';
-            }
+        const res = await fetch('/api/staff/onboarding-checkout-session', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                plan_id: onboardingState.data.planId,
+                client_name: onboardingState.data.name
+            })
         });
 
-        // Discover simulated reader for testing
-        const discoverResult = await stripeTerminal.discoverReaders({
-            simulated: true
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Failed to create checkout session');
+        }
+
+        const data = await res.json();
+        qrCheckoutSessionId = data.session_id;
+
+        // Generate QR code
+        const container = document.getElementById('qr-code-container');
+        container.innerHTML = '';
+        new QRCode(container, {
+            text: data.checkout_url,
+            width: 200,
+            height: 200,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
         });
 
-        if (discoverResult.error) {
-            throw new Error(discoverResult.error.message);
-        }
+        loadingEl.classList.add('hidden');
+        displayEl.classList.remove('hidden');
 
-        if (discoverResult.discoveredReaders.length === 0) {
-            throw new Error('No readers found');
-        }
-
-        // Connect to the first discovered reader
-        const connectResult = await stripeTerminal.connectReader(discoverResult.discoveredReaders[0]);
-
-        if (connectResult.error) {
-            throw new Error(connectResult.error.message);
-        }
-
-        terminalConnectedReader = connectResult.reader;
-        console.log('Connected to reader:', terminalConnectedReader.label);
-
-        statusEl.classList.add('hidden');
-        readyEl.classList.remove('hidden');
+        startPollingPayment();
     } catch (e) {
-        console.error('Terminal init error:', e);
-        statusEl.classList.add('hidden');
+        console.error('QR payment error:', e);
+        loadingEl.classList.add('hidden');
         errorEl.classList.remove('hidden');
-        errorMsg.textContent = e.message || 'Failed to connect reader';
+        errorMsg.textContent = e.message || 'Payment setup failed';
     }
+}
+
+function startPollingPayment() {
+    if (qrPollingInterval) clearInterval(qrPollingInterval);
+
+    qrPollingInterval = setInterval(async () => {
+        if (!qrCheckoutSessionId) {
+            clearInterval(qrPollingInterval);
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/staff/checkout-session-status/${qrCheckoutSessionId}`, {
+                credentials: 'include'
+            });
+            if (!res.ok) return;
+
+            const data = await res.json();
+            if (data.status === 'paid') {
+                clearInterval(qrPollingInterval);
+                qrPollingInterval = null;
+
+                document.getElementById('qr-display').classList.add('hidden');
+                document.getElementById('qr-paid').classList.remove('hidden');
+
+                await finalizeQrOnboarding(data.payment_intent_id);
+            }
+        } catch (e) {
+            console.error('Polling error:', e);
+        }
+    }, 3000);
+}
+
+function stopPollingPayment() {
+    if (qrPollingInterval) {
+        clearInterval(qrPollingInterval);
+        qrPollingInterval = null;
+    }
+    qrCheckoutSessionId = null;
+}
+
+async function finalizeQrOnboarding(paymentIntentId) {
+    const completeBtn = document.getElementById('onboard-complete-btn');
+    completeBtn.disabled = true;
+    completeBtn.textContent = 'Registering...';
+
+    try {
+        const payload = {
+            name: onboardingState.data.name,
+            phone: onboardingState.data.phone,
+            email: onboardingState.data.email || null,
+            date_of_birth: onboardingState.data.dateOfBirth || null,
+            username: onboardingState.data.username,
+            password: onboardingState.data.password,
+            document_type: onboardingState.data.documentType,
+            plan_id: onboardingState.data.planId,
+            payment_method: 'qr',
+            profile_photo: onboardingState.data.profilePhoto || null,
+            stripe_payment_intent_id: paymentIntentId
+        };
+
+        if (onboardingState.data.documentType === 'waiver') {
+            payload.document_data = signatureCanvas.toDataURL('image/png');
+            payload.waiver_text = document.getElementById('waiver-text-display').textContent;
+        } else {
+            const fileInput = document.getElementById('medical-file');
+            if (fileInput.files && fileInput.files[0]) {
+                payload.document_data = await fileToBase64(fileInput.files[0]);
+            }
+        }
+
+        const res = await fetch('/api/staff/onboard-client', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            showToast(data.message || 'Client registered successfully!', 'success');
+            closeOnboardingWizard();
+            await loadStaffData();
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Registration failed', 'error');
+        }
+    } catch (error) {
+        console.error('QR onboarding error:', error);
+        showToast(error.message || 'Registration failed', 'error');
+    } finally {
+        completeBtn.disabled = false;
+        completeBtn.textContent = 'Complete Registration';
+    }
+}
+
+function retryQrPayment() {
+    stopPollingPayment();
+    startQrPayment();
 }
 
 // Document type selection
@@ -2234,54 +2333,12 @@ async function completeOnboarding() {
             console.log('Payment successful:', paymentIntent.id);
         }
 
-        // If terminal payment, collect via connected reader
-        if (onboardingState.data.paymentMethod === 'terminal') {
-            if (!stripeTerminal || !terminalConnectedReader) {
-                showToast('Terminal reader not connected. Please reconnect.', 'error');
-                completeBtn.disabled = false;
-                completeBtn.textContent = 'Complete Registration';
-                return;
-            }
-
-            completeBtn.textContent = 'Creating payment...';
-
-            // Create PaymentIntent with terminal flag
-            const intentRes = await fetch('/api/staff/create-payment-intent', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    plan_id: onboardingState.data.planId,
-                    client_name: onboardingState.data.name,
-                    terminal: true
-                })
-            });
-
-            if (!intentRes.ok) {
-                const err = await intentRes.json();
-                throw new Error(err.detail || 'Failed to create terminal payment');
-            }
-
-            const intentData = await intentRes.json();
-
-            completeBtn.textContent = 'Collecting payment...';
-
-            // Collect payment from the terminal reader
-            const collectResult = await stripeTerminal.collectPaymentMethod(intentData.client_secret);
-            if (collectResult.error) {
-                throw new Error(collectResult.error.message);
-            }
-
-            completeBtn.textContent = 'Processing payment...';
-
-            // Process the payment
-            const processResult = await stripeTerminal.processPayment(collectResult.paymentIntent);
-            if (processResult.error) {
-                throw new Error(processResult.error.message);
-            }
-
-            stripePaymentIntentId = processResult.paymentIntent.id;
-            console.log('Terminal payment successful:', stripePaymentIntentId);
+        // If QR payment, start QR flow and return (auto-completes after payment)
+        if (onboardingState.data.paymentMethod === 'qr') {
+            completeBtn.textContent = 'Generating QR Code...';
+            await startQrPayment();
+            completeBtn.textContent = 'Waiting for QR Payment...';
+            return;
         }
 
         completeBtn.textContent = 'Registering...';
