@@ -67,6 +67,8 @@ async def send_message(
     service: MessageService = Depends(get_message_service)
 ):
     """Send a message to another user."""
+    if not request.content or not request.content.strip():
+        raise HTTPException(status_code=400, detail="Message content cannot be empty")
     result = service.send_message(user.id, request.receiver_id, request.content)
 
     # Send real-time notification to receiver via WebSocket

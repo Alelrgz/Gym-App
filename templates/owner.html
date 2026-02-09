@@ -1860,14 +1860,7 @@ async function rejectTrainerFromModal(trainerId, username) {
     }
 }
 
-function copyGymCode() {
-    const code = document.getElementById('modal-gym-code')?.textContent || '{{ gym_id }}';
-    navigator.clipboard.writeText(code).then(() => {
-        if (typeof showToast === 'function') {
-            showToast('Gym code copied!', 'success');
-        }
-    });
-}
+// copyGymCode() defined above in main script section
 
 // Close modal on backdrop click
 document.getElementById('trainers-modal')?.addEventListener('click', function(e) {

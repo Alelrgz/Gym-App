@@ -57,8 +57,11 @@ class GymAssignmentService:
                     is_premium=False
                 )
                 db.add(profile)
+            elif profile.gym_id == owner.id:
+                # Already a member of this gym
+                raise HTTPException(status_code=400, detail="You are already a member of this gym")
             else:
-                # Update existing profile
+                # Update existing profile (switching gyms)
                 profile.gym_id = owner.id
 
             db.commit()

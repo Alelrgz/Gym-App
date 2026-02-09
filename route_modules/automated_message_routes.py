@@ -82,6 +82,38 @@ async def create_template(
     return service.create_template(user.id, template_data.model_dump())
 
 
+# --- Message Log & Trigger Endpoints (MUST be before {template_id} routes) ---
+
+@router.get("/api/owner/automated-messages/log")
+async def get_message_log(
+    limit: int = 50,
+    user = Depends(get_current_user),
+    service: AutomatedMessageService = Depends(get_automated_message_service)
+):
+    """Get the log of sent automated messages."""
+    if user.role != "owner":
+        raise HTTPException(status_code=403, detail="Only gym owners can view message logs")
+
+    return service.get_message_log(user.id, limit)
+
+
+@router.post("/api/owner/automated-messages/trigger-check")
+async def manual_trigger_check(
+    user = Depends(get_current_user),
+    trigger_service: TriggerCheckService = Depends(get_trigger_check_service)
+):
+    """
+    Manually trigger a check for all automated message conditions.
+    Useful for testing without waiting for the background job.
+    """
+    if user.role != "owner":
+        raise HTTPException(status_code=403, detail="Only gym owners can trigger automated message checks")
+
+    return trigger_service.check_all_triggers(user.id)
+
+
+# --- Template by ID Endpoints (after specific path routes) ---
+
 @router.get("/api/owner/automated-messages/{template_id}")
 async def get_template(
     template_id: str,
@@ -153,35 +185,3 @@ async def preview_template(
         raise HTTPException(status_code=403, detail="Only gym owners can preview automated messages")
 
     return service.preview_message(template_id, user.id, sample_client_id)
-
-
-# --- Message Log Endpoint ---
-
-@router.get("/api/owner/automated-messages/log")
-async def get_message_log(
-    limit: int = 50,
-    user = Depends(get_current_user),
-    service: AutomatedMessageService = Depends(get_automated_message_service)
-):
-    """Get the log of sent automated messages."""
-    if user.role != "owner":
-        raise HTTPException(status_code=403, detail="Only gym owners can view message logs")
-
-    return service.get_message_log(user.id, limit)
-
-
-# --- Manual Trigger Endpoint (for testing) ---
-
-@router.post("/api/owner/automated-messages/trigger-check")
-async def manual_trigger_check(
-    user = Depends(get_current_user),
-    trigger_service: TriggerCheckService = Depends(get_trigger_check_service)
-):
-    """
-    Manually trigger a check for all automated message conditions.
-    Useful for testing without waiting for the background job.
-    """
-    if user.role != "owner":
-        raise HTTPException(status_code=403, detail="Only gym owners can trigger automated message checks")
-
-    return trigger_service.check_all_triggers(user.id)

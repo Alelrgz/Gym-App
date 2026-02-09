@@ -214,7 +214,7 @@ class AutomatedMessageService:
                 if user:
                     sample_client = {
                         "id": user.id,
-                        "name": user.full_name or user.username,
+                        "name": user.username,
                         "email": user.email
                     }
 
@@ -338,7 +338,7 @@ class AutomatedMessageService:
             clients = {}
             if client_ids:
                 users = db.query(UserORM).filter(UserORM.id.in_(client_ids)).all()
-                clients = {u.id: u.full_name or u.username for u in users}
+                clients = {u.id: u.username for u in users}
 
             # Get template names
             template_ids = list(set(log.template_id for log in logs if log.template_id))

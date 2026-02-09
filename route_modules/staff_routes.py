@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from database import get_db_session
-from models_orm import UserORM, AppointmentORM, CheckInORM, ClientProfileORM, SubscriptionPlanORM, ClientSubscriptionORM, ClientDocumentORM, MedicalCertificateORM, PaymentORM
+from models_orm import UserORM, AppointmentORM, CheckInORM, ClientProfileORM, SubscriptionPlanORM, ClientSubscriptionORM, ClientDocumentORM, MedicalCertificateORM, PaymentORM, TrainerAvailabilityORM
 from auth import get_current_user, get_password_hash
 from datetime import datetime, date, timedelta
 from service_modules.subscription_service import subscription_service
@@ -289,25 +289,18 @@ async def get_trainer_schedule(
             "session_type": appt.session_type or "General"
         })
 
-    # Get trainer's availability (from their settings if available)
+    # Get trainer's availability from TrainerAvailabilityORM
     availability = []
-    if trainer.availability:
-        try:
-            import json
-            avail_data = json.loads(trainer.availability) if isinstance(trainer.availability, str) else trainer.availability
-            # Convert to readable format - JS expects day_of_week, start_time, end_time
-            for day_idx in range(7):
-                day_key = str(day_idx)
-                if day_key in avail_data and avail_data[day_key].get("enabled"):
-                    slots = avail_data[day_key].get("slots", [])
-                    for slot in slots:
-                        availability.append({
-                            "day_of_week": day_idx,
-                            "start_time": slot.get("start", "09:00"),
-                            "end_time": slot.get("end", "17:00")
-                        })
-        except Exception as e:
-            logger.warning(f"Failed to parse availability for trainer {trainer_id}: {e}")
+    avail_slots = db.query(TrainerAvailabilityORM).filter(
+        TrainerAvailabilityORM.trainer_id == trainer_id,
+        TrainerAvailabilityORM.is_available == True
+    ).all()
+    for slot in avail_slots:
+        availability.append({
+            "day_of_week": slot.day_of_week,
+            "start_time": slot.start_time,
+            "end_time": slot.end_time
+        })
 
     return {
         "trainer_name": trainer.username,

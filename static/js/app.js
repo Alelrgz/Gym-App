@@ -2,6 +2,15 @@ const { gymId, role, apiBase } = window.APP_CONFIG;
 console.log("App.js loaded! apiBase: " + apiBase);
 console.log("App.js loaded (Restored Monolithic) v" + Math.random());
 
+// Global fetch wrapper: always send credentials (cookies) with API requests
+const _originalFetch = window.fetch;
+window.fetch = function(url, options = {}) {
+    if (!options.credentials) {
+        options.credentials = 'include';
+    }
+    return _originalFetch.call(this, url, options);
+};
+
 // --- AUTHENTICATION ---
 // Bootstrap from Server if valid token present in config
 if (window.APP_CONFIG.token && window.APP_CONFIG.token !== "None") {
@@ -5501,6 +5510,7 @@ window.assignWorkout = async function () {
     const res = await fetch('/api/trainer/assign_workout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ client_id: clientId, date: date, workout_id: workoutId })
     });
 
@@ -5645,6 +5655,7 @@ async function finishWorkout() {
         const res = await fetch(endpoint, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify(requestBody)
         });
 
@@ -5785,6 +5796,7 @@ window.updateSetData = async function (exIdx, setIdx, reps, weight, duration, di
         const res = await fetch(`${apiBase}/api/client/schedule/update_set`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
             body: JSON.stringify(payload)
         });
 

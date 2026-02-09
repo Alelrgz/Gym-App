@@ -12,10 +12,10 @@ class GymConfig(BaseModel):
 # --- WORKOUT ---
 class Exercise(BaseModel):
     name: str
-    sets: int
-    reps: Union[str, int]
-    rest: int
-    video_id: str
+    sets: Optional[int] = 0
+    reps: Optional[Union[str, int]] = 0
+    rest: Optional[int] = 0
+    video_id: Optional[str] = None
     performance: Optional[List[Dict]] = None
 
 class ExerciseTemplate(BaseModel):
@@ -35,25 +35,25 @@ class ExerciseTemplate(BaseModel):
 class Workout(BaseModel):
     id: Optional[str] = None
     title: str
-    duration: str
-    difficulty: str
-    exercises: List[Exercise]
+    duration: Optional[str] = ""
+    difficulty: Optional[str] = ""
+    exercises: List[Exercise] = []
     completed: Optional[bool] = False
     details: Optional[str] = None  # JSON string containing CO-OP info for completed workouts
 
 class WorkoutTemplate(BaseModel):
     id: Optional[str] = None
     title: str
-    duration: str
-    difficulty: str
-    exercises: List[Exercise]
+    duration: Optional[str] = ""
+    difficulty: Optional[str] = ""
+    exercises: List[Exercise] = []
 
 class WeeklySplit(BaseModel):
     id: str
     name: str
     description: Optional[str] = ""
     days_per_week: int
-    schedule: Dict[str, Optional[Union[str, Dict]]] # Key: "Monday", "Tuesday", etc. Value: workout_id or {id, title} or None (Rest)
+    schedule: Union[Dict[str, Optional[Union[str, Dict]]], List[Dict]] = {}  # Dict or List format
 
 # --- PROGRESS ---
 class DailyQuest(BaseModel):

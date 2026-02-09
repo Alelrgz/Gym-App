@@ -423,6 +423,43 @@ def run_migrations(engine):
                     except Exception as e:
                         logger.debug(f"Column {col_name} may already exist: {e}")
 
+    # Add body_fat_pct/fat_mass/lean_mass columns to weight_history if missing
+    if 'weight_history' in inspector.get_table_names():
+        columns = [c['name'] for c in inspector.get_columns('weight_history')]
+        wh_cols = {
+            'body_fat_pct': 'REAL',
+            'fat_mass': 'REAL',
+            'lean_mass': 'REAL',
+        }
+        for col_name, col_type in wh_cols.items():
+            if col_name not in columns:
+                with engine.connect() as conn:
+                    try:
+                        conn.execute(text(f"ALTER TABLE weight_history ADD COLUMN {col_name} {col_type}"))
+                        conn.commit()
+                        logger.info(f"Added column {col_name} to weight_history table")
+                    except Exception as e:
+                        logger.debug(f"Column {col_name} may already exist: {e}")
+
+    # Add duration/distance/metric_type columns to client_exercise_log if missing
+    inspector = inspect(engine)
+    if 'client_exercise_log' in inspector.get_table_names():
+        columns = [c['name'] for c in inspector.get_columns('client_exercise_log')]
+        exercise_log_cols = {
+            'duration': 'REAL',
+            'distance': 'REAL',
+            'metric_type': "TEXT DEFAULT 'weight_reps'"
+        }
+        for col_name, col_type in exercise_log_cols.items():
+            if col_name not in columns:
+                with engine.connect() as conn:
+                    try:
+                        conn.execute(text(f"ALTER TABLE client_exercise_log ADD COLUMN {col_name} {col_type}"))
+                        conn.commit()
+                        logger.info(f"Added column {col_name} to client_exercise_log table")
+                    except Exception as e:
+                        logger.debug(f"Column {col_name} may already exist: {e}")
+
 def background_trigger_checker():
     """Background thread that periodically checks for automated message triggers."""
     import time

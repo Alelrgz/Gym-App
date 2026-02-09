@@ -203,7 +203,7 @@ class TriggerCheckService:
                 users = db.query(UserORM).filter(
                     UserORM.id.in_([m.client_id for m in missed])
                 ).all()
-                client_names = {u.id: u.full_name or u.username for u in users}
+                client_names = {u.id: u.username for u in users}
 
             return [
                 {
@@ -240,7 +240,7 @@ class TriggerCheckService:
             # Get client names
             user_ids = [c.user_id for c in clients]
             users = db.query(UserORM).filter(UserORM.id.in_(user_ids)).all()
-            client_names = {u.id: u.full_name or u.username for u in users}
+            client_names = {u.id: u.username for u in users}
 
             results = []
             for client in clients:
@@ -313,7 +313,7 @@ class TriggerCheckService:
                 [a.trainer_id for a in no_shows if a.trainer_id]
             ))
             users = db.query(UserORM).filter(UserORM.id.in_(all_user_ids)).all()
-            user_names = {u.id: u.full_name or u.username for u in users}
+            user_names = {u.id: u.username for u in users}
 
             return [
                 {

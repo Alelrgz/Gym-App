@@ -298,8 +298,9 @@ async def get_fitness_goal(current_user: UserORM = Depends(get_current_user)):
             db.commit()
             db.refresh(settings)
 
-        # Check if client has a trainer assigned
-        has_trainer = current_user.trainer_id is not None
+        # Check if client has a trainer assigned (trainer_id is on ClientProfileORM, not UserORM)
+        profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == current_user.id).first()
+        has_trainer = profile is not None and profile.trainer_id is not None
 
         return {
             "fitness_goal": settings.fitness_goal or "maintain",
@@ -324,8 +325,13 @@ async def set_fitness_goal(
         raise HTTPException(status_code=403, detail="Only clients have fitness goals")
 
     # Block if client has a trainer assigned - trainer manages their nutrition
-    if current_user.trainer_id:
-        raise HTTPException(status_code=403, detail="Your trainer manages your nutrition plan")
+    db = get_db_session()
+    try:
+        client_profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == current_user.id).first()
+        if client_profile and client_profile.trainer_id:
+            raise HTTPException(status_code=403, detail="Your trainer manages your nutrition plan")
+    finally:
+        db.close()
 
     if request.fitness_goal not in ["cut", "maintain", "bulk"]:
         raise HTTPException(status_code=400, detail="Goal must be 'cut', 'maintain', or 'bulk'")

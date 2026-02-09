@@ -178,8 +178,11 @@ class SplitService:
             else:
                 print(f"Warning: Unknown schedule format: {type(split_schedule)}")
 
-            # 3. Assign
-            start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+            # 3. Assign - default start_date to today if not provided
+            if start_date_str:
+                start_date = datetime.strptime(start_date_str, "%Y-%m-%d").date()
+            else:
+                start_date = datetime.utcnow().date()
             weekday_map = {0: "Monday", 1: "Tuesday", 2: "Wednesday", 3: "Thursday", 4: "Friday", 5: "Saturday", 6: "Sunday"}
 
             logs = []
