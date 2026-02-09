@@ -745,12 +745,15 @@ async def onboard_new_client(
         raise HTTPException(status_code=403, detail="Staff access only")
 
     import uuid
+    import secrets
 
     # Extract required fields
     name = (data.get("name") or "").strip()
     phone = (data.get("phone") or "").strip()
     username = (data.get("username") or "").strip()
-    password = (data.get("password") or "").strip()
+
+    # Auto-generate a random temporary password
+    password = secrets.token_urlsafe(16)
 
     # Optional fields
     email = (data.get("email") or "").strip() or None
@@ -776,8 +779,6 @@ async def onboard_new_client(
         raise HTTPException(status_code=400, detail="Phone is required")
     if not username:
         raise HTTPException(status_code=400, detail="Username is required")
-    if not password or len(password) < 12:
-        raise HTTPException(status_code=400, detail="Password must be at least 12 characters")
 
     # Check username uniqueness
     existing_user = db.query(UserORM).filter(UserORM.username == username).first()
@@ -963,6 +964,7 @@ async def onboard_new_client(
             "status": "success",
             "client_id": client_id,
             "username": username,
+            "temporary_password": password,
             "name": name,
             "subscription_id": subscription_id,
             "plan_name": plan_name,
