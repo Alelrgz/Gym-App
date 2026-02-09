@@ -2,7 +2,8 @@
 Staff/Reception API routes for gym management
 """
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from database import get_db_session
 from models_orm import UserORM, AppointmentORM, CheckInORM, ClientProfileORM, SubscriptionPlanORM, ClientSubscriptionORM, ClientDocumentORM, MedicalCertificateORM, PaymentORM
@@ -909,7 +910,7 @@ async def onboard_new_client(
                 db.add(new_subscription)
 
                 # Create payment record if payment was made
-                if payment_method in ("card", "cash", "terminal") and plan.price > 0:
+                if payment_method in ("card", "cash", "qr") and plan.price > 0:
                     payment_id = str(uuid.uuid4())
                     payment_record = PaymentORM(
                         id=payment_id,
@@ -918,7 +919,7 @@ async def onboard_new_client(
                         gym_id=user.gym_owner_id,
                         amount=plan.price,
                         currency=plan.currency or "usd",
-                        status="succeeded" if payment_method in ("card", "terminal") else "recorded",
+                        status="succeeded" if payment_method in ("card", "qr") else "recorded",
                         stripe_payment_intent_id=stripe_payment_intent_id,
                         description=f"Onboarding: {plan.name}",
                         payment_method=payment_method,
@@ -975,26 +976,172 @@ async def onboard_new_client(
         raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
 
 
-@router.post("/terminal/connection-token")
-async def create_terminal_connection_token(
-    user: UserORM = Depends(get_current_user)
+@router.post("/onboarding-checkout-session")
+async def create_onboarding_checkout_session(
+    data: dict,
+    request: Request,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
-    """Create a Stripe Terminal connection token for POS readers."""
+    """Create a Stripe Checkout Session for onboarding QR code payment."""
     if user.role != "staff":
         raise HTTPException(status_code=403, detail="Staff access only")
 
     import stripe
-    import os
+
+    stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+    if not stripe.api_key or stripe.api_key.startswith("your_"):
+        raise HTTPException(status_code=400, detail="Stripe is not configured")
+
+    plan_id = data.get("plan_id")
+    client_name = data.get("client_name", "New Client")
+
+    if not plan_id:
+        raise HTTPException(status_code=400, detail="plan_id is required")
+
+    plan = db.query(SubscriptionPlanORM).filter(
+        SubscriptionPlanORM.id == plan_id,
+        SubscriptionPlanORM.gym_id == user.gym_owner_id,
+        SubscriptionPlanORM.is_active == True
+    ).first()
+
+    if not plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    try:
+        amount_cents = int(plan.price * 100)
+        if amount_cents < 50:
+            amount_cents = 50
+
+        base_url = str(request.base_url).rstrip("/")
+        success_url = f"{base_url}/api/staff/onboarding-checkout-success?session_id={{CHECKOUT_SESSION_ID}}"
+        cancel_url = f"{base_url}/api/staff/onboarding-checkout-canceled"
+
+        checkout_session = stripe.checkout.Session.create(
+            payment_method_types=["card"],
+            mode="payment",
+            line_items=[{
+                "price_data": {
+                    "currency": (plan.currency or "eur").lower(),
+                    "product_data": {
+                        "name": f"Gym Membership: {plan.name}",
+                        "description": f"Membership for {client_name}",
+                    },
+                    "unit_amount": amount_cents,
+                },
+                "quantity": 1,
+            }],
+            metadata={
+                "type": "onboarding",
+                "gym_id": user.gym_owner_id,
+                "plan_id": plan_id,
+                "plan_name": plan.name,
+                "client_name": client_name,
+                "staff_id": user.id,
+            },
+            success_url=success_url,
+            cancel_url=cancel_url,
+        )
+
+        return {
+            "checkout_url": checkout_session.url,
+            "session_id": checkout_session.id,
+            "amount": plan.price,
+            "currency": plan.currency or "EUR"
+        }
+
+    except stripe.StripeError as e:
+        logger.error(f"Stripe error creating checkout session: {e}")
+        raise HTTPException(status_code=400, detail=f"Payment setup failed: {str(e)}")
+
+
+@router.get("/checkout-session-status/{session_id}")
+async def get_checkout_session_status(
+    session_id: str,
+    user: UserORM = Depends(get_current_user)
+):
+    """Poll a Stripe Checkout Session to check if payment is complete."""
+    if user.role != "staff":
+        raise HTTPException(status_code=403, detail="Staff access only")
+
+    import stripe
 
     stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
     if not stripe.api_key or stripe.api_key.startswith("your_"):
         raise HTTPException(status_code=400, detail="Stripe is not configured")
 
     try:
-        connection_token = stripe.terminal.ConnectionToken.create()
-        return {"secret": connection_token.secret}
+        session = stripe.checkout.Session.retrieve(session_id)
+        return {
+            "status": session.payment_status,
+            "payment_intent_id": session.payment_intent if session.payment_status == "paid" else None
+        }
     except stripe.StripeError as e:
-        raise HTTPException(status_code=400, detail=f"Failed to create connection token: {str(e)}")
+        raise HTTPException(status_code=400, detail=f"Failed to check session: {str(e)}")
+
+
+@router.get("/onboarding-checkout-success")
+async def onboarding_checkout_success(session_id: str):
+    """Simple success page shown on client's phone after QR code payment."""
+    return HTMLResponse(content="""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment Complete</title>
+        <style>
+            body { font-family: system-ui, -apple-system, sans-serif; background: #111827; color: white;
+                   display: flex; align-items: center; justify-content: center; min-height: 100vh;
+                   margin: 0; text-align: center; padding: 20px; }
+            .container { max-width: 400px; }
+            .checkmark { font-size: 64px; margin-bottom: 16px; color: #22c55e; }
+            h1 { font-size: 24px; margin-bottom: 8px; }
+            p { color: #9ca3af; font-size: 16px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="checkmark">&#10003;</div>
+            <h1>Payment Complete!</h1>
+            <p>Your payment was successful. You can close this page now.<br>
+            The staff member will complete your registration.</p>
+        </div>
+    </body>
+    </html>
+    """, status_code=200)
+
+
+@router.get("/onboarding-checkout-canceled")
+async def onboarding_checkout_canceled():
+    """Simple cancel page shown on client's phone if they cancel QR code payment."""
+    return HTMLResponse(content="""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Payment Canceled</title>
+        <style>
+            body { font-family: system-ui, -apple-system, sans-serif; background: #111827; color: white;
+                   display: flex; align-items: center; justify-content: center; min-height: 100vh;
+                   margin: 0; text-align: center; padding: 20px; }
+            .container { max-width: 400px; }
+            .icon { font-size: 64px; margin-bottom: 16px; color: #ef4444; }
+            h1 { font-size: 24px; margin-bottom: 8px; }
+            p { color: #9ca3af; font-size: 16px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="icon">&#10007;</div>
+            <h1>Payment Canceled</h1>
+            <p>The payment was not completed. You can close this page.<br>
+            Please ask the staff member if you'd like to try again.</p>
+        </div>
+    </body>
+    </html>
+    """, status_code=200)
 
 
 @router.post("/create-payment-intent")
@@ -1003,7 +1150,7 @@ async def create_onboarding_payment_intent(
     user: UserORM = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Create a Stripe PaymentIntent for onboarding card/terminal payment."""
+    """Create a Stripe PaymentIntent for onboarding card payment."""
     if user.role != "staff":
         raise HTTPException(status_code=403, detail="Staff access only")
 
@@ -1017,7 +1164,6 @@ async def create_onboarding_payment_intent(
     plan_id = data.get("plan_id")
     client_name = data.get("client_name", "New Client")
     coupon_code = data.get("coupon_code")
-    is_terminal = data.get("terminal", False)
 
     if not plan_id:
         raise HTTPException(status_code=400, detail="plan_id is required")
@@ -1055,11 +1201,10 @@ async def create_onboarding_payment_intent(
             # Stripe minimum is 50 cents
             amount_cents = 50
 
-        # Create PaymentIntent (with terminal-specific params if POS)
-        intent_params = {
-            "amount": amount_cents,
-            "currency": plan.currency.lower() if plan.currency else "eur",
-            "metadata": {
+        intent = stripe.PaymentIntent.create(
+            amount=amount_cents,
+            currency=plan.currency.lower() if plan.currency else "eur",
+            metadata={
                 "gym_id": user.gym_owner_id,
                 "plan_id": plan_id,
                 "plan_name": plan.name,
@@ -1068,14 +1213,8 @@ async def create_onboarding_payment_intent(
                 "coupon_code": coupon_code or "",
                 "discount_applied": discount_applied or ""
             },
-            "description": f"Gym membership: {plan.name} for {client_name}"
-        }
-
-        if is_terminal:
-            intent_params["payment_method_types"] = ["card_present"]
-            intent_params["capture_method"] = "automatic"
-
-        intent = stripe.PaymentIntent.create(**intent_params)
+            description=f"Gym membership: {plan.name} for {client_name}"
+        )
 
         logger.info(f"Created PaymentIntent {intent.id} for onboarding, amount: {amount_cents}")
 
