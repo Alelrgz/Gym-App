@@ -26,7 +26,7 @@
     <link rel="stylesheet" href="/static/css/style.css?v={{ cache_buster }}">
     <script>
         window.onerror = function (msg, url, line, col, error) {
-            alert("Error: " + msg + "\nurl: " + url + "\nline: " + line);
+            console.error("JS Error:", msg, "at", url, "line:", line);
             return false;
         };
     </script>
@@ -155,7 +155,7 @@
             if (!list) return;
 
             try {
-                const res = await fetch('/api/notifications?limit=20');
+                const res = await fetch('/api/notifications?limit=20', { credentials: 'include' });
                 const notifications = await res.json();
 
                 if (notifications.length === 0) {
@@ -229,7 +229,7 @@
 
         async function markNotificationRead(notificationId) {
             try {
-                await fetch(`/api/notifications/${notificationId}/read`, { method: 'POST' });
+                await fetch(`/api/notifications/${notificationId}/read`, { method: 'POST', credentials: 'include' });
                 loadNotifications();
             } catch (e) {
                 console.error('Error marking notification read:', e);
@@ -238,7 +238,7 @@
 
         async function markAllNotificationsRead() {
             try {
-                await fetch('/api/notifications/read-all', { method: 'POST' });
+                await fetch('/api/notifications/read-all', { method: 'POST', credentials: 'include' });
                 loadNotifications();
             } catch (e) {
                 console.error('Error marking all notifications read:', e);
