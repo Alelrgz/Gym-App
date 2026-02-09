@@ -196,6 +196,16 @@ async def do_register(
     import random
     import string
 
+    # Validate password length
+    if not password or len(password) < 12:
+        return templates.TemplateResponse("register.html", {
+            "request": request,
+            "error": "Password must be at least 12 characters",
+            "gym_id": "iron_gym",
+            "role": "client",
+            "mode": "auth"
+        })
+
     # Check if username exists
     existing = db.query(User).filter(User.username == username).first()
     if existing:

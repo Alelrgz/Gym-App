@@ -2118,8 +2118,16 @@ async function startCamera() {
         video.srcObject = cameraStream;
         await video.play();
     } catch (err) {
-        console.error('Camera access error:', err);
-        showToast('Could not access camera. Please check permissions.');
+        console.error('Camera access error:', err.name, err.message);
+        if (err.name === 'NotAllowedError') {
+            showToast('Camera permission denied. Please allow camera access in your browser settings.');
+        } else if (err.name === 'NotFoundError') {
+            showToast('No camera found on this device.');
+        } else if (err.name === 'NotReadableError') {
+            showToast('Camera is in use by another app.');
+        } else {
+            showToast('Could not access camera: ' + err.message);
+        }
         closeCameraScanner();
         // Fallback to file picker
         quickActionFallback();
@@ -4767,6 +4775,7 @@ async function initializeExerciseList(config) {
 
     const trainerId = getCurrentTrainerId();
     const res = await fetch(`${apiBase}/api/trainer/exercises`, {
+        credentials: 'include',
         headers: { 'x-trainer-id': trainerId }
     });
     const exercises = await res.json();
@@ -5107,6 +5116,7 @@ async function updateExercise() {
     try {
         const res = await fetch(`${apiBase}/api/trainer/exercises/${id}`, {
             method: 'PUT',
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
                 'x-trainer-id': trainerId
@@ -5164,6 +5174,7 @@ window.createExercise = async function () {
     try {
         const res = await fetch(`${apiBase}/api/trainer/exercises`, {
             method: 'POST',
+            credentials: 'include',
             headers: {
                 'Content-Type': 'application/json',
                 'x-trainer-id': trainerId
