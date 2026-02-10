@@ -336,10 +336,6 @@
                 if (!trainerId) { showToast('No trainer assigned', 'error'); return; }
                 globalSelectedTrainerId = trainerId;
 
-                const today = new Date().toISOString().split('T')[0];
-                document.getElementById('appointment-date').min = today;
-                document.getElementById('appointment-date').value = '';
-
                 globalSelectedDate = null;
                 globalSelectedTime = null;
                 globalBookingPaymentMethod = null;
@@ -367,6 +363,11 @@
 
                 document.getElementById('booking-modal').classList.remove('hidden');
                 document.body.style.overflow = 'hidden';
+
+                // Build date buttons grid
+                if (typeof buildBookingDateGrid === 'function') {
+                    buildBookingDateGrid();
+                }
             };
         }
 

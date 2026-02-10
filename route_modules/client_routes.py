@@ -324,15 +324,6 @@ async def set_fitness_goal(
     if current_user.role != "client":
         raise HTTPException(status_code=403, detail="Only clients have fitness goals")
 
-    # Block if client has a trainer assigned - trainer manages their nutrition
-    db = get_db_session()
-    try:
-        client_profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == current_user.id).first()
-        if client_profile and client_profile.trainer_id:
-            raise HTTPException(status_code=403, detail="Your trainer manages your nutrition plan")
-    finally:
-        db.close()
-
     if request.fitness_goal not in ["cut", "maintain", "bulk"]:
         raise HTTPException(status_code=400, detail="Goal must be 'cut', 'maintain', or 'bulk'")
 

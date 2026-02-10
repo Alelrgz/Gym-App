@@ -32,6 +32,7 @@ class ConversationResponse(BaseModel):
     other_user_id: str
     other_user_name: str
     other_user_role: str
+    other_user_profile_picture: Optional[str] = None
     last_message_preview: Optional[str] = None
     last_message_at: Optional[str] = None
     unread_count: int

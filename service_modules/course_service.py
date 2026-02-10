@@ -419,54 +419,9 @@ class CourseService:
                     db.add(new_entry)
                     created_count += 1
 
-            # Also create client schedule entries for all clients at the gym
-            client_entries_created = 0
-            if course.gym_id:
-                # Get all clients at this gym
-                clients = db.query(ClientProfileORM).filter(
-                    ClientProfileORM.gym_id == course.gym_id
-                ).all()
-
-                for client in clients:
-                    for week in range(weeks_ahead):
-                        for day_num in days_of_week:
-                            days_until = (day_num - today.weekday()) % 7
-                            if week == 0 and days_until == 0:
-                                target_date = today
-                            else:
-                                days_until = days_until + (week * 7)
-                                if week == 0 and days_until < 0:
-                                    days_until += 7
-                                target_date = today + timedelta(days=days_until)
-
-                            date_str = target_date.isoformat()
-
-                            # Check if client entry already exists
-                            existing_client = db.query(ClientScheduleORM).filter(
-                                ClientScheduleORM.course_id == course_id,
-                                ClientScheduleORM.date == date_str,
-                                ClientScheduleORM.client_id == client.id
-                            ).first()
-
-                            if existing_client:
-                                continue
-
-                            # Create client schedule entry
-                            client_entry = ClientScheduleORM(
-                                client_id=client.id,
-                                date=date_str,
-                                title=f"{course.name} @ {time_slot}",
-                                type="course",
-                                completed=False,
-                                course_id=course_id,
-                                details=json.dumps({"duration": duration, "trainer_id": trainer_id})
-                            )
-                            db.add(client_entry)
-                            client_entries_created += 1
-
             db.commit()
-            logger.info(f"Generated {created_count} trainer entries and {client_entries_created} client entries for course {course_id}")
-            return {"status": "success", "created": created_count, "client_entries": client_entries_created}
+            logger.info(f"Generated {created_count} trainer entries for course {course_id}")
+            return {"status": "success", "created": created_count}
 
         except HTTPException:
             raise
@@ -854,6 +809,27 @@ class CourseService:
                 status="confirmed"
             )
             db.add(enrollment)
+
+            # Add calendar entry for this lesson
+            if lesson.date:
+                existing_cal = db.query(ClientScheduleORM).filter(
+                    ClientScheduleORM.client_id == client_id,
+                    ClientScheduleORM.course_id == lesson.course_id,
+                    ClientScheduleORM.date == lesson.date
+                ).first()
+                if not existing_cal:
+                    time_slot = lesson.time or (course.time_slot if course else "TBD")
+                    cal_entry = ClientScheduleORM(
+                        client_id=client_id,
+                        date=lesson.date,
+                        title=f"{course.name} @ {time_slot}" if course else f"Class @ {time_slot}",
+                        type="course",
+                        completed=False,
+                        course_id=lesson.course_id,
+                        details=json.dumps({"lesson_id": lesson_id, "duration": lesson.duration or (course.duration if course else 60)})
+                    )
+                    db.add(cal_entry)
+
             db.commit()
             db.refresh(enrollment)
 
@@ -887,6 +863,16 @@ class CourseService:
 
             enrollment.status = "cancelled"
             enrollment.cancelled_at = datetime.utcnow().isoformat()
+
+            # Remove calendar entry for this lesson
+            lesson = db.query(CourseLessonORM).filter(CourseLessonORM.id == lesson_id).first()
+            if lesson and lesson.date:
+                db.query(ClientScheduleORM).filter(
+                    ClientScheduleORM.client_id == client_id,
+                    ClientScheduleORM.course_id == lesson.course_id,
+                    ClientScheduleORM.date == lesson.date
+                ).delete()
+
             db.commit()
 
             logger.info(f"Client {client_id} cancelled enrollment in lesson {lesson_id}")

@@ -320,6 +320,25 @@ async def do_register(
     db.add(new_user)
     db.commit()
 
+    # Create ClientProfileORM for clients at registration time
+    if role == "client":
+        from models_orm import ClientProfileORM
+        new_profile = ClientProfileORM(
+            id=new_user.id,
+            name=username,
+            email=email if email else None,
+            gym_id=gym_owner_id,
+            streak=0,
+            gems=0,
+            health_score=0,
+            plan="Standard",
+            status="Active",
+            last_seen="Never",
+            is_premium=False
+        )
+        db.add(new_profile)
+        db.commit()
+
     # If owner, show them their gym code
     if role == "owner" and generated_gym_code:
         return templates.TemplateResponse("register.html", {

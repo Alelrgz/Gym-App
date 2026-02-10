@@ -1231,17 +1231,20 @@ async function init() {
             if (toggleBtn && exercisesSection) {
                 toggleBtn.addEventListener('click', () => {
                     exercisesOpen = !exercisesOpen;
+                    const label = toggleBtn.querySelector('span:first-child');
 
                     if (exercisesOpen) {
                         // Opening
                         exercisesSection.style.maxHeight = exercisesSection.scrollHeight + 500 + 'px';
                         exercisesSection.style.opacity = '1';
                         if (exercisesChevron) exercisesChevron.style.transform = 'rotate(180deg)';
+                        if (label) label.textContent = 'Hide Exercises';
                     } else {
                         // Closing
                         exercisesSection.style.maxHeight = '0';
                         exercisesSection.style.opacity = '0';
                         if (exercisesChevron) exercisesChevron.style.transform = 'rotate(0deg)';
+                        if (label) label.textContent = 'Show Exercises';
                     }
                 });
             }
@@ -8190,20 +8193,15 @@ window.openChatWithUser = async function(userId, userName, avatarUrl) {
             }
         }
 
-        // Can message - open the chat
-        const chatUserAvatar = document.getElementById('chat-user-avatar');
-        if (chatUserAvatar && avatarUrl) {
-            chatUserAvatar.src = avatarUrl;
-            chatUserAvatar.dataset.customSet = 'true';
-        }
-        window.openChatModal(userId, userName);
+        // Can message - open the chat with profile picture
+        window.openChatModal(userId, userName, avatarUrl);
     } catch (err) {
         console.error('Error checking message permission:', err);
         showToast('Error opening chat', 'error');
     }
 };
 
-window.openChatModal = async function(otherUserId, otherUserName) {
+window.openChatModal = async function(otherUserId, otherUserName, profilePicture) {
     // If called from client modal, get info from there
     if (!otherUserId) {
         const clientModal = document.getElementById('client-modal');
@@ -8227,13 +8225,15 @@ window.openChatModal = async function(otherUserId, otherUserName) {
     const chatUserName = document.getElementById('chat-user-name');
     if (chatUserName) chatUserName.innerText = currentChatState.otherUserName;
 
-    // Set default avatar if not already set by openChatWithUser
+    // Set avatar: use profile picture or default gradient icon
     const chatUserAvatar = document.getElementById('chat-user-avatar');
-    if (chatUserAvatar && !chatUserAvatar.dataset.customSet) {
-        chatUserAvatar.src = `https://api.dicebear.com/7.x/avataaars/svg?seed=${currentChatState.otherUserName}`;
+    if (chatUserAvatar) {
+        if (profilePicture) {
+            chatUserAvatar.innerHTML = `<img src="${profilePicture}" class="w-full h-full object-cover" />`;
+        } else {
+            chatUserAvatar.innerHTML = '<span class="text-lg">👤</span>';
+        }
     }
-    // Reset the custom flag
-    if (chatUserAvatar) chatUserAvatar.dataset.customSet = '';
 
     // Clear messages container
     const messagesContainer = document.getElementById('chat-messages');
@@ -8254,10 +8254,15 @@ window.openChatModal = async function(otherUserId, otherUserName) {
     await loadChatMessages();
 };
 
-// Client chat modal - opens the conversations list
+// Client chat modal - opens direct trainer chat if available, otherwise conversations list
 window.openClientChatModal = async function() {
-    // Open the conversations list modal (shows all conversations: trainer + gym members)
-    window.openConversationsModal();
+    if (window.selectedTrainerId && typeof window.openChatModal === 'function') {
+        const trainerName = document.getElementById('trainer-name')?.textContent || 'Trainer';
+        const trainerPic = (window.currentTrainerData && window.currentTrainerData.profile_picture) || null;
+        window.openChatModal(window.selectedTrainerId, trainerName, trainerPic);
+    } else {
+        window.openConversationsModal();
+    }
 };
 
 window.closeChatModal = function() {
@@ -8559,19 +8564,21 @@ window.openConversationsModal = async function() {
             div.className = 'bg-white/5 hover:bg-white/10 p-4 rounded-xl cursor-pointer transition tap-effect';
             div.onclick = () => {
                 closeConversationsModal();
-                window.openChatModal(conv.other_user_id, conv.other_user_name);
+                window.openChatModal(conv.other_user_id, conv.other_user_name, conv.other_user_profile_picture);
             };
 
             const time = conv.last_message_at ? new Date(conv.last_message_at).toLocaleString([], {
                 month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
             }) : '';
 
+            const avatarHtml = conv.other_user_profile_picture
+                ? `<img src="${conv.other_user_profile_picture}" alt="${conv.other_user_name}" class="w-10 h-10 rounded-full object-cover">`
+                : `<div class="w-10 h-10 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center"><span class="text-lg">👤</span></div>`;
+
             div.innerHTML = `
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-3">
-                        <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-600 to-pink-500 flex items-center justify-center">
-                            <span class="text-lg">👤</span>
-                        </div>
+                        ${avatarHtml}
                         <div>
                             <p class="font-bold text-white">${conv.other_user_name}</p>
                             <p class="text-xs text-gray-400 truncate max-w-[200px]">${conv.last_message_preview || 'No messages yet'}</p>

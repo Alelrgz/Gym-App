@@ -586,7 +586,7 @@
 
         <!-- Step 3: Account Details -->
         <div id="step-3" class="step">
-            <button onclick="goToStep2()" class="back-btn">
+            <button onclick="goBackFromStep3()" class="back-btn">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
@@ -679,7 +679,7 @@
         function goToStep2() {
             if (!selectedRole) return;
 
-            // Client goes directly to step 3
+            // Client goes directly to step 3 (skips step 2)
             if (selectedRole === 'client') {
                 selectedSubRole = 'client';
                 document.getElementById('role').value = 'client';
@@ -689,6 +689,7 @@
                 setupStep3();
 
                 document.getElementById('step-1').classList.remove('active');
+                document.getElementById('step-2').classList.remove('active');
                 document.getElementById('step-3').classList.add('active');
                 return;
             }
@@ -706,6 +707,7 @@
 
             updateStepIndicator(2);
             document.getElementById('step-1').classList.remove('active');
+            document.getElementById('step-3').classList.remove('active');
             document.getElementById('step-2').classList.add('active');
         }
 
@@ -720,6 +722,18 @@
             document.getElementById('step-2').classList.remove('active');
             document.getElementById('step-3').classList.remove('active');
             document.getElementById('step-1').classList.add('active');
+        }
+
+        function goBackFromStep3() {
+            document.getElementById('step-3').classList.remove('active');
+            // Clients skip step 2, so go back to step 1
+            if (selectedRole === 'client') {
+                goToStep1();
+            } else {
+                // Trainer/Owner go back to step 2 (sub-role selection)
+                document.getElementById('step-2').classList.add('active');
+                updateStepIndicator(2);
+            }
         }
 
         function goToStep3() {

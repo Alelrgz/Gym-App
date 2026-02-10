@@ -1,13 +1,18 @@
 """
 Exercise Routes - API endpoints for exercise management.
 """
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from auth import get_current_user
 from models import ExerciseTemplate
 from models_orm import UserORM
 from service_modules.exercise_service import ExerciseService, get_exercise_service
 
 router = APIRouter()
+
+
+def require_trainer(user: UserORM):
+    if user.role not in ("trainer", "owner"):
+        raise HTTPException(status_code=403, detail="Only trainers can access this endpoint")
 
 
 # --- TRAINER EXERCISE ROUTES ---
@@ -18,6 +23,7 @@ async def get_exercises(
     current_user: UserORM = Depends(get_current_user)
 ):
     """Get all exercises accessible to the current trainer."""
+    require_trainer(current_user)
     return service.get_exercises(current_user.id)
 
 
@@ -28,6 +34,7 @@ async def create_exercise(
     current_user: UserORM = Depends(get_current_user)
 ):
     """Create a new personal exercise."""
+    require_trainer(current_user)
     return service.create_exercise(exercise.model_dump(), current_user.id)
 
 
@@ -39,6 +46,7 @@ async def update_exercise(
     current_user: UserORM = Depends(get_current_user)
 ):
     """Update an existing exercise or fork a global one."""
+    require_trainer(current_user)
     return service.update_exercise(exercise_id, exercise.model_dump(exclude_unset=True), current_user.id)
 
 

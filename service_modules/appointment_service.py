@@ -244,6 +244,11 @@ class AppointmentService:
         """Book a 1-on-1 appointment with a trainer."""
         db = get_db_session()
         try:
+            # Reject appointments in the past
+            appointment_date = datetime.fromisoformat(request.date).date()
+            if appointment_date < date.today():
+                raise HTTPException(status_code=400, detail="Cannot book appointments in the past")
+
             # Verify trainer exists
             trainer = db.query(UserORM).filter(
                 UserORM.id == request.trainer_id,
