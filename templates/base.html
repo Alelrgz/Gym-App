@@ -21,6 +21,9 @@
     <script src="https://js.stripe.com/v3/"></script>
     <!-- QRCode.js for QR code generation -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <script src="/static/js/icons.js?v={{ cache_buster }}"></script>
     <!-- Preload the first video for instant playback -->
     <link rel="preload" href="/static/videos/InclineDBPress.mp4?v=1" as="video" type="video/mp4">
     <link rel="stylesheet" href="/static/css/style.css?v={{ cache_buster }}">
@@ -55,61 +58,61 @@
                 <!-- Owner Menu -->
                 <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner' }}"
                     class="fab-item" style="transition-delay: 0.05s">
-                    🏠<span class="fab-label">Home</span>
+                    <i data-lucide="home" class="w-5 h-5"></i><span class="fab-label">Home</span>
                 </a>
                 <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=trainers' }}"
                     class="fab-item" style="transition-delay: 0.1s">
-                    👥<span class="fab-label">Trainers</span>
+                    <i data-lucide="users" class="w-5 h-5"></i><span class="fab-label">Trainers</span>
                 </a>
-                <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=automation' }}"
+                <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=crm' }}"
                     class="fab-item" style="transition-delay: 0.15s">
-                    📬<span class="fab-label">Automation</span>
+                    <i data-lucide="bar-chart-3" class="w-5 h-5"></i><span class="fab-label">CRM</span>
                 </a>
                 <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=settings' }}"
                     class="fab-item" style="transition-delay: 0.2s">
-                    ⚙️<span class="fab-label">Settings</span>
+                    <i data-lucide="settings" class="w-5 h-5"></i><span class="fab-label">Settings</span>
                 </a>
                 {% elif role == 'trainer' %}
                 <!-- Trainer Menu - Uses section switching -->
                 <a href="#dashboard" onclick="if(typeof switchSection==='function'){switchSection('dashboard');toggleFabMenu(document.querySelector('.fab-main'));return false;}"
                     class="fab-item" style="transition-delay: 0.05s">
-                    🏠<span class="fab-label">Home</span>
+                    <i data-lucide="home" class="w-5 h-5"></i><span class="fab-label">Home</span>
                 </a>
                 <a href="#schedule" onclick="if(typeof switchSection==='function'){switchSection('schedule');toggleFabMenu(document.querySelector('.fab-main'));return false;}"
                     class="fab-item" style="transition-delay: 0.1s">
-                    👤<span class="fab-label">Me</span>
+                    <i data-lucide="user" class="w-5 h-5"></i><span class="fab-label">Me</span>
                 </a>
                 <a href="#courses" onclick="if(typeof switchSection==='function'){switchSection('courses');toggleFabMenu(document.querySelector('.fab-main'));return false;}"
                     class="fab-item" style="transition-delay: 0.15s">
-                    📚<span class="fab-label">Courses</span>
+                    <i data-lucide="book-open" class="w-5 h-5"></i><span class="fab-label">Courses</span>
                 </a>
                 {% elif role == 'staff' %}
                 <!-- Staff Menu -->
                 <a href="{{ 'staff.html' if static_build else '/?gym_id=' + gym_id + '&role=staff' }}"
                     class="fab-item" style="transition-delay: 0.05s">
-                    🏠<span class="fab-label">Home</span>
+                    <i data-lucide="home" class="w-5 h-5"></i><span class="fab-label">Home</span>
                 </a>
                 <a href="{{ 'staff.html' if static_build else '/?gym_id=' + gym_id + '&role=staff&mode=settings' }}"
                     class="fab-item" style="transition-delay: 0.1s">
-                    ⚙️<span class="fab-label">Settings</span>
+                    <i data-lucide="settings" class="w-5 h-5"></i><span class="fab-label">Settings</span>
                 </a>
                 {% else %}
                 <!-- Client Menu -->
                 <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
                     class="fab-item" style="transition-delay: 0.05s">
-                    🏠<span class="fab-label">Home</span>
+                    <i data-lucide="home" class="w-5 h-5"></i><span class="fab-label">Home</span>
                 </a>
                 <a href="{{ 'client_progress.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=progress' }}"
                     class="fab-item" style="transition-delay: 0.1s">
-                    📊<span class="fab-label">Stats</span>
+                    <i data-lucide="bar-chart-3" class="w-5 h-5"></i><span class="fab-label">Stats</span>
                 </a>
                 <a href="{{ 'client_leaderboard.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=leaderboard' }}"
                     class="fab-item" style="transition-delay: 0.15s">
-                    🏆<span class="fab-label">Ranks</span>
+                    <i data-lucide="trophy" class="w-5 h-5"></i><span class="fab-label">Ranks</span>
                 </a>
                 <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=client_dashboard' }}"
                     class="fab-item" style="transition-delay: 0.2s">
-                    ⚙️<span class="fab-label">Settings</span>
+                    <i data-lucide="settings" class="w-5 h-5"></i><span class="fab-label">Settings</span>
                 </a>
                 {% endif %}
             </div>
@@ -161,7 +164,7 @@
                 if (notifications.length === 0) {
                     list.innerHTML = `
                         <div class="text-center text-gray-400 py-8">
-                            <span class="text-4xl mb-2 block">🔔</span>
+                            <span class="mb-2 block">${icon('bell', 32)}</span>
                             <p class="text-sm">No notifications yet</p>
                         </div>
                     `;
@@ -169,14 +172,14 @@
                 }
 
                 list.innerHTML = notifications.map(n => {
-                    const icon = getNotificationIcon(n.type);
+                    const nIcon = getNotifIcon(n.type);
                     const timeAgo = formatTimeAgo(n.created_at);
                     const unreadClass = n.read ? 'opacity-60' : 'border-l-2 border-orange-500';
 
                     return `
                         <div class="flex items-start space-x-3 p-3 bg-white/5 rounded-xl ${unreadClass}"
                              onclick="markNotificationRead(${n.id})">
-                            <span class="text-xl">${icon}</span>
+                            <span class="text-xl">${nIcon}</span>
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-bold text-white">${n.title}</p>
                                 <p class="text-xs text-gray-400 truncate">${n.message}</p>
@@ -196,21 +199,7 @@
             }
         }
 
-        function getNotificationIcon(type) {
-            const icons = {
-                'appointment_booked': '📅',
-                'appointment_canceled': '❌',
-                'message': '💬',
-                'streak': '🔥',
-                'achievement': '🏆',
-                'reminder': '⏰',
-                'offer': '🎁',
-                'friend_request': '👋',
-                'coop_workout': '💪',
-                'course': '🏋️'
-            };
-            return icons[type] || '🔔';
-        }
+        // getNotificationIcon now provided by icons.js as getNotifIcon()
 
         function formatTimeAgo(dateStr) {
             const date = new Date(dateStr);
@@ -271,16 +260,11 @@
             const sessionTypeSelect = document.getElementById('appointment-session-type');
             if (!sessionTypeSelect) return;
 
-            const labels = (typeof categoryLabels !== 'undefined') ? categoryLabels : {
-                'bodybuilding': '💪 Bodybuilding',
-                'crossfit': '🏋️ Crossfit',
-                'calisthenics': '🤸 Calisthenics',
-                'cardio': '🏃 Cardio',
-                'hiit': '⚡ HIIT',
-                'yoga': '🧘 Yoga',
-                'boxing': '🥊 Boxing',
-                'rehabilitation': '🩹 Rehabilitation'
-            };
+            const labels = (typeof categoryLabels !== 'undefined') ? categoryLabels : (function() {
+                const m = {};
+                Object.keys(CATEGORY_LABELS).forEach(k => { m[k] = CATEGORY_LABELS[k].label; });
+                return m;
+            })();
 
             const trainerId = globalSelectedTrainerId || (typeof selectedTrainerId !== 'undefined' ? selectedTrainerId : null);
             if (!trainerId) {

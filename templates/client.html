@@ -11,11 +11,11 @@
     </div>
     <div class="flex space-x-2">
         <div onclick="openClientChatModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer">
-            💬
+            <i data-lucide="message-circle" class="w-5 h-5"></i>
         </div>
         <div data-action="showModal" data-target="notification-modal"
             class="notification-bell w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect relative">
-            🔔
+            <i data-lucide="bell" class="w-5 h-5"></i>
             <span class="notification-badge hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
         </div>
     </div>
@@ -32,7 +32,7 @@
                 <h3 class="text-lg font-black text-white" id="challenge-title">...</h3>
                 <p class="text-xs text-gray-400 mt-1" id="challenge-desc">...</p>
             </div>
-            <span class="text-2xl">🏆</span>
+            <i data-lucide="trophy" class="w-6 h-6"></i>
         </div>
         <div class="mt-4">
             <div class="flex justify-between text-xs mb-2">
@@ -64,7 +64,7 @@
         <div class="flex justify-between items-start mb-4">
             <div class="flex items-center gap-3">
                 <div id="member-profile-avatar" class="w-14 h-14 rounded-full bg-orange-500/20 flex items-center justify-center overflow-hidden border-2 border-orange-500/30">
-                    <span class="text-2xl">👤</span>
+                    <i data-lucide="user" class="w-6 h-6"></i>
                 </div>
                 <div>
                     <h3 id="member-profile-name" class="text-lg font-bold text-white">Username</h3>
@@ -76,7 +76,7 @@
         <div class="grid grid-cols-3 gap-2 mb-4">
             <div class="bg-white/5 rounded-xl p-3 text-center border border-white/5">
                 <div class="flex items-center justify-center gap-1">
-                    <span class="text-sm">🔥</span>
+                    <i data-lucide="flame" class="w-4 h-4"></i>
                     <p id="member-profile-streak" class="text-xl font-bold text-orange-400">0</p>
                 </div>
                 <p class="text-[10px] text-gray-500 uppercase font-medium mt-1">Streak</p>
@@ -148,7 +148,7 @@
             <div class="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-xl p-4 border border-purple-500/20">
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center gap-2">
-                        <span class="text-purple-400">📊</span>
+                        <i data-lucide="bar-chart-3" class="w-4 h-4 text-purple-400"></i>
                         <span class="text-xs text-purple-300 uppercase tracking-wider font-medium">Friend Progress</span>
                     </div>
                     <!-- View Tabs -->
@@ -229,7 +229,7 @@
     <div class="glass-card p-6 rounded-2xl max-w-sm w-full">
         <div class="text-center mb-4">
             <div id="friend-request-avatar" class="w-20 h-20 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-3 overflow-hidden">
-                <span class="text-3xl">👤</span>
+                <i data-lucide="user" class="w-8 h-8"></i>
             </div>
             <h3 id="friend-request-name" class="text-xl font-bold">Username</h3>
             <p class="text-gray-400 text-sm mt-1">Send a friend request</p>
@@ -270,7 +270,7 @@ async function openMemberProfile(memberId) {
         if (member.profile_picture) {
             avatarEl.innerHTML = `<img src="${member.profile_picture}" class="w-full h-full object-cover">`;
         } else {
-            avatarEl.innerHTML = '<span class="text-2xl">👤</span>';
+            avatarEl.innerHTML = '<i data-lucide="user" class="w-6 h-6"></i>';
         }
 
         // Update weekly activity chart
@@ -390,7 +390,7 @@ function openFriendRequestModal(userId, username, profilePicture) {
         if (profilePicture) {
             avatarEl.innerHTML = `<img src="${profilePicture}" class="w-full h-full object-cover">`;
         } else {
-            avatarEl.innerHTML = '<span class="text-3xl">👤</span>';
+            avatarEl.innerHTML = '<i data-lucide="user" class="w-8 h-8"></i>';
         }
     }
     if (messageEl) messageEl.value = '';
@@ -826,14 +826,14 @@ function renderFriendHealthBars(data) {
     </div>
     <div class="flex space-x-2">
         <div onclick="openBookingChoiceForMyTrainer()" class="relative w-10 h-10 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center tap-effect cursor-pointer" title="Book Session">
-            📅
+            <i data-lucide="calendar" class="w-5 h-5"></i>
         </div>
         <div onclick="openClientChatModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer">
-            💬
+            <i data-lucide="message-circle" class="w-5 h-5"></i>
         </div>
         <div data-action="showModal" data-target="notification-modal"
             class="notification-bell w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect relative">
-            🔔
+            <i data-lucide="bell" class="w-5 h-5"></i>
             <span class="notification-badge hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
         </div>
     </div>
@@ -856,7 +856,7 @@ function renderFriendHealthBars(data) {
                                 <circle cx="40" cy="40" r="34" stroke="#4ADE80" stroke-width="6" fill="none" stroke-dasharray="213.6"
                                     stroke-dashoffset="42" stroke-linecap="round" id="diet-progress-ring" />
                             </svg>
-                            <span class="absolute text-xl">🥗</span>
+                            <i data-lucide="leaf" class="w-5 h-5 absolute"></i>
                         </div>
                         <div>
                             <p class="text-[10px] text-gray-400 uppercase tracking-wider">Diet</p>
@@ -918,7 +918,7 @@ function renderFriendHealthBars(data) {
                             </div>
                         </div>
                         <button onclick="openWeightModal()" class="w-10 h-10 rounded-full bg-blue-500/20 flex items-center justify-center hover:bg-blue-500/30 transition tap-effect">
-                            <span class="text-lg">⚖️</span>
+                            <i data-lucide="scale" class="w-5 h-5"></i>
                         </button>
                     </div>
                     <!-- Mini Chart -->
@@ -941,19 +941,19 @@ function renderFriendHealthBars(data) {
     <div class="flex space-x-3 overflow-x-auto pb-2 -mx-1 px-1">
         <button onclick="openManualMealModal()"
             class="flex-shrink-0 bg-white/5 border border-white/10 backdrop-blur-sm px-4 py-3 rounded-2xl flex items-center space-x-2 tap-effect hover:bg-white/10 transition">
-            <span class="text-sm">✏️</span> <span class="text-xs font-medium text-white/90">Add Meal</span>
+            <i data-lucide="pencil" class="w-4 h-4"></i> <span class="text-xs font-medium text-white/90">Add Meal</span>
         </button>
         <button data-action="quickAction" data-type="scan"
             class="flex-shrink-0 bg-white/5 border border-white/10 backdrop-blur-sm px-4 py-3 rounded-2xl flex items-center space-x-2 tap-effect hover:bg-white/10 transition">
-            <span class="text-sm">📷</span> <span class="text-xs font-medium text-white/90">Scan Meal</span>
+            <i data-lucide="camera" class="w-4 h-4"></i> <span class="text-xs font-medium text-white/90">Scan Meal</span>
         </button>
         <button data-action="quickAction" data-type="search"
             class="flex-shrink-0 bg-white/5 border border-white/10 backdrop-blur-sm px-4 py-3 rounded-2xl flex items-center space-x-2 tap-effect hover:bg-white/10 transition">
-            <span class="text-sm">🔍</span> <span class="text-xs font-medium text-white/90">Search</span>
+            <i data-lucide="search" class="w-4 h-4"></i> <span class="text-xs font-medium text-white/90">Search</span>
         </button>
         <button data-action="quickAction" data-type="copy"
             class="flex-shrink-0 bg-white/5 border border-white/10 backdrop-blur-sm px-4 py-3 rounded-2xl flex items-center space-x-2 tap-effect hover:bg-white/10 transition">
-            <span class="text-sm">📋</span> <span class="text-xs font-medium text-white/90">Copy Yesterday</span>
+            <i data-lucide="clipboard" class="w-4 h-4"></i> <span class="text-xs font-medium text-white/90">Copy Yesterday</span>
         </button>
     </div>
 
@@ -1006,7 +1006,7 @@ function renderFriendHealthBars(data) {
             <div class="flex justify-between items-center mb-2">
                 <div class="flex items-center gap-2">
                     <button onclick="openWeightModal()" id="weight-update-btn" class="flex items-center gap-1.5 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-500/30 px-3 py-1 rounded-full hover:from-blue-500/30 hover:to-cyan-500/30 transition tap-effect">
-                        <span id="metric-icon" class="text-xs">⚖️</span>
+                        <span id="metric-icon" class="text-xs"><i data-lucide="scale" class="w-3.5 h-3.5 inline-block align-middle stroke-current"></i></span>
                         <span id="client-weight" class="text-sm font-bold text-blue-400">--</span>
                         <span id="metric-unit" class="text-xs text-blue-400/70">kg</span>
                     </button>
@@ -1098,10 +1098,10 @@ function renderFriendHealthBars(data) {
             <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Physique Update</h3>
             <div class="flex gap-2">
                 <button onclick="openCompareModal()" class="text-xs bg-white/5 border border-white/10 backdrop-blur-sm px-3 py-1.5 rounded-xl text-white/80 hover:bg-white/10 hover:text-white transition tap-effect flex items-center gap-1">
-                    <span class="text-[10px]">⚖️</span> Compare
+                    <i data-lucide="scale" class="w-3 h-3 inline-block align-middle stroke-current"></i> Compare
                 </button>
                 <button onclick="openPhysiqueModal()" class="text-xs bg-primary/20 border border-primary/30 backdrop-blur-sm px-3 py-1.5 rounded-xl text-white hover:bg-primary/30 transition tap-effect flex items-center gap-1">
-                    <span class="text-[10px]">➕</span> Add
+                    <i data-lucide="plus" class="w-3 h-3 inline-block align-middle stroke-current"></i> Add
                 </button>
             </div>
         </div>
@@ -1264,7 +1264,7 @@ function renderFriendHealthBars(data) {
             <!-- Upload Button -->
             <div id="physique-upload-area" class="border-2 border-dashed border-white/20 rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 transition"
                 onclick="document.getElementById('physique-file-input').click()">
-                <span class="text-4xl mb-2 block">📷</span>
+                <i data-lucide="camera" class="w-10 h-10 mb-2 block"></i>
                 <p class="text-sm text-gray-400">Tap to select a photo</p>
                 <p class="text-xs text-gray-500 mt-1">JPG, PNG, WEBP (max 10MB)</p>
             </div>
@@ -1458,7 +1458,7 @@ function renderFriendHealthBars(data) {
             <div class="bg-white/5 border border-white/10 rounded-lg p-3 text-center">
                 <button type="button" disabled
                     class="w-full bg-white/5 text-gray-500 px-4 py-2 rounded-lg text-sm font-bold cursor-not-allowed opacity-50">
-                    🤖 Calculate with AI (Coming Soon)
+                    <i data-lucide="bot" class="w-4 h-4 inline-block align-middle stroke-current"></i> Calculate with AI (Coming Soon)
                 </button>
                 <p class="text-xs text-gray-500 mt-2">AI-powered macro calculation will be available in a future update</p>
             </div>
@@ -1478,13 +1478,13 @@ function renderFriendHealthBars(data) {
     <div class="flex justify-between items-center p-4 bg-black/50 backdrop-blur-sm">
         <button onclick="closeCameraScanner()" class="text-white text-2xl">&times;</button>
         <h3 class="text-white font-bold">Scan Your Meal</h3>
-        <button id="flip-btn" onclick="flipCamera()" class="text-white text-xl" title="Switch Camera">🔄</button>
+        <button id="flip-btn" onclick="flipCamera()" class="text-white text-xl" title="Switch Camera"><i data-lucide="refresh-cw" class="w-5 h-5"></i></button>
     </div>
 
     <!-- Mode Toggle Tabs -->
     <div id="scan-mode-tabs" class="flex bg-black/30 mx-4 rounded-full p-1">
         <button onclick="setScanMode('photo')" id="photo-mode-btn" class="flex-1 py-2 px-4 rounded-full text-sm font-medium transition bg-primary text-white">
-            📷 Photo
+            <i data-lucide="camera" class="w-4 h-4 inline-block align-middle"></i> Photo
         </button>
         <button onclick="setScanMode('barcode')" id="barcode-mode-btn" class="flex-1 py-2 px-4 rounded-full text-sm font-medium transition text-white/60">
             ▦ Barcode
@@ -1595,7 +1595,7 @@ function renderFriendHealthBars(data) {
         <p class="text-center text-white/60 text-xs mb-4">Take a photo of your meal</p>
         <div class="flex justify-center items-center space-x-6">
             <button onclick="openGalleryForScan()" class="w-12 h-12 rounded-full bg-white/10 flex items-center justify-center text-white">
-                🖼️
+                <i data-lucide="image" class="w-4 h-4 inline-block align-middle"></i>
             </button>
             <button onclick="takePhoto()" id="capture-btn" class="w-20 h-20 rounded-full bg-white flex items-center justify-center shadow-lg active:scale-95 transition">
                 <div class="w-16 h-16 rounded-full border-4 border-black/20"></div>
@@ -1617,10 +1617,10 @@ function renderFriendHealthBars(data) {
         <p class="text-center text-white/60 text-xs mb-4">Review your photo</p>
         <div class="flex justify-center items-center space-x-4">
             <button onclick="retakePhoto()" class="px-6 py-3 rounded-full bg-white/20 text-white font-medium">
-                ↩️ Retake
+                <i data-lucide="undo-2" class="w-4 h-4 inline-block align-middle"></i> Retake
             </button>
             <button onclick="analyzePhoto()" id="analyze-btn" class="px-8 py-3 rounded-full bg-primary text-white font-bold shadow-lg">
-                ✨ Analyze
+                <i data-lucide="sparkles" class="w-4 h-4 inline-block align-middle stroke-current"></i> Analyze
             </button>
         </div>
     </div>
@@ -1687,7 +1687,7 @@ if (mealForm) {
                 throw new Error(error.detail || 'Failed to log meal');
             }
 
-            showToast(`${mealData.name} logged successfully! 🍽️`, 'success');
+            showToast(`${mealData.name} logged successfully!`, 'success');
             closeManualMealModal();
 
             // Reload the page to show updated data
@@ -1709,14 +1709,14 @@ if (mealForm) {
     </div>
     <div class="flex space-x-2">
         <div onclick="openBookingChoiceForMyTrainer()" class="relative w-10 h-10 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center tap-effect cursor-pointer" title="Book Session">
-            📅
+            <i data-lucide="calendar" class="w-5 h-5"></i>
         </div>
         <div onclick="openClientChatModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer">
-            💬
+            <i data-lucide="message-circle" class="w-5 h-5"></i>
         </div>
         <div data-action="showModal" data-target="notification-modal"
             class="notification-bell w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect relative">
-            🔔
+            <i data-lucide="bell" class="w-5 h-5"></i>
             <span class="notification-badge hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
         </div>
     </div>
@@ -1843,7 +1843,7 @@ if (mealForm) {
             class="w-full p-4 rounded-xl border-2 transition-all duration-200 text-left privacy-option">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
-                    <span class="text-xl">🌍</span>
+                    <i data-lucide="globe" class="w-5 h-5"></i>
                 </div>
                 <div class="flex-1">
                     <p class="font-bold text-white">Public</p>
@@ -1862,7 +1862,7 @@ if (mealForm) {
             class="w-full p-4 rounded-xl border-2 transition-all duration-200 text-left privacy-option">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-yellow-500/20 flex items-center justify-center">
-                    <span class="text-xl">🔒</span>
+                    <i data-lucide="lock" class="w-5 h-5"></i>
                 </div>
                 <div class="flex-1">
                     <p class="font-bold text-white">Private</p>
@@ -1881,7 +1881,7 @@ if (mealForm) {
             class="w-full p-4 rounded-xl border-2 transition-all duration-200 text-left privacy-option">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center">
-                    <span class="text-xl">🛡️</span>
+                    <i data-lucide="shield" class="w-5 h-5"></i>
                 </div>
                 <div class="flex-1">
                     <p class="font-bold text-white">Staff Only</p>
@@ -1916,7 +1916,7 @@ if (mealForm) {
         <!-- No certificate uploaded -->
         <div id="cert-empty" class="hidden">
             <div class="flex items-center gap-3 p-4 rounded-xl bg-white/5 border border-white/10">
-                <div class="w-10 h-10 rounded-full bg-gray-500/20 flex items-center justify-center text-xl">📋</div>
+                <div class="w-10 h-10 rounded-full bg-gray-500/20 flex items-center justify-center"><i data-lucide="clipboard" class="w-5 h-5"></i></div>
                 <div class="flex-1">
                     <p class="text-white font-semibold text-sm">No certificate uploaded</p>
                     <p class="text-xs text-gray-400">Upload your certificato medico sportivo</p>
@@ -2011,7 +2011,7 @@ function displayCertificateStatus() {
     } else if (status === 'expiring') {
         card.className = 'flex items-center gap-3 p-4 rounded-xl border border-yellow-500/30 bg-yellow-500/10';
         icon.className = 'w-10 h-10 rounded-full flex items-center justify-center text-xl bg-yellow-500/20';
-        icon.textContent = '⚠';
+        icon.innerHTML = '<i data-lucide="alert-triangle" class="w-5 h-5"></i>';
         const exp = currentCertificate.expiration_date;
         const daysLeft = Math.ceil((new Date(exp) - new Date()) / (1000 * 60 * 60 * 24));
         expiryText.textContent = `Expires in ${daysLeft} days (${new Date(exp).toLocaleDateString()})`;
@@ -2203,7 +2203,7 @@ function renderPendingRequests(requests) {
                 <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center overflow-hidden">
                     ${req.from_profile_picture
                         ? `<img src="${req.from_profile_picture}" class="w-full h-full object-cover">`
-                        : '<span class="text-lg">👤</span>'}
+                        : '<i data-lucide="user" class="w-5 h-5"></i>'}
                 </div>
                 <div>
                     <p class="font-bold text-white text-sm">${req.from_username}</p>
@@ -2447,14 +2447,14 @@ setTimeout(() => loadGymAndTrainerInfo(), 100);
     </div>
     <div class="flex space-x-2">
         <div onclick="openBookingChoiceForMyTrainer()" class="relative w-10 h-10 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center tap-effect cursor-pointer" title="Book Session">
-            📅
+            <i data-lucide="calendar" class="w-5 h-5"></i>
         </div>
         <div onclick="openClientChatModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer">
-            💬
+            <i data-lucide="message-circle" class="w-5 h-5"></i>
         </div>
         <div data-action="showModal" data-target="notification-modal"
             class="notification-bell w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect relative">
-            🔔
+            <i data-lucide="bell" class="w-5 h-5"></i>
             <span class="notification-badge hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
         </div>
     </div>
@@ -2474,7 +2474,7 @@ setTimeout(() => loadGymAndTrainerInfo(), 100);
         <!-- Edit overlay -->
         <div class="absolute inset-0 rounded-full bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center cursor-pointer"
             onclick="document.getElementById('profile-picture-input').click()">
-            <span class="text-white text-2xl">📷</span>
+            <i data-lucide="camera" class="w-6 h-6 text-white"></i>
         </div>
         <!-- Hidden file input -->
         <input type="file" id="profile-picture-input" accept="image/*" class="hidden" onchange="uploadProfilePicture(this)">
@@ -2555,7 +2555,7 @@ setTimeout(() => loadGymAndTrainerInfo(), 100);
             class="w-full bg-white/5 p-4 rounded-2xl flex items-center justify-between tap-effect group hover:bg-white/10 transition">
             <div class="flex items-center space-x-4">
                 <div class="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                    ⭐
+                    <i data-lucide="star" class="w-4 h-4 inline-block align-middle"></i>
                 </div>
                 <div class="text-left">
                     <p class="font-bold text-white group-hover:text-primary transition">Membership Plans</p>
@@ -2569,7 +2569,7 @@ setTimeout(() => loadGymAndTrainerInfo(), 100);
             class="w-full bg-white/5 p-4 rounded-2xl flex items-center justify-between tap-effect group hover:bg-white/10 transition">
             <div class="flex items-center space-x-4">
                 <div class="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400">
-                    ⚙️
+                    <i data-lucide="settings" class="w-4 h-4 inline-block align-middle"></i>
                 </div>
                 <div class="text-left">
                     <p class="font-bold text-white group-hover:text-purple-400 transition">Account Management</p>
@@ -2583,7 +2583,7 @@ setTimeout(() => loadGymAndTrainerInfo(), 100);
             class="w-full bg-red-500/10 p-4 rounded-2xl flex items-center justify-between tap-effect group hover:bg-red-500/20 transition mt-6">
             <div class="flex items-center space-x-4">
                 <div class="w-10 h-10 rounded-full bg-red-500/20 flex items-center justify-center text-red-500">
-                    🚪
+                    <i data-lucide="log-out" class="w-4 h-4 inline-block align-middle"></i>
                 </div>
                 <div class="text-left">
                     <p class="font-bold text-red-500 transition">Log Out</p>
@@ -2813,16 +2813,16 @@ async function selectFitnessGoal(goal) {
     <div class="flex space-x-2">
         <!-- Booking Icon -->
         <div onclick="openBookingChoiceForMyTrainer()" class="relative w-10 h-10 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center tap-effect cursor-pointer" title="Book Session">
-            📅
+            <i data-lucide="calendar" class="w-5 h-5"></i>
         </div>
         <!-- Messages Icon with Badge -->
         <div onclick="openClientChatModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer">
-            💬
+            <i data-lucide="message-circle" class="w-5 h-5"></i>
             <span id="unread-messages-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center hidden">0</span>
         </div>
         <div data-action="showModal" data-target="notification-modal"
             class="notification-bell w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect relative">
-            🔔
+            <i data-lucide="bell" class="w-5 h-5"></i>
             <span class="notification-badge hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
         </div>
     </div>
@@ -2836,7 +2836,7 @@ async function selectFitnessGoal(goal) {
         <div class="absolute bottom-0 left-0 w-24 h-24 bg-red-500/20 blur-2xl rounded-full -ml-8 -mb-8"></div>
         <div class="flex items-center gap-6 relative z-10">
             <div class="flex items-center gap-3">
-                <div class="text-3xl animate-bounce" style="animation-duration: 2s;">🔥</div>
+                <div class="flame-animate"><i data-lucide="flame" class="w-8 h-8"></i></div>
                 <div>
                     <h1 class="text-4xl font-black bg-gradient-to-r from-orange-400 via-red-400 to-orange-500 bg-clip-text text-transparent" id="client-streak">0</h1>
                     <p class="text-orange-400 font-bold uppercase tracking-wider text-[10px]">Day Streak</p>
@@ -2865,7 +2865,7 @@ async function selectFitnessGoal(goal) {
         <div class="relative z-10">
             <div class="flex justify-between items-start mb-3">
                 <span class="bg-gradient-to-r from-red-500/30 to-orange-500/30 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
-                <span class="text-xl">💪</span>
+                <i data-lucide="dumbbell" class="w-5 h-5"></i>
             </div>
             <h3 class="text-2xl font-black italic uppercase mb-1" id="workout-title">...</h3>
             <p class="text-sm text-gray-300 mb-4"><span id="workout-duration"></span> • <span id="workout-difficulty"></span></p>
@@ -2878,7 +2878,7 @@ async function selectFitnessGoal(goal) {
                 <button onclick="event.preventDefault(); event.stopPropagation(); openCoopModal()" id="coop-badge-btn"
                     class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-purple-500/30 hover:bg-purple-500/50 rounded-lg flex items-center justify-center transition-all tap-effect border border-purple-500/50"
                     title="Start a CO-OP workout with a friend">
-                    <span class="text-lg">👥</span>
+                    <i data-lucide="users" class="w-5 h-5"></i>
                 </button>
                 <!-- CO-OP completed indicator (hidden by default, shown if was CO-OP workout) -->
                 <div id="coop-completed-badge" class="hidden absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg">
@@ -2895,7 +2895,7 @@ async function selectFitnessGoal(goal) {
         {% call card(classes="p-4 flex items-center justify-between tap-effect hover:bg-white/5 transition") %}
         <div class="flex items-center gap-4">
             <div class="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
-                <span class="text-2xl">🥗</span>
+                <i data-lucide="leaf" class="w-6 h-6"></i>
             </div>
             <div>
                 <p class="font-bold text-white">Diet Tracker</p>
@@ -2920,7 +2920,7 @@ async function selectFitnessGoal(goal) {
             <div onclick="openTrainerProfileModal()" class="glass-card p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition tap-effect">
                 <div class="flex items-center space-x-3">
                     <div id="trainer-avatar" class="w-12 h-12 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center overflow-hidden">
-                        <span class="text-xl">👤</span>
+                        <i data-lucide="user" class="w-5 h-5"></i>
                     </div>
                     <div>
                         <p class="font-bold text-white" id="trainer-name">Loading...</p>
@@ -2929,7 +2929,7 @@ async function selectFitnessGoal(goal) {
                 </div>
                 <div class="flex gap-2" onclick="event.stopPropagation()">
                     <button onclick="openClientChatModal()" class="bg-white/10 px-3 py-2 rounded-lg text-sm font-bold hover:bg-white/20 transition tap-effect" title="Message Trainer">
-                        💬
+                        <i data-lucide="message-circle" class="w-5 h-5"></i>
                     </button>
                     <button onclick="openBookingChoiceForMyTrainer()" class="bg-orange-500 px-4 py-2 rounded-lg text-sm font-bold hover:bg-orange-400 transition tap-effect">
                         Book Session
@@ -3015,7 +3015,7 @@ async function selectFitnessGoal(goal) {
         <!-- Profile Header -->
         <div class="text-center mb-6">
             <div id="profile-trainer-avatar" class="w-24 h-24 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center mx-auto mb-4 overflow-hidden">
-                <span class="text-4xl">👤</span>
+                <i data-lucide="user" class="w-10 h-10"></i>
             </div>
             <h2 id="profile-trainer-name" class="text-2xl font-bold text-white">Trainer Name</h2>
             <p class="text-orange-400 text-sm font-medium">Personal Trainer</p>
@@ -3051,10 +3051,10 @@ async function selectFitnessGoal(goal) {
         <!-- Action Buttons -->
         <div class="space-y-3">
             <button id="profile-message-btn" onclick="messageTrainerFromProfile()" class="w-full bg-white/10 py-3 rounded-xl text-sm font-bold hover:bg-white/20 transition tap-effect flex items-center justify-center gap-2">
-                💬 Send Message
+                <i data-lucide="message-circle" class="w-4 h-4 inline-block align-middle"></i> Send Message
             </button>
             <button id="profile-book-btn" onclick="bookWithTrainerFromProfile()" class="w-full bg-orange-500 py-3 rounded-xl text-sm font-bold hover:bg-orange-400 transition tap-effect flex items-center justify-center gap-2">
-                📅 Book Session
+                <i data-lucide="calendar" class="w-4 h-4 inline-block align-middle"></i> Book Session
             </button>
             <button id="profile-select-btn" onclick="selectTrainerFromProfile()" class="w-full bg-white/5 border border-white/20 py-3 rounded-xl text-sm font-bold hover:bg-white/10 transition tap-effect hidden">
                 ✓ Select as My Trainer
@@ -3077,8 +3077,8 @@ async function selectFitnessGoal(goal) {
             <!-- 1-on-1 Session Option -->
             <button onclick="selectBookingType('personal')" class="w-full bg-gradient-to-r from-orange-500 to-red-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-2xl">
-                        👤
+                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                        <i data-lucide="user" class="w-6 h-6 stroke-current"></i>
                     </div>
                     <div>
                         <h4 class="font-bold text-white">1-on-1 Session</h4>
@@ -3090,8 +3090,8 @@ async function selectFitnessGoal(goal) {
             <!-- Group Course Option -->
             <button onclick="selectBookingType('course')" class="w-full bg-gradient-to-r from-purple-500 to-pink-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-2xl">
-                        👥
+                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                        <i data-lucide="users" class="w-6 h-6 stroke-current"></i>
                     </div>
                     <div>
                         <h4 class="font-bold text-white">Group Course</h4>
@@ -3141,12 +3141,12 @@ async function selectFitnessGoal(goal) {
                 <img id="client-course-thumb-img" class="w-full h-full object-cover" src="" alt="Video thumbnail">
                 <div class="absolute inset-0 flex items-center justify-center bg-black/30">
                     <div class="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center shadow-lg hover:scale-110 transition">
-                        <span class="text-lg ml-0.5">▶</span>
+                        <i data-lucide="play" class="w-5 h-5 ml-0.5 stroke-current fill-current"></i>
                     </div>
                 </div>
             </div>
             <div id="client-course-no-trailer" class="absolute inset-0 bg-gradient-to-br from-purple-900/50 to-pink-900/30 flex items-center justify-center hidden">
-                <span class="text-6xl opacity-30">🎬</span>
+                <i data-lucide="clapperboard" class="w-12 h-12 opacity-30"></i>
             </div>
             <!-- Close button -->
             <button onclick="closeClientCourseDetail()"
@@ -3166,28 +3166,22 @@ async function selectFitnessGoal(goal) {
         <!-- Course Info -->
         <div class="flex-1 overflow-y-auto p-5">
             <div class="flex items-center gap-2 mb-2">
-                <span id="client-course-type-badge" class="text-xs font-bold uppercase px-2 py-1 rounded-lg bg-purple-500/20 text-purple-300">🧘 Yoga</span>
+                <span id="client-course-type-badge" class="text-xs font-bold uppercase px-2 py-1 rounded-lg bg-purple-500/20 text-purple-300"><i data-lucide="heart" class="w-3 h-3 inline-block align-middle"></i> Yoga</span>
             </div>
             <h2 id="client-course-title" class="text-2xl font-bold text-white mb-2">Course Title</h2>
             <div class="flex flex-wrap gap-3 text-sm text-gray-400 mb-4">
-                <span id="client-course-schedule">📅 Mon, Wed @ 9:00 AM</span>
-                <span id="client-course-duration">⏱️ 60 min</span>
+                <span id="client-course-schedule"><i data-lucide="calendar" class="w-3.5 h-3.5 inline-block align-middle stroke-current"></i> Mon, Wed @ 9:00 AM</span>
+                <span id="client-course-duration"><i data-lucide="clock" class="w-3.5 h-3.5 inline-block align-middle stroke-current"></i> 60 min</span>
             </div>
             <p id="client-course-description" class="text-gray-300 text-sm mb-4"></p>
 
             <!-- Upcoming Sessions -->
-            <div class="bg-white/5 rounded-xl p-4 mb-4">
-                <h4 class="text-sm font-bold text-white mb-2">Upcoming Sessions</h4>
-                <p id="client-course-sessions" class="text-sm text-gray-400">2 sessions scheduled</p>
+            <div class="mb-4">
+                <h4 class="text-sm font-bold text-white mb-3">Upcoming Sessions</h4>
+                <div id="client-course-lessons-list" class="space-y-2">
+                    <p class="text-sm text-gray-400">Loading sessions...</p>
+                </div>
             </div>
-        </div>
-
-        <!-- Book Button -->
-        <div class="p-4 border-t border-white/10 flex-shrink-0">
-            <button onclick="bookCourseSession()" id="client-course-book-btn"
-                class="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white font-bold py-4 rounded-xl hover:opacity-90 transition shadow-lg">
-                Book This Class
-            </button>
         </div>
     </div>
 </div>
@@ -3238,7 +3232,7 @@ async function selectFitnessGoal(goal) {
         <div class="flex justify-between items-start mb-4">
             <div class="flex items-center gap-3">
                 <div id="member-profile-avatar" class="w-14 h-14 rounded-full bg-orange-500/20 flex items-center justify-center overflow-hidden border-2 border-orange-500/30">
-                    <span class="text-2xl">👤</span>
+                    <i data-lucide="user" class="w-6 h-6"></i>
                 </div>
                 <div>
                     <h3 id="member-profile-name" class="text-lg font-bold text-white">Username</h3>
@@ -3252,7 +3246,7 @@ async function selectFitnessGoal(goal) {
         <div class="grid grid-cols-3 gap-2 mb-4">
             <div class="bg-white/5 rounded-xl p-3 text-center border border-white/5">
                 <div class="flex items-center justify-center gap-1">
-                    <span class="text-sm">🔥</span>
+                    <i data-lucide="flame" class="w-4 h-4"></i>
                     <p id="member-profile-streak" class="text-xl font-bold text-orange-400">0</p>
                 </div>
                 <p class="text-[10px] text-gray-500 uppercase font-medium mt-1">Streak</p>
@@ -3324,7 +3318,7 @@ async function selectFitnessGoal(goal) {
             <div class="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-xl p-4 border border-purple-500/20">
                 <div class="flex items-center justify-between mb-3">
                     <div class="flex items-center gap-2">
-                        <span class="text-purple-400">📊</span>
+                        <i data-lucide="bar-chart-3" class="w-4 h-4 text-purple-400"></i>
                         <span class="text-xs text-purple-300 uppercase tracking-wider font-medium">Friend Progress</span>
                     </div>
                     <!-- View Tabs -->
@@ -3406,7 +3400,7 @@ async function selectFitnessGoal(goal) {
     <div class="glass-card p-6 rounded-2xl max-w-sm w-full">
         <div class="text-center mb-4">
             <div id="chat-request-avatar" class="w-20 h-20 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center mx-auto mb-3 overflow-hidden">
-                <span class="text-3xl">👤</span>
+                <i data-lucide="user" class="w-8 h-8"></i>
             </div>
             <h3 id="chat-request-name" class="text-xl font-bold">Username</h3>
             <p class="text-gray-400 text-sm mt-1">This user has a private profile</p>
@@ -3454,7 +3448,7 @@ async function selectFitnessGoal(goal) {
                 <!-- Friend cards loaded here -->
             </div>
             <div id="no-friends-message" class="hidden text-center py-8 text-gray-500">
-                <p class="text-4xl mb-2">👥</p>
+                <p class="mb-2"><i data-lucide="users" class="w-10 h-10"></i></p>
                 <p>No friends yet</p>
                 <p class="text-sm">Add gym members as friends to see their progress!</p>
             </div>
@@ -3464,7 +3458,7 @@ async function selectFitnessGoal(goal) {
         <div id="requests-container" class="hidden flex-1 overflow-y-auto">
             <div class="mb-4">
                 <h4 class="text-sm text-gray-400 mb-2 flex items-center gap-2">
-                    <span>📥</span> Incoming
+                    <i data-lucide="inbox" class="w-4 h-4 inline-block stroke-current"></i> Incoming
                 </h4>
                 <div id="incoming-requests" class="space-y-3">
                     <!-- Incoming request cards -->
@@ -3476,7 +3470,7 @@ async function selectFitnessGoal(goal) {
 
             <div>
                 <h4 class="text-sm text-gray-400 mb-2 flex items-center gap-2">
-                    <span>📤</span> Sent
+                    <i data-lucide="send" class="w-4 h-4 inline-block stroke-current"></i> Sent
                 </h4>
                 <div id="outgoing-requests" class="space-y-3">
                     <!-- Outgoing request cards -->
@@ -3495,7 +3489,7 @@ async function selectFitnessGoal(goal) {
     <div class="glass-card p-6 rounded-2xl max-w-sm w-full">
         <div class="text-center mb-4">
             <div id="friend-request-avatar" class="w-20 h-20 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center mx-auto mb-3 overflow-hidden">
-                <span class="text-3xl">👤</span>
+                <i data-lucide="user" class="w-8 h-8"></i>
             </div>
             <h3 id="friend-request-name" class="text-xl font-bold">Username</h3>
             <p class="text-gray-400 text-sm mt-1">Send a friend request</p>
@@ -3523,7 +3517,7 @@ async function selectFitnessGoal(goal) {
         <div class="flex justify-between items-center mb-4">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center">
-                    <span class="text-xl">👥</span>
+                    <i data-lucide="users" class="w-5 h-5"></i>
                 </div>
                 <div>
                     <h3 class="text-xl font-bold">CO-OP Workout</h3>
@@ -3546,7 +3540,7 @@ async function selectFitnessGoal(goal) {
         </div>
 
         <div id="coop-no-friends" class="hidden text-center py-8 text-gray-500">
-            <p class="text-4xl mb-2">👥</p>
+            <p class="mb-2"><i data-lucide="users" class="w-10 h-10"></i></p>
             <p>No friends yet</p>
             <p class="text-sm">Add gym members as friends to do CO-OP workouts!</p>
         </div>
@@ -3559,7 +3553,7 @@ async function selectFitnessGoal(goal) {
         <div id="coop-waiting" class="hidden text-center py-8">
             <div class="animate-pulse">
                 <div id="coop-waiting-avatar" class="w-20 h-20 rounded-full bg-purple-500/30 mx-auto mb-4 flex items-center justify-center overflow-hidden">
-                    <span class="text-3xl">👤</span>
+                    <i data-lucide="user" class="w-8 h-8"></i>
                 </div>
                 <p class="text-white font-bold mb-2">Waiting for <span id="coop-waiting-name">Friend</span>...</p>
                 <p class="text-sm text-gray-400">They need to accept the invitation</p>
@@ -3575,7 +3569,7 @@ async function selectFitnessGoal(goal) {
 <div id="coop-invite-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="glass-card p-6 rounded-2xl max-w-sm w-full text-center">
         <div class="w-20 h-20 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 mx-auto mb-4 flex items-center justify-center overflow-hidden animate-pulse">
-            <span id="coop-invite-avatar" class="text-3xl">👤</span>
+            <span id="coop-invite-avatar"><i data-lucide="user" class="w-8 h-8 stroke-current"></i></span>
         </div>
         <h3 class="text-xl font-bold text-white mb-2">CO-OP Workout Invite!</h3>
         <p class="text-gray-300 mb-1"><span id="coop-invite-name" class="font-bold text-purple-400">Friend</span> wants to workout with you</p>
@@ -3907,14 +3901,14 @@ window.renderBookingCalendar = function() {
 
 // Category labels with emojis (lowercase keys)
 const categoryLabels = {
-    'bodybuilding': '💪 Bodybuilding',
-    'crossfit': '🏋️ Crossfit',
-    'calisthenics': '🤸 Calisthenics',
-    'cardio': '🏃 Cardio',
-    'hiit': '⚡ HIIT',
-    'yoga': '🧘 Yoga',
-    'boxing': '🥊 Boxing',
-    'rehabilitation': '🩹 Rehabilitation'
+    'bodybuilding': 'Bodybuilding',
+    'crossfit': 'Crossfit',
+    'calisthenics': 'Calisthenics',
+    'cardio': 'Cardio',
+    'hiit': 'HIIT',
+    'yoga': 'Yoga',
+    'boxing': 'Boxing',
+    'rehabilitation': 'Rehabilitation'
 };
 
 async function loadTrainerSessionTypes() {
@@ -4291,7 +4285,7 @@ async function joinGym() {
         }
 
         const result = await response.json();
-        showToast(`Joined ${result.gym_name} successfully! 🎉`, 'success');
+        showToast(`Joined ${result.gym_name} successfully!`, 'success');
 
         // Reload gym info to show trainers
         setTimeout(() => loadGymAndTrainerInfo(), 500);
@@ -4380,7 +4374,7 @@ async function selectTrainer(trainerId) {
         }
 
         const result = await response.json();
-        showToast(`Assigned to ${result.trainer_name} successfully! 🎉`, 'success');
+        showToast(`Assigned to ${result.trainer_name} successfully!`, 'success');
 
         // Reload gym info to update display
         setTimeout(() => loadGymAndTrainerInfo(), 500);
@@ -4476,7 +4470,7 @@ async function openTrainerSelectionModal() {
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-3">
                         <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center">
-                            <span class="text-xl">👤</span>
+                            <i data-lucide="user" class="w-5 h-5"></i>
                         </div>
                         <div>
                             <p class="font-bold text-white">${trainer.username}</p>
@@ -4526,13 +4520,7 @@ async function selectTrainerFromHome(trainerId, trainerName) {
 
 // --- CLIENT CHAT FUNCTIONS ---
 function openClientChatModal() {
-    // If we have a selected trainer, open chat directly with them
-    if (selectedTrainerId && typeof window.openChatModal === 'function') {
-        const trainerName = document.getElementById('trainer-name')?.textContent || 'Trainer';
-        const trainerPic = (currentTrainerData && currentTrainerData.profile_picture) || null;
-        window.openChatModal(selectedTrainerId, trainerName, trainerPic);
-    } else if (typeof window.openConversationsModal === 'function') {
-        // Fallback to conversations list if no trainer selected
+    if (typeof window.openConversationsModal === 'function') {
         window.openConversationsModal();
     } else {
         showToast('Chat not available', 'error');
@@ -4740,7 +4728,7 @@ async function openTrainerProfileModal(trainerId = null, trainerName = null, tra
     if (trainerPicture) {
         avatarContainer.innerHTML = `<img src="${trainerPicture}" alt="${trainerName}" class="w-full h-full object-cover">`;
     } else {
-        avatarContainer.innerHTML = `<span class="text-4xl">👤</span>`;
+        avatarContainer.innerHTML = `<i data-lucide="user" class="w-10 h-10"></i>`;
     }
 
     // Update bio
@@ -4938,7 +4926,7 @@ async function openGymCoursesModal() {
             if (filtersEl) filtersEl.style.display = 'none';
             listEl.innerHTML = `
                 <div class="text-center py-8">
-                    <div class="text-4xl mb-3">📚</div>
+                    <div class="mb-3"><i data-lucide="book-open" class="w-10 h-10"></i></div>
                     <p class="text-gray-400">No courses available yet</p>
                     <p class="text-sm text-gray-500 mt-2">Your gym hasn't scheduled any group classes</p>
                 </div>
@@ -4965,14 +4953,14 @@ function closeGymCoursesModal() {
 
 // Course type config shared across functions
 const courseTypeConfig = {
-    yoga:     { emoji: '🧘', label: 'Yoga',     color: 'purple' },
-    pilates:  { emoji: '🤸', label: 'Pilates',  color: 'pink' },
-    hiit:     { emoji: '🔥', label: 'HIIT',     color: 'orange' },
-    dance:    { emoji: '💃', label: 'Dance',     color: 'cyan' },
-    spin:     { emoji: '🚴', label: 'Spin',      color: 'green' },
-    strength: { emoji: '💪', label: 'Strength',  color: 'red' },
-    stretch:  { emoji: '🙆', label: 'Stretch',   color: 'teal' },
-    cardio:   { emoji: '🏃', label: 'Cardio',    color: 'yellow' }
+    yoga:     { icon: 'heart', label: 'Yoga',     color: 'purple' },
+    pilates:  { icon: 'person-standing', label: 'Pilates',  color: 'pink' },
+    hiit:     { icon: 'flame', label: 'HIIT',     color: 'orange' },
+    dance:    { icon: 'music', label: 'Dance',     color: 'cyan' },
+    spin:     { icon: 'bike', label: 'Spin',      color: 'green' },
+    strength: { icon: 'dumbbell', label: 'Strength',  color: 'red' },
+    stretch:  { icon: 'move', label: 'Stretch',   color: 'teal' },
+    cardio:   { icon: 'footprints', label: 'Cardio',    color: 'yellow' }
 };
 
 // Cached courses for filtering
@@ -4980,7 +4968,7 @@ let allGymCourses = [];
 let activeGymFilter = 'all';
 
 function renderClientCourseCard(course) {
-    const cfg = courseTypeConfig[course.course_type] || { emoji: '📚', label: course.course_type || 'Class', color: 'purple' };
+    const cfg = courseTypeConfig[course.course_type] || { icon: 'book-open', label: course.course_type || 'Class', color: 'purple' };
     const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const days = course.days_of_week ? course.days_of_week.map(d => dayNames[d]).join(', ') : 'Not scheduled';
     const hasVideo = !!course.trailer_url;
@@ -4989,13 +4977,13 @@ function renderClientCourseCard(course) {
         <div class="flex items-center gap-3 bg-black/30 rounded-xl p-3 border border-white/10 cursor-pointer hover:bg-white/5 hover:border-${cfg.color}-500/40 transition" onclick="viewCourseDetails('${course.id}')">
             <!-- Type Icon -->
             <div class="w-14 h-14 rounded-xl bg-gradient-to-br from-${cfg.color}-500/30 to-${cfg.color}-900/30 border border-${cfg.color}-500/20 flex items-center justify-center flex-shrink-0">
-                <span class="text-2xl">${cfg.emoji}</span>
+                <span class="text-2xl">${icon(cfg.icon, 16)}</span>
             </div>
             <!-- Info -->
             <div class="flex-1 min-w-0">
                 <div class="flex items-center gap-2 mb-0.5">
                     <span class="text-[10px] font-bold uppercase px-1.5 py-0.5 rounded bg-${cfg.color}-500/20 text-${cfg.color}-300">${cfg.label}</span>
-                    ${hasVideo ? '<span class="text-[10px] text-gray-500 ml-auto flex items-center gap-0.5"><span class="text-xs">▶</span> trailer</span>' : ''}
+                    ${hasVideo ? '<span class="text-[10px] text-gray-500 ml-auto flex items-center gap-0.5"><i data-lucide="play" class="w-3 h-3 inline-block stroke-current"></i> trailer</span>' : ''}
                 </div>
                 <h3 class="text-sm font-bold text-white truncate">${course.name}</h3>
                 <p class="text-xs text-gray-400 truncate">${days}${course.time_slot ? ' @ ' + course.time_slot : ''} · ${course.duration || 60} min</p>
@@ -5023,8 +5011,8 @@ function buildGymCoursesFilters(courses) {
     let html = `<button onclick="filterGymCourses('all')" class="gym-filter-pill flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition bg-white/20 text-white" data-filter="all">All</button>`;
 
     types.forEach(type => {
-        const cfg = courseTypeConfig[type] || { emoji: '📚', label: type, color: 'purple' };
-        html += `<button onclick="filterGymCourses('${type}')" class="gym-filter-pill flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition bg-white/5 text-gray-400 hover:bg-white/10" data-filter="${type}">${cfg.emoji} ${cfg.label}</button>`;
+        const cfg = courseTypeConfig[type] || { icon: 'book-open', label: type, color: 'purple' };
+        html += `<button onclick="filterGymCourses('${type}')" class="gym-filter-pill flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-bold transition bg-white/5 text-gray-400 hover:bg-white/10" data-filter="${type}">${icon(cfg.icon, 16)} ${cfg.label}</button>`;
     });
 
     filtersEl.innerHTML = html;
@@ -5137,10 +5125,10 @@ function openClientCourseDetail(course) {
     }
 
     // Set course type badge
-    const cfg = courseTypeConfig[course.course_type] || { emoji: '📚', label: course.course_type || 'Class', color: 'purple' };
+    const cfg = courseTypeConfig[course.course_type] || { icon: 'book-open', label: course.course_type || 'Class', color: 'purple' };
     const typeBadge = document.getElementById('client-course-type-badge');
     if (typeBadge) {
-        typeBadge.textContent = `${cfg.emoji} ${cfg.label}`;
+        typeBadge.textContent = `${icon(cfg.icon, 16)} ${cfg.label}`;
         typeBadge.className = `text-xs font-bold uppercase px-2 py-1 rounded-lg bg-${cfg.color}-500/20 text-${cfg.color}-300`;
     }
 
@@ -5149,11 +5137,13 @@ function openClientCourseDetail(course) {
 
     const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     const days = course.days_of_week ? course.days_of_week.map(d => dayNames[d]).join(', ') : 'Not scheduled';
-    document.getElementById('client-course-schedule').textContent = `📅 ${days} ${course.time_slot ? '@ ' + course.time_slot : ''}`;
-    document.getElementById('client-course-duration').textContent = `⏱️ ${course.duration || 60} min`;
+    document.getElementById('client-course-schedule').textContent = `${days} ${course.time_slot ? '@ ' + course.time_slot : ''}`;
+    document.getElementById('client-course-duration').textContent = `${course.duration || 60} min`;
 
     document.getElementById('client-course-description').textContent = course.description || 'No description available.';
-    document.getElementById('client-course-sessions').textContent = `${course.upcoming_lessons || 0} sessions scheduled`;
+
+    // Load upcoming lessons
+    loadCourseLessons(course.id);
 
     modal.classList.remove('hidden');
 }
@@ -5173,24 +5163,102 @@ function playClientCourseVideo() {
     const trailerIframe = document.getElementById('client-course-trailer');
     const thumbnail = document.getElementById('client-course-thumbnail');
 
-    // Hide thumbnail, show iframe with video
     thumbnail.classList.add('hidden');
     trailerIframe.src = pendingVideoEmbedUrl;
     trailerIframe.classList.remove('hidden');
 }
 
-function bookCourseSession() {
-    if (!currentCourseData) {
-        showToast('No course selected', 'error');
-        return;
+async function loadCourseLessons(courseId) {
+    const container = document.getElementById('client-course-lessons-list');
+    container.innerHTML = '<p class="text-sm text-gray-400 animate-pulse">Loading sessions...</p>';
+
+    try {
+        const res = await fetch(`/api/client/courses/${courseId}/lessons`, { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load lessons');
+        const lessons = await res.json();
+
+        if (lessons.length === 0) {
+            container.innerHTML = '<p class="text-sm text-gray-500">No upcoming sessions scheduled yet.</p>';
+            return;
+        }
+
+        container.innerHTML = lessons.map(lesson => {
+            const d = new Date(lesson.date + 'T00:00:00');
+            const dayStr = d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+            const time = lesson.time || 'TBD';
+
+            let spotsHtml = '';
+            if (lesson.max_capacity) {
+                const pct = lesson.spots_available / lesson.max_capacity;
+                const color = pct <= 0 ? 'text-red-400' : pct <= 0.3 ? 'text-yellow-400' : 'text-green-400';
+                spotsHtml = `<span class="${color} text-xs">${lesson.spots_available}/${lesson.max_capacity} spots</span>`;
+            }
+
+            let btnHtml = '';
+            if (lesson.user_status === 'enrolled') {
+                btnHtml = `<button onclick="cancelLessonEnrollment(${lesson.id}, '${courseId}')" class="px-3 py-1.5 bg-red-500/20 text-red-400 text-xs font-bold rounded-lg hover:bg-red-500/30 transition">Cancel</button>`;
+            } else if (lesson.user_status === 'waitlisted') {
+                btnHtml = `<span class="px-3 py-1.5 bg-yellow-500/20 text-yellow-400 text-xs font-bold rounded-lg">Waitlisted</span>`;
+            } else if (lesson.spots_available !== null && lesson.spots_available <= 0) {
+                btnHtml = `<button onclick="enrollInLesson(${lesson.id}, '${courseId}')" class="px-3 py-1.5 bg-yellow-500/20 text-yellow-300 text-xs font-bold rounded-lg hover:bg-yellow-500/30 transition">Waitlist</button>`;
+            } else {
+                btnHtml = `<button onclick="enrollInLesson(${lesson.id}, '${courseId}')" class="px-3 py-1.5 bg-purple-500/20 text-purple-300 text-xs font-bold rounded-lg hover:bg-purple-500/30 transition">Book</button>`;
+            }
+
+            return `
+                <div class="flex items-center justify-between bg-white/5 rounded-xl px-4 py-3">
+                    <div>
+                        <p class="text-white text-sm font-medium">${dayStr}</p>
+                        <p class="text-gray-400 text-xs">${time} · ${lesson.duration} min</p>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        ${spotsHtml}
+                        ${btnHtml}
+                    </div>
+                </div>
+            `;
+        }).join('');
+    } catch (e) {
+        console.error('Error loading lessons:', e);
+        container.innerHTML = '<p class="text-sm text-red-400">Failed to load sessions.</p>';
     }
+}
 
-    // Close the detail modal
-    closeClientCourseDetail();
-    closeGymCoursesModal();
+async function enrollInLesson(lessonId, courseId) {
+    try {
+        const res = await fetch(`/api/lessons/${lessonId}/enroll`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to enroll');
 
-    // Show success message - the course sessions are already in their schedule
-    showToast(`You're enrolled in ${currentCourseData.name}! Check your schedule.`, 'success');
+        if (data.status === 'waitlisted') {
+            showToast(data.message, 'info');
+        } else {
+            showToast('Successfully booked!', 'success');
+        }
+        // Reload the lesson list to reflect updated status
+        loadCourseLessons(courseId);
+    } catch (e) {
+        showToast(e.message, 'error');
+    }
+}
+
+async function cancelLessonEnrollment(lessonId, courseId) {
+    try {
+        const res = await fetch(`/api/lessons/${lessonId}/cancel`, {
+            method: 'POST',
+            credentials: 'include'
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to cancel');
+
+        showToast('Booking cancelled', 'success');
+        loadCourseLessons(courseId);
+    } catch (e) {
+        showToast(e.message, 'error');
+    }
 }
 
 async function selectTrainerFromProfile() {
@@ -5259,7 +5327,7 @@ async function loadAllGymTrainers() {
         if (allGymTrainers.length === 0) {
             list.innerHTML = `
                 <div class="text-center py-8 text-gray-400">
-                    <p class="text-4xl mb-2">👤</p>
+                    <p class="mb-2"><i data-lucide="user" class="w-10 h-10"></i></p>
                     <p>No trainers available in your gym yet</p>
                 </div>
             `;
@@ -5270,7 +5338,7 @@ async function loadAllGymTrainers() {
             const isMyTrainer = trainer.id === selectedTrainerId;
             const avatarHtml = trainer.profile_picture
                 ? `<img src="${trainer.profile_picture}" alt="${trainer.name}" class="w-full h-full object-cover">`
-                : `<span class="text-2xl">👤</span>`;
+                : `<i data-lucide="user" class="w-6 h-6"></i>`;
             const bioEscaped = trainer.bio ? trainer.bio.replace(/'/g, "\\'").replace(/"/g, "&quot;") : '';
             const specialtiesJson = trainer.specialties ? JSON.stringify(trainer.specialties).replace(/'/g, "\\'") : '[]';
 
@@ -5321,7 +5389,7 @@ function updateTrainerAvatar(profilePicture, trainerName) {
         if (profilePicture) {
             avatarContainer.innerHTML = `<img src="${profilePicture}" alt="${trainerName}" class="w-full h-full object-cover">`;
         } else {
-            avatarContainer.innerHTML = `<span class="text-xl">👤</span>`;
+            avatarContainer.innerHTML = `<i data-lucide="user" class="w-5 h-5"></i>`;
         }
     }
 
@@ -5363,7 +5431,7 @@ function renderMembersPreview() {
         <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 flex items-center justify-center overflow-hidden border-2 border-black">
             ${member.profile_picture
                 ? `<img src="${member.profile_picture}" class="w-full h-full object-cover">`
-                : '<span class="text-xs">👤</span>'}
+                : '<i data-lucide="user" class="w-3 h-3"></i>'}
         </div>
     `).join('');
 
@@ -5405,7 +5473,7 @@ async function loadGymMembersList() {
         if (gymMembers.length === 0) {
             list.innerHTML = `
                 <div class="text-center py-8 text-gray-400">
-                    <p class="text-4xl mb-2">👥</p>
+                    <p class="mb-2"><i data-lucide="users" class="w-10 h-10"></i></p>
                     <p>No other members in your gym yet</p>
                 </div>
             `;
@@ -5415,7 +5483,7 @@ async function loadGymMembersList() {
         list.innerHTML = gymMembers.map(member => {
             const avatarHtml = member.profile_picture
                 ? `<img src="${member.profile_picture}" class="w-full h-full object-cover">`
-                : '<span class="text-xl">👤</span>';
+                : '<i data-lucide="user" class="w-5 h-5"></i>';
 
             return `
                 <div class="glass-card p-4 flex items-center justify-between cursor-pointer hover:bg-white/10 transition"
@@ -5485,7 +5553,7 @@ function openChatRequestModal(userId, username, profilePicture) {
     if (profilePicture) {
         avatarEl.innerHTML = `<img src="${profilePicture}" class="w-full h-full object-cover">`;
     } else {
-        avatarEl.innerHTML = '<span class="text-3xl">👤</span>';
+        avatarEl.innerHTML = '<i data-lucide="user" class="w-8 h-8"></i>';
     }
     document.getElementById('chat-request-message').value = '';
 
@@ -5578,7 +5646,7 @@ function renderFriendsPreview() {
         <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center overflow-hidden border-2 border-black">
             ${friend.profile_picture
                 ? `<img src="${friend.profile_picture}" class="w-full h-full object-cover">`
-                : '<span class="text-xs">👤</span>'}
+                : '<i data-lucide="user" class="w-3 h-3"></i>'}
         </div>
     `).join('');
 
@@ -5676,12 +5744,12 @@ async function loadFriendsModalData() {
                     <div class="w-12 h-12 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center overflow-hidden">
                         ${friend.profile_picture
                             ? `<img src="${friend.profile_picture}" class="w-full h-full object-cover">`
-                            : '<span class="text-lg">👤</span>'}
+                            : '<i data-lucide="user" class="w-5 h-5"></i>'}
                     </div>
                     <div>
                         <p class="font-medium text-white">${friend.username}</p>
                         <div class="flex items-center gap-2 text-xs text-gray-400">
-                            <span>🔥 ${friend.streak || 0}</span>
+                            <span>${icon('flame', 12)} ${friend.streak || 0}</span>
                             <span>🔶 ${friend.gems || 0}</span>
                         </div>
                     </div>
@@ -5689,7 +5757,7 @@ async function loadFriendsModalData() {
                 <div class="flex gap-2">
                     <button onclick="messageFromFriendsList('${friend.id}', '${friend.username}')"
                         class="p-2 bg-orange-500/20 text-orange-400 rounded-lg hover:bg-orange-500/30 transition">
-                        💬
+                        <i data-lucide="message-circle" class="w-5 h-5"></i>
                     </button>
                     <button onclick="confirmUnfriend('${friend.id}', '${friend.username}')"
                         class="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition">
@@ -5750,7 +5818,7 @@ function renderFriendRequests() {
                     <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center overflow-hidden">
                         ${req.profile_picture
                             ? `<img src="${req.profile_picture}" class="w-full h-full object-cover">`
-                            : '<span class="text-sm">👤</span>'}
+                            : '<i data-lucide="user" class="w-4 h-4"></i>'}
                     </div>
                     <div>
                         <p class="font-medium text-white text-sm">${req.username}</p>
@@ -5783,7 +5851,7 @@ function renderFriendRequests() {
                     <div class="w-10 h-10 rounded-full bg-gradient-to-tr from-gray-500 to-gray-600 flex items-center justify-center overflow-hidden">
                         ${req.profile_picture
                             ? `<img src="${req.profile_picture}" class="w-full h-full object-cover">`
-                            : '<span class="text-sm">👤</span>'}
+                            : '<i data-lucide="user" class="w-4 h-4"></i>'}
                     </div>
                     <div>
                         <p class="font-medium text-white text-sm">${req.username}</p>
@@ -5914,13 +5982,13 @@ async function loadCoopFriends() {
                 <div class="w-14 h-14 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center overflow-hidden flex-shrink-0">
                     ${friend.profile_picture
                         ? `<img src="${friend.profile_picture}" class="w-full h-full object-cover">`
-                        : '<span class="text-xl">👤</span>'}
+                        : '<i data-lucide="user" class="w-5 h-5"></i>'}
                 </div>
                 <div class="flex-1">
                     <p class="font-bold text-white">${friend.username}</p>
                     <div class="flex items-center gap-3 text-sm text-gray-400">
-                        <span>🔥 ${friend.streak || 0} streak</span>
-                        <span>💚 ${friend.health_score || 0}%</span>
+                        <span>${icon('flame', 12)} ${friend.streak || 0} streak</span>
+                        <span>${icon('heart', 12)} ${friend.health_score || 0}%</span>
                     </div>
                 </div>
                 <div class="text-purple-400 text-xl">→</div>
@@ -6039,7 +6107,7 @@ window.showCoopInviteModal = function(inviterId, inviterName, inviterPicture) {
         if (inviterPicture) {
             avatarEl.outerHTML = `<img id="coop-invite-avatar" src="${inviterPicture}" class="w-full h-full object-cover rounded-full">`;
         } else {
-            avatarEl.textContent = '👤';
+            avatarEl.innerHTML = '<i data-lucide="user" class="w-5 h-5"></i>';
         }
     }
     modal?.classList.remove('hidden');
@@ -6095,7 +6163,7 @@ function openFriendRequestModal(userId, username, profilePicture) {
         if (profilePicture) {
             avatarEl.innerHTML = `<img src="${profilePicture}" class="w-full h-full object-cover">`;
         } else {
-            avatarEl.innerHTML = '<span class="text-3xl">👤</span>';
+            avatarEl.innerHTML = '<i data-lucide="user" class="w-8 h-8"></i>';
         }
     }
     if (messageEl) messageEl.value = '';
@@ -6590,7 +6658,7 @@ async function openMemberProfile(memberId) {
         if (member.profile_picture) {
             avatarEl.innerHTML = `<img src="${member.profile_picture}" class="w-full h-full object-cover">`;
         } else {
-            avatarEl.innerHTML = '<span class="text-2xl">👤</span>';
+            avatarEl.innerHTML = '<i data-lucide="user" class="w-6 h-6"></i>';
         }
 
         // Update progress chart based on member's health score
@@ -6726,8 +6794,8 @@ loadFriendsPreview();
             <!-- 1-on-1 Session Option -->
             <button onclick="selectBookingType('personal')" class="w-full bg-gradient-to-r from-orange-500 to-red-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-2xl">
-                        👤
+                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                        <i data-lucide="user" class="w-6 h-6 stroke-current"></i>
                     </div>
                     <div>
                         <h4 class="font-bold text-white">1-on-1 Session</h4>
@@ -6739,8 +6807,8 @@ loadFriendsPreview();
             <!-- Group Course Option -->
             <button onclick="selectBookingType('course')" class="w-full bg-gradient-to-r from-purple-500 to-pink-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
                 <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-2xl">
-                        👥
+                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                        <i data-lucide="users" class="w-6 h-6 stroke-current"></i>
                     </div>
                     <div>
                         <h4 class="font-bold text-white">Group Course</h4>
@@ -6904,7 +6972,7 @@ if (typeof openGymCoursesModalShared !== 'function') {
         if (courses.length === 0) {
             listEl.innerHTML = `
                 <div class="text-center py-8 text-gray-400">
-                    <p class="text-4xl mb-2">📭</p>
+                    <p class="mb-2">${icon('mail', 40)}</p>
                     <p>No courses available at your gym yet</p>
                 </div>
             `;
@@ -6916,7 +6984,7 @@ if (typeof openGymCoursesModalShared !== 'function') {
                 onclick="viewCourseDetail('${course.id}')">
                 <div class="flex items-center gap-3">
                     <div class="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center text-xl">
-                        ${course.icon || '🏋️'}
+                        ${icon(getCategoryIconName(course.course_type || 'strength'), 20)}
                     </div>
                     <div class="flex-1">
                         <h4 class="font-bold text-white">${course.name}</h4>

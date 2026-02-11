@@ -55,7 +55,7 @@
                     <input type="file" id="new-ex-file" class="hidden" accept="video/*">
                     <button onclick="document.getElementById('new-ex-file').click()"
                         class="bg-white/10 hover:bg-white/20 text-white px-3 rounded-xl transition">
-                        📁
+                        <i data-lucide="folder" class="w-4 h-4 inline-block stroke-current"></i>
                     </button>
                 </div>
                 <p id="new-ex-filename" class="text-[10px] text-gray-500 mt-1 ml-1 truncate"></p>
@@ -129,7 +129,7 @@
                     <input type="file" id="edit-ex-file" class="hidden" accept="video/*">
                     <button onclick="document.getElementById('edit-ex-file').click()"
                         class="bg-white/10 hover:bg-white/20 text-white px-3 rounded-xl transition">
-                        📁
+                        <i data-lucide="folder" class="w-4 h-4 inline-block stroke-current"></i>
                     </button>
                 </div>
                 <p id="edit-ex-filename" class="text-[10px] text-gray-500 mt-1 ml-1 truncate"></p>
@@ -211,7 +211,7 @@
                 <label class="text-xs text-gray-500 uppercase font-bold ml-1 mb-2 block">Exercise Library</label>
                 <div class="glass-card p-2 mb-2 flex flex-col gap-2">
                     <div class="relative">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs">🔍</span>
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"><i data-lucide="search" class="w-3 h-3"></i></span>
                         <input type="text" id="modal-ex-search" placeholder="Search exercises..."
                             class="w-full bg-black/20 border border-white/10 rounded-xl pl-8 pr-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition placeholder-gray-500">
                     </div>
@@ -333,7 +333,7 @@
         <div id="booking-time-section" class="hidden mb-4">
             <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Available Times</label>
             <div id="booking-slots-loading" class="hidden text-center py-3">
-                <div class="animate-spin text-xl inline-block">⏳</div>
+                <i data-lucide="loader-2" class="w-5 h-5 inline-block animate-spin stroke-current"></i>
                 <p class="text-xs text-gray-400 mt-1">Loading slots...</p>
             </div>
             <div id="no-slots-message" class="hidden text-center text-red-400 text-sm p-2 bg-red-500/10 rounded-lg">
@@ -375,12 +375,12 @@
             <div class="grid grid-cols-2 gap-3 mb-3">
                 <button onclick="selectBookingPayment('card')" id="booking-pay-card-btn"
                     class="p-3 rounded-xl border-2 border-white/20 hover:border-blue-500/50 transition text-center">
-                    <span class="text-xl block mb-1">💳</span>
+                    <i data-lucide="credit-card" class="w-5 h-5 block mb-1"></i>
                     <span class="text-xs font-semibold text-white">Card</span>
                 </button>
                 <button onclick="selectBookingPayment('cash')" id="booking-pay-cash-btn"
                     class="p-3 rounded-xl border-2 border-white/20 hover:border-green-500/50 transition text-center">
-                    <span class="text-xl block mb-1">💵</span>
+                    <i data-lucide="banknote" class="w-6 h-6 block mb-1 mx-auto stroke-current"></i>
                     <span class="text-xs font-semibold text-white">Cash at Session</span>
                 </button>
             </div>
@@ -419,13 +419,13 @@
     <div class="grid grid-cols-2 gap-3">
         <div class="bg-white/5 p-3 rounded-xl text-center tap-effect" data-action="showToast"
             data-message="Purchased! (Mock)">
-            <div class="text-3xl mb-2">🥤</div>
+            <div class="text-3xl mb-2"><i data-lucide="cup-soda" class="w-8 h-8 inline-block stroke-current"></i></div>
             <p class="text-xs font-bold text-white">Protein Shake</p>
             <p class="text-xs text-yellow-400">50 🔶</p>
         </div>
         <div class="bg-white/5 p-3 rounded-xl text-center tap-effect" data-action="showToast"
             data-message="Purchased! (Mock)">
-            <div class="text-3xl mb-2">👕</div>
+            <div class="text-3xl mb-2"><i data-lucide="shirt" class="w-8 h-8 inline-block stroke-current"></i></div>
             <p class="text-xs font-bold text-white">Gym Tee</p>
             <p class="text-xs text-yellow-400">500 🔶</p>
         </div>
@@ -493,42 +493,42 @@
                     <label class="flex items-center gap-2 p-2 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition">
                         <input type="checkbox" id="spec-bodybuilding" value="Bodybuilding" onchange="updateSpecialties()"
                             class="w-4 h-4 accent-orange-500">
-                        <span class="text-xs text-white">💪 Bodybuilding</span>
+                        <span class="text-xs text-white"><i data-lucide="dumbbell" class="w-3 h-3 inline-block align-middle"></i> Bodybuilding</span>
                     </label>
                     <label class="flex items-center gap-2 p-2 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition">
                         <input type="checkbox" id="spec-crossfit" value="Crossfit" onchange="updateSpecialties()"
                             class="w-4 h-4 accent-orange-500">
-                        <span class="text-xs text-white">🏋️ Crossfit</span>
+                        <span class="text-xs text-white"><i data-lucide="dumbbell" class="w-3 h-3 inline-block align-middle"></i> Crossfit</span>
                     </label>
                     <label class="flex items-center gap-2 p-2 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition">
                         <input type="checkbox" id="spec-calisthenics" value="Calisthenics" onchange="updateSpecialties()"
                             class="w-4 h-4 accent-orange-500">
-                        <span class="text-xs text-white">🤸 Calisthenics</span>
+                        <span class="text-xs text-white"><i data-lucide="person-standing" class="w-3 h-3 inline-block align-middle"></i> Calisthenics</span>
                     </label>
                     <label class="flex items-center gap-2 p-2 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition">
                         <input type="checkbox" id="spec-cardio" value="Cardio" onchange="updateSpecialties()"
                             class="w-4 h-4 accent-orange-500">
-                        <span class="text-xs text-white">🏃 Cardio</span>
+                        <span class="text-xs text-white"><i data-lucide="footprints" class="w-3 h-3 inline-block align-middle"></i> Cardio</span>
                     </label>
                     <label class="flex items-center gap-2 p-2 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition">
                         <input type="checkbox" id="spec-hiit" value="HIIT" onchange="updateSpecialties()"
                             class="w-4 h-4 accent-orange-500">
-                        <span class="text-xs text-white">⚡ HIIT</span>
+                        <span class="text-xs text-white"><i data-lucide="zap" class="w-3 h-3 inline-block align-middle"></i> HIIT</span>
                     </label>
                     <label class="flex items-center gap-2 p-2 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition">
                         <input type="checkbox" id="spec-yoga" value="Yoga" onchange="updateSpecialties()"
                             class="w-4 h-4 accent-orange-500">
-                        <span class="text-xs text-white">🧘 Yoga</span>
+                        <span class="text-xs text-white"><i data-lucide="heart" class="w-3 h-3 inline-block align-middle"></i> Yoga</span>
                     </label>
                     <label class="flex items-center gap-2 p-2 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition">
                         <input type="checkbox" id="spec-boxing" value="Boxing" onchange="updateSpecialties()"
                             class="w-4 h-4 accent-orange-500">
-                        <span class="text-xs text-white">🥊 Boxing</span>
+                        <span class="text-xs text-white"><i data-lucide="swords" class="w-3 h-3 inline-block align-middle"></i> Boxing</span>
                     </label>
                     <label class="flex items-center gap-2 p-2 bg-black/20 rounded-lg cursor-pointer hover:bg-black/30 transition">
                         <input type="checkbox" id="spec-rehab" value="Rehabilitation" onchange="updateSpecialties()"
                             class="w-4 h-4 accent-orange-500">
-                        <span class="text-xs text-white">🩹 Rehab</span>
+                        <span class="text-xs text-white"><i data-lucide="heart-pulse" class="w-3 h-3 inline-block align-middle"></i> Rehab</span>
                     </label>
                 </div>
             </div>
@@ -540,7 +540,7 @@
             <a href="/trainer/personal?gym_id={{ gym_id }}"
                 class="w-full flex items-center justify-between bg-white/5 hover:bg-white/10 p-4 rounded-xl transition group tap-effect">
                 <div class="flex items-center space-x-3">
-                    <span class="text-2xl">💪</span>
+                    <i data-lucide="dumbbell" class="w-6 h-6"></i>
                     <div class="text-left">
                         <p class="text-white font-bold text-sm">My Workout</p>
                         <p class="text-xs text-gray-400">Track your own progress</p>
@@ -592,18 +592,18 @@
                     <p class="text-sm text-gray-400 hidden" id="modal-client-plan">...</p>
                 </div>
                 <div class="text-gray-400 text-sm">
-                    📊 <span class="text-xs">View Stats</span>
+                    <i data-lucide="bar-chart-3" class="w-4 h-4 inline-block align-middle"></i> <span class="text-xs">View Stats</span>
                 </div>
             </div>
         </div>
         <button class="w-full py-3 bg-white/10 text-white font-bold rounded-xl mb-2"
             onclick="openTrainerCalendar()">View Schedule</button>
         <button class="w-full py-3 bg-blue-500/20 text-blue-400 border border-blue-500/30 font-bold rounded-xl mb-2 hover:bg-blue-500/30 transition"
-            onclick="openBookAppointmentModal()">📅 Book Appointment</button>
+            onclick="openBookAppointmentModal()"><i data-lucide="calendar" class="w-5 h-5 inline-block align-middle"></i> Book Appointment</button>
         <button id="btn-manage-diet" class="w-full py-3 bg-white/10 text-white font-bold rounded-xl mb-2 hidden"
             onclick="openAssignDietModal()">Manage Diet</button>
         <button id="btn-view-metrics" class="w-full py-3 bg-white/10 text-white font-bold rounded-xl mb-2 hidden" onclick="openMetricsModal()">View
-            Metrics 📈</button>
+            Metrics <i data-lucide="trending-up" class="w-4 h-4 inline-block align-middle"></i></button>
         <button class="w-full py-3 bg-white/10 text-white font-bold rounded-xl mb-2"
             onclick="openAssignSplitModal()">Assign Weekly Split</button>
         <button class="w-full py-3 bg-primary text-white font-bold rounded-xl" onclick="openChatModal()">Message Client</button>
@@ -617,7 +617,7 @@
         <div class="flex items-center space-x-3">
             <button onclick="closeChatModal()" class="text-gray-400 hover:text-white text-2xl">&larr;</button>
             <div id="chat-user-avatar" class="w-10 h-10 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center overflow-hidden">
-                <span class="text-lg">👤</span>
+                <i data-lucide="user" class="w-5 h-5"></i>
             </div>
             <div>
                 <h3 class="font-bold text-white" id="chat-user-name">Chat</h3>
@@ -847,7 +847,7 @@
                     <button onclick="openSchedulePicker()"
                         class="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white p-2"
                         title="View Schedule">
-                        📅
+                        <i data-lucide="calendar" class="w-5 h-5"></i>
                     </button>
                 </div>
             </div>
@@ -1059,7 +1059,7 @@
         <button onclick="hideModal('book-appointment-modal')"
             class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
 
-        <h2 class="text-2xl font-bold mb-1 text-blue-400">📅 Book Appointment</h2>
+        <h2 class="text-2xl font-bold mb-1 text-blue-400"><i data-lucide="calendar" class="w-5 h-5 inline-block align-middle"></i> Book Appointment</h2>
         <p class="text-sm text-gray-400 mb-6">Schedule a 1-on-1 session with <span id="book-appt-client-name" class="text-white font-bold"></span></p>
 
         <div class="space-y-4">
@@ -1119,7 +1119,7 @@
         <button onclick="hideModal('client-book-appointment-modal')"
             class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
 
-        <h2 class="text-2xl font-bold mb-1 text-blue-400">📅 Book Appointment</h2>
+        <h2 class="text-2xl font-bold mb-1 text-blue-400"><i data-lucide="calendar" class="w-5 h-5 inline-block align-middle"></i> Book Appointment</h2>
         <p class="text-sm text-gray-400 mb-6">Schedule a 1-on-1 session with a trainer</p>
 
         <div class="space-y-4">
@@ -1130,7 +1130,7 @@
                 <div id="client-trainer-collapsed" onclick="toggleTrainerList()"
                     class="w-full bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3 cursor-pointer hover:border-blue-500/50 transition">
                     <div id="client-trainer-avatar" class="w-10 h-10 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
-                        <span class="text-xl">👤</span>
+                        <i data-lucide="user" class="w-5 h-5"></i>
                     </div>
                     <div class="flex-1">
                         <div id="client-trainer-name" class="text-white font-medium">Choose a trainer...</div>
@@ -1193,12 +1193,12 @@
                 <div class="grid grid-cols-2 gap-3 mb-3">
                     <button onclick="selectAppointmentPayment('card')" id="appt-pay-card-btn"
                         class="p-3 rounded-xl border-2 border-white/20 hover:border-blue-500/50 transition text-center">
-                        <span class="text-xl block mb-1">💳</span>
+                        <i data-lucide="credit-card" class="w-5 h-5 block mb-1"></i>
                         <span class="text-xs font-semibold text-white">Card</span>
                     </button>
                     <button onclick="selectAppointmentPayment('cash')" id="appt-pay-cash-btn"
                         class="p-3 rounded-xl border-2 border-white/20 hover:border-green-500/50 transition text-center">
-                        <span class="text-xl block mb-1">💵</span>
+                        <i data-lucide="banknote" class="w-6 h-6 block mb-1 mx-auto stroke-current"></i>
                         <span class="text-xs font-semibold text-white">Cash at Session</span>
                     </button>
                 </div>
@@ -1258,42 +1258,42 @@
                 <div class="grid grid-cols-4 gap-2">
                     <button type="button" onclick="selectCourseType(this, 'yoga', 'purple')" data-type="yoga"
                         class="course-type-btn selected flex flex-col items-center p-3 rounded-xl bg-purple-500/20 border-2 border-purple-500 transition hover:scale-105">
-                        <span class="text-2xl mb-1">🧘</span>
+                        <i data-lucide="heart" class="w-6 h-6 mb-1"></i>
                         <span class="text-[10px] font-bold text-white/80">Yoga</span>
                     </button>
                     <button type="button" onclick="selectCourseType(this, 'pilates', 'pink')" data-type="pilates"
                         class="course-type-btn flex flex-col items-center p-3 rounded-xl bg-white/5 border-2 border-transparent transition hover:scale-105 hover:bg-white/10">
-                        <span class="text-2xl mb-1">🤸</span>
+                        <i data-lucide="person-standing" class="w-6 h-6 mb-1"></i>
                         <span class="text-[10px] font-bold text-white/80">Pilates</span>
                     </button>
                     <button type="button" onclick="selectCourseType(this, 'hiit', 'orange')" data-type="hiit"
                         class="course-type-btn flex flex-col items-center p-3 rounded-xl bg-white/5 border-2 border-transparent transition hover:scale-105 hover:bg-white/10">
-                        <span class="text-2xl mb-1">🔥</span>
+                        <i data-lucide="flame" class="w-6 h-6 mb-1"></i>
                         <span class="text-[10px] font-bold text-white/80">HIIT</span>
                     </button>
                     <button type="button" onclick="selectCourseType(this, 'dance', 'cyan')" data-type="dance"
                         class="course-type-btn flex flex-col items-center p-3 rounded-xl bg-white/5 border-2 border-transparent transition hover:scale-105 hover:bg-white/10">
-                        <span class="text-2xl mb-1">💃</span>
+                        <i data-lucide="music" class="w-6 h-6 mb-1"></i>
                         <span class="text-[10px] font-bold text-white/80">Dance</span>
                     </button>
                     <button type="button" onclick="selectCourseType(this, 'spin', 'green')" data-type="spin"
                         class="course-type-btn flex flex-col items-center p-3 rounded-xl bg-white/5 border-2 border-transparent transition hover:scale-105 hover:bg-white/10">
-                        <span class="text-2xl mb-1">🚴</span>
+                        <i data-lucide="bike" class="w-6 h-6 mb-1"></i>
                         <span class="text-[10px] font-bold text-white/80">Spinning</span>
                     </button>
                     <button type="button" onclick="selectCourseType(this, 'strength', 'red')" data-type="strength"
                         class="course-type-btn flex flex-col items-center p-3 rounded-xl bg-white/5 border-2 border-transparent transition hover:scale-105 hover:bg-white/10">
-                        <span class="text-2xl mb-1">💪</span>
+                        <i data-lucide="dumbbell" class="w-6 h-6 mb-1"></i>
                         <span class="text-[10px] font-bold text-white/80">Strength</span>
                     </button>
                     <button type="button" onclick="selectCourseType(this, 'stretch', 'teal')" data-type="stretch"
                         class="course-type-btn flex flex-col items-center p-3 rounded-xl bg-white/5 border-2 border-transparent transition hover:scale-105 hover:bg-white/10">
-                        <span class="text-2xl mb-1">🙆</span>
+                        <i data-lucide="move" class="w-6 h-6 mb-1"></i>
                         <span class="text-[10px] font-bold text-white/80">Stretch</span>
                     </button>
                     <button type="button" onclick="selectCourseType(this, 'cardio', 'yellow')" data-type="cardio"
                         class="course-type-btn flex flex-col items-center p-3 rounded-xl bg-white/5 border-2 border-transparent transition hover:scale-105 hover:bg-white/10">
-                        <span class="text-2xl mb-1">🏃</span>
+                        <i data-lucide="footprints" class="w-6 h-6 mb-1"></i>
                         <span class="text-[10px] font-bold text-white/80">Cardio</span>
                     </button>
                 </div>
@@ -1303,7 +1303,7 @@
             <div>
                 <label class="text-xs text-gray-500 uppercase font-bold ml-1">Course Name</label>
                 <div class="relative mt-1">
-                    <span id="course-name-icon" class="absolute left-3 top-1/2 -translate-y-1/2 text-xl">🧘</span>
+                    <span id="course-name-icon" class="absolute left-3 top-1/2 -translate-y-1/2 text-xl"><i data-lucide="heart" class="w-5 h-5"></i></span>
                     <input type="text" id="course-name"
                         class="w-full bg-white/5 border border-white/10 rounded-xl pl-12 pr-4 py-3 text-white focus:border-white/30 outline-none transition"
                         placeholder="e.g. Morning Flow Yoga">
@@ -1321,7 +1321,7 @@
             <!-- Schedule Section -->
             <div class="bg-white/5 rounded-2xl p-4">
                 <label class="text-xs text-gray-500 uppercase font-bold mb-3 block flex items-center">
-                    <span class="mr-2">📅</span> Schedule
+                    <i data-lucide="calendar" class="w-4 h-4 mr-2 inline-block align-middle"></i> Schedule
                 </label>
 
                 <!-- Visual Day Selector -->
@@ -1362,7 +1362,7 @@
                     <div>
                         <label class="text-[10px] text-gray-500 uppercase font-bold ml-1">Time</label>
                         <div class="relative mt-1">
-                            <span class="absolute left-3 top-1/2 -translate-y-1/2 text-sm">🕐</span>
+                            <span class="absolute left-3 top-1/2 -translate-y-1/2"><i data-lucide="clock" class="w-4 h-4 stroke-current"></i></span>
                             <input type="time" id="course-time-input"
                                 class="w-full bg-white/10 border border-white/10 rounded-xl pl-9 pr-3 py-2.5 text-white text-sm focus:border-white/30 outline-none transition"
                                 value="09:00">
@@ -1388,7 +1388,7 @@
             <!-- Visibility Toggle -->
             <div class="flex items-center justify-between bg-white/5 rounded-xl p-4">
                 <div class="flex items-center space-x-3">
-                    <span id="visibility-icon" class="text-xl">🔒</span>
+                    <span id="visibility-icon" class="text-xl"><i data-lucide="lock" class="w-5 h-5"></i></span>
                     <div>
                         <p id="visibility-label" class="text-sm font-medium text-white">Private Course</p>
                         <p id="visibility-desc" class="text-[10px] text-gray-500">Only visible to you</p>
@@ -1404,7 +1404,7 @@
             <!-- Capacity & Waitlist Section -->
             <div class="bg-white/5 rounded-2xl p-4">
                 <label class="text-xs text-gray-500 uppercase font-bold mb-3 block flex items-center">
-                    <span class="mr-2">👥</span> Class Capacity
+                    <i data-lucide="users" class="w-4 h-4 mr-2 inline-block align-middle"></i> Class Capacity
                 </label>
 
                 <!-- Capacity Input -->
@@ -1435,7 +1435,7 @@
                 <!-- Waitlist Toggle -->
                 <div class="flex items-center justify-between bg-black/20 rounded-xl p-3">
                     <div class="flex items-center space-x-3">
-                        <span class="text-lg">📋</span>
+                        <i data-lucide="clipboard-list" class="w-5 h-5 stroke-current"></i>
                         <div>
                             <p class="text-sm font-medium text-white">Enable Waitlist</p>
                             <p class="text-[10px] text-gray-500">Allow signups when class is full</p>
@@ -1452,14 +1452,14 @@
             <!-- Music Links Section -->
             <div class="bg-white/5 rounded-2xl p-4">
                 <label class="text-xs text-gray-500 uppercase font-bold mb-2 block flex items-center">
-                    <span class="mr-2">🎵</span> Music Playlists
+                    <i data-lucide="music" class="w-4 h-4 mr-2 inline-block align-middle"></i> Music Playlists
                 </label>
                 <div id="music-links-container" class="space-y-2 mb-3">
                     <p class="text-xs text-gray-500 italic text-center py-2">Add Spotify or YouTube playlists</p>
                 </div>
                 <button onclick="addMusicLinkInput()" type="button"
                     class="w-full py-2.5 bg-white/10 rounded-xl text-sm hover:bg-white/20 transition flex items-center justify-center gap-2">
-                    <span>🎶</span> Add Playlist
+                    <i data-lucide="music" class="w-4 h-4 inline-block align-middle stroke-current"></i> Add Playlist
                 </button>
             </div>
 
@@ -1467,13 +1467,13 @@
             <div class="bg-white/5 rounded-2xl p-4">
                 <div class="flex justify-between items-center mb-3">
                     <label class="text-xs text-gray-500 uppercase font-bold flex items-center">
-                        <span class="mr-2">🏋️</span> Exercises
+                        <i data-lucide="dumbbell" class="w-4 h-4 mr-2 inline-block align-middle"></i> Exercises
                     </label>
                     <span id="exercise-count-badge" class="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-white/60">0 selected</span>
                 </div>
                 <div id="course-selected-exercises" class="space-y-2 min-h-[60px]">
                     <div class="text-center py-4">
-                        <span class="text-3xl mb-2 block opacity-30">🏃</span>
+                        <span class="mb-2 block opacity-30"><i data-lucide="footprints" class="w-8 h-8"></i></span>
                         <p class="text-xs text-gray-500">No exercises added yet</p>
                     </div>
                 </div>
@@ -1486,7 +1486,7 @@
             <!-- Client Preview Section -->
             <div class="bg-gradient-to-br from-purple-500/10 to-pink-500/10 rounded-2xl p-4 border border-purple-500/20">
                 <label class="text-xs text-purple-400 uppercase font-bold mb-3 block flex items-center">
-                    <span class="mr-2">👁️</span> Client Preview
+                    <i data-lucide="eye" class="w-4 h-4 mr-2 inline-block align-middle"></i> Client Preview
                 </label>
 
                 <!-- Preview Card - What clients actually see -->
@@ -1512,7 +1512,7 @@
                         </div>
                         <div id="course-trailer-placeholder" class="w-full aspect-video bg-gradient-to-br from-gray-800 to-gray-900 flex items-center justify-center relative">
                             <div class="text-center">
-                                <span class="text-5xl block mb-2 opacity-30">🎬</span>
+                                <span class="block mb-2 opacity-30"><i data-lucide="clapperboard" class="w-10 h-10"></i></span>
                                 <p class="text-xs text-gray-500">Add a trailer video</p>
                             </div>
                             <!-- Trainer overlay on placeholder (top-left) -->
@@ -1599,7 +1599,7 @@
             <!-- Actions -->
             <div class="flex gap-2 mb-6">
                 <button onclick="startLiveClass()" class="flex-1 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/80 transition flex items-center justify-center gap-2">
-                    <span class="text-lg">▶</span> Start Class
+                    <i data-lucide="play" class="w-5 h-5 inline-block align-middle stroke-current"></i> Start Class
                 </button>
                 <button onclick="openScheduleLessonModal()" class="py-3 px-4 bg-green-600 text-white font-bold rounded-xl hover:bg-green-700 transition">
                     Schedule
@@ -1742,7 +1742,7 @@
         </div>
         <div class="flex items-center gap-3">
             <button onclick="toggleLiveMusic()" id="live-music-toggle" class="p-2 rounded-full bg-white/10 hover:bg-white/20 transition" title="Toggle Music">
-                🎵
+                <i data-lucide="music" class="w-5 h-5"></i>
             </button>
             <button onclick="endLiveClass()" class="px-4 py-2 bg-red-600 text-white text-sm font-bold rounded-xl hover:bg-red-700 transition">
                 End Class
@@ -1758,7 +1758,7 @@
             <!-- Video/Image Display -->
             <div id="live-exercise-media" class="w-full max-w-2xl aspect-video bg-gray-900 rounded-2xl overflow-hidden mb-4 flex items-center justify-center">
                 <div class="text-gray-500 text-center">
-                    <span class="text-6xl block mb-2">🏋️</span>
+                    <i data-lucide="dumbbell" class="w-12 h-12 block mb-2"></i>
                     <p class="text-sm">No video available</p>
                 </div>
             </div>
@@ -1785,7 +1785,7 @@
                 </div>
                 <div class="flex justify-center gap-3 mt-3">
                     <button onclick="toggleTimer()" id="timer-toggle-btn" class="px-8 py-3 bg-green-600 rounded-xl text-white font-bold hover:bg-green-700 transition">
-                        ▶ Start
+                        <i data-lucide="play" class="w-4 h-4 inline-block align-middle stroke-current"></i> Start
                     </button>
                     <button onclick="resetTimer()" class="px-6 py-3 bg-white/10 rounded-xl text-white font-bold hover:bg-white/20 transition">
                         Reset
@@ -1889,18 +1889,18 @@
                 <label class="text-xs text-gray-500 uppercase font-bold mb-1 block">Category *</label>
                 <select id="course-exercise-category"
                     class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white focus:border-primary outline-none transition appearance-none cursor-pointer">
-                    <option value="yoga">🧘 Yoga</option>
-                    <option value="pilates">🤸 Pilates</option>
-                    <option value="stretch">🙆 Stretch</option>
-                    <option value="warmup">🔥 Warmup</option>
-                    <option value="cardio">🏃 Cardio</option>
-                    <option value="cooldown">❄️ Cooldown</option>
-                    <option value="breathing">🌬️ Breathing</option>
-                    <option value="balance">⚖️ Balance</option>
-                    <option value="core">🎯 Core</option>
-                    <option value="hiit">⚡ HIIT</option>
-                    <option value="dance">💃 Dance</option>
-                    <option value="aerobics">🕺 Aerobics</option>
+                    <option value="yoga">Yoga</option>
+                    <option value="pilates">Pilates</option>
+                    <option value="stretch">Stretch</option>
+                    <option value="warmup">Warmup</option>
+                    <option value="cardio">Cardio</option>
+                    <option value="cooldown">Cooldown</option>
+                    <option value="breathing">Breathing</option>
+                    <option value="balance">Balance</option>
+                    <option value="core">Core</option>
+                    <option value="hiit">HIIT</option>
+                    <option value="dance">Dance</option>
+                    <option value="aerobics">Aerobics</option>
                 </select>
             </div>
 
@@ -1957,7 +1957,7 @@
                         <input type="url" id="course-exercise-image" placeholder="Image URL or upload..."
                             class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-2.5 text-sm text-white focus:border-primary outline-none transition">
                         <label class="px-4 py-2.5 bg-white/10 rounded-xl cursor-pointer hover:bg-white/20 transition flex items-center">
-                            <span class="text-sm">📷</span>
+                            <i data-lucide="camera" class="w-4 h-4"></i>
                             <input type="file" id="course-exercise-image-upload" accept="image/*" class="hidden" onchange="uploadCourseExerciseImage(this)">
                         </label>
                     </div>
@@ -2003,7 +2003,7 @@
         onclick="event.stopPropagation()">
         <!-- Header with Image/Video -->
         <div id="course-exercise-detail-media" class="relative w-full h-48 bg-black/50 flex items-center justify-center">
-            <span class="text-6xl">🏃</span>
+            <i data-lucide="footprints" class="w-12 h-12"></i>
         </div>
 
         <!-- Content -->
@@ -2033,11 +2033,11 @@
         <div class="p-4 border-t border-white/10 flex gap-2">
             <button onclick="editCourseExerciseFromDetail()"
                 class="flex-1 py-3 bg-white/10 text-white font-bold rounded-xl hover:bg-white/20 transition flex items-center justify-center gap-2">
-                ✏️ Edit
+                <i data-lucide="pencil" class="w-4 h-4 inline-block align-middle"></i> Edit
             </button>
             <button onclick="deleteCourseExerciseFromDetail()"
                 class="flex-1 py-3 bg-red-500/20 text-red-400 font-bold rounded-xl hover:bg-red-500/30 transition flex items-center justify-center gap-2">
-                🗑️ Delete
+                <i data-lucide="trash-2" class="w-4 h-4 inline-block align-middle"></i> Delete
             </button>
             <button onclick="hideModal('course-exercise-detail-modal')"
                 class="flex-1 py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/80 transition">
@@ -2084,7 +2084,7 @@
         <!-- Active Offers Banner -->
         <div id="active-offers-banner" class="hidden px-6 py-3 bg-gradient-to-r from-green-500/10 to-yellow-500/10 border-b border-green-500/20">
             <div class="flex items-center gap-3">
-                <span class="text-2xl">🎁</span>
+                <i data-lucide="gift" class="w-6 h-6"></i>
                 <div class="flex-1">
                     <p class="text-sm font-semibold text-green-400" id="offer-banner-title">Special Offers Available!</p>
                     <p class="text-xs text-green-300/70" id="offer-banner-description">Check out our current deals</p>
@@ -2096,7 +2096,7 @@
         <div id="subscription-plans-list" class="p-6 space-y-4 overflow-y-auto max-h-[50vh]">
             <!-- Plans will be loaded here dynamically -->
             <div class="text-center py-8 text-white/50">
-                <div class="animate-spin text-3xl mb-2">⏳</div>
+                <i data-lucide="loader-2" class="w-8 h-8 inline-block animate-spin stroke-current mb-2"></i>
                 <p>Loading plans...</p>
             </div>
         </div>
@@ -2145,7 +2145,7 @@
                 <button id="subscribe-button" onclick="processSubscription()"
                     class="w-full bg-primary text-white font-bold py-4 rounded-xl hover:bg-primary/90 transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
                     <span id="subscribe-button-text">Subscribe Now</span>
-                    <span id="subscribe-spinner" class="hidden animate-spin">⏳</span>
+                    <span id="subscribe-spinner" class="hidden"><i data-lucide="loader-2" class="w-5 h-5 inline-block animate-spin stroke-current"></i></span>
                 </button>
 
                 <button onclick="cancelPaymentForm()" class="w-full mt-2 text-white/50 hover:text-white text-sm py-2">
@@ -2153,7 +2153,7 @@
                 </button>
 
                 <p class="text-[10px] text-white/30 text-center mt-4">
-                    🔒 Secure payment powered by Stripe. Your card details are never stored on our servers.
+                    <i data-lucide="lock" class="w-4 h-4 inline-block align-middle"></i> Secure payment powered by Stripe. Your card details are never stored on our servers.
                 </p>
             </div>
         </div>
@@ -2167,7 +2167,7 @@
     <div class="bg-[#1a1a1a] w-full max-w-sm rounded-3xl p-6 border border-white/10 slide-up"
         onclick="event.stopPropagation()">
         <div class="text-center">
-            <span class="text-5xl mb-4 block">⚠️</span>
+            <span class="mb-4 block"><i data-lucide="alert-triangle" class="w-12 h-12 inline-block stroke-current text-yellow-400"></i></span>
             <h3 class="text-xl font-bold text-white mb-2">Cancel Subscription?</h3>
             <p class="text-sm text-white/60 mb-6">
                 Your subscription will remain active until the end of the current billing period. You can resubscribe anytime.

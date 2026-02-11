@@ -11,7 +11,7 @@
         <div class="flex space-x-2">
             <div id="notification-bell" onclick="openNotificationsModal()"
                 class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect cursor-pointer relative">
-                🔔
+                <i data-lucide="bell" class="w-5 h-5"></i>
                 <span id="notification-badge" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
             </div>
             <!-- Back Button -->
@@ -72,7 +72,7 @@
         <button id="toggle-course-exercises-btn"
             class="w-full glass-card p-4 flex items-center justify-between hover:bg-white/10 transition tap-effect">
             <div class="flex items-center space-x-3">
-                <span class="text-xl">🏃</span>
+                <i data-lucide="footprints" class="w-5 h-5"></i>
                 <div class="text-left">
                     <span class="text-sm font-bold uppercase tracking-wider">Exercise Library</span>
                     <p class="text-[10px] text-white/50">Create & manage exercises for your courses</p>
@@ -97,33 +97,33 @@
                 </button>
                 <button onclick="filterCourseExercises('yoga')" data-filter="yoga"
                     class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">
-                    🧘 Yoga
+                    <i data-lucide="heart" class="w-3.5 h-3.5 inline-block align-middle stroke-current"></i> Yoga
                 </button>
                 <button onclick="filterCourseExercises('pilates')" data-filter="pilates"
                     class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">
-                    🤸 Pilates
+                    <i data-lucide="person-standing" class="w-3.5 h-3.5 inline-block align-middle stroke-current"></i> Pilates
                 </button>
                 <button onclick="filterCourseExercises('stretch')" data-filter="stretch"
                     class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">
-                    🙆 Stretch
+                    <i data-lucide="move" class="w-3.5 h-3.5 inline-block align-middle stroke-current"></i> Stretch
                 </button>
                 <button onclick="filterCourseExercises('cardio')" data-filter="cardio"
                     class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">
-                    🏃 Cardio
+                    <i data-lucide="footprints" class="w-3.5 h-3.5 inline-block align-middle stroke-current"></i> Cardio
                 </button>
                 <button onclick="filterCourseExercises('warmup')" data-filter="warmup"
                     class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">
-                    🔥 Warmup
+                    <i data-lucide="flame" class="w-3.5 h-3.5 inline-block align-middle stroke-current"></i> Warmup
                 </button>
                 <button onclick="filterCourseExercises('cooldown')" data-filter="cooldown"
                     class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">
-                    ❄️ Cooldown
+                    <i data-lucide="snowflake" class="w-3.5 h-3.5 inline-block align-middle stroke-current"></i> Cooldown
                 </button>
             </div>
 
             <!-- Search -->
             <div class="relative mb-4">
-                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">🔍</span>
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm"><i data-lucide="search" class="w-4 h-4"></i></span>
                 <input type="text" id="course-exercise-search" placeholder="Search exercises..."
                     class="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white outline-none focus:border-white/25 focus:bg-white/10 transition placeholder-white/30">
             </div>
@@ -153,11 +153,11 @@ async function loadNotifications() {
         const res = await fetch('/api/notifications?limit=20');
         const notifications = await res.json();
         if (notifications.length === 0) {
-            list.innerHTML = '<div class="text-center text-gray-400 py-8"><span class="text-4xl mb-2 block">🔔</span><p class="text-sm">No notifications yet</p></div>';
+            list.innerHTML = '<div class="text-center text-gray-400 py-8"><i data-lucide="bell" class="w-10 h-10 mb-2 block"></i><p class="text-sm">No notifications yet</p></div>';
             return;
         }
         list.innerHTML = notifications.map(n => {
-            const icon = {'appointment_booked':'📅','appointment_canceled':'❌','message':'💬','streak':'🔥','achievement':'🏆','reminder':'⏰','offer':'🎁','friend_request':'👋','coop_workout':'💪','course':'🏋️'}[n.type] || '🔔';
+            const icon = getNotifIcon(n.type);
             const unreadClass = n.read ? 'opacity-60' : 'border-l-2 border-orange-500';
             return `<div class="flex items-start space-x-3 p-3 bg-white/5 rounded-xl ${unreadClass}"><span class="text-xl">${icon}</span><div class="flex-1 min-w-0"><p class="text-sm font-bold text-white">${n.title}</p><p class="text-xs text-gray-400 truncate">${n.message}</p></div></div>`;
         }).join('');

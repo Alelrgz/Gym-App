@@ -11,12 +11,12 @@
         <div class="flex space-x-2">
             <div id="notification-bell" onclick="openNotificationsModal()"
                 class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect cursor-pointer relative">
-                🔔
+                <i data-lucide="bell" class="w-5 h-5"></i>
                 <span id="notification-badge" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
             </div>
             <div data-action="showModal" data-target="profile-modal"
                 class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect cursor-pointer">
-                ⚙️
+                    <i data-lucide="settings" class="w-4 h-4 inline-block align-middle"></i>
             </div>
             <!-- Back Button -->
             <a href="{{ 'trainer.html' if static_build else '/?gym_id=' + gym_id + '&role=trainer' }}"
@@ -31,27 +31,27 @@
         <!-- Day Streak -->
         <div class="glass-card p-4 flex flex-col items-center justify-center">
             <span class="text-3xl font-bold text-green-400" id="personal-streak">0</span>
-            <span class="text-[10px] text-white/50 uppercase tracking-wider mt-1">Streak 🔥</span>
+            <span class="text-[10px] text-white/50 uppercase tracking-wider mt-1">Streak <i data-lucide="flame" class="w-4 h-4 inline-block align-middle"></i></span>
         </div>
 
         <!-- My Workouts Button -->
         <button id="toggle-my-workout-btn"
             class="glass-card p-4 flex flex-col items-center justify-center hover:bg-white/10 transition group tap-effect">
-            <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">💪</span>
+            <span class="text-2xl mb-1 group-hover:scale-110 transition-transform"><i data-lucide="dumbbell" class="w-6 h-6"></i></span>
             <span class="text-[10px] text-white/70 uppercase tracking-wider font-bold">Workouts</span>
         </button>
 
         <!-- My Splits Button -->
         <button id="toggle-my-split-btn"
             class="glass-card p-4 flex flex-col items-center justify-center hover:bg-white/10 transition group tap-effect">
-            <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">📅</span>
+            <span class="text-2xl mb-1 group-hover:scale-110 transition-transform"><i data-lucide="calendar" class="w-6 h-6"></i></span>
             <span class="text-[10px] text-white/70 uppercase tracking-wider font-bold">Splits</span>
         </button>
 
         <!-- Availability Settings Button -->
         <button onclick="openAvailabilityModal()"
             class="glass-card p-4 flex flex-col items-center justify-center hover:bg-white/10 transition group tap-effect">
-            <span class="text-2xl mb-1 group-hover:scale-110 transition-transform">🕐</span>
+            <span class="mb-1 group-hover:scale-110 transition-transform"><i data-lucide="clock" class="w-7 h-7 stroke-current"></i></span>
             <span class="text-[10px] text-white/70 uppercase tracking-wider font-bold">1-on-1</span>
         </button>
     </div>
@@ -91,7 +91,7 @@
             <div class="flex justify-between items-start mb-4">
                 <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's
                     Plan</span>
-                <span class="text-xl">📋</span>
+                <i data-lucide="clipboard" class="w-5 h-5"></i>
             </div>
             <h3 class="text-xl font-bold text-white/50 mb-2">No Workout Assigned</h3>
             <p class="text-sm text-gray-400 mb-4">Select a workout from "My Workouts" and click "Assign to Me" to set
@@ -422,7 +422,7 @@
             if (notifications.length === 0) {
                 list.innerHTML = `
                     <div class="text-center text-gray-400 py-8">
-                        <span class="text-4xl mb-2 block">🔔</span>
+                        <i data-lucide="bell" class="w-10 h-10 mb-2 block"></i>
                         <p class="text-sm">No notifications yet</p>
                     </div>
                 `;
@@ -459,18 +459,18 @@
 
     function getNotificationIcon(type) {
         const icons = {
-            'appointment_booked': '📅',
-            'appointment_canceled': '❌',
-            'message': '💬',
-            'streak': '🔥',
-            'achievement': '🏆',
-            'reminder': '⏰',
-            'offer': '🎁',
-            'friend_request': '👋',
-            'coop_workout': '💪',
-            'course': '🏋️'
+            'appointment_booked': 'calendar',
+            'appointment_canceled': 'x-circle',
+            'message': 'message-circle',
+            'streak': 'flame',
+            'achievement': 'trophy',
+            'reminder': 'alarm-clock',
+            'offer': 'gift',
+            'friend_request': 'hand',
+            'coop_workout': 'dumbbell',
+            'course': 'dumbbell'
         };
-        return icons[type] || '🔔';
+        return icons[type] || 'bell';
     }
 
     function formatTimeAgo(dateStr) {
@@ -619,7 +619,7 @@
                             <div class="relative z-10">
                                 <div class="flex justify-between items-start mb-4">
                                     <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
-                                    <span class="text-xl">${w.completed ? '✅' : '💪'}</span>
+                                    <span class="text-xl">${w.completed ? icon('check-circle', 20) : icon('dumbbell', 20)}</span>
                                 </div>
                                 <h3 class="text-2xl font-black italic uppercase mb-1">${w.title}</h3>
                                 <p class="text-sm text-gray-300 mb-4">${w.duration || 60} min • ${w.difficulty || 'Intermediate'}</p>
@@ -634,7 +634,7 @@
                         <div class="glass-card p-5 relative overflow-hidden" id="default-plan-placeholder">
                             <div class="flex justify-between items-start mb-4">
                                 <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
-                                <span class="text-xl">📋</span>
+                                <i data-lucide="clipboard" class="w-5 h-5"></i>
                             </div>
                             <h3 class="text-xl font-bold text-white/50 mb-2">No Workout Assigned</h3>
                             <p class="text-sm text-gray-400 mb-4">Select a workout from "My Workouts" and click "Assign to Me" to set today's workout.</p>
@@ -666,7 +666,7 @@
                                 </button>
                             </div>
                             <button class="w-full py-1.5 bg-green-600/20 hover:bg-green-600 text-green-400 hover:text-white text-xs font-bold rounded-lg transition border border-green-500/30"
-                                onclick="window.assignWorkoutToSelf('${w.id}', '${w.title}')">✅ Assign to Me (Today)
+                                onclick="window.assignWorkoutToSelf('${w.id}', '${w.title}')">${icon('check-circle', 14)} Assign to Me (Today)
                             </button>
                         `;
                         workoutCardContainer.appendChild(div);

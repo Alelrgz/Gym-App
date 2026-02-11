@@ -707,6 +707,40 @@ select option {
     }
 }
 
+/* Fire / Flame animation for streak icon */
+@keyframes fireFlicker {
+    0%, 100% {
+        transform: scaleY(1) scaleX(1) rotate(0deg);
+        filter: brightness(1) drop-shadow(0 0 4px rgba(249, 115, 22, 0.6));
+    }
+    15% {
+        transform: scaleY(1.08) scaleX(0.95) rotate(-2deg);
+        filter: brightness(1.15) drop-shadow(0 0 8px rgba(249, 115, 22, 0.8));
+    }
+    30% {
+        transform: scaleY(0.95) scaleX(1.02) rotate(1deg);
+        filter: brightness(0.95) drop-shadow(0 0 3px rgba(239, 68, 68, 0.5));
+    }
+    50% {
+        transform: scaleY(1.12) scaleX(0.97) rotate(-1deg);
+        filter: brightness(1.2) drop-shadow(0 0 10px rgba(249, 115, 22, 0.9));
+    }
+    70% {
+        transform: scaleY(0.97) scaleX(1.01) rotate(2deg);
+        filter: brightness(1.05) drop-shadow(0 0 6px rgba(234, 88, 12, 0.7));
+    }
+    85% {
+        transform: scaleY(1.05) scaleX(0.98) rotate(-1.5deg);
+        filter: brightness(1.1) drop-shadow(0 0 7px rgba(249, 115, 22, 0.75));
+    }
+}
+
+.flame-animate {
+    animation: fireFlicker 1.5s ease-in-out infinite;
+    transform-origin: bottom center;
+    color: #f97316;
+}
+
 /* Central FAB Menu */
 .fab-container {
     position: fixed;

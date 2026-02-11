@@ -276,7 +276,7 @@ if (role === 'client') {
     if (isDesktop && !isCapacitor) {
         document.body.innerHTML = `
             <div class="flex flex-col items-center justify-center min-h-screen bg-black text-white p-8 text-center">
-                <div class="text-6xl mb-4">📱</div>
+                <div class="mb-4">${icon('smartphone', 48)}</div>
                 <h1 class="text-2xl font-bold mb-2">Mobile App Only</h1>
                 <p class="text-gray-400 max-w-md">
                     The Client experience is designed for your phone.
@@ -399,18 +399,18 @@ window.showDayDetails = (dateStr, dayEvents, titleId, listId, isTrainer) => {
         div.className = "glass-card p-3 flex justify-between items-center slide-up";
 
         // Determine icon and color based on event type
-        let icon, statusColor;
+        let eIcon, statusColor;
         if (e.type === 'course') {
-            icon = '📚';
+            eIcon = icon('book-open', 20);
             statusColor = e.completed ? 'text-green-400' : 'text-purple-400';
         } else if (e.type === 'workout') {
-            icon = '💪';
+            eIcon = icon('dumbbell', 20);
             statusColor = e.completed ? 'text-green-400' : 'text-orange-400';
         } else if (e.type === 'appointment') {
-            icon = '📅';
+            eIcon = icon('calendar', 20);
             statusColor = e.completed ? 'text-green-400' : 'text-blue-400';
         } else {
-            icon = '🧘';
+            eIcon = icon('heart', 20);
             statusColor = e.completed ? 'text-green-400' : 'text-orange-400';
         }
 
@@ -419,15 +419,15 @@ window.showDayDetails = (dateStr, dayEvents, titleId, listId, isTrainer) => {
         const courseActions = isCourseEvent && isTrainer ? `
             <div class="flex items-center gap-2 ml-2">
                 <button onclick="event.stopPropagation(); window.editScheduleEvent('${e.id}', '${e.date}', '${e.time}', '${e.title}')"
-                    class="text-white/50 hover:text-white text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition">✏️</button>
+                    class="text-white/50 hover:text-white text-xs px-2 py-1 rounded bg-white/10 hover:bg-white/20 transition">${icon('pencil', 14)}</button>
                 <button onclick="event.stopPropagation(); window.deleteScheduleEvent('${e.id}', '${e.title}')"
-                    class="text-white/50 hover:text-red-400 text-xs px-2 py-1 rounded bg-white/10 hover:bg-red-500/20 transition">🗑️</button>
+                    class="text-white/50 hover:text-red-400 text-xs px-2 py-1 rounded bg-white/10 hover:bg-red-500/20 transition">${icon('trash-2', 14)}</button>
             </div>
         ` : '';
 
         div.innerHTML = `
             <div class="flex items-center flex-1">
-                <span class="text-xl mr-3">${icon}</span>
+                <span class="text-xl mr-3">${eIcon}</span>
                 <div>
                     <p class="text-sm font-bold text-white">${e.title}</p>
                     <p class="text-[10px] text-gray-400">
@@ -554,7 +554,7 @@ window.editScheduleEvent = async (eventId, currentDate, currentTime, title) => {
         });
 
         if (res.ok) {
-            showToast('Schedule updated! 📅');
+            showToast('Schedule updated!');
             // Refresh the page or re-fetch trainer data
             init();
         } else {
@@ -577,7 +577,7 @@ window.deleteScheduleEvent = async (eventId, title) => {
         });
 
         if (res.ok) {
-            showToast('Removed from schedule 🗑️');
+            showToast('Removed from schedule');
             // Refresh
             init();
         } else {
@@ -976,9 +976,12 @@ async function init() {
 
                 // Macros
                 const m = user.progress.macros;
-                if (m && document.getElementById('cals-remaining')) {
-                    const calsLeft = Math.round(m.calories.target - m.calories.current);
-                    document.getElementById('cals-remaining').innerText = `${calsLeft} kcal left`;
+                if (m) {
+                    const calsRemainingEl = document.getElementById('cals-remaining');
+                    if (calsRemainingEl) {
+                        const calsLeft = Math.round(m.calories.target - m.calories.current);
+                        calsRemainingEl.innerText = `${calsLeft} kcal left`;
+                    }
                     // Also update hero carousel calories tag
                     const heroCurrent = document.getElementById('hero-cals-current');
                     const heroTarget = document.getElementById('hero-cals-target');
@@ -1106,7 +1109,7 @@ async function init() {
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-4">
                                 <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
-                                <span class="text-xl">💪</span>
+                                <span class="text-xl">${icon('dumbbell', 20)}</span>
                             </div>
                             <h3 class="text-2xl font-black italic uppercase mb-1">${workout.title}</h3>
                             <p class="text-sm text-gray-300 mb-4">${workout.duration} min • ${workout.difficulty}</p>
@@ -1284,7 +1287,7 @@ async function init() {
                                 <div class="relative z-10">
                                     <div class="flex justify-between items-start mb-4">
                                         <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Workout</span>
-                                        <span class="text-xl">💪</span>
+                                        <span class="text-xl">${icon('dumbbell', 20)}</span>
                                     </div>
                                     <h3 class="text-2xl font-black italic uppercase mb-1 text-white">${w.title}</h3>
                                     <p class="text-sm text-gray-300 mb-4">${w.duration} • ${w.difficulty}</p>
@@ -1294,7 +1297,7 @@ async function init() {
                                     </div>
                                     <button onclick='window.assignWorkoutToSelf("${w.id}", "${w.title.replace(/'/g, "\\'")}")' 
                                         class="w-full py-2 bg-green-600/20 hover:bg-green-600 text-green-400 hover:text-white text-sm font-bold rounded-lg transition border border-green-500/30">
-                                        📅 Assign to Me (Today)
+                                        ${icon('calendar', 14)} Assign to Me (Today)
                                     </button>
                                 </div>
                             `;
@@ -1332,7 +1335,7 @@ async function init() {
                                 <div class="flex justify-between items-start mb-2">
                                      <div class="flex items-center gap-3">
                                          <div class="p-2 bg-purple-500/20 rounded-lg text-purple-400">
-                                             📅
+                                             ${icon('calendar', 20)}
                                          </div>
                                          <div>
                                              <h3 class="font-bold text-white text-lg leading-tight">${s.name}</h3>
@@ -1343,18 +1346,18 @@ async function init() {
                                      <div class="flex gap-2">
                                          <button onclick='window.openEditSplit(JSON.parse(decodeURIComponent("${encodeURIComponent(JSON.stringify(s))}")))' 
                                             class="text-gray-500 hover:text-white transition p-1" title="Edit">
-                                            ✏️
+                                            ${icon('pencil', 14)}
                                          </button>
                                          <button onclick='window.deleteSplit("${s.id}")' 
                                             class="text-gray-500 hover:text-red-400 transition p-1" title="Delete">
-                                            🗑️
+                                            ${icon('trash-2', 14)}
                                          </button>
                                      </div>
                                 </div>
 
                                 <button onclick='window.assignSplitToSelf("${s.id}", "${s.name.replace(/'/g, "\\'")}")'
                                     class="w-full mt-3 py-2 bg-white/5 hover:bg-purple-600 hover:text-white text-gray-400 text-sm font-bold rounded-lg transition border border-white/10 group-hover:border-purple-500/50">
-                                    📅 Assign to Me (This Week)
+                                    ${icon('calendar', 14)} Assign to Me (This Week)
                                 </button>
                             `;
                             container.appendChild(card);
@@ -1377,10 +1380,10 @@ async function init() {
                 data.recent_activity.forEach(item => {
                     const div = document.createElement('div');
                     div.className = "p-4 flex items-start";
-                    let icon = '🔹';
-                    if (item.type === 'money') icon = '💰';
-                    if (item.type === 'staff') icon = '👔';
-                    div.innerHTML = `<span class="mr-3 text-lg">${icon}</span><div><p class="text-sm font-medium text-gray-200">${item.text}</p><p class="text-[10px] text-gray-500">${item.time}</p></div>`;
+                    let aIcon = icon('activity', 18);
+                    if (item.type === 'money') aIcon = icon('dollar-sign', 18);
+                    if (item.type === 'staff') aIcon = icon('briefcase', 18);
+                    div.innerHTML = `<span class="mr-3 text-lg">${aIcon}</span><div><p class="text-sm font-medium text-gray-200">${item.text}</p><p class="text-[10px] text-gray-500">${item.time}</p></div>`;
                     feed.appendChild(div);
                 });
             }
@@ -1688,7 +1691,7 @@ function addWater() {
     if (el && wave) {
         let cur = parseInt(el.innerText);
         if (cur + 250 > 10000) {
-            showToast('Daily limit reached! (10000ml) 🚫');
+            showToast('Daily limit reached! (10000ml)', 'error');
             return;
         }
         cur += 250;
@@ -1696,7 +1699,7 @@ function addWater() {
         // Mock target 2500
         const pct = 100 - ((cur / 2500) * 100);
         wave.style.top = Math.max(0, pct) + '%';
-        showToast('Hydration recorded! 💧');
+        showToast('Hydration recorded!', 'success');
     }
 }
 
@@ -1731,7 +1734,7 @@ function quickAction(action) {
         const food = prompt("Search for food:");
         if (food) showToast(`Found: ${food} (Loading details...)`);
     } else if (action === 'copy') {
-        showToast('Copied yesterday\'s meals 📋');
+        showToast('Copied yesterday\'s meals');
     }
 }
 
@@ -2249,7 +2252,7 @@ async function analyzeMealImage(imageBlob) {
     const loadingText = document.getElementById('loading-text');
     if (loadingText) loadingText.textContent = 'Analyzing meal...';
 
-    showToast('Analyzing meal... 🍎');
+    showToast('Analyzing meal...');
 
     try {
         const res = await fetch(`${apiBase}/api/client/diet/scan`, {
@@ -2277,7 +2280,7 @@ async function analyzeMealImage(imageBlob) {
         }
     } catch (err) {
         console.error(err);
-        showToast('Error analyzing meal ⚠️');
+        showToast('Error analyzing meal', 'error');
         // Go back to capture mode on error
         showCaptureMode();
         startCamera();
@@ -2315,16 +2318,16 @@ async function logScannedMeal() {
         });
 
         if (logRes.ok) {
-            showToast('Meal logged successfully! ✅');
+            showToast('Meal logged successfully!', 'success');
             // Close modal and refresh data
             closeCameraScanner();
             init();
         } else {
-            showToast('Failed to log meal ❌');
+            showToast('Failed to log meal', 'error');
         }
     } catch (err) {
         console.error(err);
-        showToast('Failed to log meal ❌');
+        showToast('Failed to log meal', 'error');
     }
 }
 
@@ -2510,11 +2513,7 @@ let cachedWeightData = null;
 let cachedStrengthData = null;
 
 // Metric configuration for body composition charts
-const bodyMetricConfig = {
-    weight: { label: 'Weight', unit: 'kg', color: '#3B82F6', icon: '⚖️', goodDirection: 'down' },
-    body_fat_pct: { label: 'Body Fat', unit: '%', color: '#F59E0B', icon: '🔥', goodDirection: 'down' },
-    lean_mass: { label: 'Lean Mass', unit: 'kg', color: '#10B981', icon: '💪', goodDirection: 'up' }
-};
+const bodyMetricConfig = METRIC_ICONS;
 
 // Switch between weight and strength views
 function switchTrendView(view) {
@@ -2631,7 +2630,7 @@ window.switchBodyMetric = function(metric) {
     // Update metric display in header
     const metricIcon = document.getElementById('metric-icon');
     const metricUnit = document.getElementById('metric-unit');
-    if (metricIcon) metricIcon.textContent = config.icon;
+    if (metricIcon) metricIcon.innerHTML = icon(config.icon, 14);
     if (metricUnit) metricUnit.textContent = config.unit;
 
     // Re-render chart with current data
@@ -3570,7 +3569,7 @@ function updateStrengthGoalSection(category, data) {
     // Update status text
     if (statusEl) {
         if (progressPct >= 100) {
-            statusEl.textContent = '🎉 Goal achieved!';
+            statusEl.textContent = 'Goal achieved!';
             statusEl.className = 'text-xs text-green-400 mt-2 text-center font-semibold';
         } else if (progressPct >= 80) {
             statusEl.textContent = `${progressPct}% of goal - Almost there!`;
@@ -4124,7 +4123,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
 
                 if (res.ok) {
-                    showToast('Progress photo saved! 📸', 'success');
+                    showToast('Progress photo saved!', 'success');
                     closePhysiqueModal();
 
                     // Reload gallery
@@ -4732,7 +4731,7 @@ window.saveProfile = async () => {
     const password = document.getElementById('profile-password').value;
 
     if (!name || !email) {
-        showToast("Name and Email are required! ⚠️");
+        showToast("Name and Email are required!", "error");
         return;
     }
 
@@ -4749,14 +4748,14 @@ window.saveProfile = async () => {
 
         if (!res.ok) throw new Error("Failed to update");
 
-        showToast("Profile updated successfully! ✅");
+        showToast("Profile updated successfully!", "success");
 
         // Clear password field
         document.getElementById('profile-password').value = '';
 
     } catch (e) {
         console.error(e);
-        showToast("Error updating profile ❌");
+        showToast("Error updating profile", "error");
     }
 };
 
@@ -4770,7 +4769,7 @@ function uploadVideo() {
         div.className = "glass-card p-0 overflow-hidden relative group tap-effect slide-up";
         div.innerHTML = `<img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=150&h=150&fit=crop" class="w-full h-24 object-cover opacity-60 group-hover:opacity-100 transition"><div class="absolute bottom-0 w-full p-2 bg-gradient-to-t from-black to-transparent"><p class="text-[10px] font-bold text-white truncate">${title}</p><p class="text-[8px] text-gray-400 uppercase">Custom</p></div>`;
         vidLib.prepend(div);
-        showToast('Video uploaded successfully! 🎥');
+        showToast('Video uploaded successfully!', 'success');
     }
 }
 
@@ -4819,10 +4818,7 @@ async function initializeExerciseList(config) {
 
         container.innerHTML = '';
 
-        const muscleIcons = {
-            'Chest': '🛡️', 'Back': '🦅', 'Legs': '🦵',
-            'Shoulders': '💪', 'Arms': '🦾', 'Abs': '🍫', 'Cardio': '🏃'
-        };
+        const muscleIcons = MUSCLE_ICONS;
 
         const typeColors = {
             'Compound': 'bg-yellow-500/20 text-yellow-400',
@@ -4845,7 +4841,7 @@ async function initializeExerciseList(config) {
                 });
             }
 
-            const icon = muscleIcons[ex.muscle] || '🏋️';
+            const exIcon = icon(muscleIcons[ex.muscle] || 'dumbbell', 20);
             const badgeClass = typeColors[ex.type] || 'bg-gray-500/20 text-gray-400';
 
             let videoBackground = '';
@@ -4867,19 +4863,19 @@ async function initializeExerciseList(config) {
                 ${videoBackground}
                 
                 <div class="absolute -right-2 -top-2 opacity-10 group-hover:opacity-0 transition transform group-hover:scale-110 pointer-events-none">
-                    <span class="text-8xl">${icon}</span>
+                    <span class="text-8xl">${exIcon}</span>
                 </div>
                 <div class="relative z-10 w-full h-full flex flex-col justify-between pointer-events-none">
                     <div class="flex justify-between items-start mb-2 pointer-events-auto pl-1">
                         <span class="text-[10px] font-bold px-2 py-1 rounded-full ${badgeClass} uppercase tracking-wider">${ex.type}</span>
                         <button class="edit-btn w-8 h-8 flex items-center justify-center bg-white/10 rounded-full text-gray-300 hover:bg-white/20 hover:text-white transition tap-effect">
-                            ⚙️
+                            ${icon('settings', 14)}
                         </button>
                     </div>
                     <div>
                         <h4 class="font-bold text-lg text-white mb-1 leading-tight drop-shadow-md">${ex.name}</h4>
                         <div class="flex items-center text-xs text-gray-400 mt-1">
-                            <span class="mr-2">${icon}</span>
+                            <span class="mr-2">${exIcon}</span>
                             <span>${ex.muscle}</span>
                         </div>
                     </div>
@@ -4971,7 +4967,7 @@ window.saveDietPlan = async () => {
         });
 
         if (res.ok) {
-            showToast("Diet plan assigned successfully! 🥗");
+            showToast("Diet plan assigned successfully!", "success");
             hideModal('assign-diet-modal');
         } else {
             const err = await res.json();
@@ -5031,7 +5027,7 @@ function setupExerciseModals() {
                             const data = await res.json();
                             videoInput.value = data.url; // Use real server URL
                             filenameDisplay.innerText = `Uploaded: ${file.name}`;
-                            showToast('Video uploaded! 🎥');
+                            showToast('Video uploaded!', 'success');
 
                             // Update Preview
                             const previewContainer = document.getElementById(`${prefix}-ex-preview-container`);
@@ -5043,12 +5039,12 @@ function setupExerciseModals() {
                             }
                         } else {
                             filenameDisplay.innerText = `Upload failed`;
-                            showToast('Upload failed ❌');
+                            showToast('Upload failed', 'error');
                         }
                     } catch (err) {
                         console.error(err);
                         filenameDisplay.innerText = `Upload error`;
-                        showToast('Upload error ❌');
+                        showToast('Upload error', 'error');
                     }
                 }
             });
@@ -5118,7 +5114,7 @@ async function updateExercise() {
     const video = document.getElementById('edit-ex-video').value;
 
     if (!name) {
-        showToast('Please enter an exercise name ⚠️');
+        showToast('Please enter an exercise name', 'error');
         return;
     }
 
@@ -5137,7 +5133,7 @@ async function updateExercise() {
         });
 
         if (res.ok) {
-            showToast('Exercise updated! ✅');
+            showToast('Exercise updated!', 'success');
             hideModal('edit-exercise-modal');
             hideModal('edit-exercise-modal');
             // Refresh main list if it exists
@@ -5161,11 +5157,11 @@ async function updateExercise() {
                 });
             }
         } else {
-            showToast('Failed to update exercise ❌');
+            showToast('Failed to update exercise', 'error');
         }
     } catch (e) {
         console.error(e);
-        showToast('Error updating exercise ❌');
+        showToast('Error updating exercise', 'error');
     }
 }
 
@@ -5176,7 +5172,7 @@ window.createExercise = async function () {
     const video = document.getElementById('new-ex-video').value;
 
     if (!name) {
-        showToast('Please enter an exercise name ⚠️');
+        showToast('Please enter an exercise name', 'error');
         return;
     }
 
@@ -5195,7 +5191,7 @@ window.createExercise = async function () {
         });
 
         if (res.ok) {
-            showToast('Exercise created! 💪');
+            showToast('Exercise created!', 'success');
             hideModal('create-exercise-modal');
             // Clear inputs
             document.getElementById('new-ex-name').value = '';
@@ -5224,11 +5220,11 @@ window.createExercise = async function () {
                 });
             }
         } else {
-            showToast('Failed to create exercise ❌');
+            showToast('Failed to create exercise', 'error');
         }
     } catch (e) {
         console.error(e);
-        showToast('Error creating exercise ❌');
+        showToast('Error creating exercise', 'error');
     }
 };
 
@@ -5247,7 +5243,7 @@ async function fetchAndRenderWorkouts() {
         container.innerHTML = `
             <button data-action="openCreateWorkout"
                 class="w-full py-6 border-2 border-dashed border-white/10 rounded-xl text-white/40 hover:text-white/70 hover:border-white/20 transition flex flex-col items-center justify-center gap-2 group">
-                <span class="text-2xl group-hover:scale-110 transition-transform">💪</span>
+                <span class="text-2xl group-hover:scale-110 transition-transform">${icon('dumbbell', 24)}</span>
                 <span class="text-xs uppercase tracking-wider font-medium">Create Your First Workout</span>
             </button>
         `;
@@ -5264,7 +5260,7 @@ async function fetchAndRenderWorkouts() {
             </div>
             <div class="flex gap-2">
                 <button class="edit-workout-btn text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition">Edit</button>
-                <button class="delete-workout-btn text-xs bg-red-500/20 hover:bg-red-500/40 px-2 py-1 rounded text-red-400 transition">🗑️</button>
+                <button class="delete-workout-btn text-xs bg-red-500/20 hover:bg-red-500/40 px-2 py-1 rounded text-red-400 transition">${icon('trash-2', 14)}</button>
             </div>
         `;
 
@@ -5463,7 +5459,7 @@ window.createWorkout = async function () {
         });
 
         if (res.ok) {
-            showToast(id ? 'Workout updated! 💪' : 'Workout created! 💪');
+            showToast(id ? 'Workout updated!' : 'Workout created!', 'success');
             hideModal('create-workout-modal');
 
             // Reset form
@@ -5480,7 +5476,7 @@ window.createWorkout = async function () {
         }
     } catch (e) {
         console.error(e);
-        showToast('Error saving workout ❌');
+        showToast('Error saving workout', 'error');
         // alert(e.message); // Debug
     }
 }
@@ -5518,7 +5514,7 @@ window.assignWorkout = async function () {
     });
 
     if (res.ok) {
-        showToast('Workout assigned successfully! 📅');
+        showToast('Workout assigned successfully!', 'success');
         hideModal('assign-workout-modal');
         // Refresh calendar to show new assignment
         if (window.openTrainerCalendar) {
@@ -5685,7 +5681,7 @@ async function finishWorkout() {
                 const celebrationTitle = document.querySelector('#celebration-overlay h1');
                 const celebrationMsg = document.querySelector('#celebration-overlay p');
                 if (celebrationTitle) celebrationTitle.textContent = 'CO-OP Complete!';
-                if (celebrationMsg) celebrationMsg.textContent = `Great teamwork with ${coopPartner.name}! 👥`;
+                if (celebrationMsg) celebrationMsg.textContent = `Great teamwork with ${coopPartner.name}!`;
                 // Show CO-OP bonus gems (50 base + 25 bonus = 75)
                 if (gemsAmountEl) gemsAmountEl.innerHTML = '+75 <span class="text-lg">gems</span> <span class="text-xs text-purple-400">(+25 CO-OP bonus!)</span>';
             } else {
@@ -5804,7 +5800,7 @@ window.updateSetData = async function (exIdx, setIdx, reps, weight, duration, di
         });
 
         if (res.ok) {
-            showToast(isCardio ? "Cardio updated! 🏃" : "Set updated! 💾");
+            showToast(isCardio ? "Cardio updated!" : "Set updated!", "success");
             // Update local state to reflect changes
             workoutState.exercises[exIdx].performance[setIdx].reps = reps;
             workoutState.exercises[exIdx].performance[setIdx].weight = weight;
@@ -5879,7 +5875,7 @@ window.createSplit = async function () {
         });
 
         if (res.ok) {
-            showToast('Split created successfully! 📅');
+            showToast('Split created successfully!', 'success');
             hideModal('create-split-modal');
             // Refresh data based on context
             if (location.pathname.includes('personal')) {
@@ -5922,7 +5918,7 @@ window.updateSplit = async function () {
         });
 
         if (res.ok) {
-            showToast('Split updated! 💾');
+            showToast('Split updated!', 'success');
             hideModal('edit-split-modal');
             if (location.pathname.includes('personal')) {
                 if (typeof fetchTrainerData === 'function') fetchTrainerData();
@@ -5952,7 +5948,7 @@ window.deleteSplit = async function (id) {
         });
 
         if (res.ok) {
-            showToast('Split deleted 🗑️');
+            showToast('Split deleted', 'success');
             hideModal('edit-split-modal');
             if (location.pathname.includes('personal')) {
                 if (typeof fetchTrainerData === 'function') fetchTrainerData();
@@ -6118,11 +6114,11 @@ window.assignSplitToSelf = async function (splitId, splitName) {
                     <div class="relative z-10">
                         <div class="flex justify-between items-start mb-4">
                             <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
-                            <span class="text-xl">💪</span>
+                            <span class="text-xl">${icon('dumbbell', 20)}</span>
                         </div>
                         <h3 class="text-2xl font-black italic uppercase mb-1">${workout.title}</h3>
                         <p class="text-sm text-gray-300 mb-4">${workout.duration} min • ${workout.difficulty}</p>
-                        <p class="text-xs text-gray-400 mb-3">📅 From: ${splitName}</p>
+                        <p class="text-xs text-gray-400 mb-3">${icon('calendar', 12)} From: ${splitName}</p>
                         <button class="block w-full py-3 ${completedClass} hover:bg-gray-200 ${completedTextColor} text-center font-bold rounded-xl transition">${completedText}</button>
                     </div>
                 </div>
@@ -6133,7 +6129,7 @@ window.assignSplitToSelf = async function (splitId, splitName) {
                 <div class="glass-card p-5 relative overflow-hidden">
                     <div class="flex justify-between items-start mb-4">
                         <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
-                        <span class="text-xl">📋</span>
+                        <span class="text-xl">${icon('clipboard', 20)}</span>
                     </div>
                     <h3 class="text-xl font-bold text-white/50 mb-2">Rest Day</h3>
                     <p class="text-sm text-gray-400">Split "${splitName}" assigned! No workout scheduled for today.</p>
@@ -6141,7 +6137,7 @@ window.assignSplitToSelf = async function (splitId, splitName) {
             `;
         }
 
-        showToast(`${splitName} assigned to you! 🚀`);
+        showToast(`${splitName} assigned to you!`, 'success');
     } catch (error) {
         console.error('Error assigning split:', error);
         showToast(`Error: ${error.message}`);
@@ -6195,7 +6191,7 @@ window.assignWorkoutToSelf = async function (workoutId, workoutTitle) {
                 <div class="relative z-10">
                     <div class="flex justify-between items-start mb-4">
                         <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
-                        <span class="text-xl">💪</span>
+                        <span class="text-xl">${icon('dumbbell', 20)}</span>
                     </div>
                     <h3 class="text-2xl font-black italic uppercase mb-1">${workoutTitle}</h3>
                     <p class="text-sm text-gray-300 mb-4">60 min • Intermediate</p>
@@ -6204,7 +6200,7 @@ window.assignWorkoutToSelf = async function (workoutId, workoutTitle) {
             </div>
         `;
 
-        showToast(`${workoutTitle} set as today's plan! 💪`);
+        showToast(`${workoutTitle} set as today's plan!`, 'success');
     } catch (error) {
         console.error('Error assigning workout:', error);
         showToast(`Error: ${error.message}`);
@@ -6798,7 +6794,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         console.error('Workout not found:', previewWorkoutId);
                         document.getElementById('workout-screen').innerHTML = `
                             <div class="flex flex-col items-center justify-center h-screen bg-gray-900 text-white p-8 text-center">
-                                <div class="text-6xl mb-4">⚠️</div>
+                                <div class="mb-4">${icon('alert-triangle', 48)}</div>
                                 <h1 class="text-4xl font-black mb-2">Workout Not Found</h1>
                                 <p class="text-gray-400 mb-8">The requested workout could not be loaded.</p>
                                 <a href="/?gym_id=${gymId}&role=${APP_CONFIG.role}" class="px-8 py-3 bg-white/10 rounded-xl font-bold hover:bg-white/20 transition">Back to Dashboard</a>
@@ -6824,10 +6820,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 if (!workout) {
                     // Rest Day Logic
                     document.getElementById('exercise-name').innerText = "Rest Day";
-                    document.getElementById('exercise-target').innerText = "Take it easy and recover! 🧘";
+                    document.getElementById('exercise-target').innerText = "Take it easy and recover!";
                     document.getElementById('workout-screen').innerHTML = `
                         <div class="flex flex-col items-center justify-center h-screen bg-gray-900 text-white p-8 text-center">
-                            <div class="text-6xl mb-4">🧘</div>
+                            <div class="mb-4">${icon('heart', 48)}</div>
                             <h1 class="text-4xl font-black mb-2">Rest Day</h1>
                             <p class="text-gray-400 mb-8">No workout scheduled for today. Enjoy your recovery!</p>
                             <a href="/?gym_id=${gymId}&role=${APP_CONFIG.role}" class="px-8 py-3 bg-white/10 rounded-xl font-bold hover:bg-white/20 transition">Back to Dashboard</a>
@@ -6941,7 +6937,7 @@ async function showLoadFriendWorkoutOption() {
                         <button onclick="loadFriendWorkout('${f.id}', '${f.username}', '${f.profile_picture || ''}')"
                             class="flex items-center gap-2 px-3 py-2 bg-purple-500/20 rounded-xl border border-purple-500/30 hover:bg-purple-500/30 transition tap-effect">
                             <div class="w-6 h-6 rounded-full bg-purple-500/30 flex items-center justify-center overflow-hidden">
-                                ${f.profile_picture ? `<img src="${f.profile_picture}" class="w-full h-full object-cover">` : '<span class="text-xs">👤</span>'}
+                                ${f.profile_picture ? `<img src="${f.profile_picture}" class="w-full h-full object-cover">` : '<span class="text-xs">' + icon('user', 12) + '</span>'}
                             </div>
                             <span class="text-sm text-purple-300">${f.username}</span>
                         </button>
@@ -6997,13 +6993,13 @@ window.loadFriendWorkout = async function(friendId, friendName, friendPicture) {
                 <div class="flex gap-2 mb-3">
                     <button id="coop-tab-me" onclick="switchCoopTab('me')" class="flex-1 py-2 px-3 rounded-xl flex items-center justify-center gap-2 transition-all bg-gradient-to-r from-orange-500 to-orange-600 border-2 border-orange-500">
                         <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
-                            <span class="text-xs">👤</span>
+                            ${icon('user', 12)}
                         </div>
                         <span class="text-sm font-bold text-white">You</span>
                     </button>
                     <button id="coop-tab-partner" onclick="switchCoopTab('partner')" class="flex-1 py-2 px-3 rounded-xl flex items-center justify-center gap-2 transition-all bg-white/5 border-2 border-white/10">
                         <div id="coop-partner-avatar" class="w-6 h-6 rounded-full bg-purple-500/30 flex items-center justify-center overflow-hidden">
-                            ${friendPicture ? `<img src="${friendPicture}" class="w-full h-full object-cover rounded-full">` : '<span class="text-xs">👥</span>'}
+                            ${friendPicture ? `<img src="${friendPicture}" class="w-full h-full object-cover rounded-full">` : '<span class="text-xs">' + icon('users', 12) + '</span>'}
                         </div>
                         <span id="coop-partner-name" class="text-sm font-bold text-white/70">${friendName}</span>
                     </button>
@@ -7162,13 +7158,13 @@ function completeSet() {
             // For cardio, validate duration OR distance is entered
             if ((!currentPerf.duration && currentPerf.duration !== 0) &&
                 (!currentPerf.distance && currentPerf.distance !== 0)) {
-                showToast("Please enter duration or distance! 🏃");
+                showToast("Please enter duration or distance!", "error");
                 return;
             }
         } else {
             // For strength, validate weight is entered
             if (!currentPerf.weight && currentPerf.weight !== 0) {
-                showToast("Please enter weight for this set! ⚖️");
+                showToast("Please enter weight for this set!", "error");
                 return;
             }
             // AUTO-FILL REPS from Main Counter
@@ -7685,7 +7681,7 @@ window.fetchAndRenderSplits = async function () {
             container.innerHTML = `
                 <button data-action="openCreateSplit"
                     class="w-full py-6 border-2 border-dashed border-white/10 rounded-xl text-white/40 hover:text-white/70 hover:border-white/20 transition flex flex-col items-center justify-center gap-2 group">
-                    <span class="text-2xl group-hover:scale-110 transition-transform">📅</span>
+                    <span class="text-2xl group-hover:scale-110 transition-transform">${icon('calendar', 24)}</span>
                     <span class="text-xs uppercase tracking-wider font-medium">Create Your First Split</span>
                 </button>
             `;
@@ -7703,8 +7699,8 @@ window.fetchAndRenderSplits = async function () {
                 </div>
                 <div class="flex gap-2">
                     <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition" onclick="openAssignSplitModal('${s.id}')">Assign</button>
-                    <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition" onclick="openEditSplitModal('${s.id}')">✏️</button>
-                    <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition" onclick="deleteSplit('${s.id}')">🗑️</button>
+                    <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition" onclick="openEditSplitModal('${s.id}')">${icon('pencil', 14)}</button>
+                    <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition" onclick="deleteSplit('${s.id}')">${icon('trash-2', 14)}</button>
                 </div>
             `;
             container.appendChild(div);
@@ -7762,7 +7758,7 @@ window.updateSplit = async function () {
         });
 
         if (res.ok) {
-            showToast('Split updated! 💾');
+            showToast('Split updated!', 'success');
             hideModal('edit-split-modal');
             fetchAndRenderSplits();
         } else {
@@ -7938,7 +7934,7 @@ window.createSplit = async function () {
         });
 
         if (res.ok) {
-            showToast('Split created successfully! 🎉');
+            showToast('Split created successfully!', 'success');
             hideModal('create-split-modal');
             if (window.fetchAndRenderSplits) {
                 window.fetchAndRenderSplits();
@@ -8097,10 +8093,10 @@ window.assignSplit = async function () {
         if (res.ok) {
             const data = await res.json();
             if (data.warnings) {
-                showToast("⚠️ Assigned with some errors. Check console.");
+                showToast("Assigned with some errors. Check console.", "error");
                 console.warn("Assignment Logs:", data.logs);
             } else {
-                showToast("Split assigned successfully! 📅");
+                showToast("Split assigned successfully!", "success");
             }
             hideModal('assign-split-modal');
         } else {
@@ -8231,7 +8227,7 @@ window.openChatModal = async function(otherUserId, otherUserName, profilePicture
         if (profilePicture) {
             chatUserAvatar.innerHTML = `<img src="${profilePicture}" class="w-full h-full object-cover" />`;
         } else {
-            chatUserAvatar.innerHTML = '<span class="text-lg">👤</span>';
+            chatUserAvatar.innerHTML = '<span class="text-lg">' + icon('user', 18) + '</span>';
         }
     }
 
@@ -8254,15 +8250,9 @@ window.openChatModal = async function(otherUserId, otherUserName, profilePicture
     await loadChatMessages();
 };
 
-// Client chat modal - opens direct trainer chat if available, otherwise conversations list
+// Client chat modal - always opens conversations list
 window.openClientChatModal = async function() {
-    if (window.selectedTrainerId && typeof window.openChatModal === 'function') {
-        const trainerName = document.getElementById('trainer-name')?.textContent || 'Trainer';
-        const trainerPic = (window.currentTrainerData && window.currentTrainerData.profile_picture) || null;
-        window.openChatModal(window.selectedTrainerId, trainerName, trainerPic);
-    } else {
-        window.openConversationsModal();
-    }
+    window.openConversationsModal();
 };
 
 window.closeChatModal = function() {
@@ -8343,7 +8333,7 @@ function renderChatMessages() {
     if (currentChatState.messages.length === 0) {
         container.innerHTML = `
             <div class="text-center text-gray-500 py-8">
-                <div class="text-4xl mb-2">💬</div>
+                <div class="mb-2">${icon('message-circle', 32)}</div>
                 <p>No messages yet</p>
                 <p class="text-xs mt-1">Start the conversation!</p>
             </div>
@@ -8546,7 +8536,7 @@ window.openConversationsModal = async function() {
         if (conversations.length === 0) {
             list.innerHTML = `
                 <div class="text-center text-gray-500 py-8">
-                    <div class="text-4xl mb-2">💬</div>
+                    <div class="mb-2">${icon('message-circle', 32)}</div>
                     <p>No conversations yet</p>
                     <p class="text-xs mt-1 mb-4">Start chatting with someone!</p>
                     <button onclick="closeConversationsModal(); if(typeof openGymMembersModal === 'function') openGymMembersModal();"
@@ -8573,7 +8563,7 @@ window.openConversationsModal = async function() {
 
             const avatarHtml = conv.other_user_profile_picture
                 ? `<img src="${conv.other_user_profile_picture}" alt="${conv.other_user_name}" class="w-10 h-10 rounded-full object-cover">`
-                : `<div class="w-10 h-10 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center"><span class="text-lg">👤</span></div>`;
+                : `<div class="w-10 h-10 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center"><span class="text-lg">${icon('user', 18)}</span></div>`;
 
             div.innerHTML = `
                 <div class="flex items-center justify-between">
@@ -8796,16 +8786,16 @@ async function confirmBookAppointment() {
                 });
 
                 if (assignRes.ok) {
-                    showToast(`Appointment & workout assigned to ${currentBookingClientName}! 💪📅`);
+                    showToast(`Appointment & workout assigned to ${currentBookingClientName}!`, 'success');
                 } else {
                     showToast(`Appointment booked! Note: Workout assignment failed.`);
                 }
             } catch (assignError) {
                 console.error('Error assigning workout:', assignError);
-                showToast(`Appointment booked with ${currentBookingClientName}! 📅`);
+                showToast(`Appointment booked with ${currentBookingClientName}!`, 'success');
             }
         } else {
-            showToast(`Appointment booked with ${currentBookingClientName}! 📅`);
+            showToast(`Appointment booked with ${currentBookingClientName}!`, 'success');
         }
 
         hideModal('book-appointment-modal');
@@ -8877,7 +8867,7 @@ window.openClientBookAppointmentModal = async function() {
                 profilePic.appendChild(img);
             } else {
                 const icon = document.createElement('span');
-                icon.textContent = '👤';
+                icon.innerHTML = '<i data-lucide="user" style="width:18px;height:18px;display:inline-block;vertical-align:middle;stroke:currentColor;"></i>';
                 icon.className = 'text-2xl';
                 profilePic.appendChild(icon);
             }
@@ -8973,7 +8963,7 @@ function updateCollapsedTrainerView(trainerId, trainerName, trainerPicture) {
         avatarEl.appendChild(img);
     } else {
         const icon = document.createElement('span');
-        icon.textContent = '👤';
+        icon.innerHTML = '<i data-lucide="user" style="width:18px;height:18px;display:inline-block;vertical-align:middle;stroke:currentColor;"></i>';
         icon.className = 'text-xl';
         avatarEl.appendChild(icon);
     }
@@ -9275,7 +9265,7 @@ window.loadCourses = async function() {
             container.innerHTML = `
                 <button data-action="openCreateCourse"
                     class="w-full py-6 border-2 border-dashed border-white/10 rounded-xl text-white/40 hover:text-white/70 hover:border-white/20 transition flex flex-col items-center justify-center gap-2 group">
-                    <span class="text-2xl group-hover:scale-110 transition-transform">📚</span>
+                    <span class="text-2xl group-hover:scale-110 transition-transform">${icon('book-open', 24)}</span>
                     <span class="text-xs uppercase tracking-wider font-medium">Create Your First Course</span>
                 </button>
             `;
@@ -9355,7 +9345,7 @@ window.loadCoursesPage = async function() {
         if (ownCourses.length === 0) {
             ownCoursesContainer.innerHTML = `
                 <div class="glass-card p-8 text-center">
-                    <span class="text-4xl mb-3 block">📚</span>
+                    <span class="mb-3 block">${icon('book-open', 32)}</span>
                     <p class="text-gray-400 text-sm mb-2">No courses yet</p>
                     <p class="text-gray-500 text-xs">Create your first group fitness course to get started</p>
                 </div>
@@ -9388,14 +9378,14 @@ window.loadCoursesPage = async function() {
 
 // Course type icons and labels
 const COURSE_TYPE_INFO = {
-    yoga: { icon: '🧘', label: 'Yoga', color: 'purple' },
-    pilates: { icon: '🩰', label: 'Pilates', color: 'pink' },
-    hiit: { icon: '🔥', label: 'HIIT', color: 'orange' },
-    dance: { icon: '💃', label: 'Dance', color: 'red' },
-    spin: { icon: '🚴', label: 'Spinning', color: 'blue' },
-    strength: { icon: '💪', label: 'Strength', color: 'green' },
-    stretch: { icon: '🦁', label: 'Stretch', color: 'yellow' },
-    cardio: { icon: '🏃', label: 'Cardio', color: 'cyan' }
+    yoga: { icon: 'heart', label: 'Yoga', color: 'purple' },
+    pilates: { icon: 'person-standing', label: 'Pilates', color: 'pink' },
+    hiit: { icon: 'flame', label: 'HIIT', color: 'orange' },
+    dance: { icon: 'music', label: 'Dance', color: 'red' },
+    spin: { icon: 'bike', label: 'Spinning', color: 'blue' },
+    strength: { icon: 'dumbbell', label: 'Strength', color: 'green' },
+    stretch: { icon: 'move', label: 'Stretch', color: 'yellow' },
+    cardio: { icon: 'footprints', label: 'Cardio', color: 'cyan' }
 };
 
 // Group courses by type and render with section headers
@@ -9426,7 +9416,7 @@ function renderCoursesGroupedByType(courses, isOwner) {
             html += `
                 <div class="mb-6">
                     <div class="flex items-center gap-2 mb-3 px-1">
-                        <span class="text-xl">${info.icon}</span>
+                        <span class="text-xl">${icon(info.icon, 20)}</span>
                         <h4 class="text-sm font-bold text-white/80 uppercase tracking-wider">${info.label}</h4>
                         <span class="text-xs text-white/40">(${grouped[type].length})</span>
                     </div>
@@ -9443,7 +9433,7 @@ function renderCoursesGroupedByType(courses, isOwner) {
         html += `
             <div class="mb-6">
                 <div class="flex items-center gap-2 mb-3 px-1">
-                    <span class="text-xl">📚</span>
+                    <span class="text-xl">${icon('book-open', 20)}</span>
                     <h4 class="text-sm font-bold text-white/80 uppercase tracking-wider">Other Courses</h4>
                     <span class="text-xs text-white/40">(${uncategorized.length})</span>
                 </div>
@@ -9480,9 +9470,9 @@ function renderCourseCard(course, isOwner) {
             ${course.description ? `<p class="text-xs text-gray-500 mb-3 line-clamp-2">${course.description}</p>` : ''}
 
             <div class="flex items-center gap-4 text-[11px] text-gray-400 mb-3">
-                <span>⏱️ ${course.duration || 60} min</span>
-                <span>💪 ${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''}</span>
-                <span>🎵 ${musicCount} playlist${musicCount !== 1 ? 's' : ''}</span>
+                <span>${icon('clock', 12)} ${course.duration || 60} min</span>
+                <span>${icon('dumbbell', 12)} ${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''}</span>
+                <span>${icon('music', 12)} ${musicCount} playlist${musicCount !== 1 ? 's' : ''}</span>
             </div>
 
             ${isOwner ? `
@@ -9514,14 +9504,14 @@ function renderCourseCard(course, isOwner) {
 
 // Course type color mapping
 const courseTypeColors = {
-    yoga: { color: 'purple', gradient: 'from-purple-500 to-pink-500', bg: 'bg-purple-500/20', border: 'border-purple-500', emoji: '🧘' },
-    pilates: { color: 'pink', gradient: 'from-pink-500 to-rose-500', bg: 'bg-pink-500/20', border: 'border-pink-500', emoji: '🤸' },
-    hiit: { color: 'orange', gradient: 'from-orange-500 to-red-500', bg: 'bg-orange-500/20', border: 'border-orange-500', emoji: '🔥' },
-    dance: { color: 'cyan', gradient: 'from-cyan-500 to-blue-500', bg: 'bg-cyan-500/20', border: 'border-cyan-500', emoji: '💃' },
-    spin: { color: 'green', gradient: 'from-green-500 to-emerald-500', bg: 'bg-green-500/20', border: 'border-green-500', emoji: '🚴' },
-    strength: { color: 'red', gradient: 'from-red-500 to-orange-500', bg: 'bg-red-500/20', border: 'border-red-500', emoji: '💪' },
-    stretch: { color: 'teal', gradient: 'from-teal-500 to-cyan-500', bg: 'bg-teal-500/20', border: 'border-teal-500', emoji: '🙆' },
-    cardio: { color: 'yellow', gradient: 'from-yellow-500 to-orange-500', bg: 'bg-yellow-500/20', border: 'border-yellow-500', emoji: '🏃' }
+    yoga: { color: 'purple', gradient: 'from-purple-500 to-pink-500', bg: 'bg-purple-500/20', border: 'border-purple-500', icon: 'heart' },
+    pilates: { color: 'pink', gradient: 'from-pink-500 to-rose-500', bg: 'bg-pink-500/20', border: 'border-pink-500', icon: 'person-standing' },
+    hiit: { color: 'orange', gradient: 'from-orange-500 to-red-500', bg: 'bg-orange-500/20', border: 'border-orange-500', icon: 'flame' },
+    dance: { color: 'cyan', gradient: 'from-cyan-500 to-blue-500', bg: 'bg-cyan-500/20', border: 'border-cyan-500', icon: 'music' },
+    spin: { color: 'green', gradient: 'from-green-500 to-emerald-500', bg: 'bg-green-500/20', border: 'border-green-500', icon: 'bike' },
+    strength: { color: 'red', gradient: 'from-red-500 to-orange-500', bg: 'bg-red-500/20', border: 'border-red-500', icon: 'dumbbell' },
+    stretch: { color: 'teal', gradient: 'from-teal-500 to-cyan-500', bg: 'bg-teal-500/20', border: 'border-teal-500', icon: 'move' },
+    cardio: { color: 'yellow', gradient: 'from-yellow-500 to-orange-500', bg: 'bg-yellow-500/20', border: 'border-yellow-500', icon: 'footprints' }
 };
 
 let selectedCourseType = 'yoga';
@@ -9551,7 +9541,7 @@ window.selectCourseType = function(btn, type, color) {
 
     // Update name icon
     const nameIcon = document.getElementById('course-name-icon');
-    if (nameIcon) nameIcon.innerText = config.emoji;
+    if (nameIcon) nameIcon.innerHTML = icon(config.icon, 20);
 
     // Update save button gradient
     const saveBtn = document.getElementById('btn-save-course');
@@ -9719,7 +9709,7 @@ window.toggleCourseVisibility = function() {
         toggle.classList.remove('bg-primary');
         toggle.classList.add('bg-white/10');
         dot.style.transform = 'translateX(0)';
-        icon.innerText = '🔒';
+        icon.innerHTML = '<i data-lucide="lock" style="width:20px;height:20px;display:inline-block;vertical-align:middle;stroke:currentColor;"></i>';
         label.innerText = 'Private Course';
         desc.innerText = 'Only visible to you';
     } else {
@@ -9728,7 +9718,7 @@ window.toggleCourseVisibility = function() {
         toggle.classList.remove('bg-white/10');
         toggle.classList.add('bg-primary');
         dot.style.transform = 'translateX(20px)';
-        icon.innerText = '👥';
+        icon.innerHTML = '<i data-lucide="users" style="width:20px;height:20px;display:inline-block;vertical-align:middle;stroke:currentColor;"></i>';
         label.innerText = 'Shared with Gym';
         desc.innerText = 'Other trainers can see this';
     }
@@ -9757,7 +9747,7 @@ function resetCourseModal() {
 
     // Reset name icon
     const nameIcon = document.getElementById('course-name-icon');
-    if (nameIcon) nameIcon.innerText = '🧘';
+    if (nameIcon) nameIcon.innerHTML = icon('heart', 20);
 
     // Reset save button
     const saveBtn = document.getElementById('btn-save-course');
@@ -9785,7 +9775,7 @@ function resetCourseModal() {
     const desc = document.getElementById('visibility-desc');
     if (toggle) { toggle.classList.remove('bg-primary'); toggle.classList.add('bg-white/10'); }
     if (dot) dot.style.transform = 'translateX(0)';
-    if (icon) icon.innerText = '🔒';
+    if (icon) icon.innerHTML = '<i data-lucide="lock" style="width:20px;height:20px;display:inline-block;vertical-align:middle;stroke:currentColor;"></i>';
     if (label) label.innerText = 'Private Course';
     if (desc) desc.innerText = 'Only visible to you';
 
@@ -10119,7 +10109,7 @@ window.openEditCourse = async function(courseId) {
             const desc = document.getElementById('visibility-desc');
             if (toggle) { toggle.classList.remove('bg-white/10'); toggle.classList.add('bg-primary'); }
             if (dot) dot.style.transform = 'translateX(20px)';
-            if (icon) icon.innerText = '👥';
+            if (icon) icon.innerHTML = '<i data-lucide="users" style="width:20px;height:20px;display:inline-block;vertical-align:middle;stroke:currentColor;"></i>';
             if (label) label.innerText = 'Shared with Gym';
             if (desc) desc.innerText = 'Other trainers can see this';
         }
@@ -10353,7 +10343,7 @@ function renderMusicLinks() {
     container.innerHTML = courseMusicLinks.map((link, i) => `
         <div class="bg-white/5 rounded-xl p-3 group hover:bg-white/10 transition">
             <div class="flex items-center gap-3 mb-2">
-                <span class="text-xl">${link.type === 'spotify' ? '🟢' : '🔴'}</span>
+                <span class="inline-block w-5 h-5 rounded-full ${link.type === 'spotify' ? 'bg-green-500' : 'bg-red-500'}"></span>
                 <input type="text" value="${link.title || ''}" placeholder="Playlist name"
                     onchange="updateMusicLink(${i}, 'title', this.value)"
                     class="flex-1 bg-transparent text-sm text-white font-medium outline-none placeholder-white/30">
@@ -10398,7 +10388,7 @@ function renderCourseExercises() {
     if (courseExercisesList.length === 0) {
         container.innerHTML = `
             <div class="text-center py-4">
-                <span class="text-3xl mb-2 block opacity-30">🏃</span>
+                <span class="mb-2 block opacity-30">${icon('footprints', 28)}</span>
                 <p class="text-xs text-gray-500">No exercises added yet</p>
             </div>
         `;
@@ -10421,12 +10411,7 @@ function renderCourseExercises() {
 
 function getCourseExerciseEmoji(ex) {
     const cat = (ex.muscle_group || ex.category || '').toLowerCase();
-    const emojiMap = {
-        yoga: '🧘', pilates: '🤸', stretch: '🙆', cardio: '🏃',
-        warmup: '🔥', cooldown: '❄️', hiit: '⚡', dance: '💃',
-        strength: '💪', balance: '⚖️', breathing: '🌬️', core: '🎯'
-    };
-    return emojiMap[cat] || '🏋️';
+    return icon(getExerciseCategoryIcon(cat), 18);
 }
 
 window.removeCourseExercise = function(index) {
@@ -10606,7 +10591,7 @@ window.openCourseDetail = async function(courseId) {
             musicContainer.innerHTML = course.music_links.map(link => `
                 <a href="${link.url}" target="_blank" rel="noopener"
                    class="glass-card p-2 flex items-center gap-2 hover:bg-white/10 transition">
-                    <span class="text-lg">${link.type === 'spotify' ? '🎵' : '▶️'}</span>
+                    <span class="text-lg">${link.type === 'spotify' ? icon('music', 18) : icon('play', 18)}</span>
                     <span class="text-sm text-white">${link.title || link.url}</span>
                 </a>
             `).join('');
@@ -10901,13 +10886,13 @@ function renderLiveMusicLinks() {
     }
 
     container.innerHTML = liveClassData.musicLinks.map((link, i) => {
-        const icon = link.type === 'spotify' ? '🟢' : '🔴';
+        const mIcon = link.type === 'spotify' ? '<span class="inline-block w-5 h-5 rounded-full bg-green-500"></span>' : '<span class="inline-block w-5 h-5 rounded-full bg-red-500"></span>';
         const embedUrl = getMusicEmbedUrl(link.url, link.type);
 
         return `
             <div class="bg-white/5 rounded-lg p-2">
                 <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs text-white font-medium truncate">${icon} ${link.title || 'Playlist ' + (i+1)}</span>
+                    <span class="text-xs text-white font-medium truncate">${mIcon} ${link.title || 'Playlist ' + (i+1)}</span>
                     <a href="${link.url}" target="_blank" class="text-xs text-primary hover:underline">Open</a>
                 </div>
                 ${embedUrl ? `
@@ -11005,7 +10990,7 @@ window.showLiveExercise = function(index) {
     } else {
         mediaContainer.innerHTML = `
             <div class="text-gray-500 text-center">
-                <span class="text-6xl block mb-2">🏋️</span>
+                <span class="block mb-2">${icon('dumbbell', 48)}</span>
                 <p class="text-sm">No video for this exercise</p>
             </div>
         `;
@@ -11070,7 +11055,7 @@ function startTimer() {
     if (liveClassData.timerSeconds <= 0) return;
 
     liveClassData.timerRunning = true;
-    document.getElementById('timer-toggle-btn').innerHTML = '⏸ Pause';
+    document.getElementById('timer-toggle-btn').innerHTML = icon('pause', 16) + ' Pause';
     document.getElementById('timer-toggle-btn').classList.remove('bg-green-600', 'hover:bg-green-700');
     document.getElementById('timer-toggle-btn').classList.add('bg-yellow-600', 'hover:bg-yellow-700');
 
@@ -11089,7 +11074,7 @@ function startTimer() {
                     nextExercise();
                 }, 1500);
             } else if (liveClassData.autoAdvance && liveClassData.currentExerciseIndex >= liveClassData.exercises.length - 1) {
-                showToast('Workout complete! 🎉');
+                showToast('Workout complete!', 'success');
             } else {
                 showToast('Timer complete!');
             }
@@ -11103,7 +11088,7 @@ function stopTimer() {
         clearInterval(liveClassData.timerInterval);
         liveClassData.timerInterval = null;
     }
-    document.getElementById('timer-toggle-btn').innerHTML = '▶ Start';
+    document.getElementById('timer-toggle-btn').innerHTML = icon('play', 16) + ' Start';
     document.getElementById('timer-toggle-btn').classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
     document.getElementById('timer-toggle-btn').classList.add('bg-green-600', 'hover:bg-green-700');
 }
@@ -11229,25 +11214,10 @@ window.loadCourseExercises = async function() {
 
 // Map course exercise categories
 function mapToCourseCategoryDisplay(category) {
-    const mapping = {
-        'warmup': { emoji: '🔥', label: 'Warmup' },
-        'cardio': { emoji: '🏃', label: 'Cardio' },
-        'flexibility': { emoji: '🧘', label: 'Flexibility' },
-        'cooldown': { emoji: '❄️', label: 'Cooldown' },
-        'yoga': { emoji: '🧘', label: 'Yoga' },
-        'pilates': { emoji: '🤸', label: 'Pilates' },
-        'stretch': { emoji: '🙆', label: 'Stretch' },
-        'balance': { emoji: '⚖️', label: 'Balance' },
-        'breathing': { emoji: '🌬️', label: 'Breathing' },
-        'core': { emoji: '🎯', label: 'Core' },
-        'hiit': { emoji: '⚡', label: 'HIIT' },
-        'dance': { emoji: '💃', label: 'Dance' },
-        'aerobics': { emoji: '🕺', label: 'Aerobics' },
-        'strength': { emoji: '💪', label: 'Strength' }
-    };
-
     const key = (category || '').toLowerCase();
-    return mapping[key] || { emoji: '🏃', label: 'General' };
+    const m = EXERCISE_CATEGORY_MAP[key];
+    if (m) return { emoji: icon(m.icon, 18), label: m.label };
+    return { emoji: icon('footprints', 18), label: 'General' };
 }
 
 // Render exercise cards in the library view
@@ -11279,7 +11249,7 @@ function renderCourseExerciseLibrary() {
         const isFiltered = currentCourseExerciseFilter !== 'all' || searchTerm;
         container.innerHTML = `
             <div class="col-span-2 glass-card p-6 text-center">
-                <p class="text-4xl mb-2">🧘</p>
+                <p class="mb-2">${icon('heart', 32)}</p>
                 <p class="text-gray-400 text-sm">${isFiltered ? 'No matching exercises' : 'No course exercises yet'}</p>
                 <p class="text-gray-500 text-xs mt-1">${isFiltered ? 'Try a different filter or search' : 'Create yoga poses, pilates moves, stretches and more'}</p>
             </div>`;
@@ -11550,7 +11520,7 @@ window.openCourseExerciseDetail = function(exerciseId) {
 
     // Set details
     document.getElementById('course-exercise-detail-name').textContent = exercise.name;
-    document.getElementById('course-exercise-detail-category').textContent = `${catInfo.emoji} ${catInfo.label}`;
+    document.getElementById('course-exercise-detail-category').innerHTML = `${catInfo.emoji} ${catInfo.label}`;
     document.getElementById('course-exercise-detail-difficulty').textContent = exercise.difficulty || 'Intermediate';
     document.getElementById('course-exercise-detail-duration').textContent = durationText;
     document.getElementById('course-exercise-detail-description').textContent = exercise.description || 'No description provided.';
@@ -11636,8 +11606,8 @@ async function loadSubscriptionPlans() {
     // Show loading
     plansList.innerHTML = `
         <div class="text-center py-8 text-white/50">
-            <div class="animate-spin text-3xl mb-2">⏳</div>
-            <p>Loading plans...</p>
+            ${icon('loader-2', 32, 'animate-spin')}
+            <p class="mt-2">Loading plans...</p>
         </div>
     `;
 
@@ -11646,7 +11616,7 @@ async function loadSubscriptionPlans() {
         if (!window.clientGymId) {
             plansList.innerHTML = `
                 <div class="text-center py-8">
-                    <span class="text-5xl mb-4 block">🏢</span>
+                    <span class="mb-4 block">${icon('building', 48)}</span>
                     <p class="text-white/60">You need to join a gym first to view subscription plans.</p>
                 </div>
             `;
@@ -11686,7 +11656,7 @@ async function loadSubscriptionPlans() {
         if (!plans || plans.length === 0) {
             plansList.innerHTML = `
                 <div class="text-center py-8">
-                    <span class="text-5xl mb-4 block">📋</span>
+                    <span class="mb-4 block">${icon('clipboard', 40)}</span>
                     <p class="text-white/60">No subscription plans available at this gym yet.</p>
                 </div>
             `;
@@ -11720,7 +11690,7 @@ async function loadSubscriptionPlans() {
                 <div class="relative p-4 rounded-2xl border ${isCurrentPlan ? 'border-green-500/50 bg-green-500/10' : hasOffer ? 'border-green-500/30 bg-gradient-to-r from-green-500/5 to-transparent' : 'border-white/10 bg-white/5'} hover:bg-white/10 transition cursor-pointer group"
                     onclick="${isCurrentPlan ? '' : `selectPlan('${plan.id}', '${plan.name}', ${plan.price}, '${plan.currency}', '${plan.billing_interval}')`}">
                     ${isCurrentPlan ? '<div class="absolute top-2 right-2 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">Current</div>' : ''}
-                    ${hasOffer ? `<div class="absolute top-2 right-2 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full animate-pulse">🎁 ${planOffer.discount_type === 'percent' ? planOffer.discount_value + '% OFF' : '€' + planOffer.discount_value + ' OFF'}</div>` : ''}
+                    ${hasOffer ? `<div class="absolute top-2 right-2 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full animate-pulse">${icon('gift', 12)} ${planOffer.discount_type === 'percent' ? planOffer.discount_value + '% OFF' : '€' + planOffer.discount_value + ' OFF'}</div>` : ''}
                     <div class="flex justify-between items-start mb-3">
                         <div>
                             <h3 class="font-bold text-lg text-white">${plan.name}</h3>
@@ -11754,7 +11724,7 @@ async function loadSubscriptionPlans() {
         console.error('Error loading plans:', e);
         plansList.innerHTML = `
             <div class="text-center py-8">
-                <span class="text-5xl mb-4 block">⚠️</span>
+                <span class="mb-4 block">${icon('alert-triangle', 40)}</span>
                 <p class="text-red-400">Failed to load subscription plans</p>
                 <button onclick="loadSubscriptionPlans()" class="mt-4 text-sm text-primary hover:underline">Try again</button>
             </div>
@@ -12040,7 +12010,7 @@ window.processSubscription = async function() {
         }
 
         // Success!
-        showToast('Subscription activated! 🎉', 'success');
+        showToast('Subscription activated!', 'success');
         hideModal('subscription-plans-modal');
 
         // Reset state

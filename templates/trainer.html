@@ -17,25 +17,25 @@
             <button onclick="switchSection('dashboard')"
                     class="sidebar-nav-item active"
                     data-section="dashboard">
-                <span class="nav-icon">🏠</span>
+                <i data-lucide="home" class="w-5 h-5"></i>
                 <span class="nav-label">Dashboard</span>
             </button>
             <button onclick="switchSection('schedule')"
-                    class="sidebar-nav-item"
+                    class="sidebar-nav-item lg:hidden"
                     data-section="schedule">
-                <span class="nav-icon">📅</span>
+                <i data-lucide="calendar" class="w-5 h-5"></i>
                 <span class="nav-label">Schedule</span>
             </button>
             <button onclick="switchSection('courses')"
                     class="sidebar-nav-item"
                     data-section="courses">
-                <span class="nav-icon">📚</span>
+                <i data-lucide="book-open" class="w-5 h-5"></i>
                 <span class="nav-label">Courses</span>
             </button>
             <button onclick="switchSection('settings')"
                     class="sidebar-nav-item"
                     data-section="settings">
-                <span class="nav-icon">⚙️</span>
+                <i data-lucide="settings" class="w-5 h-5"></i>
                 <span class="nav-label">Settings</span>
             </button>
         </nav>
@@ -43,7 +43,7 @@
         <!-- Sidebar Footer -->
         <div class="trainer-sidebar-footer">
             <a href="/auth/logout" class="sidebar-logout">
-                <span class="nav-icon">🚪</span>
+                <i data-lucide="log-out" class="w-5 h-5"></i>
                 <span class="nav-label">Logout</span>
             </a>
         </div>
@@ -65,15 +65,15 @@
                 </div>
                 <div class="flex gap-3">
                     <div onclick="openConversationsModal()" class="relative w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center">
-                        <span class="text-lg">💬</span>
+                        <i data-lucide="message-circle" class="w-5 h-5"></i>
                         <span id="unread-messages-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center hidden">0</span>
                     </div>
                     <div data-action="showModal" data-target="notification-modal" class="w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center">
-                        <span class="text-lg">🔔</span>
+                        <i data-lucide="bell" class="w-5 h-5"></i>
                     </div>
                     <div class="lg:hidden" data-action="showModal" data-target="profile-modal">
                         <div class="w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center">
-                            <span class="text-lg">⚙️</span>
+                            <i data-lucide="settings" class="w-5 h-5"></i>
                         </div>
                     </div>
                 </div>
@@ -99,100 +99,177 @@
                 </div>
             </div>
 
-            <!-- Main 2x2 Grid -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- TOP LEFT: Clients -->
-                <div class="glass-card-primary p-6 rounded-2xl lg:h-[420px] flex flex-col">
-                    <div class="flex justify-between items-center mb-5">
-                        <h3 class="heading-card flex items-center gap-2">
-                            <span>👥</span> Clients
-                        </h3>
-                        <span class="text-xs text-muted" id="client-count-badge">0 total</span>
-                    </div>
-                    <div class="input-search-wrapper mb-4">
-                        <span class="search-icon">🔍</span>
-                        <input type="text" id="client-search" placeholder="Search clients..."
-                            class="input-glass">
-                    </div>
-                    <div id="client-list" class="card-scroll-content space-y-2 pr-2 max-h-[280px] lg:max-h-none"></div>
-                </div>
-
-                <!-- TOP RIGHT: Workouts & Splits -->
-                <div class="glass-card-primary p-6 rounded-2xl lg:h-[420px] flex flex-col">
-                    <h3 class="heading-card flex items-center gap-2 mb-5">
-                        <span>📋</span> Programs
-                    </h3>
-                    <!-- Workouts -->
-                    <div class="mb-5">
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="label-uppercase">Workouts</span>
-                            <button data-action="openCreateWorkout" class="btn-glass" style="background: rgba(74, 222, 128, 0.15); border-color: rgba(74, 222, 128, 0.3); color: #4ade80;">+ New</button>
+            <!-- Main Grid: 2/3 zones + 1/3 schedule on desktop -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Left 2/3: Main zones -->
+            <div class="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <!-- TOP LEFT: Clients (Blue) -->
+                <section>
+                    <div class="flex items-center gap-2 mb-4 border-l-4 border-blue-400 pl-3">
+                        <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                            <i data-lucide="users" class="w-4 h-4 text-blue-400"></i>
                         </div>
-                        <div id="workout-library" class="space-y-2 max-h-[140px] overflow-y-auto pr-1"></div>
-                    </div>
-                    <!-- Splits -->
-                    <div class="flex-1 min-h-0 flex flex-col">
-                        <div class="flex justify-between items-center mb-3">
-                            <span class="label-uppercase">Weekly Splits</span>
-                            <button data-action="openCreateSplit" class="btn-glass" style="background: rgba(168, 139, 250, 0.15); border-color: rgba(168, 139, 250, 0.3); color: #a78bfa;">+ New</button>
+                        <div>
+                            <h3 class="text-sm font-bold text-blue-400 uppercase tracking-wider">Clients</h3>
+                            <p class="text-xs text-gray-500">Your active roster</p>
                         </div>
-                        <div id="split-library" class="card-scroll-content space-y-2 pr-1"></div>
+                        <span class="text-xs text-gray-500 ml-auto" id="client-count-badge">0 total</span>
                     </div>
-                </div>
+                    <div class="glass-card p-5 rounded-2xl lg:h-[380px] flex flex-col">
+                        <div class="input-search-wrapper mb-4">
+                            <i data-lucide="search" class="w-4 h-4"></i>
+                            <input type="text" id="client-search" placeholder="Search clients..."
+                                class="input-glass">
+                        </div>
+                        <div id="client-list" class="card-scroll-content space-y-2 pr-2 max-h-[280px] lg:max-h-none"></div>
+                    </div>
+                </section>
 
-                <!-- BOTTOM LEFT: Quick Notes -->
-                <div class="glass-card p-6 rounded-2xl lg:h-[320px] flex flex-col">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="heading-card flex items-center gap-2">
-                            <span>📝</span> Quick Notes
-                        </h3>
-                        <span class="text-[10px] text-green-400 opacity-0 transition-opacity duration-500" id="notes-saved-indicator">Saved ✓</span>
+                <!-- TOP RIGHT: Programs (Green) -->
+                <section>
+                    <div class="flex items-center gap-2 mb-4 border-l-4 border-green-400 pl-3">
+                        <div class="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
+                            <i data-lucide="clipboard" class="w-4 h-4 text-green-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-green-400 uppercase tracking-wider">Programs</h3>
+                            <p class="text-xs text-gray-500">Workouts & weekly splits</p>
+                        </div>
                     </div>
-                    <textarea id="trainer-notes"
-                        class="flex-1 w-full input-glass resize-none"
-                        placeholder="Write your thoughts, reminders, or todolist here..."></textarea>
-                </div>
-
-                <!-- BOTTOM RIGHT: Exercises -->
-                <div class="glass-card p-6 rounded-2xl lg:h-[320px] flex flex-col">
-                    <div class="flex justify-between items-center mb-4">
-                        <h3 class="heading-card flex items-center gap-2">
-                            <span>🏋️</span> Exercises
-                        </h3>
-                        <button data-action="showModal" data-target="create-exercise-modal" class="btn-glass-accent">+ New</button>
-                    </div>
-                    <!-- Mobile toggle -->
-                    <button id="toggle-exercises-btn" class="lg:hidden w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 transition p-3 rounded-xl mb-3">
-                        <span class="text-xs text-white/70 uppercase tracking-wider font-bold">Show Exercises</span>
-                        <span id="exercises-chevron" class="text-white/40 text-xs transition-transform duration-300">▼</span>
-                    </button>
-                    <div id="exercises-section" class="flex-1 flex flex-col min-h-0 lg:!flex" style="max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease;">
-                        <div class="flex gap-2 mb-3">
-                            <div class="input-search-wrapper flex-1">
-                                <span class="search-icon text-xs">🔍</span>
-                                <input type="text" id="main-ex-search" placeholder="Search..."
-                                    class="input-glass text-xs py-2">
+                    <div class="glass-card p-5 rounded-2xl lg:h-[380px] flex flex-col">
+                        <!-- Workouts -->
+                        <div class="mb-5">
+                            <div class="flex justify-between items-center mb-3">
+                                <span class="label-uppercase">Workouts</span>
+                                <button data-action="openCreateWorkout" class="text-xs bg-green-500/20 text-green-400 px-3 py-1.5 rounded-lg hover:bg-green-500/30 transition font-semibold">+ New</button>
                             </div>
-                            <select id="main-ex-filter-muscle" class="input-glass text-xs py-2 px-2 w-auto">
-                                <option value="">All Muscles</option>
-                                <option value="Chest">Chest</option>
-                                <option value="Back">Back</option>
-                                <option value="Legs">Legs</option>
-                                <option value="Shoulders">Shoulders</option>
-                                <option value="Arms">Arms</option>
-                                <option value="Abs">Abs</option>
-                            </select>
-                            <select id="main-ex-filter-type" class="input-glass text-xs py-2 px-2 w-auto">
-                                <option value="">All Types</option>
-                                <option value="Compound">Compound</option>
-                                <option value="Isolation">Isolation</option>
-                                <option value="Bodyweight">Bodyweight</option>
-                            </select>
+                            <div id="workout-library" class="space-y-2 max-h-[140px] overflow-y-auto pr-1"></div>
                         </div>
-                        <div id="main-exercise-library" class="card-scroll-content space-y-2 pr-1 max-h-[360px] lg:max-h-none"></div>
+                        <!-- Splits -->
+                        <div class="flex-1 min-h-0 flex flex-col">
+                            <div class="flex justify-between items-center mb-3">
+                                <span class="label-uppercase">Weekly Splits</span>
+                                <button data-action="openCreateSplit" class="text-xs bg-purple-500/20 text-purple-400 px-3 py-1.5 rounded-lg hover:bg-purple-500/30 transition font-semibold">+ New</button>
+                            </div>
+                            <div id="split-library" class="card-scroll-content space-y-2 pr-1"></div>
+                        </div>
                     </div>
-                </div>
-            </div>
+                </section>
+
+                <!-- BOTTOM LEFT: Quick Notes (Slate) -->
+                <section>
+                    <div class="flex items-center gap-2 mb-4 border-l-4 border-slate-500 pl-3">
+                        <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                            <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Quick Notes</h3>
+                            <p class="text-xs text-gray-500">Reminders & to-dos</p>
+                        </div>
+                        <span class="text-[10px] text-green-400 opacity-0 transition-opacity duration-500 ml-auto" id="notes-saved-indicator">Saved ✓</span>
+                    </div>
+                    <div class="glass-card p-5 rounded-2xl lg:h-[280px] flex flex-col">
+                        <textarea id="trainer-notes"
+                            class="flex-1 w-full input-glass resize-none"
+                            placeholder="Write your thoughts, reminders, or todolist here..."></textarea>
+                    </div>
+                </section>
+
+                <!-- BOTTOM RIGHT: Exercises (Purple) -->
+                <section>
+                    <div class="flex items-center gap-2 mb-4 border-l-4 border-purple-400 pl-3">
+                        <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                            <i data-lucide="dumbbell" class="w-4 h-4 text-purple-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-purple-400 uppercase tracking-wider">Exercises</h3>
+                            <p class="text-xs text-gray-500">Your exercise library</p>
+                        </div>
+                        <button data-action="showModal" data-target="create-exercise-modal" class="text-xs bg-purple-500/20 text-purple-400 px-3 py-1.5 rounded-lg hover:bg-purple-500/30 transition font-semibold ml-auto">+ New</button>
+                    </div>
+                    <div class="glass-card p-5 rounded-2xl lg:h-[280px] flex flex-col">
+                        <!-- Mobile toggle -->
+                        <button id="toggle-exercises-btn" class="lg:hidden w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 transition p-3 rounded-xl mb-3">
+                            <span class="text-xs text-white/70 uppercase tracking-wider font-bold">Show Exercises</span>
+                            <span id="exercises-chevron" class="text-white/40 text-xs transition-transform duration-300">▼</span>
+                        </button>
+                        <div id="exercises-section" class="flex-1 flex flex-col min-h-0 lg:!flex" style="max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease;">
+                            <div class="flex gap-2 mb-3">
+                                <div class="input-search-wrapper flex-1">
+                                    <i data-lucide="search" class="w-3 h-3"></i>
+                                    <input type="text" id="main-ex-search" placeholder="Search..."
+                                        class="input-glass text-xs py-2">
+                                </div>
+                                <select id="main-ex-filter-muscle" class="input-glass text-xs py-2 px-2 w-auto">
+                                    <option value="">All Muscles</option>
+                                    <option value="Chest">Chest</option>
+                                    <option value="Back">Back</option>
+                                    <option value="Legs">Legs</option>
+                                    <option value="Shoulders">Shoulders</option>
+                                    <option value="Arms">Arms</option>
+                                    <option value="Abs">Abs</option>
+                                </select>
+                                <select id="main-ex-filter-type" class="input-glass text-xs py-2 px-2 w-auto">
+                                    <option value="">All Types</option>
+                                    <option value="Compound">Compound</option>
+                                    <option value="Isolation">Isolation</option>
+                                    <option value="Bodyweight">Bodyweight</option>
+                                </select>
+                            </div>
+                            <div id="main-exercise-library" class="card-scroll-content space-y-2 pr-1 max-h-[360px] lg:max-h-none"></div>
+                        </div>
+                    </div>
+                </section>
+            </div><!-- /inner 2-col grid -->
+
+            <!-- Right 1/3: Schedule (desktop only) -->
+            <div class="hidden lg:flex lg:flex-col gap-6 lg:col-span-1">
+
+                <!-- ZONE: Schedule (Orange) -->
+                <section>
+                    <div class="flex items-center gap-2 mb-4 border-l-4 border-orange-400 pl-3">
+                        <div class="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                            <i data-lucide="calendar" class="w-4 h-4 text-orange-400"></i>
+                        </div>
+                        <div>
+                            <h3 class="text-sm font-bold text-orange-400 uppercase tracking-wider">Schedule</h3>
+                            <p class="text-xs text-gray-500">Calendar & appointments</p>
+                        </div>
+                    </div>
+
+                    <!-- Today's Plan (compact) -->
+                    <div id="d-todays-plan-container" class="mb-4">
+                        <div class="glass-card p-4 relative overflow-hidden" id="d-default-plan-placeholder">
+                            <div class="flex justify-between items-start mb-3">
+                                <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
+                                <i data-lucide="clipboard" class="w-4 h-4"></i>
+                            </div>
+                            <h4 class="text-base font-bold text-white/50 mb-1">No Workout Assigned</h4>
+                            <p class="text-xs text-gray-400">Assign a workout from "Programs"</p>
+                        </div>
+                    </div>
+
+                    <!-- Calendar -->
+                    <div class="glass-card p-4 rounded-2xl">
+                        <div class="flex justify-between items-center mb-3">
+                            <span></span>
+                            <div class="flex items-center space-x-2">
+                                <button onclick="changeWeek(-1)"
+                                    class="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70">←</button>
+                                <span class="text-xs text-white/40 min-w-[3rem] text-center" id="d-month-label">...</span>
+                                <button onclick="changeWeek(1)"
+                                    class="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70">→</button>
+                            </div>
+                        </div>
+                        <div class="text-xs text-center font-mono mb-2 text-white/50 uppercase tracking-widest" id="d-current-full-date"></div>
+                        <div class="grid grid-cols-7 gap-1 mb-3 text-xs text-center font-mono" id="d-calendar-strip"></div>
+                        <div class="space-y-3" id="d-schedule-container"></div>
+                    </div>
+                </section>
+
+            </div><!-- /schedule column -->
+
+            </div><!-- /outer 3-col grid -->
         </section>
 
         <!-- ==================== SECTION: SCHEDULE ==================== -->
@@ -206,91 +283,123 @@
                 <div class="flex gap-3 lg:hidden">
                     <div id="notification-bell-schedule" onclick="openNotificationsModal()"
                         class="w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center">
-                        🔔
+                        <i data-lucide="bell" class="w-5 h-5"></i>
                     </div>
                 </div>
             </div>
 
-            <!-- Quick Actions Row -->
-            <div class="grid grid-cols-2 gap-4 mb-8">
-                <div class="stat-card stat-card-success">
-                    <p class="stat-value" id="personal-streak">0</p>
-                    <p class="stat-label">Streak 🔥</p>
-                </div>
-                <button onclick="openAvailabilityModal()"
-                    class="glass-card-interactive p-5 flex flex-col items-center justify-center group">
-                    <span class="text-2xl mb-2 group-hover:scale-110 transition-transform">🕐</span>
-                    <span class="label-uppercase">1-on-1</span>
-                </button>
-            </div>
-
-            <!-- My Workout Section (Hidden by default) -->
-            <div id="my-workout-section" class="hidden transition-all duration-300 ease-in-out mb-4">
-                <div class="flex justify-between items-center mb-2">
-                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">My Workouts</h3>
-                    <button onclick="document.getElementById('my-workout-section').classList.add('hidden')"
-                        class="text-white/40 hover:text-white text-sm">✕</button>
-                </div>
-                <div id="my-workout-card-container">
-                    <div class="glass-card p-4 text-center">
-                        <p class="text-gray-400 text-sm mb-2">Loading...</p>
+            <!-- ZONE: Training (Green) -->
+            <section class="mb-8">
+                <div class="flex items-center gap-2 mb-4 border-l-4 border-green-400 pl-3">
+                    <div class="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
+                        <i data-lucide="flame" class="w-4 h-4 text-green-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-green-400 uppercase tracking-wider">Training</h3>
+                        <p class="text-xs text-gray-500">Streak, plans & workouts</p>
                     </div>
                 </div>
-            </div>
 
-            <!-- My Splits Section (Hidden by default) -->
-            <div id="my-split-section" class="hidden transition-all duration-300 ease-in-out mb-4">
-                <div class="flex justify-between items-center mb-2">
-                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">My Splits</h3>
-                    <button onclick="document.getElementById('my-split-section').classList.add('hidden')"
-                        class="text-white/40 hover:text-white text-sm">✕</button>
+                <!-- Quick Actions Row -->
+                <div class="grid grid-cols-2 gap-4 mb-5">
+                    <div class="stat-card stat-card-success">
+                        <p class="stat-value" id="personal-streak">0</p>
+                        <p class="stat-label">Streak <i data-lucide="flame" class="w-4 h-4 inline-block align-middle"></i></p>
+                    </div>
+                    <button onclick="openAvailabilityModal()"
+                        class="stat-card stat-card-success flex flex-col items-center justify-center group cursor-pointer hover:brightness-110 transition">
+                        <p class="stat-value group-hover:scale-110 transition-transform"><i data-lucide="clock" class="w-7 h-7 stroke-current"></i></p>
+                        <p class="stat-label">1-on-1</p>
+                    </button>
                 </div>
-                <div id="my-split-card-container">
-                    <div class="glass-card p-4 text-center">
-                        <p class="text-gray-400 text-sm mb-2">Loading...</p>
+
+                <!-- My Workout Section (Hidden by default) -->
+                <div id="my-workout-section" class="hidden transition-all duration-300 ease-in-out mb-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">My Workouts</h3>
+                        <button onclick="document.getElementById('my-workout-section').classList.add('hidden')"
+                            class="text-white/40 hover:text-white text-sm">✕</button>
+                    </div>
+                    <div id="my-workout-card-container">
+                        <div class="glass-card p-4 text-center">
+                            <p class="text-gray-400 text-sm mb-2">Loading...</p>
+                        </div>
                     </div>
                 </div>
-            </div>
 
-            <!-- Today's Plan Section -->
-            <div id="todays-plan-container" class="mb-6">
-                <div class="glass-card p-5 relative overflow-hidden" id="default-plan-placeholder">
-                    <div class="flex justify-between items-start mb-4">
-                        <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
-                        <span class="text-xl">📋</span>
+                <!-- My Splits Section (Hidden by default) -->
+                <div id="my-split-section" class="hidden transition-all duration-300 ease-in-out mb-4">
+                    <div class="flex justify-between items-center mb-2">
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">My Splits</h3>
+                        <button onclick="document.getElementById('my-split-section').classList.add('hidden')"
+                            class="text-white/40 hover:text-white text-sm">✕</button>
                     </div>
-                    <h3 class="text-xl font-bold text-white/50 mb-2">No Workout Assigned</h3>
-                    <p class="text-sm text-gray-400 mb-4">Select a workout from "My Workouts" and click "Assign to Me" to set today's workout.</p>
-                </div>
-            </div>
-
-            <!-- Calendar / Schedule Section -->
-            <div class="glass-card p-4 rounded-2xl mb-6">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Schedule</h3>
-                    <div class="flex items-center space-x-2">
-                        <button onclick="changeWeek(-1)"
-                            class="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70">←</button>
-                        <span class="text-xs text-white/40 min-w-[3rem] text-center" id="month-label">...</span>
-                        <button onclick="changeWeek(1)"
-                            class="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70">→</button>
+                    <div id="my-split-card-container">
+                        <div class="glass-card p-4 text-center">
+                            <p class="text-gray-400 text-sm mb-2">Loading...</p>
+                        </div>
                     </div>
                 </div>
-                <div class="text-xs text-center font-mono mb-2 text-white/50 uppercase tracking-widest" id="current-full-date"></div>
-                <div class="grid grid-cols-7 gap-1 mb-4 text-xs text-center font-mono" id="calendar-strip"></div>
-                <div class="space-y-3" id="schedule-container"></div>
-            </div>
 
-            <!-- Personal Notes -->
-            <div class="glass-card p-4 rounded-2xl">
-                <div class="flex justify-between items-center mb-2">
-                    <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Personal Notes</h3>
-                    <span class="text-[10px] text-green-400 opacity-0 transition-opacity duration-500" id="personal-notes-saved-indicator">Saved</span>
+                <!-- Today's Plan -->
+                <div id="todays-plan-container">
+                    <div class="glass-card p-5 relative overflow-hidden" id="default-plan-placeholder">
+                        <div class="flex justify-between items-start mb-4">
+                            <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
+                            <i data-lucide="clipboard" class="w-5 h-5"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-white/50 mb-2">No Workout Assigned</h3>
+                        <p class="text-sm text-gray-400 mb-4">Select a workout from "My Workouts" and click "Assign to Me" to set today's workout.</p>
+                    </div>
                 </div>
-                <textarea id="personal-notes"
-                    class="w-full bg-black/20 text-white text-sm rounded-xl p-3 border border-white/5 focus:border-white/20 outline-none resize-none h-32 placeholder-white/20 transition"
-                    placeholder="Journal your progress, ideas, or training logs..."></textarea>
-            </div>
+            </section>
+
+            <!-- ZONE: Schedule (Blue) -->
+            <section class="mb-8">
+                <div class="flex items-center gap-2 mb-4 border-l-4 border-blue-400 pl-3">
+                    <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                        <i data-lucide="calendar" class="w-4 h-4 text-blue-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-blue-400 uppercase tracking-wider">Schedule</h3>
+                        <p class="text-xs text-gray-500">Calendar & appointments</p>
+                    </div>
+                </div>
+                <div class="glass-card p-4 rounded-2xl">
+                    <div class="flex justify-between items-center mb-4">
+                        <span></span>
+                        <div class="flex items-center space-x-2">
+                            <button onclick="changeWeek(-1)"
+                                class="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70">←</button>
+                            <span class="text-xs text-white/40 min-w-[3rem] text-center" id="month-label">...</span>
+                            <button onclick="changeWeek(1)"
+                                class="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70">→</button>
+                        </div>
+                    </div>
+                    <div class="text-xs text-center font-mono mb-2 text-white/50 uppercase tracking-widest" id="current-full-date"></div>
+                    <div class="grid grid-cols-7 gap-1 mb-4 text-xs text-center font-mono" id="calendar-strip"></div>
+                    <div class="space-y-3" id="schedule-container"></div>
+                </div>
+            </section>
+
+            <!-- ZONE: Personal Notes (Slate) -->
+            <section>
+                <div class="flex items-center gap-2 mb-4 border-l-4 border-slate-500 pl-3">
+                    <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
+                        <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Personal Notes</h3>
+                        <p class="text-xs text-gray-500">Journal & training logs</p>
+                    </div>
+                    <span class="text-[10px] text-green-400 opacity-0 transition-opacity duration-500 ml-auto" id="personal-notes-saved-indicator">Saved</span>
+                </div>
+                <div class="glass-card p-4 rounded-2xl">
+                    <textarea id="personal-notes"
+                        class="w-full bg-black/20 text-white text-sm rounded-xl p-3 border border-white/5 focus:border-white/20 outline-none resize-none h-32 placeholder-white/20 transition"
+                        placeholder="Journal your progress, ideas, or training logs..."></textarea>
+                </div>
+            </section>
         </section>
 
         <!-- ==================== SECTION: COURSES ==================== -->
@@ -319,50 +428,63 @@
                 </div>
             </div>
 
-            <!-- Create Course Button -->
-            <button data-action="openCreateCourse"
-                class="w-full glass-card-interactive p-5 mb-8 flex items-center justify-center gap-3 border-2 border-dashed border-white/20 hover:border-primary/50">
-                <span class="text-2xl">+</span>
-                <span class="heading-card">Create New Course</span>
-            </button>
+            <!-- ZONE: Your Courses (Purple) -->
+            <section class="mb-8">
+                <div class="flex items-center gap-2 mb-4 border-l-4 border-purple-400 pl-3">
+                    <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                        <i data-lucide="book-open" class="w-4 h-4 text-purple-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-purple-400 uppercase tracking-wider">Your Courses</h3>
+                        <p class="text-xs text-gray-500">Group classes you teach</p>
+                    </div>
+                </div>
 
-            <!-- Courses List -->
-            <div class="space-y-4">
-                <h3 class="label-uppercase mb-4">Your Courses</h3>
-                <div id="courses-page-list" class="space-y-3">
+                <!-- Create Course Button -->
+                <button data-action="openCreateCourse"
+                    class="w-full glass-card-interactive p-5 mb-5 flex items-center justify-center gap-3 border-2 border-dashed border-white/20 hover:border-purple-400/50">
+                    <span class="text-2xl">+</span>
+                    <span class="heading-card">Create New Course</span>
+                </button>
+
+                <div id="courses-page-list" class="space-y-3 mb-5">
                     <div class="glass-card p-6 text-center">
                         <p class="text-gray-400 text-sm">Loading courses...</p>
                     </div>
                 </div>
-            </div>
 
-            <!-- Shared Courses Section -->
-            <div class="mt-8 space-y-4">
-                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Shared by Gym</h3>
-                <div id="shared-courses-list" class="space-y-3">
-                    <div class="glass-card p-4 text-center">
-                        <p class="text-gray-400/50 text-xs">No shared courses from other trainers</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Course Exercise Library Section -->
-            <div class="mt-8">
-                <button id="toggle-course-exercises-btn"
-                    class="w-full glass-card p-4 flex items-center justify-between hover:bg-white/10 transition tap-effect">
-                    <div class="flex items-center space-x-3">
-                        <span class="text-xl">🏃</span>
-                        <div class="text-left">
-                            <span class="text-sm font-bold uppercase tracking-wider">Exercise Library</span>
-                            <p class="text-[10px] text-white/50">Create & manage exercises for your courses</p>
+                <!-- Shared Courses -->
+                <div class="mt-4">
+                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Shared by Gym</h4>
+                    <div id="shared-courses-list" class="space-y-3">
+                        <div class="glass-card p-4 text-center">
+                            <p class="text-gray-400/50 text-xs">No shared courses from other trainers</p>
                         </div>
                     </div>
+                </div>
+            </section>
+
+            <!-- ZONE: Exercise Library (Orange) -->
+            <section>
+                <div class="flex items-center gap-2 mb-4 border-l-4 border-orange-400 pl-3">
+                    <div class="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                        <i data-lucide="footprints" class="w-4 h-4 text-orange-400"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-sm font-bold text-orange-400 uppercase tracking-wider">Exercise Library</h3>
+                        <p class="text-xs text-gray-500">Create & manage course exercises</p>
+                    </div>
+                </div>
+
+                <button id="toggle-course-exercises-btn"
+                    class="w-full glass-card p-4 flex items-center justify-between hover:bg-white/10 transition tap-effect rounded-2xl">
+                    <span class="text-xs text-white/70 uppercase tracking-wider font-bold">Show Exercises</span>
                     <span id="course-exercises-chevron" class="text-white/40 text-sm transition-transform duration-300">▼</span>
                 </button>
 
                 <div id="course-exercises-section" class="overflow-hidden transition-all duration-300 ease-out mt-3" style="max-height: 0; opacity: 0;">
                     <button onclick="openCourseExerciseModal()"
-                        class="w-full glass-card p-3 mb-4 flex items-center justify-center space-x-2 hover:bg-white/10 transition tap-effect border-2 border-dashed border-white/20 hover:border-green-500/50">
+                        class="w-full glass-card p-3 mb-4 flex items-center justify-center space-x-2 hover:bg-white/10 transition tap-effect border-2 border-dashed border-white/20 hover:border-orange-400/50">
                         <span class="text-lg">+</span>
                         <span class="text-xs font-bold uppercase tracking-wider">Create New Exercise</span>
                     </button>
@@ -371,17 +493,17 @@
                         <button onclick="filterCourseExercises('all')" data-filter="all"
                             class="course-ex-filter-btn active px-3 py-1.5 text-xs rounded-full bg-primary/20 text-primary border border-primary/30 transition">All</button>
                         <button onclick="filterCourseExercises('yoga')" data-filter="yoga"
-                            class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">🧘 Yoga</button>
+                            class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition"><i data-lucide="heart" class="w-3 h-3 inline-block align-middle"></i> Yoga</button>
                         <button onclick="filterCourseExercises('pilates')" data-filter="pilates"
-                            class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">🤸 Pilates</button>
+                            class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition"><i data-lucide="person-standing" class="w-3 h-3 inline-block align-middle"></i> Pilates</button>
                         <button onclick="filterCourseExercises('stretch')" data-filter="stretch"
-                            class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">🙆 Stretch</button>
+                            class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition"><i data-lucide="move" class="w-3 h-3 inline-block align-middle"></i> Stretch</button>
                         <button onclick="filterCourseExercises('cardio')" data-filter="cardio"
-                            class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">🏃 Cardio</button>
+                            class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition"><i data-lucide="footprints" class="w-3 h-3 inline-block align-middle"></i> Cardio</button>
                     </div>
 
                     <div class="relative mb-4">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm">🔍</span>
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm"><i data-lucide="search" class="w-4 h-4"></i></span>
                         <input type="text" id="course-exercise-search" placeholder="Search exercises..."
                             class="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white outline-none focus:border-white/25 focus:bg-white/10 transition placeholder-white/30">
                     </div>
@@ -392,7 +514,7 @@
                         </div>
                     </div>
                 </div>
-            </div>
+            </section>
         </section>
 
         <!-- ==================== SECTION: SETTINGS ==================== -->
@@ -474,7 +596,7 @@
                     <div class="glass-card p-5">
                         <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Account</h3>
                         <a href="/auth/logout" class="inline-flex items-center gap-2 text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 rounded-lg transition">
-                            🚪 Logout
+                            <i data-lucide="log-out" class="w-5 h-5 inline-block align-middle"></i> Logout
                         </a>
                     </div>
                 </div>
@@ -650,11 +772,11 @@ async function loadNotifications() {
         const res = await fetch('/api/notifications?limit=20');
         const notifications = await res.json();
         if (notifications.length === 0) {
-            list.innerHTML = '<div class="text-center text-gray-400 py-8"><span class="text-4xl mb-2 block">🔔</span><p class="text-sm">No notifications yet</p></div>';
+            list.innerHTML = '<div class="text-center text-gray-400 py-8"><i data-lucide="bell" class="w-10 h-10 mb-2 block"></i><p class="text-sm">No notifications yet</p></div>';
             return;
         }
         list.innerHTML = notifications.map(n => {
-            const icon = {'appointment_booked':'📅','appointment_canceled':'❌','message':'💬','streak':'🔥','achievement':'🏆','reminder':'⏰','offer':'🎁','friend_request':'👋','coop_workout':'💪','course':'🏋️'}[n.type] || '🔔';
+            const icon = getNotifIcon(n.type);
             const unreadClass = n.read ? 'opacity-60' : 'border-l-2 border-orange-500';
             return `<div class="flex items-start space-x-3 p-3 bg-white/5 rounded-xl ${unreadClass}"><span class="text-xl">${icon}</span><div class="flex-1 min-w-0"><p class="text-sm font-bold text-white">${n.title}</p><p class="text-xs text-gray-400 truncate">${n.message}</p></div></div>`;
         }).join('');
@@ -785,26 +907,34 @@ async function fetchScheduleData() {
         const streakEl = document.getElementById('personal-streak');
         if (streakEl && data.streak !== undefined) streakEl.textContent = data.streak;
 
-        // Render Today's Plan
-        const planContainer = document.getElementById('todays-plan-container');
+        // Render Today's Plan (mobile + desktop)
         const { gymId } = window.APP_CONFIG || { gymId: 'default' };
-        if (planContainer && data.todays_workout) {
-            const w = data.todays_workout;
-            planContainer.innerHTML = `
-                <div class="glass-card p-5 relative overflow-hidden group tap-effect cursor-pointer" onclick="window.location.href='/?gym_id=${gymId}&role=trainer&mode=workout${w.completed ? '&view=completed' : ''}'">
-                    <div class="absolute inset-0 bg-primary opacity-20 group-hover:opacity-30 transition"></div>
-                    <div class="relative z-10">
-                        <div class="flex justify-between items-start mb-4">
-                            <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
-                            <span class="text-xl">${w.completed ? '✅' : '💪'}</span>
+        ['todays-plan-container', 'd-todays-plan-container'].forEach(cid => {
+            const planContainer = document.getElementById(cid);
+            if (planContainer && data.todays_workout) {
+                const w = data.todays_workout;
+                planContainer.innerHTML = `
+                    <div class="glass-card p-5 relative overflow-hidden group tap-effect cursor-pointer" onclick="window.location.href='/?gym_id=${gymId}&role=trainer&mode=workout${w.completed ? '&view=completed' : ''}'">
+                        <div class="absolute inset-0 bg-primary opacity-20 group-hover:opacity-30 transition"></div>
+                        <div class="relative z-10">
+                            <div class="flex justify-between items-start mb-4">
+                                <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
+                                <span class="text-xl">${w.completed ? icon('check-circle', 20) : icon('dumbbell', 20)}</span>
+                            </div>
+                            <h3 class="text-2xl font-black italic uppercase mb-1">${w.title}</h3>
+                            <p class="text-sm text-gray-300 mb-4">${w.duration || 60} min • ${w.difficulty || 'Intermediate'}</p>
+                            <button class="block w-full py-3 ${w.completed ? 'bg-green-500 text-white' : 'bg-white text-black hover:bg-gray-200'} text-center font-bold rounded-xl transition">${w.completed ? 'COMPLETED ✓' : 'START SESSION'}</button>
                         </div>
-                        <h3 class="text-2xl font-black italic uppercase mb-1">${w.title}</h3>
-                        <p class="text-sm text-gray-300 mb-4">${w.duration || 60} min • ${w.difficulty || 'Intermediate'}</p>
-                        <button class="block w-full py-3 ${w.completed ? 'bg-green-500 text-white' : 'bg-white text-black hover:bg-gray-200'} text-center font-bold rounded-xl transition">${w.completed ? 'COMPLETED ✓' : 'START SESSION'}</button>
                     </div>
-                </div>
-            `;
-        }
+                `;
+            } else if (planContainer && !data.todays_workout) {
+                planContainer.innerHTML = `
+                    <div class="glass-card p-5 text-center text-gray-500">
+                        <p class="text-sm">${icon('calendar-off', 20)} No workout planned for today</p>
+                    </div>
+                `;
+            }
+        });
 
         // Render workouts
         const workoutContainer = document.getElementById('my-workout-card-container');
@@ -821,7 +951,7 @@ async function fetchScheduleData() {
                             </div>
                         </div>
                         <button class="w-full py-1.5 bg-green-600/20 hover:bg-green-600 text-green-400 hover:text-white text-xs font-bold rounded-lg transition border border-green-500/30"
-                            onclick="window.assignWorkoutToSelf && window.assignWorkoutToSelf('${w.id}', '${w.title}')">✅ Assign to Me (Today)</button>
+                            onclick="window.assignWorkoutToSelf && window.assignWorkoutToSelf('${w.id}', '${w.title}')"><i data-lucide="check-circle" class="w-4 h-4 inline-block align-middle"></i> Assign to Me (Today)</button>
                     </div>
                 `).join('');
             }
@@ -861,11 +991,11 @@ window.changeWeek = function(offset) {
     renderSchedule(selectedDateStr);
 };
 
-function renderCalendarStrip() {
-    const daysContainer = document.getElementById('calendar-strip');
+function renderCalendarStripInto(containerId, monthLabelId) {
+    const daysContainer = document.getElementById(containerId);
     if (!daysContainer) return;
     daysContainer.innerHTML = '';
-    const monthLabel = document.getElementById('month-label');
+    const monthLabel = document.getElementById(monthLabelId);
     if (monthLabel) monthLabel.innerText = currentWeekMonday.toLocaleDateString('en-US', { month: 'short' });
 
     for (let i = 0; i < 7; i++) {
@@ -894,13 +1024,18 @@ function renderCalendarStrip() {
     }
 }
 
-function renderSchedule(dateStr) {
-    const container = document.getElementById('schedule-container');
+function renderCalendarStrip() {
+    renderCalendarStripInto('calendar-strip', 'month-label');
+    renderCalendarStripInto('d-calendar-strip', 'd-month-label');
+}
+
+function renderScheduleInto(dateStr, containerId, dateElId) {
+    const container = document.getElementById(containerId);
     if (!container) return;
 
     const [y, m, d] = dateStr.split('-').map(Number);
     const dateObj = new Date(y, m - 1, d);
-    const dateEl = document.getElementById('current-full-date');
+    const dateEl = document.getElementById(dateElId);
     if (dateEl) dateEl.innerText = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
 
     container.innerHTML = '';
@@ -950,6 +1085,11 @@ function renderSchedule(dateStr) {
     addDiv.onclick = () => openAddModal(dateStr);
     addDiv.innerHTML = `<span class="text-2xl font-light mr-2">+</span><span class="font-bold text-sm text-white/60">Free Slot</span>`;
     container.appendChild(addDiv);
+}
+
+function renderSchedule(dateStr) {
+    renderScheduleInto(dateStr, 'schedule-container', 'current-full-date');
+    renderScheduleInto(dateStr, 'd-schedule-container', 'd-current-full-date');
 }
 
 async function openAddModal(dateStr) {
@@ -1227,6 +1367,18 @@ document.addEventListener('DOMContentLoaded', () => {
     const hash = window.location.hash.replace('#', '');
     if (hash && ['dashboard', 'schedule', 'courses', 'settings'].includes(hash)) {
         switchSection(hash);
+    }
+
+    // On desktop, load schedule data into the dashboard column
+    if (window.innerWidth >= 1024 && (!hash || hash === 'dashboard')) {
+        if (!scheduleInitialized) {
+            const day = currentWeekMonday.getDay() || 7;
+            if (day !== 1) currentWeekMonday.setHours(-24 * (day - 1));
+            currentWeekMonday.setHours(0, 0, 0, 0);
+            selectedDateStr = toLocalISO(new Date());
+            fetchScheduleData();
+            scheduleInitialized = true;
+        }
     }
 
     // Show exercises on desktop

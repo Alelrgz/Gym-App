@@ -651,6 +651,10 @@ async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "cli
     except JWTError:
         return RedirectResponse(url="/auth/login", status_code=302)
 
+    # Redirect legacy automation mode to dashboard (merged)
+    if mode == "automation":
+        mode = "dashboard"
+
     # Determine which template to render based on role
     # If role is default (client) but token says otherwise, trust token
     try:

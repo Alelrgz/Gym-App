@@ -674,6 +674,66 @@ class CourseService:
         finally:
             db.close()
 
+    def get_upcoming_lessons_for_client(self, course_id: str, client_id: str) -> list:
+        """Get upcoming lessons for a course with enrollment info for the client."""
+        db = get_db_session()
+        try:
+            course = db.query(CourseORM).filter(CourseORM.id == course_id).first()
+            if not course:
+                raise HTTPException(status_code=404, detail="Course not found")
+
+            today = datetime.now().date().isoformat()
+            lessons = db.query(CourseLessonORM).filter(
+                CourseLessonORM.course_id == course_id,
+                CourseLessonORM.date >= today,
+                CourseLessonORM.completed == False
+            ).order_by(CourseLessonORM.date.asc()).all()
+
+            result = []
+            max_capacity = course.max_capacity
+
+            for lesson in lessons:
+                cap = lesson.max_capacity if lesson.max_capacity else max_capacity
+                enrolled_count = db.query(LessonEnrollmentORM).filter(
+                    LessonEnrollmentORM.lesson_id == lesson.id,
+                    LessonEnrollmentORM.status == "confirmed"
+                ).count()
+
+                spots_available = max(0, cap - enrolled_count) if cap else None
+
+                # Check client's enrollment status
+                user_status = None
+                enrollment = db.query(LessonEnrollmentORM).filter(
+                    LessonEnrollmentORM.lesson_id == lesson.id,
+                    LessonEnrollmentORM.client_id == client_id,
+                    LessonEnrollmentORM.status == "confirmed"
+                ).first()
+                if enrollment:
+                    user_status = "enrolled"
+                else:
+                    waitlist_entry = db.query(LessonWaitlistORM).filter(
+                        LessonWaitlistORM.lesson_id == lesson.id,
+                        LessonWaitlistORM.client_id == client_id,
+                        LessonWaitlistORM.status.in_(["waiting", "notified"])
+                    ).first()
+                    if waitlist_entry:
+                        user_status = "waitlisted"
+
+                result.append({
+                    "id": lesson.id,
+                    "date": lesson.date,
+                    "time": lesson.time,
+                    "duration": lesson.duration or course.duration or 60,
+                    "max_capacity": cap,
+                    "enrolled_count": enrolled_count,
+                    "spots_available": spots_available,
+                    "user_status": user_status,
+                })
+
+            return result
+        finally:
+            db.close()
+
     # --- ENROLLMENT & WAITLIST MANAGEMENT ---
 
     def get_lesson_availability(self, lesson_id: int, client_id: str = None) -> dict:

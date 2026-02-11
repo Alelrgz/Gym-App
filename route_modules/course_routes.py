@@ -138,6 +138,16 @@ async def get_gym_courses_for_client(
     return service.get_gym_courses_for_client(current_user.id)
 
 
+@router.get("/api/client/courses/{course_id}/lessons")
+async def get_course_lessons_for_client(
+    course_id: str,
+    service: CourseService = Depends(get_course_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Get upcoming lessons for a course with enrollment status."""
+    return service.get_upcoming_lessons_for_client(course_id, current_user.id)
+
+
 # --- ENROLLMENT & WAITLIST ENDPOINTS ---
 
 @router.get("/api/lessons/{lesson_id}/availability")
