@@ -47,6 +47,44 @@
     {% if mode == 'settings' %}
     <!-- ==================== SETTINGS MODE ==================== -->
 
+    <!-- Gym Branding Card -->
+    {% call card(classes="p-5 mb-5") %}
+    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Gym Branding</h3>
+
+    <!-- Gym Logo -->
+    <div class="flex items-center gap-4 mb-5">
+        <div id="gym-logo-preview" class="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center text-3xl font-bold text-white shadow-lg overflow-hidden flex-shrink-0">
+            <span id="gym-logo-placeholder">G</span>
+        </div>
+        <div class="flex-1">
+            <p class="text-sm text-white font-semibold mb-2">Gym Logo</p>
+            <div class="flex gap-2">
+                <button onclick="document.getElementById('gym-logo-input').click()"
+                    class="text-xs bg-primary/20 hover:bg-primary/30 text-primary px-3 py-2 rounded-lg transition">
+                    Upload Logo
+                </button>
+                <button onclick="deleteGymLogo()" id="delete-logo-btn" class="hidden text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-2 rounded-lg transition">
+                    Remove
+                </button>
+            </div>
+            <input type="file" id="gym-logo-input" accept="image/*" class="hidden" onchange="uploadGymLogo(this)">
+        </div>
+    </div>
+
+    <!-- Gym Name -->
+    <div>
+        <label class="text-xs text-gray-400 uppercase tracking-wider block mb-2">Gym Name</label>
+        <div class="flex gap-2">
+            <input type="text" id="gym-name-input" placeholder="Enter your gym name..."
+                class="flex-1 bg-white/5 border border-white/10 rounded-xl p-3 text-white text-sm outline-none focus:border-primary/50 transition">
+            <button onclick="saveGymName()"
+                class="bg-primary/20 hover:bg-primary/30 text-primary px-4 py-2 rounded-xl transition text-sm font-semibold">
+                Save
+            </button>
+        </div>
+    </div>
+    {% endcall %}
+
     <!-- Gym Code Card - Prominent -->
     {% call card(classes="p-5 mb-5") %}
     <div class="text-center">
@@ -1385,6 +1423,133 @@ async function loadGymCode() {
     }
 }
 
+// --- GYM SETTINGS FUNCTIONS ---
+
+async function loadGymSettings() {
+    try {
+        const response = await fetch('/api/owner/gym-settings', { credentials: 'include' });
+        if (!response.ok) return;
+        const data = await response.json();
+
+        // Gym name
+        const nameInput = document.getElementById('gym-name-input');
+        if (nameInput && data.gym_name) {
+            nameInput.value = data.gym_name;
+            // Update header displays
+            const h1 = document.getElementById('gym-name-owner');
+            const desktopName = document.getElementById('desktop-gym-name');
+            if (h1) h1.textContent = data.gym_name;
+            if (desktopName) desktopName.textContent = data.gym_name;
+        }
+
+        // Gym logo
+        if (data.gym_logo) {
+            const preview = document.getElementById('gym-logo-preview');
+            const placeholder = document.getElementById('gym-logo-placeholder');
+            if (preview && placeholder) {
+                placeholder.style.display = 'none';
+                // Remove old img if any
+                const oldImg = preview.querySelector('img');
+                if (oldImg) oldImg.remove();
+                const img = document.createElement('img');
+                img.src = data.gym_logo + '?t=' + Date.now();
+                img.className = 'w-full h-full object-cover';
+                preview.appendChild(img);
+            }
+            const deleteBtn = document.getElementById('delete-logo-btn');
+            if (deleteBtn) deleteBtn.classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error loading gym settings:', error);
+    }
+}
+
+async function saveGymName() {
+    const nameInput = document.getElementById('gym-name-input');
+    if (!nameInput) return;
+
+    try {
+        const response = await fetch('/api/owner/gym-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ gym_name: nameInput.value })
+        });
+        if (response.ok) {
+            if (typeof showToast === 'function') showToast('Gym name saved!', 'success');
+            // Update header displays
+            const name = nameInput.value.trim();
+            const h1 = document.getElementById('gym-name-owner');
+            const desktopName = document.getElementById('desktop-gym-name');
+            if (h1 && name) h1.textContent = name;
+            if (desktopName && name) desktopName.textContent = name;
+        }
+    } catch (error) {
+        console.error('Error saving gym name:', error);
+        if (typeof showToast === 'function') showToast('Failed to save gym name', 'error');
+    }
+}
+
+async function uploadGymLogo(input) {
+    if (!input.files[0]) return;
+    const formData = new FormData();
+    formData.append('file', input.files[0]);
+
+    try {
+        const response = await fetch('/api/owner/gym-logo', {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+        if (response.ok) {
+            const data = await response.json();
+            if (data.gym_logo) {
+                const preview = document.getElementById('gym-logo-preview');
+                const placeholder = document.getElementById('gym-logo-placeholder');
+                if (preview && placeholder) {
+                    placeholder.style.display = 'none';
+                    const oldImg = preview.querySelector('img');
+                    if (oldImg) oldImg.remove();
+                    const img = document.createElement('img');
+                    img.src = data.gym_logo;
+                    img.className = 'w-full h-full object-cover';
+                    preview.appendChild(img);
+                }
+                const deleteBtn = document.getElementById('delete-logo-btn');
+                if (deleteBtn) deleteBtn.classList.remove('hidden');
+            }
+            if (typeof showToast === 'function') showToast('Logo updated!', 'success');
+        }
+    } catch (error) {
+        console.error('Error uploading logo:', error);
+        if (typeof showToast === 'function') showToast('Failed to upload logo', 'error');
+    }
+    input.value = '';
+}
+
+async function deleteGymLogo() {
+    try {
+        const response = await fetch('/api/owner/gym-logo', {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        if (response.ok) {
+            const preview = document.getElementById('gym-logo-preview');
+            const placeholder = document.getElementById('gym-logo-placeholder');
+            if (preview && placeholder) {
+                const oldImg = preview.querySelector('img');
+                if (oldImg) oldImg.remove();
+                placeholder.style.display = '';
+            }
+            const deleteBtn = document.getElementById('delete-logo-btn');
+            if (deleteBtn) deleteBtn.classList.add('hidden');
+            if (typeof showToast === 'function') showToast('Logo removed', 'success');
+        }
+    } catch (error) {
+        console.error('Error deleting logo:', error);
+    }
+}
+
 function copyGymCode() {
     const codeEl = document.getElementById('gym-code-display');
     if (!codeEl) return;
@@ -2569,6 +2734,7 @@ function displayActivityFeed(activities) {
 // Initialize based on mode
 if (currentMode === 'settings') {
     loadGymCode();
+    loadGymSettings();
     loadStripeConnectStatus();
 } else if (currentMode === 'automation') {
     loadTemplates();

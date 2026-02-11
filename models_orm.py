@@ -32,6 +32,10 @@ class UserORM(Base):
     # Trainer pricing
     session_rate = Column(Float, nullable=True)  # Hourly rate for 1-on-1 sessions
 
+    # Gym branding (for owners)
+    gym_name = Column(String, nullable=True)  # Custom gym name
+    gym_logo = Column(String, nullable=True)  # Path to gym logo image
+
     # Onboarding fields
     phone = Column(String, nullable=True)  # Phone number
     must_change_password = Column(Boolean, default=False)  # Force password change on first login

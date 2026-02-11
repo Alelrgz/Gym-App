@@ -57,9 +57,16 @@ app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 # Cache busting - timestamp changes on every server restart
 CACHE_BUSTER = str(int(time.time()))
 
-# CORS configuration - use CORS_ORIGINS env var in production
-cors_origins_str = os.getenv("CORS_ORIGINS", "*")
-cors_origins = cors_origins_str.split(",") if cors_origins_str != "*" else ["*"]
+# CORS configuration
+from database import IS_POSTGRES
+cors_origins_str = os.getenv("CORS_ORIGINS", "")
+if cors_origins_str:
+    cors_origins = [o.strip() for o in cors_origins_str.split(",")]
+elif IS_POSTGRES:
+    logger.warning("CORS_ORIGINS not set in production — defaulting to same-origin only")
+    cors_origins = []
+else:
+    cors_origins = ["*"]  # Allow all in local dev
 
 app.add_middleware(
     CORSMiddleware,
@@ -68,6 +75,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Global error handler - prevent stack trace leaks in production
+from fastapi.responses import JSONResponse
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled error on {request.method} {request.url.path}: {exc}", exc_info=True)
+    return JSONResponse(status_code=500, content={"detail": "Internal server error"})
 
 # App info
 APP_NAME = "FitOS"
@@ -121,32 +136,26 @@ app.include_router(simple_auth_router, prefix="/auth")
 # Include gym assignment router directly
 from route_modules.gym_assignment_routes import router as gym_assignment_router
 app.include_router(gym_assignment_router)
-print("DEBUG: Gym assignment router included directly on app")
 
 # Include message routes
 from route_modules.message_routes import router as message_router
 app.include_router(message_router)
-print("DEBUG: Message router included")
 
 # Include profile routes
 from route_modules.profile_routes import router as profile_router
 app.include_router(profile_router)
-print("DEBUG: Profile router included")
 
 # Include staff routes
 from route_modules.staff_routes import router as staff_router
 app.include_router(staff_router)
-print("DEBUG: Staff router included")
 
 # Include automated message routes
 from route_modules.automated_message_routes import router as auto_msg_router
 app.include_router(auto_msg_router)
-print("DEBUG: Automated message router included")
 
 # Include course routes
 from route_modules.course_routes import router as course_router
 app.include_router(course_router)
-print("DEBUG: Course router included")
 
 # Include trainer matching routes (module not yet available)
 # from route_modules.trainer_matching_routes import router as trainer_matching_router
@@ -156,7 +165,6 @@ print("DEBUG: Course router included")
 # Include CRM routes
 from route_modules.crm_routes import router as crm_router
 app.include_router(crm_router)
-print("DEBUG: CRM router included")
 
 
 def run_migrations(engine):
@@ -404,6 +412,20 @@ def run_migrations(engine):
                 except Exception as e:
                     logger.debug(f"Column session_rate may already exist: {e}")
 
+    # Add gym_name and gym_logo columns to users table (for owners)
+    if 'users' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('users')]
+        gym_cols = {'gym_name': 'TEXT', 'gym_logo': 'TEXT'}
+        for col_name, col_type in gym_cols.items():
+            if col_name not in columns:
+                with engine.connect() as conn:
+                    try:
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
+                        conn.commit()
+                        logger.info(f"Added column {col_name} to users table")
+                    except Exception as e:
+                        logger.debug(f"Column {col_name} may already exist: {e}")
+
     # Add payment columns to appointments table
     if 'appointments' in inspector.get_table_names():
         columns = [col['name'] for col in inspector.get_columns('appointments')]
@@ -500,6 +522,13 @@ async def startup_event():
             logger.info("Using PostgreSQL Database (Production)")
     except Exception as e:
         logger.error(f"Database initialization failed: {e}")
+
+    # Log storage provider
+    from service_modules.upload_helper import _is_cloudinary_ready
+    if _is_cloudinary_ready():
+        logger.info("File Storage: Cloudinary (Production)")
+    else:
+        logger.info("File Storage: Local Filesystem (Development)")
 
     # Start background thread for automated message trigger checking
     import threading

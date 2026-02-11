@@ -25,7 +25,9 @@ templates = Jinja2Templates(directory="templates")
 simple_auth_router = APIRouter()
 
 # Config
-SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret_key_123")
+SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret_key_local_only")
+if os.getenv("DATABASE_URL", "").startswith("postgres") and SECRET_KEY == "dev_secret_key_local_only":
+    raise RuntimeError("SECRET_KEY env var is required in production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
 

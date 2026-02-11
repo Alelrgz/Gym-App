@@ -5,20 +5,23 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from auth import get_current_user
 from models_orm import UserORM, PhysiquePhotoORM, ClientProfileORM, MedicalCertificateORM
 from database import get_db_session
+from service_modules.upload_helper import (
+    save_file, delete_file, _optimize_image,
+    ALLOWED_IMAGE_EXTENSIONS, ALLOWED_DOC_EXTENSIONS,
+    MAX_IMAGE_SIZE, MAX_DOC_SIZE
+)
 import os
 import uuid
-import traceback
+import logging
 from datetime import datetime
 from typing import Optional
 
+logger = logging.getLogger("gym_app")
 router = APIRouter(tags=["Profile"])
 
-# Allowed image types
-ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
-MAX_FILE_SIZE = 5 * 1024 * 1024  # 5MB
 
 def allowed_file(filename: str) -> bool:
-    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_IMAGE_EXTENSIONS
 
 
 @router.post("/api/profile/picture")
@@ -27,99 +30,36 @@ async def upload_profile_picture(
     user: UserORM = Depends(get_current_user)
 ):
     """Upload or update user's profile picture."""
-
-    # Validate file type
     if not file.filename or not allowed_file(file.filename):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid file type. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
-        )
+        raise HTTPException(status_code=400, detail=f"Invalid file type. Allowed: {', '.join(ALLOWED_IMAGE_EXTENSIONS)}")
 
-    # Read file content
     content = await file.read()
+    if len(content) > MAX_IMAGE_SIZE:
+        raise HTTPException(status_code=400, detail=f"File too large. Maximum: {MAX_IMAGE_SIZE // (1024*1024)}MB")
 
-    # Validate file size
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File too large. Maximum size: {MAX_FILE_SIZE // (1024*1024)}MB"
-        )
-
-    # Get file extension
-    ext = file.filename.rsplit('.', 1)[1].lower()
-    if ext == 'jpeg':
-        ext = 'jpg'
-
-    # Generate filename using user ID
+    # Optimize: resize + crop square
+    optimized, ext = _optimize_image(content, max_size=(400, 400), crop_square=True)
     filename = f"{user.id}.{ext}"
 
-    # Ensure uploads directory exists
-    uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'uploads', 'profiles')
-    os.makedirs(uploads_dir, exist_ok=True)
+    # Delete old picture if stored in Cloudinary
+    if user.profile_picture:
+        await delete_file(user.profile_picture)
 
-    # Delete old profile picture if exists (different extension)
-    for old_ext in ALLOWED_EXTENSIONS:
-        old_file = os.path.join(uploads_dir, f"{user.id}.{old_ext}")
-        if os.path.exists(old_file) and old_file != os.path.join(uploads_dir, filename):
-            try:
-                os.remove(old_file)
-            except:
-                pass
-
-    # Save file
-    file_path = os.path.join(uploads_dir, filename)
-
-    # Try to resize/optimize with Pillow if available
-    try:
-        from PIL import Image
-        import io
-
-        img = Image.open(io.BytesIO(content))
-
-        # Convert to RGB if necessary (for PNG with transparency)
-        if img.mode in ('RGBA', 'P'):
-            img = img.convert('RGB')
-            ext = 'jpg'
-            filename = f"{user.id}.{ext}"
-            file_path = os.path.join(uploads_dir, filename)
-
-        # Resize to max 400x400 while maintaining aspect ratio
-        max_size = (400, 400)
-        img.thumbnail(max_size, Image.Resampling.LANCZOS)
-
-        # Center crop to square
-        width, height = img.size
-        min_dim = min(width, height)
-        left = (width - min_dim) // 2
-        top = (height - min_dim) // 2
-        img = img.crop((left, top, left + min_dim, top + min_dim))
-
-        # Save optimized
-        img.save(file_path, quality=85, optimize=True)
-
-    except ImportError:
-        # Pillow not available, save raw
-        with open(file_path, 'wb') as f:
-            f.write(content)
-
-    # Update database with relative path
-    relative_path = f"/static/uploads/profiles/{filename}"
+    url = await save_file(optimized, "profiles", filename)
 
     db = get_db_session()
     try:
         db_user = db.query(UserORM).filter(UserORM.id == user.id).first()
         if db_user:
-            db_user.profile_picture = relative_path
+            db_user.profile_picture = url
             db.commit()
     finally:
         db.close()
 
-    # Add cache-busting timestamp
     cache_bust = f"?t={int(datetime.now().timestamp())}"
-
     return {
         "success": True,
-        "profile_picture": relative_path + cache_bust,
+        "profile_picture": url + cache_bust,
         "message": "Profile picture updated successfully"
     }
 
@@ -127,19 +67,9 @@ async def upload_profile_picture(
 @router.delete("/api/profile/picture")
 async def delete_profile_picture(user: UserORM = Depends(get_current_user)):
     """Delete user's profile picture."""
+    if user.profile_picture:
+        await delete_file(user.profile_picture)
 
-    uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'uploads', 'profiles')
-
-    # Delete all possible profile picture files for this user
-    for ext in ALLOWED_EXTENSIONS:
-        file_path = os.path.join(uploads_dir, f"{user.id}.{ext}")
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except:
-                pass
-
-    # Update database
     db = get_db_session()
     try:
         db_user = db.query(UserORM).filter(UserORM.id == user.id).first()
@@ -178,7 +108,6 @@ async def update_bio(
     bio: str = Form(...)
 ):
     """Update user's bio (max 300 characters)."""
-    # Validate bio length
     if len(bio) > 300:
         raise HTTPException(status_code=400, detail="Bio must be 300 characters or less")
 
@@ -219,12 +148,10 @@ async def update_specialties(
     try:
         db_user = db.query(UserORM).filter(UserORM.id == user.id).first()
         if db_user:
-            # Clean and validate specialties
             specialties_cleaned = specialties.strip() if specialties.strip() else None
             db_user.specialties = specialties_cleaned
             db.commit()
 
-            # Return as list for frontend
             specialties_list = []
             if specialties_cleaned:
                 specialties_list = [s.strip() for s in specialties_cleaned.split(",") if s.strip()]
@@ -237,9 +164,8 @@ async def update_specialties(
 
 
 # ============ PHYSIQUE PHOTOS ============
-# Visible only to the client and their assigned trainer/nutritionist
 
-MAX_PHYSIQUE_FILE_SIZE = 10 * 1024 * 1024  # 10MB for physique photos
+MAX_PHYSIQUE_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
 
 def get_client_trainer_id(client_id: str, db) -> Optional[str]:
@@ -250,16 +176,12 @@ def get_client_trainer_id(client_id: str, db) -> Optional[str]:
 
 def can_view_physique_photos(user: UserORM, client_id: str, db) -> bool:
     """Check if user can view physique photos for a client."""
-    # Client can always view their own
     if str(user.id) == str(client_id):
         return True
-
-    # Trainer/nutritionist can view their assigned clients
     if user.role in ['trainer', 'nutritionist', 'owner']:
         profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
         if profile and str(profile.trainer_id) == str(user.id):
             return True
-
     return False
 
 
@@ -272,91 +194,25 @@ async def upload_physique_photo(
     user: UserORM = Depends(get_current_user)
 ):
     """Upload a new physique progress photo with metadata."""
-    file_path = None
     db = None
 
     try:
-        print(f"[PHYSIQUE] Starting upload for user {user.id}, file: {file.filename}")
-
-        # Validate file type
         if not file.filename or not allowed_file(file.filename):
-            raise HTTPException(
-                status_code=400,
-                detail=f"Invalid file type. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
-            )
+            raise HTTPException(status_code=400, detail=f"Invalid file type. Allowed: {', '.join(ALLOWED_IMAGE_EXTENSIONS)}")
 
-        # Read file content
         content = await file.read()
-        print(f"[PHYSIQUE] Read {len(content)} bytes")
-
-        # Validate file size
         if len(content) > MAX_PHYSIQUE_FILE_SIZE:
-            raise HTTPException(
-                status_code=400,
-                detail=f"File too large. Maximum size: {MAX_PHYSIQUE_FILE_SIZE // (1024*1024)}MB"
-            )
+            raise HTTPException(status_code=400, detail=f"File too large. Maximum: {MAX_PHYSIQUE_FILE_SIZE // (1024*1024)}MB")
 
-        # Get file extension
-        ext = file.filename.rsplit('.', 1)[1].lower()
-        if ext == 'jpeg':
-            ext = 'jpg'
-
-        # Generate unique filename
+        # Optimize image (larger size for physique photos)
+        optimized, ext = _optimize_image(content, max_size=(1200, 1600), crop_square=False)
         unique_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
         filename = f"{unique_id}.{ext}"
 
-        # Ensure uploads directory exists (organized by user)
-        uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'uploads', 'physique', str(user.id))
-        os.makedirs(uploads_dir, exist_ok=True)
-        print(f"[PHYSIQUE] Uploads dir: {uploads_dir}")
+        url = await save_file(optimized, f"physique/{user.id}", filename)
 
-        file_path = os.path.join(uploads_dir, filename)
-
-        # Try to resize/optimize with Pillow if available
-        try:
-            from PIL import Image
-            import io
-
-            print(f"[PHYSIQUE] Processing image with Pillow...")
-            img = Image.open(io.BytesIO(content))
-
-            # Convert to RGB if necessary
-            if img.mode in ('RGBA', 'P'):
-                img = img.convert('RGB')
-                ext = 'jpg'
-                filename = f"{unique_id}.{ext}"
-                file_path = os.path.join(uploads_dir, filename)
-
-            # Resize to max 1200px while maintaining aspect ratio
-            max_size = (1200, 1600)
-            img.thumbnail(max_size, Image.Resampling.LANCZOS)
-
-            # Save optimized
-            print(f"[PHYSIQUE] Saving to: {file_path}")
-            img.save(file_path, quality=85, optimize=True)
-            print(f"[PHYSIQUE] Image saved successfully")
-
-        except ImportError:
-            # Pillow not available, save raw
-            print(f"[PHYSIQUE] Pillow not available, saving raw")
-            with open(file_path, 'wb') as f:
-                f.write(content)
-        except Exception as pil_error:
-            print(f"[PHYSIQUE] PIL error: {pil_error}")
-            traceback.print_exc()
-            # Fallback to raw save
-            with open(file_path, 'wb') as f:
-                f.write(content)
-
-        # Save to database
-        print(f"[PHYSIQUE] Saving to database...")
         db = get_db_session()
-
-        # Get trainer ID for this client
         trainer_id = get_client_trainer_id(str(user.id), db)
-        print(f"[PHYSIQUE] Trainer ID: {trainer_id}")
-
-        relative_path = f"/static/uploads/physique/{user.id}/{filename}"
 
         photo_record = PhysiquePhotoORM(
             client_id=str(user.id),
@@ -365,19 +221,17 @@ async def upload_physique_photo(
             photo_date=photo_date or datetime.now().strftime('%Y-%m-%d'),
             notes=notes,
             filename=filename,
-            file_path=relative_path
+            file_path=url
         )
         db.add(photo_record)
         db.commit()
         db.refresh(photo_record)
-        print(f"[PHYSIQUE] Saved to DB with ID: {photo_record.id}")
 
         cache_bust = f"?t={int(datetime.now().timestamp())}"
-
         return {
             "success": True,
             "photo_id": photo_record.id,
-            "photo_url": relative_path + cache_bust,
+            "photo_url": url + cache_bust,
             "title": photo_record.title,
             "photo_date": photo_record.photo_date,
             "notes": photo_record.notes,
@@ -387,14 +241,7 @@ async def upload_physique_photo(
     except HTTPException:
         raise
     except Exception as e:
-        print(f"[PHYSIQUE] UNEXPECTED ERROR: {e}")
-        traceback.print_exc()
-        # Clean up file if it was created
-        if file_path and os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except:
-                pass
+        logger.error(f"Physique upload failed: {e}", exc_info=True)
         if db:
             db.rollback()
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
@@ -409,28 +256,19 @@ async def delete_physique_photo(
     user: UserORM = Depends(get_current_user)
 ):
     """Delete a physique progress photo."""
-
     db = get_db_session()
     try:
-        # Find the photo record
         photo = db.query(PhysiquePhotoORM).filter(PhysiquePhotoORM.id == photo_id).first()
-
         if not photo:
             raise HTTPException(status_code=404, detail="Photo not found")
 
-        # Check permission - only client or their trainer can delete
         if str(photo.client_id) != str(user.id) and str(photo.trainer_id) != str(user.id):
             raise HTTPException(status_code=403, detail="Not authorized to delete this photo")
 
-        # Delete file from disk
-        full_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), photo.file_path.lstrip('/'))
-        if os.path.exists(full_path):
-            os.remove(full_path)
+        await delete_file(photo.file_path)
 
-        # Delete from database
         db.delete(photo)
         db.commit()
-
         return {"success": True, "message": "Photo deleted"}
     except HTTPException:
         raise
@@ -447,17 +285,13 @@ async def get_physique_photos(
     user: UserORM = Depends(get_current_user)
 ):
     """Get physique photos. Client sees their own, trainer sees their clients'."""
-
     db = get_db_session()
     try:
-        # Determine which client's photos to fetch
         target_client_id = client_id or str(user.id)
 
-        # Check permission
         if not can_view_physique_photos(user, target_client_id, db):
             raise HTTPException(status_code=403, detail="Not authorized to view these photos")
 
-        # Get photos from database
         photos = db.query(PhysiquePhotoORM).filter(
             PhysiquePhotoORM.client_id == target_client_id
         ).order_by(PhysiquePhotoORM.photo_date.desc(), PhysiquePhotoORM.created_at.desc()).all()
@@ -519,18 +353,11 @@ async def upload_medical_certificate(
         raise HTTPException(status_code=403, detail="Only clients can upload medical certificates")
 
     if not file.filename or not allowed_cert_file(file.filename):
-        raise HTTPException(
-            status_code=400,
-            detail=f"Invalid file type. Allowed: {', '.join(CERT_ALLOWED_EXTENSIONS)}"
-        )
+        raise HTTPException(status_code=400, detail=f"Invalid file type. Allowed: {', '.join(CERT_ALLOWED_EXTENSIONS)}")
 
     content = await file.read()
-
     if len(content) > MAX_CERT_FILE_SIZE:
-        raise HTTPException(
-            status_code=400,
-            detail=f"File too large. Maximum size: {MAX_CERT_FILE_SIZE // (1024*1024)}MB"
-        )
+        raise HTTPException(status_code=400, detail=f"File too large. Maximum: {MAX_CERT_FILE_SIZE // (1024*1024)}MB")
 
     ext = file.filename.rsplit('.', 1)[1].lower()
     if ext == 'jpeg':
@@ -539,55 +366,29 @@ async def upload_medical_certificate(
     unique_id = f"{datetime.now().strftime('%Y%m%d_%H%M%S')}_{uuid.uuid4().hex[:8]}"
     filename = f"{unique_id}.{ext}"
 
-    uploads_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'static', 'uploads', 'certificates', str(user.id))
-    os.makedirs(uploads_dir, exist_ok=True)
+    # Optimize images (not PDFs)
+    if ext != 'pdf':
+        content, ext = _optimize_image(content, max_size=(1600, 2200), crop_square=False)
+        filename = f"{unique_id}.{ext}"
 
-    file_path = os.path.join(uploads_dir, filename)
     db = None
-
     try:
-        # For images, optimize with Pillow
-        if ext != 'pdf':
-            try:
-                from PIL import Image
-                import io
-                img = Image.open(io.BytesIO(content))
-                if img.mode in ('RGBA', 'P'):
-                    img = img.convert('RGB')
-                    ext = 'jpg'
-                    filename = f"{unique_id}.{ext}"
-                    file_path = os.path.join(uploads_dir, filename)
-                max_size = (1600, 2200)
-                img.thumbnail(max_size, Image.Resampling.LANCZOS)
-                img.save(file_path, quality=85, optimize=True)
-            except ImportError:
-                with open(file_path, 'wb') as f:
-                    f.write(content)
-        else:
-            with open(file_path, 'wb') as f:
-                f.write(content)
-
-        relative_path = f"/static/uploads/certificates/{user.id}/{filename}"
+        url = await save_file(content, f"certificates/{user.id}", filename, upload_type="document")
 
         db = get_db_session()
 
-        # Delete old certificate(s) for this client
+        # Delete old certificate(s)
         old_certs = db.query(MedicalCertificateORM).filter(
             MedicalCertificateORM.client_id == str(user.id)
         ).all()
         for old in old_certs:
-            old_full_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), old.file_path.lstrip('/'))
-            if os.path.exists(old_full_path):
-                try:
-                    os.remove(old_full_path)
-                except:
-                    pass
+            await delete_file(old.file_path)
             db.delete(old)
 
         cert = MedicalCertificateORM(
             client_id=str(user.id),
             filename=file.filename,
-            file_path=relative_path,
+            file_path=url,
             expiration_date=expiration_date
         )
         db.add(cert)
@@ -599,7 +400,7 @@ async def upload_medical_certificate(
             "certificate": {
                 "id": cert.id,
                 "filename": cert.filename,
-                "file_url": relative_path + f"?t={int(datetime.now().timestamp())}",
+                "file_url": url + f"?t={int(datetime.now().timestamp())}",
                 "expiration_date": cert.expiration_date,
                 "uploaded_at": cert.uploaded_at
             },
@@ -609,11 +410,6 @@ async def upload_medical_certificate(
     except HTTPException:
         raise
     except Exception as e:
-        if os.path.exists(file_path):
-            try:
-                os.remove(file_path)
-            except:
-                pass
         if db:
             db.rollback()
         raise HTTPException(status_code=500, detail=f"Upload failed: {str(e)}")
@@ -642,7 +438,6 @@ async def get_medical_certificate(
         if not cert:
             return {"certificate": None}
 
-        # Calculate status based on expiration
         status = "valid"
         if cert.expiration_date:
             try:
@@ -684,9 +479,7 @@ async def delete_medical_certificate(
         if str(cert.client_id) != str(user.id) and user.role != 'owner':
             raise HTTPException(status_code=403, detail="Not authorized to delete this certificate")
 
-        full_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), cert.file_path.lstrip('/'))
-        if os.path.exists(full_path):
-            os.remove(full_path)
+        await delete_file(cert.file_path)
 
         db.delete(cert)
         db.commit()
@@ -710,13 +503,11 @@ async def get_certificates_overview(
 
     db = get_db_session()
     try:
-        # Get all clients in this gym
         if user.role == 'owner':
             clients = db.query(ClientProfileORM).filter(
                 ClientProfileORM.gym_id == str(user.id)
             ).all()
         elif user.role == 'staff':
-            # Staff sees all clients in their gym
             gym_clients = db.query(UserORM).filter(
                 UserORM.gym_owner_id == user.gym_owner_id,
                 UserORM.role == 'client'
@@ -765,7 +556,6 @@ async def get_certificates_overview(
                 "file_url": file_url
             })
 
-        # Sort: expired first, then expiring, then missing, then valid
         order = {"expired": 0, "expiring": 1, "missing": 2, "valid": 3}
         results.sort(key=lambda x: order.get(x["status"], 4))
 

@@ -5,6 +5,7 @@ services:
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn -w 4 -k uvicorn.workers.UvicornWorker main:app
+    healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.6
@@ -18,20 +19,14 @@ services:
           type: psql
           name: gym-db
           property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
 
   - type: redis
     name: gym-redis
-    plan: free # or starter for production
-    ipAllowList: [] # internal access only
+    plan: free
+    ipAllowList: []
 
   - type: psql
     name: gym-db
     plan: free
-    bgUser: admin
-    bgPassword: "DayOfDevelopment:07-02-2026"
-    envVars:
-      - key: POSTGRES_USER
-        value: gym_user
-      - key: POSTGRES_DB
-        value: gym_db
-

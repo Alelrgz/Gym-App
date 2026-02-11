@@ -834,13 +834,9 @@ async def onboard_new_client(
                     created_at=now
                 )
             else:
-                # Store medical certificate file path
-                # Save the file to disk
+                # Store medical certificate file
                 import base64
-                import os
-
-                upload_dir = f"static/uploads/documents/{client_id}"
-                os.makedirs(upload_dir, exist_ok=True)
+                from service_modules.upload_helper import save_file as sync_save_file
 
                 # Determine file extension from data URL or default to pdf
                 file_ext = "pdf"
@@ -850,17 +846,16 @@ async def onboard_new_client(
                 elif document_data.startswith("data:application/pdf"):
                     document_data = document_data.split(",")[1]
 
-                file_path = f"{upload_dir}/medical_certificate.{file_ext}"
-
-                with open(file_path, "wb") as f:
-                    f.write(base64.b64decode(document_data))
+                file_bytes = base64.b64decode(document_data)
+                filename = f"medical_certificate.{file_ext}"
+                url = await sync_save_file(file_bytes, f"documents/{client_id}", filename, upload_type="document")
 
                 new_doc = ClientDocumentORM(
                     id=doc_id,
                     client_id=client_id,
                     gym_id=user.gym_owner_id,
                     document_type="medical_certificate",
-                    file_path=file_path,
+                    file_path=url,
                     uploaded_by=user.id,
                     created_at=now
                 )
@@ -928,24 +923,18 @@ async def onboard_new_client(
         # 5. Save profile photo if provided
         if profile_photo and profile_photo.startswith("data:image/"):
             import base64 as b64
+            from service_modules.upload_helper import save_file as _save_file, _optimize_image
             try:
-                # Parse data URL
                 header, photo_b64 = profile_photo.split(",", 1)
                 ext = header.split("/")[1].split(";")[0]
                 if ext not in ("png", "jpg", "jpeg", "webp"):
                     ext = "jpg"
 
-                upload_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "uploads", "profiles")
-                os.makedirs(upload_dir, exist_ok=True)
-
+                photo_bytes = b64.b64decode(photo_b64)
+                optimized, ext = _optimize_image(photo_bytes, max_size=(400, 400), crop_square=True)
                 photo_filename = f"{client_id}.{ext}"
-                photo_path = os.path.join(upload_dir, photo_filename)
-
-                with open(photo_path, "wb") as pf:
-                    pf.write(b64.b64decode(photo_b64))
-
-                # Update user record with profile picture path
-                new_user.profile_picture = f"/static/uploads/profiles/{photo_filename}"
+                url = await _save_file(optimized, "profiles", photo_filename)
+                new_user.profile_picture = url
             except Exception as photo_err:
                 logger.warning(f"Failed to save profile photo: {photo_err}")
 

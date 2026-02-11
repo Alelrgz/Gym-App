@@ -8,9 +8,10 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models_orm import UserORM
 
-# SECRET_KEY should be in env, but for prototype we hardcode
 import os
-SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret_key_123")
+SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret_key_local_only")
+if os.getenv("DATABASE_URL", "").startswith("postgres") and SECRET_KEY == "dev_secret_key_local_only":
+    raise RuntimeError("SECRET_KEY env var is required in production")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
