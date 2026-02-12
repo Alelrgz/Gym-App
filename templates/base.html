@@ -43,97 +43,278 @@
     {% block content %}{% endblock %}
 
     {% if mode != 'workout' %}
-    <!-- Footer -->
-    <div
-        class="fixed bottom-0 w-full h-24 bg-gradient-to-t from-black to-transparent flex justify-around items-end pb-6 px-2 z-40 pointer-events-none lg:hidden">
-
-        <!-- Central FAB Container (hidden on desktop) -->
-        <div class="fab-container pointer-events-auto lg:hidden">
-            <div class="fab-main" onclick="toggleFabMenu(this)">
-                <span class="fab-icon">+</span>
-            </div>
-
-            <div class="fab-menu {% if role == 'trainer' %}fab-menu-3{% elif role == 'owner' %}fab-menu-4{% elif role == 'staff' %}fab-menu-3{% else %}fab-menu-4{% endif %}">
+    <!-- Bottom Navigation Bar (mobile only) -->
+    <nav class="fixed bottom-0 left-0 right-0 z-[60] lg:hidden">
+        <div class="bg-black/95 backdrop-blur-xl border-t border-white/10">
+            <div class="flex justify-around items-center h-16 px-2 max-w-lg mx-auto">
                 {% if role == 'owner' %}
-                <!-- Owner Menu -->
                 <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner' }}"
-                    class="fab-item" style="transition-delay: 0.05s">
-                    <i data-lucide="home" class="w-5 h-5"></i><span class="fab-label">Home</span>
-                </a>
-                <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=trainers' }}"
-                    class="fab-item" style="transition-delay: 0.1s">
-                    <i data-lucide="users" class="w-5 h-5"></i><span class="fab-label">Trainers</span>
+                    class="bottom-nav-item {% if mode in ['dashboard', none] %}active{% endif %}">
+                    <i data-lucide="home" class="w-5 h-5"></i>
+                    <span>Home</span>
                 </a>
                 <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=crm' }}"
-                    class="fab-item" style="transition-delay: 0.15s">
-                    <i data-lucide="bar-chart-3" class="w-5 h-5"></i><span class="fab-label">CRM</span>
+                    class="bottom-nav-item {% if mode == 'crm' %}active{% endif %}">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                    <span>CRM</span>
                 </a>
                 <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=settings' }}"
-                    class="fab-item" style="transition-delay: 0.2s">
-                    <i data-lucide="settings" class="w-5 h-5"></i><span class="fab-label">Settings</span>
+                    class="bottom-nav-item {% if mode == 'settings' %}active{% endif %}">
+                    <i data-lucide="circle-user" class="w-5 h-5"></i>
+                    <span>Profile</span>
                 </a>
                 {% elif role == 'trainer' %}
-                <!-- Trainer Menu - Uses section switching -->
-                <a href="#dashboard" onclick="if(typeof switchSection==='function'){switchSection('dashboard');toggleFabMenu(document.querySelector('.fab-main'));return false;}"
-                    class="fab-item" style="transition-delay: 0.05s">
-                    <i data-lucide="home" class="w-5 h-5"></i><span class="fab-label">Home</span>
+                <a href="#dashboard" onclick="if(typeof switchSection==='function'){switchSection('dashboard');updateBottomNav(this);return false;}"
+                    class="bottom-nav-item active" data-section="dashboard">
+                    <i data-lucide="home" class="w-5 h-5"></i>
+                    <span>Home</span>
                 </a>
-                <a href="#schedule" onclick="if(typeof switchSection==='function'){switchSection('schedule');toggleFabMenu(document.querySelector('.fab-main'));return false;}"
-                    class="fab-item" style="transition-delay: 0.1s">
-                    <i data-lucide="user" class="w-5 h-5"></i><span class="fab-label">Me</span>
+                <a href="#schedule" onclick="if(typeof switchSection==='function'){switchSection('schedule');updateBottomNav(this);return false;}"
+                    class="bottom-nav-item" data-section="schedule">
+                    <i data-lucide="calendar" class="w-5 h-5"></i>
+                    <span>Schedule</span>
                 </a>
-                <a href="#courses" onclick="if(typeof switchSection==='function'){switchSection('courses');toggleFabMenu(document.querySelector('.fab-main'));return false;}"
-                    class="fab-item" style="transition-delay: 0.15s">
-                    <i data-lucide="book-open" class="w-5 h-5"></i><span class="fab-label">Courses</span>
+                <a href="#courses" onclick="if(typeof switchSection==='function'){switchSection('courses');updateBottomNav(this);return false;}"
+                    class="bottom-nav-item" data-section="courses">
+                    <i data-lucide="book-open" class="w-5 h-5"></i>
+                    <span>Courses</span>
+                </a>
+                <a href="#settings" onclick="if(typeof switchSection==='function'){switchSection('settings');updateBottomNav(this);return false;}"
+                    class="bottom-nav-item" data-section="settings">
+                    <i data-lucide="circle-user" class="w-5 h-5"></i>
+                    <span>Profile</span>
                 </a>
                 {% elif role == 'staff' %}
-                <!-- Staff Menu -->
                 <a href="{{ 'staff.html' if static_build else '/?gym_id=' + gym_id + '&role=staff' }}"
-                    class="fab-item" style="transition-delay: 0.05s">
-                    <i data-lucide="home" class="w-5 h-5"></i><span class="fab-label">Home</span>
+                    class="bottom-nav-item {% if mode in ['dashboard', none] %}active{% endif %}">
+                    <i data-lucide="home" class="w-5 h-5"></i>
+                    <span>Home</span>
                 </a>
                 <a href="{{ 'staff.html' if static_build else '/?gym_id=' + gym_id + '&role=staff&mode=settings' }}"
-                    class="fab-item" style="transition-delay: 0.1s">
-                    <i data-lucide="settings" class="w-5 h-5"></i><span class="fab-label">Settings</span>
+                    class="bottom-nav-item {% if mode == 'settings' %}active{% endif %}">
+                    <i data-lucide="circle-user" class="w-5 h-5"></i>
+                    <span>Profile</span>
                 </a>
                 {% else %}
-                <!-- Client Menu -->
+                <!-- Client -->
                 <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
-                    class="fab-item" style="transition-delay: 0.05s">
-                    <i data-lucide="home" class="w-5 h-5"></i><span class="fab-label">Home</span>
+                    class="bottom-nav-item {% if not mode or mode == 'home' %}active{% endif %}">
+                    <i data-lucide="home" class="w-5 h-5"></i>
+                    <span>Home</span>
                 </a>
                 <a href="{{ 'client_progress.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=progress' }}"
-                    class="fab-item" style="transition-delay: 0.1s">
-                    <i data-lucide="bar-chart-3" class="w-5 h-5"></i><span class="fab-label">Stats</span>
+                    class="bottom-nav-item {% if mode == 'progress' %}active{% endif %}">
+                    <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
+                    <span>Stats</span>
                 </a>
+                <!-- Center Quick Action Button -->
+                <button id="fab-btn" onclick="toggleQuickActions()" class="quick-action-fab -mt-6 w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-lg shadow-orange-500/30 active:scale-90 transition-all duration-200">
+                    <i data-lucide="plus" class="w-6 h-6 text-white"></i>
+                </button>
                 <a href="{{ 'client_leaderboard.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=leaderboard' }}"
-                    class="fab-item" style="transition-delay: 0.15s">
-                    <i data-lucide="trophy" class="w-5 h-5"></i><span class="fab-label">Ranks</span>
+                    class="bottom-nav-item {% if mode == 'leaderboard' %}active{% endif %}">
+                    <i data-lucide="trophy" class="w-5 h-5"></i>
+                    <span>Ranks</span>
                 </a>
                 <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=client_dashboard' }}"
-                    class="fab-item" style="transition-delay: 0.2s">
-                    <i data-lucide="settings" class="w-5 h-5"></i><span class="fab-label">Settings</span>
+                    class="bottom-nav-item {% if mode == 'client_dashboard' %}active{% endif %}">
+                    <i data-lucide="circle-user" class="w-5 h-5"></i>
+                    <span>Profile</span>
                 </a>
                 {% endif %}
             </div>
         </div>
+        <!-- Safe area spacer for notched phones -->
+        <div class="bg-black/95 h-safe-bottom"></div>
+    </nav>
 
-
+    <!-- Quick Action Sheet (Client only) -->
+    {% if role == 'client' %}
+    <div id="quick-action-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden opacity-0 transition-opacity duration-200" onclick="toggleQuickActions()"></div>
+    <div id="quick-action-sheet" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-[61] hidden opacity-0 translate-y-4 transition-all duration-200">
+        <div class="bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl shadow-black/50">
+            <div class="grid grid-cols-4 gap-1" style="width: 280px;">
+                <button onclick="qaAction('scan')" class="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl hover:bg-white/10 active:bg-white/15 transition tap-effect">
+                    <div class="w-11 h-11 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="camera" class="w-5 h-5 text-orange-400"></i>
+                    </div>
+                    <span class="text-[11px] font-medium text-white/80 whitespace-nowrap">Scan</span>
+                </button>
+                <button onclick="qaAction('meal')" class="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl hover:bg-white/10 active:bg-white/15 transition tap-effect">
+                    <div class="w-11 h-11 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="utensils" class="w-5 h-5 text-green-400"></i>
+                    </div>
+                    <span class="text-[11px] font-medium text-white/80 whitespace-nowrap">Log Meal</span>
+                </button>
+                <button onclick="qaAction('photo')" class="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl hover:bg-white/10 active:bg-white/15 transition tap-effect">
+                    <div class="w-11 h-11 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="image" class="w-5 h-5 text-blue-400"></i>
+                    </div>
+                    <span class="text-[11px] font-medium text-white/80 whitespace-nowrap">Photo</span>
+                </button>
+                <button onclick="qaAction('weight')" class="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl hover:bg-white/10 active:bg-white/15 transition tap-effect">
+                    <div class="w-11 h-11 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="scale" class="w-5 h-5 text-purple-400"></i>
+                    </div>
+                    <span class="text-[11px] font-medium text-white/80 whitespace-nowrap">Weight</span>
+                </button>
+            </div>
+        </div>
     </div>
+    <!-- Quick Weight Modal (self-contained, works on any page) -->
+    <div id="qa-weight-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] hidden flex items-end justify-center">
+        <div class="bg-gray-900 border-t border-white/10 rounded-t-2xl w-full max-w-md p-5 pb-8 animate-slide-up">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold text-white">Log Weight</h3>
+                <button onclick="document.getElementById('qa-weight-modal').classList.add('hidden')" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><i data-lucide="x" class="w-4 h-4"></i></button>
+            </div>
+            <div class="flex gap-3 mb-4">
+                <div class="flex-1">
+                    <label class="text-xs text-white/50 mb-1 block">Weight (kg)</label>
+                    <input type="number" id="qa-weight-input" step="0.1" min="20" max="300" placeholder="75.0" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-lg focus:border-orange-500 outline-none">
+                </div>
+                <div class="flex-1">
+                    <label class="text-xs text-white/50 mb-1 block">Body Fat % (opt)</label>
+                    <input type="number" id="qa-bf-input" step="0.1" min="1" max="70" placeholder="15" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-lg focus:border-orange-500 outline-none">
+                </div>
+            </div>
+            <button onclick="qaSubmitWeight()" class="w-full py-3 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl text-white font-semibold active:scale-95 transition-transform">Save</button>
+        </div>
+    </div>
+    <!-- Hidden file inputs for camera quick actions (use opacity:0 + absolute instead of display:none so mobile browsers can trigger camera) -->
+    <input type="file" id="qa-scan-input" accept="image/*" capture="environment" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none;">
+    <input type="file" id="qa-photo-input" accept="image/*" capture="environment" style="position:absolute;width:0;height:0;opacity:0;pointer-events:none;">
+    {% endif %}
     {% endif %}
 
     <script>
-        function toggleFabMenu(btn) {
-            btn.classList.toggle('active');
+        function updateBottomNav(el) {
+            document.querySelectorAll('.bottom-nav-item').forEach(item => item.classList.remove('active'));
+            if (el) el.classList.add('active');
         }
 
-        // Close menu when clicking outside
-        document.addEventListener('click', (e) => {
-            const fab = document.querySelector('.fab-main');
-            if (fab && fab.classList.contains('active') && !e.target.closest('.fab-container')) {
-                fab.classList.remove('active');
+        // Quick Action FAB toggle
+        let quickActionsOpen = false;
+        function toggleQuickActions() {
+            const overlay = document.getElementById('quick-action-overlay');
+            const sheet = document.getElementById('quick-action-sheet');
+            const fabBtn = document.getElementById('fab-btn');
+            if (!overlay || !sheet) return;
+
+            quickActionsOpen = !quickActionsOpen;
+            if (quickActionsOpen) {
+                overlay.classList.remove('hidden');
+                sheet.classList.remove('hidden');
+                requestAnimationFrame(() => {
+                    overlay.style.opacity = '1';
+                    sheet.style.opacity = '1';
+                    sheet.style.transform = 'translateX(-50%) translateY(0)';
+                });
+                if (fabBtn) fabBtn.style.transform = 'translateY(-0.75rem) rotate(45deg)';
+            } else {
+                overlay.style.opacity = '0';
+                sheet.style.opacity = '0';
+                sheet.style.transform = 'translateX(-50%) translateY(1rem)';
+                setTimeout(() => {
+                    overlay.classList.add('hidden');
+                    sheet.classList.add('hidden');
+                }, 200);
+                if (fabBtn) fabBtn.style.transform = '';
+            }
+        }
+
+        // Self-contained quick actions — work on any page
+        // File input .click() must happen BEFORE toggleQuickActions() to preserve user gesture context (required for camera on mobile)
+        function qaAction(type) {
+            if (type === 'scan') {
+                document.getElementById('qa-scan-input').click();
+            } else if (type === 'meal') {
+                if (typeof openManualMealModal === 'function') { openManualMealModal(); }
+                else { document.getElementById('qa-scan-input').click(); }
+            } else if (type === 'photo') {
+                document.getElementById('qa-photo-input').click();
+            } else if (type === 'weight') {
+                document.getElementById('qa-weight-modal').classList.remove('hidden');
+                document.getElementById('qa-weight-input').focus();
+            }
+            toggleQuickActions();
+        }
+
+        // Scan meal: capture photo → send to AI scan API
+        document.getElementById('qa-scan-input')?.addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            e.target.value = '';
+            showToast('Analyzing meal...');
+            try {
+                const fd = new FormData();
+                fd.append('file', file, 'meal.jpg');
+                const res = await fetch('/api/client/diet/scan', {
+                    method: 'POST',
+                    body: fd
+                });
+                const data = await res.json();
+                if (data.food_name) {
+                    showToast(data.food_name + ' — ' + (data.calories || 0) + ' kcal logged!', 'success');
+                    await fetch('/api/client/diet/log', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ food_name: data.food_name, calories: data.calories || 0, protein: data.protein || 0, carbs: data.carbs || 0, fat: data.fat || 0, serving_size: data.serving_size || '1 serving', meal_type: 'snack' })
+                    });
+                } else {
+                    showToast('Could not identify meal', 'error');
+                }
+            } catch (err) {
+                console.error(err);
+                showToast('Scan failed', 'error');
             }
         });
+
+        // Physique photo: capture → auto-upload with today's date
+        document.getElementById('qa-photo-input')?.addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            e.target.value = '';
+            showToast('Uploading photo...');
+            try {
+                const fd = new FormData();
+                fd.append('file', file, 'physique.jpg');
+                fd.append('title', 'Quick Photo');
+                fd.append('photo_date', new Date().toISOString().split('T')[0]);
+                const res = await fetch('/api/physique/photo', {
+                    method: 'POST',
+                    body: fd
+                });
+                const data = await res.json();
+                if (data.success) showToast('Progress photo saved!', 'success');
+                else showToast(data.detail || 'Upload failed', 'error');
+            } catch (err) {
+                console.error(err);
+                showToast('Upload failed', 'error');
+            }
+        });
+
+        // Weight: submit from quick modal
+        async function qaSubmitWeight() {
+            const w = parseFloat(document.getElementById('qa-weight-input').value);
+            const bf = document.getElementById('qa-bf-input').value ? parseFloat(document.getElementById('qa-bf-input').value) : null;
+            if (!w || w < 20 || w > 300) { showToast('Enter a valid weight (20-300 kg)', 'error'); return; }
+            const payload = { weight: w };
+            if (bf !== null && bf >= 1 && bf <= 70) payload.body_fat_pct = bf;
+            try {
+                const res = await fetch('/api/client/profile', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                if (res.ok) {
+                    showToast('Weight saved!', 'success');
+                    document.getElementById('qa-weight-modal').classList.add('hidden');
+                    document.getElementById('qa-weight-input').value = '';
+                    document.getElementById('qa-bf-input').value = '';
+                } else { showToast('Failed to save', 'error'); }
+            } catch (err) { showToast('Failed to save', 'error'); }
+        }
     </script>
 
     {% include 'modals.html' %}

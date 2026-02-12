@@ -912,19 +912,6 @@ async function init() {
                 if (pEmail) pEmail.value = user.email || "";
             }
 
-            const questList = document.getElementById('quest-list');
-            if (questList) {
-                user.daily_quests.forEach((quest, index) => {
-                    const div = document.createElement('div');
-                    div.className = "glass-card p-4 flex justify-between items-center tap-effect";
-                    div.setAttribute('data-quest-index', index);
-                    div.onclick = function () { toggleQuest(this); };
-                    if (quest.completed) div.style.borderColor = "rgba(249, 115, 22, 0.3)";
-                    div.innerHTML = `<div class="flex items-center"><div class="w-5 h-5 rounded-full border border-white/20 mr-3 flex items-center justify-center ${quest.completed ? 'bg-orange-500 text-white border-none' : ''}">${quest.completed ? '✓' : ''}</div><span class="text-sm font-medium text-gray-200">${quest.text}</span></div><span class="text-xs font-bold text-orange-500">+${quest.xp}</span>`;
-                    questList.appendChild(div);
-                });
-            }
-
             // Progress Mode Logic
             if (user.progress) {
                 // Hydration
@@ -1391,69 +1378,50 @@ async function init() {
 
         // Leaderboard Mode
         if (document.getElementById('leaderboard-list')) {
-            const leaderboardRes = await fetch(`${apiBase}/api/leaderboard/data`);
+            const [leaderboardRes, clientRes] = await Promise.all([
+                fetch(`${apiBase}/api/leaderboard/data`),
+                fetch(`${apiBase}/api/client/data`)
+            ]);
             const leaderboard = await leaderboardRes.json();
+            const clientData = await clientRes.json();
 
+            // Update gem counter in header
+            const gemCountEl = document.getElementById('gem-count');
+            if (gemCountEl) gemCountEl.textContent = clientData.gems || 0;
+
+            // Render league tier badges
+            renderLeagueTiers(leaderboard.league);
+
+            // League info
             const setTxt = (id, val) => { if (document.getElementById(id)) document.getElementById(id).innerText = val; };
+            setTxt('league-name', `${leaderboard.league.current_tier.name} League`);
+
+            const userCount = leaderboard.users.length;
+            const advanceCount = Math.min(leaderboard.league.advance_count, userCount);
+            if (leaderboard.league.current_tier.level < 5) {
+                setTxt('league-subtitle', `Top ${advanceCount} advance to the next league`);
+            } else {
+                setTxt('league-subtitle', 'You reached the highest league!');
+            }
+
+            // Countdown timer
+            startWeeklyCountdown();
+
+            // Weekly challenge
             setTxt('challenge-title', leaderboard.weekly_challenge.title);
-            setTxt('challenge-desc', leaderboard.weekly_challenge.description);
             setTxt('challenge-progress', leaderboard.weekly_challenge.progress);
             setTxt('challenge-target', leaderboard.weekly_challenge.target);
             setTxt('challenge-reward', leaderboard.weekly_challenge.reward_gems);
             const challengePct = (leaderboard.weekly_challenge.progress / leaderboard.weekly_challenge.target) * 100;
             if (document.getElementById('challenge-bar')) {
-                document.getElementById('challenge-bar').style.width = `${challengePct}%`;
+                document.getElementById('challenge-bar').style.width = `${Math.min(challengePct, 100)}%`;
             }
 
-            const leaderList = document.getElementById('leaderboard-list');
-            leaderboard.users.forEach((u, idx) => {
-                const div = document.createElement('div');
-                const isUser = u.isCurrentUser || false;
-                // Add cursor-pointer for clickable entries (not yourself)
-                div.className = `glass-card p-4 flex items-center justify-between tap-effect ${isUser ? 'border-2 border-primary bg-primary/10' : 'cursor-pointer hover:bg-white/5'}`;
+            // Rankings
+            renderLeaderboardList(leaderboard.users);
 
-                const getRankEmoji = (rank) => {
-                    if (rank === 1) return '🥇';
-                    if (rank === 2) return '🥈';
-                    if (rank === 3) return '🥉';
-                    return `#${rank}`;
-                };
-
-                // Use actual profile picture if available, otherwise use DiceBear
-                const avatarUrl = u.profile_picture
-                    ? u.profile_picture
-                    : `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name}`;
-
-                div.innerHTML = `
-                    <div class="flex items-center space-x-3">
-                        <span class="text-2xl font-black w-10">${getRankEmoji(u.rank)}</span>
-                        <div class="w-10 h-10 rounded-full bg-white/10 overflow-hidden">
-                            <img src="${avatarUrl}" class="w-full h-full object-cover" />
-                        </div>
-                        <div>
-                            <p class="font-bold text-sm text-white">${u.name}${isUser ? ' (You)' : ''}</p>
-                            <p class="text-[10px] text-gray-400">${u.streak} day streak • ${u.health_score} health</p>
-                        </div>
-                    </div>
-                    <div class="text-right flex items-center space-x-2">
-                        ${!isUser ? '<span class="text-gray-400 text-sm">View &rarr;</span>' : ''}
-                        <p class="text-yellow-400 font-bold">🔶 ${u.gems}</p>
-                    </div>
-                `;
-
-                // Add click handler to open member profile (if not yourself)
-                if (!isUser && u.user_id) {
-                    div.addEventListener('click', () => {
-                        if (typeof openMemberProfile === 'function') {
-                            openMemberProfile(u.user_id);
-                        } else if (typeof window.openMemberProfile === 'function') {
-                            window.openMemberProfile(u.user_id);
-                        }
-                    });
-                }
-
-                leaderList.appendChild(div);
-            });
+            // Daily Quests
+            renderLeaderboardQuests(clientData.daily_quests || []);
         }
     } catch (e) {
         console.error("Init Error:", e);
@@ -1588,6 +1556,175 @@ function pulseGemCounter() {
         }, 150);
     }
 }
+
+// ============ LEADERBOARD HELPERS ============
+
+function renderLeagueTiers(league) {
+    const container = document.getElementById('league-tiers-container');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const tierIcons = ['shield', 'shield', 'crown', 'gem', 'diamond'];
+
+    league.all_tiers.forEach((tier, idx) => {
+        const isCurrent = tier.level === league.current_tier.level;
+        const isUnlocked = tier.level <= league.current_tier.level;
+
+        const badge = document.createElement('div');
+        badge.className = `flex flex-col items-center transition-all duration-300 ${
+            isCurrent ? 'scale-110 z-10' : isUnlocked ? 'opacity-70' : 'opacity-25'
+        }`;
+
+        const size = isCurrent ? 'w-14 h-14' : 'w-10 h-10';
+        const iconSize = isCurrent ? 24 : 16;
+        const borderWidth = isCurrent ? 'border-2' : 'border';
+
+        badge.innerHTML = `
+            <div class="${size} rounded-xl ${borderWidth} flex items-center justify-center ${isCurrent ? 'league-tier-active' : ''}"
+                 style="background: ${tier.color}15; border-color: ${tier.color}50; --tier-glow: ${tier.color}40;">
+                ${icon(tierIcons[idx] || 'shield', iconSize)}
+            </div>
+            ${isCurrent ? `<div class="w-1.5 h-1.5 rounded-full mt-1.5" style="background: ${tier.color};"></div>` : ''}
+            <span class="text-[9px] mt-1 font-medium ${isCurrent ? 'text-white' : 'text-gray-600'}">${tier.name}</span>
+        `;
+        badge.style.color = tier.color;
+
+        container.appendChild(badge);
+    });
+}
+
+function renderLeaderboardList(users) {
+    const leaderList = document.getElementById('leaderboard-list');
+    if (!leaderList) return;
+    leaderList.innerHTML = '';
+
+    users.forEach(u => {
+        const div = document.createElement('div');
+        const isUser = u.isCurrentUser || false;
+
+        div.className = `glass-card p-3 flex items-center justify-between tap-effect ${
+            isUser
+                ? 'border border-lime-500/40 bg-lime-500/10'
+                : 'cursor-pointer hover:bg-white/5'
+        }`;
+
+        const avatarUrl = u.profile_picture
+            ? u.profile_picture
+            : `https://api.dicebear.com/7.x/avataaars/svg?seed=${u.name}`;
+
+        let rankDisplay;
+        if (u.rank === 1) {
+            rankDisplay = `<div class="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center text-yellow-400">${icon('crown', 18)}</div>`;
+        } else if (u.rank === 2) {
+            rankDisplay = `<div class="w-8 h-8 rounded-full bg-gray-400/20 flex items-center justify-center text-gray-300">${icon('medal', 18)}</div>`;
+        } else if (u.rank === 3) {
+            rankDisplay = `<div class="w-8 h-8 rounded-full bg-amber-700/20 flex items-center justify-center text-amber-600">${icon('medal', 18)}</div>`;
+        } else {
+            rankDisplay = `<span class="w-8 text-center text-sm font-bold text-gray-500">${u.rank}</span>`;
+        }
+
+        div.innerHTML = `
+            <div class="flex items-center gap-3">
+                ${rankDisplay}
+                <div class="w-10 h-10 rounded-full bg-white/10 overflow-hidden flex-shrink-0">
+                    <img src="${avatarUrl}" class="w-full h-full object-cover" />
+                </div>
+                <div>
+                    <p class="font-bold text-sm ${isUser ? 'text-lime-300' : 'text-white'}">${u.name}${isUser ? ' (You)' : ''}</p>
+                    <div class="flex items-center gap-1 text-[10px] text-gray-400">
+                        <span class="text-orange-400">${icon('flame', 12)}</span> <span>${u.streak}</span>
+                    </div>
+                </div>
+            </div>
+            <p class="text-yellow-400 font-bold text-sm">🔶 ${u.gems}</p>
+        `;
+
+        if (!isUser && u.user_id) {
+            div.addEventListener('click', () => {
+                if (typeof openMemberProfile === 'function') {
+                    openMemberProfile(u.user_id);
+                } else if (typeof window.openMemberProfile === 'function') {
+                    window.openMemberProfile(u.user_id);
+                }
+            });
+        }
+
+        leaderList.appendChild(div);
+    });
+}
+
+function renderLeaderboardQuests(quests) {
+    const questList = document.getElementById('quest-list');
+    if (!questList || !quests) return;
+    questList.innerHTML = '';
+
+    let completedCount = 0;
+
+    quests.forEach((quest, index) => {
+        if (quest.completed) completedCount++;
+
+        const div = document.createElement('div');
+        div.className = "glass-card p-4 flex justify-between items-center tap-effect";
+        div.setAttribute('data-quest-index', index);
+        div.onclick = function () { toggleQuest(this); };
+        if (quest.completed) div.style.borderColor = "rgba(249, 115, 22, 0.3)";
+        div.innerHTML = `
+            <div class="flex items-center">
+                <div class="w-5 h-5 rounded-full border border-white/20 mr-3 flex items-center justify-center ${quest.completed ? 'bg-orange-500 text-white border-none' : ''}">
+                    ${quest.completed ? '✓' : ''}
+                </div>
+                <span class="text-sm font-medium text-gray-200">${quest.text}</span>
+            </div>
+            <span class="text-xs font-bold text-orange-500">+${quest.xp}</span>
+        `;
+        questList.appendChild(div);
+    });
+
+    const badge = document.getElementById('quest-progress-badge');
+    if (badge) badge.textContent = `${completedCount}/${quests.length}`;
+}
+
+function startWeeklyCountdown() {
+    const el = document.getElementById('weekly-countdown');
+    if (!el) return;
+
+    function update() {
+        const now = new Date();
+        const dayOfWeek = now.getDay(); // 0=Sun, 1=Mon...
+        let daysUntilMonday = (8 - dayOfWeek) % 7;
+        if (daysUntilMonday === 0) daysUntilMonday = 7;
+
+        const nextMonday = new Date(now);
+        nextMonday.setDate(now.getDate() + daysUntilMonday);
+        nextMonday.setHours(0, 0, 0, 0);
+
+        const diff = nextMonday - now;
+        const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+
+        el.textContent = `${days}d ${hours}h ${minutes}m`;
+    }
+
+    update();
+    setInterval(update, 60000);
+}
+
+function toggleQuestSection() {
+    const section = document.getElementById('quest-section');
+    const chevron = document.getElementById('quest-chevron');
+    if (!section) return;
+
+    if (section.style.maxHeight && section.style.maxHeight !== '0px') {
+        section.style.maxHeight = '0px';
+        if (chevron) chevron.classList.remove('rotate-180');
+    } else {
+        section.style.maxHeight = (section.scrollHeight + 20) + 'px';
+        if (chevron) chevron.classList.add('rotate-180');
+    }
+}
+
+// ============ QUEST TOGGLE ============
 
 async function toggleQuest(el) {
     const check = el.querySelector('.rounded-full');

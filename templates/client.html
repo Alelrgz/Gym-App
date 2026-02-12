@@ -3,13 +3,20 @@
 
 {% block content %}
 {% if mode == "leaderboard" %}
+<!-- Header -->
 <div class="p-6 pt-10 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent z-10">
     <div class="flex items-center space-x-3">
         <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
-            class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect">←</a>
-        <h2 class="font-bold text-xl">Weekly Leaderboard</h2>
+            class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect">
+            <i data-lucide="arrow-left" class="w-5 h-5"></i>
+        </a>
+        <h2 class="font-bold text-xl">Leaderboard</h2>
     </div>
-    <div class="flex space-x-2">
+    <div class="flex items-center space-x-2">
+        <div class="flex items-center gap-1 bg-yellow-500/20 border border-yellow-500/30 px-3 py-1.5 rounded-full">
+            <span class="text-sm">🔶</span>
+            <span class="text-sm font-bold text-yellow-400" id="gem-count">0</span>
+        </div>
         <div onclick="openClientChatModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer">
             <i data-lucide="message-circle" class="w-5 h-5"></i>
         </div>
@@ -20,41 +27,75 @@
         </div>
     </div>
 </div>
-<div class="flex-1 p-4 space-y-4">
 
-    <!-- Weekly Challenge -->
-    {% call card(classes="p-6 relative overflow-hidden") %}
-    <div class="absolute top-0 right-0 w-40 h-40 bg-purple-500/10 blur-3xl rounded-full -mr-10 -mt-10"></div>
-    <div class="relative z-10">
-        <div class="flex justify-between items-start mb-3">
-            <div>
-                <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Current Challenge</p>
-                <h3 class="text-lg font-black text-white" id="challenge-title">...</h3>
-                <p class="text-xs text-gray-400 mt-1" id="challenge-desc">...</p>
+<div class="flex-1 p-4 space-y-5 pb-32">
+
+    <!-- League Tier Badges -->
+    <div id="league-tiers-container" class="flex items-end justify-center gap-3 py-2">
+        <!-- Rendered by JS: 5 shield badges -->
+    </div>
+
+    <!-- League Info -->
+    <div class="text-center space-y-1">
+        <h3 id="league-name" class="text-2xl font-black text-white">Loading...</h3>
+        <p id="league-subtitle" class="text-xs text-gray-400">Top 10 advance to the next league</p>
+    </div>
+
+    <!-- Countdown Timer -->
+    <div class="flex items-center justify-center gap-2">
+        <i data-lucide="timer" class="w-4 h-4 text-yellow-500"></i>
+        <span id="weekly-countdown" class="text-sm font-medium text-yellow-500"></span>
+    </div>
+
+    <!-- Weekly Challenge (compact) -->
+    <div class="glass-card p-4 relative overflow-hidden">
+        <div class="absolute top-0 right-0 w-32 h-32 bg-purple-500/10 blur-3xl rounded-full -mr-8 -mt-8"></div>
+        <div class="relative z-10">
+            <div class="flex justify-between items-center mb-2">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="target" class="w-4 h-4 text-purple-400"></i>
+                    <span class="text-xs text-gray-400 uppercase tracking-wider font-medium">Weekly Challenge</span>
+                </div>
+                <span class="text-xs text-yellow-400 font-bold"><span id="challenge-reward">0</span> 🔶</span>
             </div>
-            <i data-lucide="trophy" class="w-6 h-6"></i>
-        </div>
-        <div class="mt-4">
-            <div class="flex justify-between text-xs mb-2">
-                <span class="text-gray-400">Progress</span>
-                <span class="text-white font-bold"><span id="challenge-progress">0</span>/<span
-                        id="challenge-target">0</span></span>
+            <p class="text-sm font-bold text-white" id="challenge-title">...</p>
+            <div class="mt-2 flex items-center gap-3">
+                <div class="flex-1 h-2 bg-white/10 rounded-full overflow-hidden">
+                    <div id="challenge-bar"
+                        class="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all duration-500"
+                        style="width: 0%"></div>
+                </div>
+                <span class="text-xs text-white font-bold whitespace-nowrap">
+                    <span id="challenge-progress">0</span>/<span id="challenge-target">0</span>
+                </span>
             </div>
-            <div class="w-full h-3 bg-white/10 rounded-full overflow-hidden">
-                <div id="challenge-bar"
-                    class="h-full bg-gradient-to-r from-red-500 to-orange-500 transition-all duration-500"
-                    style="width: 0%"></div>
-            </div>
-            <p class="text-xs text-yellow-400 font-bold mt-2">Reward: <span id="challenge-reward">0</span> 🔶</p>
         </div>
     </div>
-    {% endcall %}
 
     <!-- Rankings -->
     <div>
         <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Rankings</h3>
         <div id="leaderboard-list" class="space-y-2"></div>
     </div>
+
+    <!-- Daily Quests (collapsible) -->
+    <div>
+        <button onclick="toggleQuestSection()"
+            class="w-full flex items-center justify-between py-3 tap-effect">
+            <div class="flex items-center gap-2">
+                <i data-lucide="scroll-text" class="w-4 h-4 text-orange-400"></i>
+                <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Daily Quests</h3>
+                <span id="quest-progress-badge"
+                    class="text-[10px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full font-bold">0/0</span>
+            </div>
+            <i data-lucide="chevron-down" id="quest-chevron"
+                class="w-4 h-4 text-gray-500 transition-transform duration-300"></i>
+        </button>
+        <div id="quest-section" class="space-y-3 transition-all duration-300 overflow-hidden">
+            <div id="quest-list" class="space-y-3"></div>
+        </div>
+    </div>
+
 </div>
 
 <!-- Member Profile Modal (for leaderboard) -->
@@ -1698,6 +1739,8 @@ if (mealForm) {
         }
     });
 }
+
+// (Quick action redirects removed — FAB actions are now self-contained in base.html)
 </script>
 
 {% elif mode == "calendar" %}
@@ -2616,7 +2659,7 @@ async function loadProfilePicture() {
 }
 
 function updateAllAvatars(url) {
-    const avatarIds = ['profile-avatar-img', 'header-profile-img'];
+    const avatarIds = ['profile-avatar-img'];
     avatarIds.forEach(id => {
         const img = document.getElementById(id);
         if (img) {
@@ -2799,35 +2842,50 @@ async function selectFitnessGoal(goal) {
 </script>
 
 {% else %}
-<div class="p-6 pt-10 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent z-10">
-    <div class="flex items-center space-x-3">
-        <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=client_dashboard' }}"
-            class="w-10 h-10 rounded-full bg-gradient-to-tr from-gray-700 to-gray-600 border border-white/10 overflow-hidden tap-effect">
-            <img id="header-profile-img" src="https://api.dicebear.com/7.x/avataaars/svg?seed=Alex" class="w-full h-full object-cover">
-        </a>
-        <div>
-            <p class="text-xs text-gray-400 uppercase tracking-wider">Welcome back</p>
-            <h2 class="font-bold text-lg" id="client-welcome-name">Loading...</h2>
-        </div>
+<div id="top-bar" class="fixed top-0 left-0 right-0 px-4 pb-3 flex justify-between items-center z-30 transition-all duration-200" style="padding-top: max(env(safe-area-inset-top, 0px), 2.5rem);">
+    <div class="flex items-center">
+        <img src="/static/fitos-logo.svg" class="h-7 object-contain">
     </div>
-    <div class="flex space-x-2">
+    <div class="flex items-center space-x-2">
         <!-- Booking Icon -->
         <div onclick="openBookingChoiceForMyTrainer()" class="relative w-10 h-10 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center tap-effect cursor-pointer" title="Book Session">
             <i data-lucide="calendar" class="w-5 h-5"></i>
+        </div>
+        <!-- Notifications Icon with Badge -->
+        <div data-action="showModal" data-target="notification-modal"
+            class="notification-bell w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect relative">
+            <i data-lucide="bell" class="w-5 h-5"></i>
+            <span class="notification-badge hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
         </div>
         <!-- Messages Icon with Badge -->
         <div onclick="openClientChatModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer">
             <i data-lucide="message-circle" class="w-5 h-5"></i>
             <span id="unread-messages-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center hidden">0</span>
         </div>
-        <div data-action="showModal" data-target="notification-modal"
-            class="notification-bell w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect relative">
-            <i data-lucide="bell" class="w-5 h-5"></i>
-            <span class="notification-badge hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
-        </div>
     </div>
 </div>
-<div class="flex-1 p-4 pt-0 space-y-4">
+<script>
+(function(){
+    const bar = document.getElementById('top-bar');
+    let scrolled = false;
+    window.addEventListener('scroll', function(){
+        if(window.scrollY > 10 && !scrolled){
+            scrolled = true;
+            bar.style.backgroundColor = 'rgba(17,24,39,0.85)';
+            bar.style.backdropFilter = 'blur(12px)';
+            bar.style.webkitBackdropFilter = 'blur(12px)';
+            bar.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+        } else if(window.scrollY <= 10 && scrolled){
+            scrolled = false;
+            bar.style.backgroundColor = '';
+            bar.style.backdropFilter = '';
+            bar.style.webkitBackdropFilter = '';
+            bar.style.borderBottom = '';
+        }
+    });
+})();
+</script>
+<div class="flex-1 p-4 space-y-4" style="padding-top: calc(max(env(safe-area-inset-top, 0px), 2.5rem) + 3.5rem);">
     <!-- Streak Card with Gems -->
     <a href="{{ 'client_calendar.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=calendar' }}"
         class="block slide-up">
@@ -2984,8 +3042,19 @@ async function selectFitnessGoal(goal) {
     </div>
 
     <div class="slide-up" style="animation-delay: 0.2s;">
-        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3 ml-1">Daily Quests</h3>
-        <div class="space-y-3" id="quest-list"></div>
+        <a href="{{ '/?gym_id=' + gym_id + '&role=client&mode=leaderboard' }}"
+            class="glass-card p-4 flex items-center justify-between tap-effect group block">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-lime-500/20 flex items-center justify-center">
+                    <i data-lucide="trophy" class="w-5 h-5 text-lime-400"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-bold text-white">Daily Quests & Rankings</p>
+                    <p class="text-[10px] text-gray-400">Complete quests to earn gems</p>
+                </div>
+            </div>
+            <i data-lucide="chevron-right" class="w-4 h-4 text-gray-500 group-hover:text-white transition"></i>
+        </a>
     </div>
 </div>
 
@@ -4563,7 +4632,7 @@ async function loadProfilePicture() {
 
 function updateAllAvatars(url) {
     // Update all avatar images on the page
-    const avatarIds = ['profile-avatar-img', 'header-profile-img'];
+    const avatarIds = ['profile-avatar-img'];
     avatarIds.forEach(id => {
         const img = document.getElementById(id);
         if (img) {

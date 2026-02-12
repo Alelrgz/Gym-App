@@ -200,9 +200,22 @@ class WorkoutAssignment(BaseModel):
     client_name: str
     workout_type: str
 
+class LeagueTier(BaseModel):
+    name: str
+    level: int
+    min_gems: int
+    color: str
+
+class LeagueInfo(BaseModel):
+    current_tier: LeagueTier
+    all_tiers: List[LeagueTier]
+    advance_count: int
+    weekly_reset_iso: str
+
 class LeaderboardData(BaseModel):
     users: List[LeaderboardUser]
     weekly_challenge: WeeklyChallenge
+    league: LeagueInfo
 
 class AssignDietRequest(BaseModel):
     client_id: str

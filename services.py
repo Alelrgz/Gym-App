@@ -532,7 +532,23 @@ class UserService:
         """Delegate to NotesService."""
         return _notes_service.delete_trainer_note(note_id, trainer_id)
 
+LEAGUE_TIERS = [
+    {"name": "Bronze",   "level": 1, "min_gems": 0,    "color": "#D97706"},
+    {"name": "Silver",   "level": 2, "min_gems": 500,  "color": "#9CA3AF"},
+    {"name": "Gold",     "level": 3, "min_gems": 1500, "color": "#FACC15"},
+    {"name": "Sapphire", "level": 4, "min_gems": 3500, "color": "#3B82F6"},
+    {"name": "Diamond",  "level": 5, "min_gems": 7000, "color": "#67E8F9"},
+]
+
 class LeaderboardService:
+    def _get_league_tier(self, gems: int) -> dict:
+        """Determine league tier based on gem count."""
+        tier = LEAGUE_TIERS[0]
+        for t in LEAGUE_TIERS:
+            if gems >= t["min_gems"]:
+                tier = t
+        return tier
+
     def get_leaderboard(self, current_user_id: str) -> LeaderboardData:
         """Get leaderboard data for users in the same gym as the current user."""
         db = get_db_session()
@@ -542,8 +558,25 @@ class LeaderboardService:
                 ClientProfileORM.id == current_user_id
             ).first()
 
+            # Compute league info
+            user_gems = (current_profile.gems or 0) if current_profile else 0
+            current_tier = self._get_league_tier(user_gems)
+
+            # Next Monday 00:00 UTC for weekly reset
+            today = date.today()
+            days_until_monday = (7 - today.weekday()) % 7
+            if days_until_monday == 0:
+                days_until_monday = 7
+            next_monday = datetime.combine(today + timedelta(days=days_until_monday), datetime.min.time())
+
+            league_info = {
+                "current_tier": current_tier,
+                "all_tiers": LEAGUE_TIERS,
+                "advance_count": 10,
+                "weekly_reset_iso": next_monday.isoformat()
+            }
+
             if not current_profile or not current_profile.gym_id:
-                # Return empty leaderboard if user has no gym
                 return LeaderboardData(
                     users=[],
                     weekly_challenge={
@@ -552,7 +585,8 @@ class LeaderboardService:
                         "progress": 0,
                         "target": 5,
                         "reward_gems": 200
-                    }
+                    },
+                    league=league_info
                 )
 
             gym_id = current_profile.gym_id
@@ -596,7 +630,6 @@ class LeaderboardService:
                 })
 
             # Calculate weekly challenge progress (completed workouts this week)
-            today = date.today()
             week_start = today - timedelta(days=today.weekday())  # Monday
 
             weekly_workouts = db.query(ClientScheduleORM).filter(
@@ -615,7 +648,8 @@ class LeaderboardService:
 
             return LeaderboardData(
                 users=leaderboard_users,
-                weekly_challenge=weekly_challenge
+                weekly_challenge=weekly_challenge,
+                league=league_info
             )
 
         finally:

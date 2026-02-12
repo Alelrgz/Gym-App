@@ -814,6 +814,14 @@ function switchSection(sectionId) {
     // Update URL hash
     history.replaceState(null, '', `#${sectionId}`);
 
+    // Update bottom nav state
+    document.querySelectorAll('.bottom-nav-item').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.section === sectionId) {
+            btn.classList.add('active');
+        }
+    });
+
     // Initialize section-specific content
     initSection(sectionId);
 
