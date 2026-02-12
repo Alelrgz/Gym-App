@@ -375,6 +375,7 @@ class ClientService:
             today = datetime.now().date()
             current_date = today
             days_checked = 0
+            consecutive_empty = 0  # Track consecutive days with no workouts
 
             logger.debug(f"[DAY_STREAK] Starting day streak calculation for client {client_id}, today={today}")
 
@@ -396,10 +397,15 @@ class ClientService:
                 logger.debug(f"[DAY_STREAK] {date_str}: {completed_count}/{total_scheduled} completed")
 
                 if total_scheduled == 0:
-                    # No workouts scheduled - skip this day (don't count, don't break)
-                    logger.debug(f"[DAY_STREAK] No workouts scheduled, skipping day")
+                    # No workouts scheduled - allow rest days but break after 3+ consecutive empty days
+                    consecutive_empty += 1
+                    if consecutive_empty > 3:
+                        logger.debug(f"[DAY_STREAK] {consecutive_empty} consecutive empty days, breaking streak")
+                        break
+                    logger.debug(f"[DAY_STREAK] No workouts scheduled, skipping day ({consecutive_empty} empty)")
                 elif completed_count == total_scheduled:
                     # All scheduled workouts completed - count this day
+                    consecutive_empty = 0  # Reset empty counter
                     streak += 1
                     logger.debug(f"[DAY_STREAK] All workouts completed! Streak = {streak}")
                 else:
