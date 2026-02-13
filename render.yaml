@@ -9,24 +9,13 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.11.6
-      - key: REDIS_URL
-        fromService:
-          type: redis
-          name: gym-redis
-          property: connectionString
       - key: DATABASE_URL
-        fromService:
-          type: psql
+        fromDatabase:
           name: gym-db
           property: connectionString
       - key: SECRET_KEY
         generateValue: true
 
-  - type: redis
-    name: gym-redis
-    plan: free
-    ipAllowList: []
-
-  - type: psql
-    name: gym-db
+databases:
+  - name: gym-db
     plan: free
