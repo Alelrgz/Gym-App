@@ -32,8 +32,12 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24
 
 # Import database and models
-from database import get_db
+from database import get_db, IS_POSTGRES
 from models_orm import UserORM as User
+
+# Cookie security: strict in production (HTTPS), relaxed in dev
+_COOKIE_SECURE = IS_POSTGRES      # True in production (PostgreSQL = deployed)
+_COOKIE_SAMESITE = "lax"          # Prevents CSRF while allowing normal navigation
 
 def hash_password(password: str) -> str:
     # bcrypt requires bytes, returns bytes. We store as string.
@@ -149,7 +153,7 @@ async def do_login(request: Request, db: Session = Depends(get_db)):
             })
 
         response = RedirectResponse(url="/auth/setup-account", status_code=302)
-        response.set_cookie(key="access_token", value=token, httponly=True)
+        response.set_cookie(key="access_token", value=token, httponly=True, secure=_COOKIE_SECURE, samesite=_COOKIE_SAMESITE)
         return response
 
     # 3. Success - Create token
@@ -168,7 +172,7 @@ async def do_login(request: Request, db: Session = Depends(get_db)):
     
     # Default: Browser Redirect
     response = RedirectResponse(url=f"/?role={user.role}", status_code=302)
-    response.set_cookie(key="access_token", value=token, httponly=True)
+    response.set_cookie(key="access_token", value=token, httponly=True, secure=_COOKIE_SECURE, samesite=_COOKIE_SAMESITE)
     return response
 
 # --- REGISTER PAGE ---
@@ -484,7 +488,7 @@ async def do_setup_account(request: Request, db: Session = Depends(get_db)):
 
         # Redirect to dashboard
         response = RedirectResponse(url=f"/?role={user.role}", status_code=302)
-        response.set_cookie(key="access_token", value=new_token, httponly=True)
+        response.set_cookie(key="access_token", value=new_token, httponly=True, secure=_COOKIE_SECURE, samesite=_COOKIE_SAMESITE)
         return response
 
     except jwt.ExpiredSignatureError:

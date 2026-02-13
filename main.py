@@ -72,9 +72,27 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "Authorization"],
 )
+
+# Production security middleware: HTTPS redirect + HSTS header
+if IS_POSTGRES:
+    from starlette.middleware.httpsredirect import HTTPSRedirectMiddleware
+    from starlette.middleware.base import BaseHTTPMiddleware
+
+    class HSTSMiddleware(BaseHTTPMiddleware):
+        async def dispatch(self, request, call_next):
+            response = await call_next(request)
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
+            return response
+
+    # Note: on Render/Railway, the platform terminates TLS at the load balancer
+    # and forwards requests as HTTP internally. X-Forwarded-Proto tells us the
+    # original protocol. We skip HTTPSRedirectMiddleware here because the platform
+    # handles HTTPS enforcement. We still add HSTS so browsers remember to use HTTPS.
+    app.add_middleware(HSTSMiddleware)
+    logger.info("Production security: HSTS enabled")
 
 # Global error handler - prevent stack trace leaks in production
 from fastapi.responses import JSONResponse
