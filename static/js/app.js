@@ -1438,6 +1438,7 @@ document.body.addEventListener('click', e => {
     if (!target) return;
 
     const action = target.dataset.action;
+    console.log('[DEBUG] Global click listener - action:', action);
 
     if (action === 'adjustReps') {
         adjustReps(parseInt(target.dataset.delta));
@@ -1460,6 +1461,7 @@ document.body.addEventListener('click', e => {
     } else if (action === 'openCreateSplit') {
         openCreateSplitModal();
     } else if (action === 'openCreateCourse') {
+        console.log('[DEBUG] openCreateCourse action triggered');
         openCreateCourseModal();
     }
 });
@@ -1468,7 +1470,16 @@ document.body.addEventListener('click', e => {
 // --- MODAL SYSTEM & HELPERS ---
 
 function showModal(id) {
-    document.getElementById(id).classList.remove('hidden');
+    console.log('[DEBUG] showModal called for:', id);
+    const modal = document.getElementById(id);
+    if (!modal) {
+        console.error('[ERROR] Modal not found:', id);
+        alert('ERROR: Modal not found: ' + id);
+        return;
+    }
+    console.log('[DEBUG] Modal found, removing hidden class');
+    modal.classList.remove('hidden');
+    console.log('[DEBUG] Modal classes after remove:', modal.className);
 }
 
 function hideModal(id) {
@@ -9884,7 +9895,11 @@ function resetCourseModal() {
 
     // Reset name icon
     const nameIcon = document.getElementById('course-name-icon');
-    if (nameIcon) nameIcon.innerHTML = icon('heart', 20);
+    if (nameIcon && typeof window.icon === 'function') {
+        nameIcon.innerHTML = window.icon('heart', 20);
+    } else if (nameIcon) {
+        nameIcon.innerHTML = '<i data-lucide="heart" class="w-5 h-5"></i>';
+    }
 
     // Reset save button
     const saveBtn = document.getElementById('btn-save-course');
@@ -10126,58 +10141,72 @@ function setupCourseNamePreviewListener() {
 
 // Open create course modal
 window.openCreateCourseModal = function() {
-    document.getElementById('edit-course-id').value = '';
-    document.getElementById('modal-course-title').innerText = 'New Course';
-    document.getElementById('btn-save-course').innerText = 'Create Course';
+    console.log('[DEBUG] openCreateCourseModal called');
+    try {
+        document.getElementById('edit-course-id').value = '';
+        document.getElementById('modal-course-title').innerText = 'New Course';
+        document.getElementById('btn-save-course').innerText = 'Create Course';
 
-    document.getElementById('course-name').value = '';
-    document.getElementById('course-description').value = '';
-    document.getElementById('course-day').value = '';
+        document.getElementById('course-name').value = '';
+        document.getElementById('course-description').value = '';
+        document.getElementById('course-day').value = '';
 
-    // Handle both old and new time inputs
-    const timeInput = document.getElementById('course-time-input');
-    const oldTimeInput = document.getElementById('course-time');
-    if (timeInput) timeInput.value = '09:00';
-    if (oldTimeInput) oldTimeInput.value = '';
+        // Handle both old and new time inputs
+        const timeInput = document.getElementById('course-time-input');
+        const oldTimeInput = document.getElementById('course-time');
+        if (timeInput) timeInput.value = '09:00';
+        if (oldTimeInput) oldTimeInput.value = '';
 
-    document.getElementById('course-duration').value = '60';
-    document.getElementById('course-shared').value = 'false';
-    document.getElementById('course-color').value = 'purple';
+        document.getElementById('course-duration').value = '60';
+        document.getElementById('course-shared').value = 'false';
+        document.getElementById('course-color').value = 'purple';
 
-    // Reset capacity fields
-    const capacityHidden = document.getElementById('course-max-capacity');
-    const capacityVisible = document.getElementById('course-capacity-input');
-    const unlimitedBtn = document.getElementById('unlimited-capacity-btn');
-    const waitlistInput = document.getElementById('course-waitlist-enabled');
-    const waitlistToggle = document.getElementById('waitlist-toggle');
-    const waitlistDot = document.getElementById('waitlist-dot');
+        // Reset capacity fields
+        const capacityHidden = document.getElementById('course-max-capacity');
+        const capacityVisible = document.getElementById('course-capacity-input');
+        const unlimitedBtn = document.getElementById('unlimited-capacity-btn');
+        const waitlistInput = document.getElementById('course-waitlist-enabled');
+        const waitlistToggle = document.getElementById('waitlist-toggle');
+        const waitlistDot = document.getElementById('waitlist-dot');
 
-    if (capacityHidden) capacityHidden.value = '20';
-    if (capacityVisible) { capacityVisible.value = '20'; capacityVisible.disabled = false; }
-    if (unlimitedBtn) {
-        unlimitedBtn.classList.remove('bg-green-500', 'text-white');
-        unlimitedBtn.classList.add('bg-white/10', 'text-white/60');
+        if (capacityHidden) capacityHidden.value = '20';
+        if (capacityVisible) { capacityVisible.value = '20'; capacityVisible.disabled = false; }
+        if (unlimitedBtn) {
+            unlimitedBtn.classList.remove('bg-green-500', 'text-white');
+            unlimitedBtn.classList.add('bg-white/10', 'text-white/60');
+        }
+        if (waitlistInput) waitlistInput.value = 'true';
+        if (waitlistToggle) {
+            waitlistToggle.classList.remove('bg-white/10');
+            waitlistToggle.classList.add('bg-green-500');
+        }
+        if (waitlistDot) {
+            waitlistDot.style.left = 'auto';
+            waitlistDot.style.right = '4px';
+        }
+
+        console.log('[DEBUG] Calling resetCourseModal');
+        resetCourseModal();
+        console.log('[DEBUG] Calling populateCourseTrainerProfile');
+        populateCourseTrainerProfile();
+        console.log('[DEBUG] Calling setupCourseNamePreviewListener');
+        setupCourseNamePreviewListener();
+
+        courseExercisesList = [];
+        courseMusicLinks = [];
+        console.log('[DEBUG] Calling renderCourseExercises');
+        renderCourseExercises();
+        console.log('[DEBUG] Calling renderMusicLinks');
+        renderMusicLinks();
+
+        console.log('[DEBUG] Calling showModal');
+        showModal('create-course-modal');
+        console.log('[DEBUG] Modal should be visible now');
+    } catch (error) {
+        console.error('[ERROR] Failed to open create course modal:', error);
+        console.error('[ERROR] Stack:', error.stack);
+        alert('Error opening create course modal. Check console for details.');
     }
-    if (waitlistInput) waitlistInput.value = 'true';
-    if (waitlistToggle) {
-        waitlistToggle.classList.remove('bg-white/10');
-        waitlistToggle.classList.add('bg-green-500');
-    }
-    if (waitlistDot) {
-        waitlistDot.style.left = 'auto';
-        waitlistDot.style.right = '4px';
-    }
-
-    resetCourseModal();
-    populateCourseTrainerProfile();
-    setupCourseNamePreviewListener();
-
-    courseExercisesList = [];
-    courseMusicLinks = [];
-    renderCourseExercises();
-    renderMusicLinks();
-
-    showModal('create-course-modal');
 };
 
 // Open edit course modal
@@ -10972,6 +11001,254 @@ let liveClassData = {
     autoAdvance: true
 };
 
+// YouTube player instance (global)
+let youtubePlayer = null;
+let ytInitAttempts = 0;
+const MAX_YT_INIT_ATTEMPTS = 10;
+
+// Spotify player instance (global)
+let spotifyPlayer = null;
+let spotifyDeviceId = null;
+let spotifyAccessToken = null;
+
+// Initialize YouTube player
+function initYouTubePlayer(videoId, playlistId = null, retryCount = 0) {
+    // Check if YT API is loaded
+    if (typeof YT === 'undefined' || typeof YT.Player === 'undefined') {
+        if (retryCount >= MAX_YT_INIT_ATTEMPTS) {
+            console.warn('⚠️ YouTube API failed to load - using fallback iframe');
+            console.warn('Note: Pause/Play controls will not work automatically');
+            // Fallback to regular iframe
+            useFallbackIframe(videoId, playlistId);
+            return;
+        }
+        console.log('⏳ Waiting for YouTube API... (attempt', retryCount + 1, '/', MAX_YT_INIT_ATTEMPTS, ')');
+        setTimeout(() => initYouTubePlayer(videoId, playlistId, retryCount + 1), 500);
+        return;
+    }
+
+    try {
+        console.log('🎬 Creating YouTube player for video:', videoId);
+        youtubePlayer = new YT.Player('youtube-player-iframe', {
+            height: '315',
+            width: '100%',
+            videoId: videoId,
+            playerVars: {
+                autoplay: 0,
+                controls: 1,
+                modestbranding: 1,
+                rel: 0,
+                listType: playlistId ? 'playlist' : null,
+                list: playlistId
+            },
+            events: {
+                onReady: (event) => {
+                    console.log('✅ YouTube player initialized and ready!');
+                },
+                onError: (err) => {
+                    console.error('❌ YouTube player error:', err);
+                }
+            }
+        });
+    } catch (error) {
+        console.error('❌ Failed to initialize YouTube player:', error);
+        useFallbackIframe(videoId, playlistId);
+    }
+}
+
+// Fallback to regular iframe if YouTube API fails
+function useFallbackIframe(videoId, playlistId = null) {
+    const container = document.getElementById('youtube-player-iframe');
+    if (!container) return;
+
+    let embedUrl = `https://www.youtube.com/embed/${videoId}?autoplay=0&controls=1`;
+    if (playlistId) {
+        embedUrl += `&list=${playlistId}`;
+    }
+
+    container.innerHTML = `
+        <iframe src="${embedUrl}" width="100%" height="315" frameborder="0"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+            allowfullscreen loading="eager" class="rounded-lg w-full"></iframe>
+    `;
+    console.log('📺 Fallback iframe loaded - manual controls only');
+}
+
+// Control YouTube playback
+window.controlYouTubePlayer = function(action) {
+    if (!youtubePlayer || !youtubePlayer.playVideo) {
+        console.log('⚠️ YouTube player not ready');
+        return;
+    }
+
+    try {
+        if (action === 'play') {
+            youtubePlayer.playVideo();
+            console.log('▶️ Playing YouTube video');
+        } else if (action === 'pause') {
+            youtubePlayer.pauseVideo();
+            console.log('⏸️ Paused YouTube video');
+        } else if (action === 'stop') {
+            youtubePlayer.stopVideo();
+            console.log('⏹️ Stopped YouTube video');
+        }
+    } catch (error) {
+        console.error('Error controlling YouTube player:', error);
+    }
+};
+
+// Initialize Spotify Web Playback SDK
+window.onSpotifyWebPlaybackSDKReady = async function() {
+    console.log('🎵 Spotify SDK ready');
+
+    // Check if user is authenticated
+    try {
+        const response = await fetch('/api/spotify/status');
+        const status = await response.json();
+
+        if (!status.connected) {
+            console.log('ℹ️ Spotify not connected - user needs to authenticate');
+            return;
+        }
+
+        if (status.expired) {
+            console.log('⏳ Token expired - refreshing...');
+            await refreshSpotifyToken();
+        }
+
+        // Get fresh token
+        const tokenResponse = await fetch('/api/spotify/status');
+        const tokenStatus = await tokenResponse.json();
+
+        if (tokenStatus.connected) {
+            await initSpotifyPlayer(spotifyAccessToken);
+        }
+    } catch (error) {
+        console.error('Error initializing Spotify:', error);
+    }
+};
+
+// Initialize Spotify player with access token
+async function initSpotifyPlayer(token) {
+    spotifyAccessToken = token;
+
+    spotifyPlayer = new Spotify.Player({
+        name: 'FitOS Gym App',
+        getOAuthToken: cb => { cb(spotifyAccessToken); },
+        volume: 0.8
+    });
+
+    // Player ready
+    spotifyPlayer.addListener('ready', ({ device_id }) => {
+        console.log('✅ Spotify player ready with device ID:', device_id);
+        spotifyDeviceId = device_id;
+    });
+
+    // Player errors
+    spotifyPlayer.addListener('initialization_error', ({ message }) => {
+        console.error('❌ Spotify initialization error:', message);
+    });
+
+    spotifyPlayer.addListener('authentication_error', ({ message }) => {
+        console.error('❌ Spotify authentication error:', message);
+        refreshSpotifyToken();
+    });
+
+    spotifyPlayer.addListener('account_error', ({ message }) => {
+        console.error('❌ Spotify account error:', message);
+        showToast('Spotify Premium required for playback');
+    });
+
+    spotifyPlayer.addListener('playback_error', ({ message }) => {
+        console.error('❌ Spotify playback error:', message);
+    });
+
+    // Connect player
+    const connected = await spotifyPlayer.connect();
+    if (connected) {
+        console.log('🎵 Spotify player connected!');
+    }
+}
+
+// Refresh Spotify access token
+async function refreshSpotifyToken() {
+    try {
+        const response = await fetch('/api/spotify/refresh', { method: 'POST' });
+        const data = await response.json();
+        spotifyAccessToken = data.access_token;
+        console.log('✅ Spotify token refreshed');
+        return data.access_token;
+    } catch (error) {
+        console.error('Failed to refresh Spotify token:', error);
+        return null;
+    }
+}
+
+// Play Spotify track/playlist
+async function playSpotifyUri(uri) {
+    if (!spotifyDeviceId || !spotifyAccessToken) {
+        console.warn('⚠️ Spotify player not ready');
+        return;
+    }
+
+    try {
+        await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${spotifyDeviceId}`, {
+            method: 'PUT',
+            body: JSON.stringify({ context_uri: uri }),
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${spotifyAccessToken}`
+            }
+        });
+        console.log('▶️ Playing Spotify:', uri);
+    } catch (error) {
+        console.error('Error playing Spotify:', error);
+    }
+}
+
+// Control Spotify playback (via Web Playback SDK)
+window.controlSpotifyPlayer = async function(action) {
+    // Check if user is authenticated
+    try {
+        const response = await fetch('/api/spotify/status');
+        const status = await response.json();
+
+        if (!status.connected) {
+            console.log('ℹ️ Spotify not connected');
+            return;
+        }
+    } catch (error) {
+        console.error('Error checking Spotify status:', error);
+        return;
+    }
+
+    try {
+        if (action === 'play') {
+            // Start playing the playlist
+            if (window.spotifyPlaylistUri && spotifyDeviceId && spotifyAccessToken) {
+                await playSpotifyUri(window.spotifyPlaylistUri);
+            } else if (spotifyPlayer) {
+                await spotifyPlayer.resume();
+                console.log('▶️ Resumed Spotify');
+            } else {
+                console.log('⚠️ Spotify player not ready yet');
+            }
+        } else if (action === 'pause') {
+            if (spotifyPlayer) {
+                await spotifyPlayer.pause();
+                console.log('⏸️ Paused Spotify');
+            }
+        } else if (action === 'stop') {
+            if (spotifyPlayer) {
+                await spotifyPlayer.pause();
+                console.log('⏹️ Stopped Spotify');
+            }
+        }
+    } catch (error) {
+        console.error('Error controlling Spotify player:', error);
+    }
+};
+
 // Start live class from course detail
 window.startLiveClass = function() {
     const course = allCoursesData.find(c => c.id === currentCourseId);
@@ -11012,6 +11289,39 @@ window.startLiveClass = function() {
     updateTimerDisplay();
 };
 
+// Toggle music player visibility (global function)
+window.toggleMusicPlayer = function(show) {
+    // Check for both YouTube and Spotify containers
+    const youtubeContainer = document.getElementById('youtube-player-container');
+    const spotifyContainer = document.getElementById('spotify-player-container');
+    const container = youtubeContainer || spotifyContainer;
+
+    const hideBtn = document.getElementById('hide-music-btn');
+    const showBtn = document.getElementById('show-music-btn');
+
+    if (!container || !hideBtn || !showBtn) return;
+
+    const playerType = youtubeContainer ? 'YouTube' : 'Spotify';
+
+    if (show) {
+        // Show player
+        container.classList.remove('hidden');
+        hideBtn.classList.remove('hidden');
+        hideBtn.classList.add('flex');
+        showBtn.classList.add('hidden');
+        showBtn.classList.remove('flex');
+        console.log(`🎵 ${playerType} player shown`);
+    } else {
+        // Hide player
+        container.classList.add('hidden');
+        hideBtn.classList.add('hidden');
+        hideBtn.classList.remove('flex');
+        showBtn.classList.remove('hidden');
+        showBtn.classList.add('flex');
+        console.log(`🔇 ${playerType} player hidden`);
+    }
+};
+
 // Render music links in sidebar
 function renderLiveMusicLinks() {
     const container = document.getElementById('live-music-container');
@@ -11022,28 +11332,216 @@ function renderLiveMusicLinks() {
         return;
     }
 
-    container.innerHTML = liveClassData.musicLinks.map((link, i) => {
-        const mIcon = link.type === 'spotify' ? '<span class="inline-block w-5 h-5 rounded-full bg-green-500"></span>' : '<span class="inline-block w-5 h-5 rounded-full bg-red-500"></span>';
-        const embedUrl = getMusicEmbedUrl(link.url, link.type);
+    // Show first playlist prominently with auto-play attempt
+    const firstLink = liveClassData.musicLinks[0];
+    const embedUrl = getMusicEmbedUrl(firstLink.url, firstLink.type, true);
+    const platformIcon = firstLink.type === 'spotify' ? '🎵' : '▶️';
 
-        return `
-            <div class="bg-white/5 rounded-lg p-2">
-                <div class="flex items-center justify-between mb-2">
-                    <span class="text-xs text-white font-medium truncate">${mIcon} ${link.title || 'Playlist ' + (i+1)}</span>
-                    <a href="${link.url}" target="_blank" class="text-xs text-primary hover:underline">Open</a>
+    const isYouTube = firstLink.type === 'youtube';
+
+    let html = `
+        <div class="bg-gradient-to-br from-purple-500/20 to-pink-500/20 rounded-xl p-4 border border-purple-500/30 mb-3">
+            <div class="mb-3">
+                <div class="text-sm font-bold text-white mb-2 text-center">${platformIcon} ${firstLink.title || 'Workout Mix'}</div>
+                ${embedUrl ? (isYouTube ? `
+                    <!-- YouTube Embedded Player Container -->
+                    <div id="youtube-player-container">
+                        <div class="bg-black/30 rounded-lg p-2 mb-3">
+                            <!-- YouTube API will replace this div with iframe -->
+                            <div id="youtube-player-iframe" class="rounded-lg w-full"></div>
+                        </div>
+                    </div>
+
+                    <!-- Music Control Buttons -->
+                    <div class="flex gap-2 mb-3">
+                        <button id="hide-music-btn" onclick="toggleMusicPlayer(false)"
+                                class="flex-1 px-4 py-3 bg-red-600 hover:bg-red-700 text-white text-sm rounded-xl transition font-bold shadow-lg flex items-center justify-center gap-2">
+                            <span class="text-lg">⏹️</span>
+                            <span>Hide Player (Stop Music)</span>
+                        </button>
+                        <button id="show-music-btn" onclick="toggleMusicPlayer(true)"
+                                class="hidden flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white text-sm rounded-xl transition font-bold shadow-lg items-center justify-center gap-2">
+                            <span class="text-lg">▶️</span>
+                            <span>Show Player</span>
+                        </button>
+                        <a href="${firstLink.url}" target="_blank"
+                           class="flex-1 px-4 py-3 bg-purple-600 hover:bg-purple-700 text-white text-sm rounded-xl transition font-bold shadow-lg flex items-center justify-center gap-2">
+                            <span class="text-lg">🔗</span>
+                            <span>Open in App</span>
+                        </a>
+                    </div>
+
+                    <div class="text-center">
+                        <p class="text-[10px] text-purple-300/70 mb-1">
+                            <strong>How to use:</strong> Click ▶️ inside video player to start music
+                        </p>
+                        <p class="text-[10px] text-purple-300/50">
+                            Hide Player = Stops music completely (click ▶️ in player to restart when shown again)
+                        </p>
+                    </div>
+                ` : `
+                    <!-- Spotify Web Player (SDK) -->
+                    <div id="spotify-player-container" class="spotify-player-section">
+                        <!-- Will be populated based on auth status -->
+                        <div class="bg-black/30 rounded-lg p-4 mb-3 text-center">
+                            <p class="text-white/60 text-sm mb-3">🎵 Spotify Web Player</p>
+                            <p class="text-white/40 text-xs">Loading...</p>
+                        </div>
+                    </div>
+
+                    <!-- Music Control Buttons -->
+                    <div class="flex gap-2 mb-3" id="spotify-controls">
+                        <a href="${firstLink.url}" target="_blank"
+                           class="flex-1 px-4 py-3 bg-green-600 hover:bg-green-700 text-white text-sm rounded-xl transition font-bold shadow-lg flex items-center justify-center gap-2">
+                            <span class="text-lg">🔗</span>
+                            <span>Open in App</span>
+                        </a>
+                    </div>
+
+                    <div class="text-center">
+                        <p class="text-[10px] text-purple-300/70 mb-1">
+                            <strong>Note:</strong> Spotify Premium required for web player
+                        </p>
+                        <p class="text-[10px] text-purple-300/50">
+                            Connect Spotify below for automatic playback control
+                        </p>
+                    </div>
+                `) : `
+                    <!-- No embed available -->
+                    <div class="text-center">
+                        <a href="${firstLink.url}" target="_blank"
+                           class="inline-block w-full px-4 py-3 bg-gradient-to-r ${isYouTube ? 'from-red-600 to-red-700 hover:from-red-700 hover:to-red-800' : 'from-green-500 to-green-600 hover:from-green-600 hover:to-green-700'} text-white text-sm rounded-xl transition font-bold shadow-lg">
+                            ▶️ Open in ${isYouTube ? 'YouTube' : 'Spotify'}
+                        </a>
+                    </div>
+                `}
+            </div>
+        </div>
+    `;
+
+    // Show other playlists if any
+    if (liveClassData.musicLinks.length > 1) {
+        html += '<div class="text-[10px] text-gray-500 uppercase tracking-wider mb-2">Other Playlists</div>';
+        html += liveClassData.musicLinks.slice(1).map((link, i) => {
+            const icon = link.type === 'spotify' ? '🎵' : '▶️';
+            return `
+                <a href="${link.url}" target="_blank"
+                   class="block bg-white/5 hover:bg-white/10 rounded-lg p-2 mb-1 transition">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs text-white truncate">${icon} ${link.title || 'Playlist ' + (i+2)}</span>
+                        <span class="text-xs text-primary">→</span>
+                    </div>
+                </a>
+            `;
+        }).join('');
+    }
+
+    container.innerHTML = html;
+
+    // Initialize YouTube player with API if it's a YouTube video
+    if (isYouTube && embedUrl) {
+        setTimeout(() => {
+            // Extract video ID and playlist ID from embed URL
+            const videoIdMatch = embedUrl.match(/embed\/([a-zA-Z0-9_-]+)/);
+            const playlistMatch = embedUrl.match(/[?&]list=([a-zA-Z0-9_-]+)/);
+
+            if (videoIdMatch) {
+                const videoId = videoIdMatch[1];
+                const playlistId = playlistMatch ? playlistMatch[1] : null;
+                console.log('🎵 Initializing YouTube player - Video:', videoId, 'Playlist:', playlistId || 'none');
+                initYouTubePlayer(videoId, playlistId, 0);
+            } else {
+                console.error('❌ Could not extract video ID from:', embedUrl);
+            }
+        }, 1000); // Wait 1 second for YouTube API to load
+    }
+
+    // Check Spotify authentication and update UI
+    if (!isYouTube && firstLink.type === 'spotify') {
+        setTimeout(async () => {
+            await checkSpotifyAuthAndUpdateUI(firstLink.url);
+        }, 100);
+    }
+}
+
+// Check Spotify auth status and update UI
+async function checkSpotifyAuthAndUpdateUI(playlistUrl) {
+    const container = document.getElementById('spotify-player-container');
+    const controlsDiv = document.getElementById('spotify-controls');
+    if (!container) return;
+
+    try {
+        const response = await fetch('/api/spotify/status');
+        const status = await response.json();
+
+        if (!status.connected) {
+            // Not connected - show Connect button
+            container.innerHTML = `
+                <div class="bg-gradient-to-br from-green-500/20 to-green-600/20 rounded-lg p-6 mb-3 text-center border-2 border-green-500/30">
+                    <div class="text-4xl mb-3">🎵</div>
+                    <p class="text-white font-bold mb-2">Connect Spotify</p>
+                    <p class="text-white/60 text-xs mb-4">
+                        Link your Spotify Premium account for automatic music control
+                    </p>
+                    <a href="/api/spotify/authorize"
+                       class="inline-block px-6 py-3 bg-green-600 hover:bg-green-700 text-white text-sm rounded-xl transition font-bold shadow-lg">
+                        🔗 Connect Spotify Premium
+                    </a>
                 </div>
-                ${embedUrl ? `
-                    <iframe src="${embedUrl}" width="100%" height="80" frameborder="0"
-                        allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                        loading="lazy" class="rounded"></iframe>
-                ` : ''}
+            `;
+        } else if (status.expired) {
+            // Token expired - refresh it
+            console.log('⏳ Refreshing Spotify token...');
+            await refreshSpotifyToken();
+            await checkSpotifyAuthAndUpdateUI(playlistUrl); // Retry
+        } else {
+            // Connected - show player status
+            container.innerHTML = `
+                <div class="bg-green-500/20 rounded-lg p-4 mb-3 text-center border border-green-500/30">
+                    <p class="text-green-400 font-bold mb-1">✅ Spotify Connected</p>
+                    <p class="text-white/60 text-xs mb-3">Music will play automatically with workout timer</p>
+                    <button onclick="disconnectSpotify()"
+                            class="text-xs text-white/50 hover:text-white/80 underline">
+                        Disconnect Spotify
+                    </button>
+                </div>
+            `;
+
+            // Extract playlist URI from URL
+            const playlistMatch = playlistUrl.match(/playlist\/([a-zA-Z0-9]+)/);
+            if (playlistMatch) {
+                const playlistId = playlistMatch[1];
+                window.spotifyPlaylistUri = `spotify:playlist:${playlistId}`;
+                console.log('🎵 Spotify playlist ready:', window.spotifyPlaylistUri);
+            }
+        }
+    } catch (error) {
+        console.error('Error checking Spotify status:', error);
+        container.innerHTML = `
+            <div class="bg-red-500/20 rounded-lg p-4 text-center border border-red-500/30">
+                <p class="text-red-400 text-sm">⚠️ Error connecting to Spotify</p>
             </div>
         `;
-    }).join('');
+    }
+}
+
+// Disconnect Spotify
+window.disconnectSpotify = async function() {
+    if (!confirm('Disconnect Spotify?')) return;
+
+    try {
+        await fetch('/api/spotify/disconnect', { method: 'POST' });
+        showToast('Spotify disconnected');
+        // Refresh the UI
+        location.reload();
+    } catch (error) {
+        console.error('Error disconnecting Spotify:', error);
+        showToast('Failed to disconnect Spotify', 'error');
+    }
 }
 
 // Get embed URL for music services
-function getMusicEmbedUrl(url, type) {
+function getMusicEmbedUrl(url, type, autoplay = false) {
     if (!url) return null;
 
     if (type === 'spotify') {
@@ -11051,33 +11549,44 @@ function getMusicEmbedUrl(url, type) {
         // https://open.spotify.com/playlist/xxx -> https://open.spotify.com/embed/playlist/xxx
         const match = url.match(/spotify\.com\/(playlist|album|track)\/([a-zA-Z0-9]+)/);
         if (match) {
-            return `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=generator&theme=0`;
+            const autoplayParam = autoplay ? '&autoplay=1' : '';
+            return `https://open.spotify.com/embed/${match[1]}/${match[2]}?utm_source=generator&theme=0${autoplayParam}`;
         }
     } else if (type === 'youtube') {
-        // Convert youtube URL to embed
-        // https://www.youtube.com/watch?v=xxx -> https://www.youtube.com/embed/xxx
-        // https://youtu.be/xxx -> https://www.youtube.com/embed/xxx
-        // https://www.youtube.com/playlist?list=xxx -> https://www.youtube.com/embed/videoseries?list=xxx
+        // Convert youtube/youtube music URL to embed
+        // Supports: youtube.com, music.youtube.com, youtu.be
         let videoId = null;
         let playlistId = null;
 
+        // Extract playlist ID from any YouTube URL format
         if (url.includes('list=')) {
             const match = url.match(/list=([a-zA-Z0-9_-]+)/);
             if (match) playlistId = match[1];
         }
 
+        // Extract video ID from various YouTube URL formats
         if (url.includes('v=')) {
-            const match = url.match(/v=([a-zA-Z0-9_-]+)/);
+            const match = url.match(/[?&]v=([a-zA-Z0-9_-]+)/);
             if (match) videoId = match[1];
         } else if (url.includes('youtu.be/')) {
             const match = url.match(/youtu\.be\/([a-zA-Z0-9_-]+)/);
             if (match) videoId = match[1];
+        } else if (url.includes('music.youtube.com/watch')) {
+            const match = url.match(/watch[?&]v=([a-zA-Z0-9_-]+)/);
+            if (match) videoId = match[1];
         }
 
-        if (playlistId) {
-            return `https://www.youtube.com/embed/videoseries?list=${playlistId}`;
+        // Build embed URL with playlist or video
+        const autoplayParam = autoplay ? '1' : '0';
+        if (playlistId && videoId) {
+            // If both playlist and video, embed playlist starting with specific video
+            return `https://www.youtube.com/embed/${videoId}?list=${playlistId}&autoplay=${autoplayParam}`;
+        } else if (playlistId) {
+            // Just playlist
+            return `https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=${autoplayParam}`;
         } else if (videoId) {
-            return `https://www.youtube.com/embed/${videoId}`;
+            // Just video
+            return `https://www.youtube.com/embed/${videoId}?autoplay=${autoplayParam}`;
         }
     }
 
@@ -11196,6 +11705,17 @@ function startTimer() {
     document.getElementById('timer-toggle-btn').classList.remove('bg-green-600', 'hover:bg-green-700');
     document.getElementById('timer-toggle-btn').classList.add('bg-yellow-600', 'hover:bg-yellow-700');
 
+    // Show music player and play video when starting workout
+    if (typeof window.toggleMusicPlayer === 'function') {
+        window.toggleMusicPlayer(true);
+    }
+    if (typeof window.controlYouTubePlayer === 'function') {
+        window.controlYouTubePlayer('play');
+    }
+    if (typeof window.controlSpotifyPlayer === 'function') {
+        window.controlSpotifyPlayer('play');
+    }
+
     liveClassData.timerInterval = setInterval(() => {
         liveClassData.timerSeconds--;
         updateTimerDisplay();
@@ -11228,6 +11748,14 @@ function stopTimer() {
     document.getElementById('timer-toggle-btn').innerHTML = icon('play', 16) + ' Start';
     document.getElementById('timer-toggle-btn').classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
     document.getElementById('timer-toggle-btn').classList.add('bg-green-600', 'hover:bg-green-700');
+
+    // Pause media players when timer stops
+    if (typeof window.controlYouTubePlayer === 'function') {
+        window.controlYouTubePlayer('pause');
+    }
+    if (typeof window.controlSpotifyPlayer === 'function') {
+        window.controlSpotifyPlayer('pause');
+    }
 }
 
 window.resetTimer = function() {
@@ -11235,6 +11763,17 @@ window.resetTimer = function() {
     const exercise = liveClassData.exercises[liveClassData.currentExerciseIndex];
     liveClassData.timerSeconds = exercise?.rest || 60;
     updateTimerDisplay();
+
+    // Stop and hide music player when resetting workout
+    if (typeof window.controlYouTubePlayer === 'function') {
+        window.controlYouTubePlayer('stop');
+    }
+    if (typeof window.controlSpotifyPlayer === 'function') {
+        window.controlSpotifyPlayer('stop');
+    }
+    if (typeof window.toggleMusicPlayer === 'function') {
+        window.toggleMusicPlayer(false);
+    }
 };
 
 window.toggleAutoAdvance = function() {
@@ -11308,6 +11847,18 @@ window.endLiveClass = function() {
     if (!confirm('End this class?')) return;
 
     stopTimer();
+
+    // Stop and hide music player when ending class
+    if (typeof window.controlYouTubePlayer === 'function') {
+        window.controlYouTubePlayer('stop');
+    }
+    if (typeof window.controlSpotifyPlayer === 'function') {
+        window.controlSpotifyPlayer('stop');
+    }
+    if (typeof window.toggleMusicPlayer === 'function') {
+        window.toggleMusicPlayer(false);
+    }
+
     hideModal('live-class-modal');
 
     // Ask if they want to mark a scheduled lesson as complete

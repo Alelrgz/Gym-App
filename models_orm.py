@@ -40,6 +40,11 @@ class UserORM(Base):
     phone = Column(String, nullable=True)  # Phone number
     must_change_password = Column(Boolean, default=False)  # Force password change on first login
 
+    # Spotify Integration (for music playback control)
+    spotify_access_token = Column(String, nullable=True)  # OAuth access token
+    spotify_refresh_token = Column(String, nullable=True)  # OAuth refresh token
+    spotify_token_expires_at = Column(String, nullable=True)  # ISO datetime when token expires
+
 # --- EXERCISE & WORKOUT LIBRARY (Global + Personal) ---
 
 class ExerciseORM(Base):

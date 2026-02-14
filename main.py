@@ -3,7 +3,12 @@ import sys
 import time
 import json
 import logging
+import base64
+import secrets
+import urllib.parse
+from datetime import datetime, timedelta
 from dotenv import load_dotenv
+import httpx
 
 # Load .env from the same directory as main.py
 load_dotenv(os.path.join(os.path.dirname(__file__), '.env'))
@@ -742,6 +747,186 @@ async def read_trainer_personal(request: Request, gym_id: str = "default"):
 @app.get("/trainer/courses", response_class=HTMLResponse)
 async def read_trainer_courses(request: Request, gym_id: str = "default"):
     return templates.TemplateResponse("trainer_courses.html", {"request": request, "gym_id": gym_id, "role": "trainer", "mode": "courses", "cache_buster": CACHE_BUSTER})
+
+@app.get("/course/workout/{course_id}", response_class=HTMLResponse)
+async def course_workout_player(request: Request, course_id: str, gym_id: str = "default", current_user: UserORM = Depends(get_current_user)):
+    """Course workout player with music integration"""
+    return templates.TemplateResponse("course_workout.html", {
+        "request": request,
+        "course_id": course_id,
+        "gym_id": gym_id,
+        "role": current_user.role,
+        "cache_buster": CACHE_BUSTER
+    })
+
+# ======================
+# SPOTIFY OAUTH INTEGRATION
+# ======================
+
+# Spotify configuration
+SPOTIFY_CLIENT_ID = os.environ.get("SPOTIFY_CLIENT_ID")
+SPOTIFY_CLIENT_SECRET = os.environ.get("SPOTIFY_CLIENT_SECRET")
+SPOTIFY_REDIRECT_URI = os.environ.get("SPOTIFY_REDIRECT_URI", "https://fitos.studio/api/spotify/callback")
+SPOTIFY_SCOPES = "streaming user-read-email user-read-private user-modify-playback-state user-read-playback-state"
+
+@app.get("/api/spotify/authorize")
+async def spotify_authorize(request: Request, current_user: UserORM = Depends(get_current_user)):
+    """Redirect user to Spotify authorization page"""
+    if not SPOTIFY_CLIENT_ID:
+        raise HTTPException(status_code=500, detail="Spotify client ID not configured")
+
+    # Store user ID in state for callback
+    state = base64.urlsafe_b64encode(current_user.id.encode()).decode()
+
+    # Build authorization URL
+    auth_url = "https://accounts.spotify.com/authorize?" + urllib.parse.urlencode({
+        "response_type": "code",
+        "client_id": SPOTIFY_CLIENT_ID,
+        "scope": SPOTIFY_SCOPES,
+        "redirect_uri": SPOTIFY_REDIRECT_URI,
+        "state": state
+    })
+
+    return RedirectResponse(url=auth_url)
+
+@app.get("/api/spotify/callback")
+async def spotify_callback(
+    code: str,
+    state: str,
+    user_service: UserService = Depends(get_user_service)
+):
+    """Handle Spotify OAuth callback"""
+    if not SPOTIFY_CLIENT_ID or not SPOTIFY_CLIENT_SECRET:
+        raise HTTPException(status_code=500, detail="Spotify credentials not configured")
+
+    try:
+        # Decode user ID from state
+        user_id = base64.urlsafe_b64decode(state.encode()).decode()
+
+        # Exchange code for tokens
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://accounts.spotify.com/api/token",
+                data={
+                    "grant_type": "authorization_code",
+                    "code": code,
+                    "redirect_uri": SPOTIFY_REDIRECT_URI
+                },
+                headers={
+                    "Authorization": f"Basic {base64.b64encode(f'{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}'.encode()).decode()}"
+                }
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Spotify token exchange failed: {response.text}")
+                raise HTTPException(status_code=400, detail="Failed to exchange code for tokens")
+
+            tokens = response.json()
+
+        # Calculate expiration time
+        expires_at = datetime.utcnow() + timedelta(seconds=tokens["expires_in"])
+
+        # Update user with tokens
+        success = user_service.update_spotify_tokens(
+            user_id=user_id,
+            access_token=tokens["access_token"],
+            refresh_token=tokens["refresh_token"],
+            expires_at=expires_at.isoformat()
+        )
+
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to save Spotify tokens")
+
+        # Redirect back to trainer dashboard
+        return RedirectResponse(url="/?spotify_connected=true")
+
+    except Exception as e:
+        logger.error(f"Spotify callback error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/spotify/refresh")
+async def spotify_refresh_token(
+    current_user: UserORM = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    """Refresh Spotify access token"""
+    if not current_user.spotify_refresh_token:
+        raise HTTPException(status_code=400, detail="No refresh token available")
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "https://accounts.spotify.com/api/token",
+                data={
+                    "grant_type": "refresh_token",
+                    "refresh_token": current_user.spotify_refresh_token
+                },
+                headers={
+                    "Authorization": f"Basic {base64.b64encode(f'{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}'.encode()).decode()}"
+                }
+            )
+
+            if response.status_code != 200:
+                logger.error(f"Spotify token refresh failed: {response.text}")
+                raise HTTPException(status_code=400, detail="Failed to refresh token")
+
+            tokens = response.json()
+
+        # Calculate new expiration time
+        expires_at = datetime.utcnow() + timedelta(seconds=tokens["expires_in"])
+
+        # Update user with new access token
+        success = user_service.update_spotify_tokens(
+            user_id=current_user.id,
+            access_token=tokens["access_token"],
+            refresh_token=tokens.get("refresh_token", current_user.spotify_refresh_token),
+            expires_at=expires_at.isoformat()
+        )
+
+        if not success:
+            raise HTTPException(status_code=500, detail="Failed to save refreshed token")
+
+        return {"access_token": tokens["access_token"], "expires_in": tokens["expires_in"]}
+
+    except Exception as e:
+        logger.error(f"Spotify refresh error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/api/spotify/disconnect")
+async def spotify_disconnect(
+    current_user: UserORM = Depends(get_current_user),
+    user_service: UserService = Depends(get_user_service)
+):
+    """Disconnect Spotify account"""
+    success = user_service.update_spotify_tokens(
+        user_id=current_user.id,
+        access_token=None,
+        refresh_token=None,
+        expires_at=None
+    )
+
+    if not success:
+        raise HTTPException(status_code=500, detail="Failed to disconnect Spotify")
+
+    return {"message": "Spotify disconnected successfully"}
+
+@app.get("/api/spotify/status")
+async def spotify_status(current_user: UserORM = Depends(get_current_user)):
+    """Check if user has Spotify connected and token is valid"""
+    if not current_user.spotify_access_token:
+        return {"connected": False}
+
+    # Check if token is expired
+    if current_user.spotify_token_expires_at:
+        expires_at = datetime.fromisoformat(current_user.spotify_token_expires_at)
+        if datetime.utcnow() >= expires_at:
+            return {"connected": True, "expired": True}
+
+    return {
+        "connected": True,
+        "expired": False,
+        "expires_at": current_user.spotify_token_expires_at
+    }
 
 if __name__ == "__main__":
     import argparse

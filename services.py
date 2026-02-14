@@ -532,6 +532,27 @@ class UserService:
         """Delegate to NotesService."""
         return _notes_service.delete_trainer_note(note_id, trainer_id)
 
+    def update_spotify_tokens(self, user_id: str, access_token: str = None, refresh_token: str = None, expires_at: str = None) -> bool:
+        """Update user's Spotify OAuth tokens."""
+        db = get_db_session()
+        try:
+            user = db.query(UserORM).filter(UserORM.id == user_id).first()
+            if not user:
+                return False
+
+            user.spotify_access_token = access_token
+            user.spotify_refresh_token = refresh_token
+            user.spotify_token_expires_at = expires_at
+
+            db.commit()
+            return True
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Failed to update Spotify tokens: {e}")
+            return False
+        finally:
+            db.close()
+
 LEAGUE_TIERS = [
     {"name": "Bronze",   "level": 1, "min_gems": 0,    "color": "#D97706"},
     {"name": "Silver",   "level": 2, "min_gems": 500,  "color": "#9CA3AF"},
