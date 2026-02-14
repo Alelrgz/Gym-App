@@ -925,8 +925,42 @@ async def spotify_status(current_user: UserORM = Depends(get_current_user)):
     return {
         "connected": True,
         "expired": False,
-        "expires_at": current_user.spotify_token_expires_at
+        "expires_at": current_user.spotify_token_expires_at,
+        "access_token": current_user.spotify_access_token
     }
+
+@app.post("/api/spotify/play")
+async def spotify_play(
+    request: Request,
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Start Spotify playback (proxied to avoid CORS issues)"""
+    if not current_user.spotify_access_token:
+        raise HTTPException(status_code=400, detail="Spotify not connected")
+
+    data = await request.json()
+    device_id = data.get("device_id")
+    context_uri = data.get("context_uri")
+
+    if not device_id or not context_uri:
+        raise HTTPException(status_code=400, detail="Missing device_id or context_uri")
+
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.put(
+                f"https://api.spotify.com/v1/me/player/play?device_id={device_id}",
+                json={"context_uri": context_uri},
+                headers={"Authorization": f"Bearer {current_user.spotify_access_token}"}
+            )
+
+            if response.status_code not in [200, 202, 204]:
+                logger.error(f"Spotify play failed: {response.status_code} - {response.text}")
+                raise HTTPException(status_code=response.status_code, detail=response.text)
+
+        return {"success": True}
+    except httpx.HTTPError as e:
+        logger.error(f"Spotify play error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import argparse

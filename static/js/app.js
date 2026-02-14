@@ -11010,6 +11010,7 @@ const MAX_YT_INIT_ATTEMPTS = 10;
 let spotifyPlayer = null;
 let spotifyDeviceId = null;
 let spotifyAccessToken = null;
+let spotifyPlaybackStarted = false; // Track if we've started playback in this session
 
 // Initialize YouTube player
 function initYouTubePlayer(videoId, playlistId = null, retryCount = 0) {
@@ -11098,35 +11099,74 @@ window.controlYouTubePlayer = function(action) {
 };
 
 // Initialize Spotify Web Playback SDK
-window.onSpotifyWebPlaybackSDKReady = async function() {
-    console.log('🎵 Spotify SDK ready');
+// Manually check and initialize Spotify player (fallback if SDK callback doesn't fire)
+async function manuallyInitializeSpotify() {
+    console.log('🔍 Checking if Spotify SDK is loaded...');
+
+    if (typeof Spotify === 'undefined') {
+        console.warn('❌ Spotify SDK not loaded yet');
+        return false;
+    }
+
+    console.log('✅ Spotify SDK is loaded!');
+
+    // Check if player already exists
+    if (spotifyPlayer) {
+        console.log('ℹ️ Spotify player already initialized');
+        return true;
+    }
 
     // Check if user is authenticated
     try {
         const response = await fetch('/api/spotify/status');
         const status = await response.json();
 
+        console.log('📊 Spotify auth status:', status);
+
         if (!status.connected) {
             console.log('ℹ️ Spotify not connected - user needs to authenticate');
-            return;
+            return false;
         }
 
         if (status.expired) {
             console.log('⏳ Token expired - refreshing...');
-            await refreshSpotifyToken();
-        }
-
-        // Get fresh token
-        const tokenResponse = await fetch('/api/spotify/status');
-        const tokenStatus = await tokenResponse.json();
-
-        if (tokenStatus.connected) {
-            await initSpotifyPlayer(spotifyAccessToken);
+            const refreshedToken = await refreshSpotifyToken();
+            if (refreshedToken) {
+                await initSpotifyPlayer(refreshedToken);
+                return true;
+            }
+        } else if (status.access_token) {
+            // Token is valid, initialize player
+            console.log('🚀 Initializing Spotify player with token...');
+            await initSpotifyPlayer(status.access_token);
+            return true;
         }
     } catch (error) {
-        console.error('Error initializing Spotify:', error);
+        console.error('❌ Error initializing Spotify:', error);
+        return false;
     }
+    return false;
+}
+
+// SDK callback (may not fire reliably)
+window.onSpotifyWebPlaybackSDKReady = async function() {
+    console.log('🎵 Spotify SDK ready (callback fired)');
+    await manuallyInitializeSpotify();
 };
+
+// Aggressive fallback: Try to initialize after page load
+setTimeout(async () => {
+    console.log('⏰ Manual Spotify initialization timer fired');
+    await manuallyInitializeSpotify();
+}, 2000);
+
+// Try again after 5 seconds if still not initialized
+setTimeout(async () => {
+    if (!spotifyPlayer) {
+        console.log('⏰ Second attempt at Spotify initialization');
+        await manuallyInitializeSpotify();
+    }
+}, 5000);
 
 // Initialize Spotify player with access token
 async function initSpotifyPlayer(token) {
@@ -11163,11 +11203,79 @@ async function initSpotifyPlayer(token) {
         console.error('❌ Spotify playback error:', message);
     });
 
+    // Player state changes - update UI
+    spotifyPlayer.addListener('player_state_changed', (state) => {
+        if (!state) return;
+        updateSpotifyPlayerUI(state);
+    });
+
     // Connect player
     const connected = await spotifyPlayer.connect();
     if (connected) {
         console.log('🎵 Spotify player connected!');
     }
+}
+
+// Update Spotify player UI with current track info
+function updateSpotifyPlayerUI(state) {
+    const container = document.getElementById('spotify-player-container');
+    if (!container) return;
+
+    const track = state.track_window.current_track;
+    const isPaused = state.paused;
+    const position = state.position;
+    const duration = state.duration;
+
+    // Calculate progress percentage
+    const progressPercent = (position / duration) * 100;
+
+    container.innerHTML = `
+        <div class="bg-gradient-to-br from-green-500/20 to-green-600/20 rounded-lg p-4 border border-green-500/30">
+            <!-- Album Art & Track Info -->
+            <div class="flex items-center gap-3 mb-3">
+                <img src="${track.album.images[0].url}" alt="${track.name}"
+                     class="w-16 h-16 rounded-lg shadow-lg">
+                <div class="flex-1 min-w-0">
+                    <p class="text-white font-bold text-sm truncate">${track.name}</p>
+                    <p class="text-white/60 text-xs truncate">${track.artists.map(a => a.name).join(', ')}</p>
+                </div>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="mb-3">
+                <div class="bg-white/10 rounded-full h-1.5 overflow-hidden">
+                    <div class="bg-green-500 h-full transition-all duration-300"
+                         style="width: ${progressPercent}%"></div>
+                </div>
+                <div class="flex justify-between text-[10px] text-white/40 mt-1">
+                    <span>${formatTime(position)}</span>
+                    <span>${formatTime(duration)}</span>
+                </div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex gap-2">
+                <button onclick="controlSpotifyPlayer('${isPaused ? 'play' : 'pause'}')"
+                        class="flex-1 px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm rounded-xl transition font-bold shadow-lg flex items-center justify-center gap-2">
+                    <span class="text-lg">${isPaused ? '▶️' : '⏸️'}</span>
+                    <span>${isPaused ? 'Play' : 'Pause'}</span>
+                </button>
+            </div>
+
+            <!-- Status -->
+            <p class="text-center text-[10px] text-green-400/70 mt-2">
+                ✅ Connected • Playing from FitOS
+            </p>
+        </div>
+    `;
+}
+
+// Format milliseconds to MM:SS
+function formatTime(ms) {
+    const seconds = Math.floor(ms / 1000);
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
 }
 
 // Refresh Spotify access token
@@ -11184,7 +11292,7 @@ async function refreshSpotifyToken() {
     }
 }
 
-// Play Spotify track/playlist
+// Play Spotify track/playlist (via our backend to avoid CORS)
 async function playSpotifyUri(uri) {
     if (!spotifyDeviceId || !spotifyAccessToken) {
         console.warn('⚠️ Spotify player not ready');
@@ -11192,17 +11300,24 @@ async function playSpotifyUri(uri) {
     }
 
     try {
-        await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${spotifyDeviceId}`, {
-            method: 'PUT',
-            body: JSON.stringify({ context_uri: uri }),
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${spotifyAccessToken}`
-            }
+        const response = await fetch('/api/spotify/play', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                device_id: spotifyDeviceId,
+                context_uri: uri
+            })
         });
+
+        if (!response.ok) {
+            const error = await response.json();
+            console.error('❌ Spotify play failed:', error);
+            return;
+        }
+
         console.log('▶️ Playing Spotify:', uri);
     } catch (error) {
-        console.error('Error playing Spotify:', error);
+        console.error('❌ Error playing Spotify:', error);
     }
 }
 
@@ -11224,14 +11339,30 @@ window.controlSpotifyPlayer = async function(action) {
 
     try {
         if (action === 'play') {
-            // Start playing the playlist
-            if (window.spotifyPlaylistUri && spotifyDeviceId && spotifyAccessToken) {
+            console.log('🎵 Attempting to play Spotify:', {
+                hasPlaylistUri: !!window.spotifyPlaylistUri,
+                hasDeviceId: !!spotifyDeviceId,
+                hasAccessToken: !!spotifyAccessToken,
+                hasPlayer: !!spotifyPlayer,
+                playbackStarted: spotifyPlaybackStarted,
+                playlistUri: window.spotifyPlaylistUri
+            });
+
+            // If playback hasn't started yet, start the playlist from beginning
+            if (!spotifyPlaybackStarted && window.spotifyPlaylistUri && spotifyDeviceId && spotifyAccessToken) {
                 await playSpotifyUri(window.spotifyPlaylistUri);
+                spotifyPlaybackStarted = true;
             } else if (spotifyPlayer) {
+                // Otherwise just resume where we left off
                 await spotifyPlayer.resume();
                 console.log('▶️ Resumed Spotify');
             } else {
-                console.log('⚠️ Spotify player not ready yet');
+                console.warn('⚠️ Spotify player not ready yet. Missing:', {
+                    playlistUri: !window.spotifyPlaylistUri ? 'MISSING' : 'OK',
+                    deviceId: !spotifyDeviceId ? 'MISSING' : 'OK',
+                    accessToken: !spotifyAccessToken ? 'MISSING' : 'OK',
+                    player: !spotifyPlayer ? 'MISSING' : 'OK'
+                });
             }
         } else if (action === 'pause') {
             if (spotifyPlayer) {
@@ -11263,6 +11394,9 @@ window.startLiveClass = function() {
     liveClassData.currentExerciseIndex = 0;
     liveClassData.timerSeconds = 0;
     liveClassData.timerRunning = false;
+
+    // Reset Spotify playback flag for new class
+    spotifyPlaybackStarted = false;
 
     if (liveClassData.exercises.length === 0) {
         showToast('Add exercises to this course first');
@@ -11495,24 +11629,46 @@ async function checkSpotifyAuthAndUpdateUI(playlistUrl) {
             await refreshSpotifyToken();
             await checkSpotifyAuthAndUpdateUI(playlistUrl); // Retry
         } else {
-            // Connected - show player status
-            container.innerHTML = `
-                <div class="bg-green-500/20 rounded-lg p-4 mb-3 text-center border border-green-500/30">
-                    <p class="text-green-400 font-bold mb-1">✅ Spotify Connected</p>
-                    <p class="text-white/60 text-xs mb-3">Music will play automatically with workout timer</p>
-                    <button onclick="disconnectSpotify()"
-                            class="text-xs text-white/50 hover:text-white/80 underline">
-                        Disconnect Spotify
-                    </button>
-                </div>
-            `;
-
+            // Connected - show ready state with playlist info
             // Extract playlist URI from URL
             const playlistMatch = playlistUrl.match(/playlist\/([a-zA-Z0-9]+)/);
             if (playlistMatch) {
                 const playlistId = playlistMatch[1];
                 window.spotifyPlaylistUri = `spotify:playlist:${playlistId}`;
                 console.log('🎵 Spotify playlist ready:', window.spotifyPlaylistUri);
+            }
+
+            // Show ready state (will be replaced when music starts playing)
+            container.innerHTML = `
+                <div class="bg-gradient-to-br from-green-500/20 to-green-600/20 rounded-lg p-4 border border-green-500/30">
+                    <div class="text-center mb-3">
+                        <div class="text-4xl mb-2">🎵</div>
+                        <p class="text-green-400 font-bold mb-1">✅ Spotify Ready</p>
+                        <p class="text-white/60 text-xs">
+                            Music will play automatically when you start the workout
+                        </p>
+                    </div>
+                    <button onclick="disconnectSpotify()"
+                            class="w-full text-xs text-white/50 hover:text-white/80 underline">
+                        Disconnect Spotify
+                    </button>
+                </div>
+            `;
+
+            // Manually initialize Spotify player if SDK is loaded but player not created yet
+            if (!spotifyPlayer && status.access_token) {
+                console.log('🔧 Manually initializing Spotify player...');
+                if (typeof Spotify !== 'undefined') {
+                    await initSpotifyPlayer(status.access_token);
+                } else {
+                    console.log('⏳ Waiting for Spotify SDK to load...');
+                    // Retry after SDK loads
+                    setTimeout(() => {
+                        if (typeof Spotify !== 'undefined' && !spotifyPlayer) {
+                            initSpotifyPlayer(status.access_token);
+                        }
+                    }, 2000);
+                }
             }
         }
     } catch (error) {
