@@ -1591,32 +1591,36 @@ function copyGymCode() {
     const code = codeEl.textContent;
     if (code === '------') return;
 
-    navigator.clipboard.writeText(code).then(() => {
-        // Show success feedback
+    function onCopySuccess() {
         const copyIcon = document.getElementById('copy-icon');
         const copyText = document.getElementById('copy-text');
-        if (!copyIcon || !copyText) return;
-
-        const originalIcon = copyIcon.textContent;
-        const originalText = copyText.textContent;
-
-        copyIcon.textContent = '✓';
-        copyText.textContent = 'Copied!';
-
-        setTimeout(() => {
-            copyIcon.textContent = originalIcon;
-            copyText.textContent = originalText;
-        }, 2000);
-
-        if (typeof showToast === 'function') {
-            showToast('Gym code copied to clipboard!', 'success');
+        if (copyIcon && copyText) {
+            const origIcon = copyIcon.innerHTML;
+            const origText = copyText.textContent;
+            copyIcon.textContent = '✓';
+            copyText.textContent = 'Copied!';
+            setTimeout(() => { copyIcon.innerHTML = origIcon; copyText.textContent = origText; }, 2000);
         }
-    }).catch(err => {
-        console.error('Failed to copy:', err);
-        if (typeof showToast === 'function') {
-            showToast('Failed to copy code', 'error');
-        }
-    });
+        if (typeof showToast === 'function') showToast('Gym code copied to clipboard!', 'success');
+    }
+
+    // navigator.clipboard requires HTTPS; fallback for HTTP/LAN
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(code).then(onCopySuccess).catch(() => fallbackCopy(code));
+    } else {
+        fallbackCopy(code);
+    }
+
+    function fallbackCopy(text) {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.cssText = 'position:fixed;left:-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); onCopySuccess(); }
+        catch(e) { if (typeof showToast === 'function') showToast('Failed to copy code', 'error'); }
+        document.body.removeChild(ta);
+    }
 }
 
 // --- TRAINER APPROVAL FUNCTIONS ---
