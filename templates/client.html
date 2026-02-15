@@ -2847,6 +2847,10 @@ async function selectFitnessGoal(goal) {
         <img src="/static/fitos-logo.svg" class="h-7 object-contain">
     </div>
     <div class="flex items-center space-x-2">
+        <!-- Access QR Button -->
+        <div onclick="openAccessQrModal()" class="relative w-10 h-10 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center tap-effect cursor-pointer" title="Gym Access">
+            <i data-lucide="qr-code" class="w-5 h-5 text-green-400"></i>
+        </div>
         <!-- Booking Icon -->
         <div onclick="openBookingChoiceForMyTrainer()" class="relative w-10 h-10 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center tap-effect cursor-pointer" title="Book Session">
             <i data-lucide="calendar" class="w-5 h-5"></i>
@@ -3169,6 +3173,40 @@ async function selectFitnessGoal(goal) {
                 </div>
             </button>
         </div>
+    </div>
+</div>
+
+<!-- My QR Code Modal -->
+<div id="my-qr-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+    onclick="if(event.target === this) closeMyQrModal()">
+    <div class="bg-[#1a1a1a] p-6 rounded-2xl max-w-sm w-full border border-white/10 text-center">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">My QR Code</h3>
+            <button onclick="closeMyQrModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+        <div id="my-qr-code" class="bg-white rounded-2xl p-4 inline-block mx-auto mb-4"></div>
+        <p id="my-qr-name" class="text-white font-semibold text-lg"></p>
+        <p class="text-gray-400 text-sm mt-1">Show this at the gym entrance</p>
+    </div>
+</div>
+
+<!-- Access QR Modal (30-second temporary code) -->
+<div id="access-qr-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+    onclick="if(event.target === this) closeAccessQrModal()">
+    <div class="bg-[#1a1a1a] p-6 rounded-2xl max-w-sm w-full border border-white/10 text-center">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Gym Access</h3>
+            <button onclick="closeAccessQrModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+        <div id="access-qr-code" class="bg-white rounded-2xl p-4 inline-block mx-auto mb-4"></div>
+        <p id="access-qr-name" class="text-white font-semibold text-lg mb-1"></p>
+        <div class="flex items-center justify-center gap-2 mb-2">
+            <div class="w-full bg-white/10 rounded-full h-2 overflow-hidden">
+                <div id="access-qr-timer-bar" class="bg-green-500 h-full rounded-full transition-all duration-1000 ease-linear" style="width: 100%"></div>
+            </div>
+        </div>
+        <p id="access-qr-timer-text" class="text-green-400 text-sm font-mono font-bold">30s</p>
+        <p class="text-gray-500 text-xs mt-1">Scan at turnstile to enter</p>
     </div>
 </div>
 
@@ -5018,6 +5056,149 @@ async function openGymCoursesModal() {
 
 function closeGymCoursesModal() {
     document.getElementById('gym-courses-modal').classList.add('hidden');
+}
+
+// --- MY QR CODE ---
+let myQrGenerated = false;
+
+function openMyQrModal() {
+    const modal = document.getElementById('my-qr-modal');
+    if (!modal) return;
+
+    // Get user ID from JWT
+    let userId = window.currentUserId;
+    if (!userId) {
+        try {
+            const token = localStorage.getItem('jwt_token');
+            if (token) {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                userId = payload.user_id;
+            }
+        } catch (e) {}
+    }
+
+    if (!userId) {
+        showToast('Unable to generate QR code', 'error');
+        return;
+    }
+
+    // Set name
+    const name = localStorage.getItem('username') || 'Member';
+    document.getElementById('my-qr-name').textContent = name;
+
+    // Generate QR only once
+    if (!myQrGenerated) {
+        const container = document.getElementById('my-qr-code');
+        container.innerHTML = '';
+        new QRCode(container, {
+            text: 'GYMCHECKIN' + userId.replaceAll('-', ''),
+            width: 220,
+            height: 220,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
+        });
+        myQrGenerated = true;
+    }
+
+    modal.classList.remove('hidden');
+}
+
+function closeMyQrModal() {
+    document.getElementById('my-qr-modal').classList.add('hidden');
+}
+
+// --- ACCESS QR (30-second temporary code for turnstile) ---
+let accessQrTimer = null;
+
+async function openAccessQrModal() {
+    const modal = document.getElementById('access-qr-modal');
+    if (!modal) return;
+
+    // Set name
+    const name = localStorage.getItem('username') || 'Member';
+    document.getElementById('access-qr-name').textContent = name;
+
+    // Get temporary token from backend
+    try {
+        const res = await fetch('/api/client/access-token', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        if (!res.ok) throw new Error('Failed to generate access code');
+        const data = await res.json();
+
+        // Generate QR with token data
+        const container = document.getElementById('access-qr-code');
+        container.innerHTML = '';
+        const qrData = 'GYMACCESS' + data.user_id.replaceAll('-', '') + data.token;
+        new QRCode(container, {
+            text: qrData,
+            width: 220,
+            height: 220,
+            colorDark: '#000000',
+            colorLight: '#ffffff',
+            correctLevel: QRCode.CorrectLevel.M
+        });
+
+        modal.classList.remove('hidden');
+        startAccessTimer(30);
+    } catch (e) {
+        showToast('Unable to generate access code', 'error');
+    }
+}
+
+function startAccessTimer(seconds) {
+    if (accessQrTimer) clearInterval(accessQrTimer);
+    let remaining = seconds;
+    const bar = document.getElementById('access-qr-timer-bar');
+    const text = document.getElementById('access-qr-timer-text');
+
+    bar.style.width = '100%';
+    bar.classList.remove('bg-red-500', 'bg-yellow-500');
+    bar.classList.add('bg-green-500');
+    text.classList.remove('text-red-400', 'text-yellow-400');
+    text.classList.add('text-green-400');
+
+    accessQrTimer = setInterval(() => {
+        remaining--;
+        const pct = (remaining / seconds) * 100;
+        bar.style.width = pct + '%';
+        text.textContent = remaining + 's';
+
+        if (remaining <= 10) {
+            bar.classList.remove('bg-green-500', 'bg-yellow-500');
+            bar.classList.add('bg-red-500');
+            text.classList.remove('text-green-400', 'text-yellow-400');
+            text.classList.add('text-red-400');
+        } else if (remaining <= 20) {
+            bar.classList.remove('bg-green-500', 'bg-red-500');
+            bar.classList.add('bg-yellow-500');
+            text.classList.remove('text-green-400', 'text-red-400');
+            text.classList.add('text-yellow-400');
+        }
+
+        if (remaining <= 0) {
+            clearInterval(accessQrTimer);
+            accessQrTimer = null;
+            text.textContent = 'Expired';
+            bar.style.width = '0%';
+            // Auto-regenerate
+            setTimeout(() => {
+                if (!document.getElementById('access-qr-modal').classList.contains('hidden')) {
+                    openAccessQrModal();
+                }
+            }, 500);
+        }
+    }, 1000);
+}
+
+function closeAccessQrModal() {
+    if (accessQrTimer) {
+        clearInterval(accessQrTimer);
+        accessQrTimer = null;
+    }
+    document.getElementById('access-qr-modal').classList.add('hidden');
 }
 
 // Course type config shared across functions

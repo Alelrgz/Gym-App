@@ -21,6 +21,8 @@
     <script src="https://js.stripe.com/v3/"></script>
     <!-- QRCode.js for QR code generation -->
     <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+    <!-- html5-qrcode for camera-based QR scanning -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <!-- Lucide Icons -->
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
     <script src="/static/js/icons.js?v={{ cache_buster }}"></script>
@@ -146,9 +148,9 @@
             <div class="grid grid-cols-4 gap-1" style="width: 280px;">
                 <button onclick="qaAction('scan')" class="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl hover:bg-white/10 active:bg-white/15 transition tap-effect">
                     <div class="w-11 h-11 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
-                        <i data-lucide="camera" class="w-5 h-5 text-orange-400"></i>
+                        <i data-lucide="qr-code" class="w-5 h-5 text-orange-400"></i>
                     </div>
-                    <span class="text-[11px] font-medium text-white/80 whitespace-nowrap">Scan</span>
+                    <span class="text-[11px] font-medium text-white/80 whitespace-nowrap">My QR</span>
                 </button>
                 <button onclick="qaAction('meal')" class="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl hover:bg-white/10 active:bg-white/15 transition tap-effect">
                     <div class="w-11 h-11 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
@@ -237,7 +239,12 @@
         // File input .click() must happen BEFORE toggleQuickActions() to preserve user gesture context (required for camera on mobile)
         function qaAction(type) {
             if (type === 'scan') {
-                document.getElementById('qa-scan-input').click();
+                // Open My QR Code modal if available (client dashboard), otherwise camera scan
+                if (typeof openMyQrModal === 'function') {
+                    openMyQrModal();
+                } else {
+                    document.getElementById('qa-scan-input').click();
+                }
             } else if (type === 'meal') {
                 if (typeof openManualMealModal === 'function') { openManualMealModal(); }
                 else { document.getElementById('qa-scan-input').click(); }

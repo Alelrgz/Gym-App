@@ -167,6 +167,9 @@
                     <path d="M21 21l-4.35-4.35"/>
                 </svg>
             </button>
+            <button onclick="openQrScanner()" class="bg-purple-500 hover:bg-purple-600 px-4 py-3 rounded-xl transition" title="Scan QR Code">
+                <i data-lucide="scan" class="w-5 h-5 text-white"></i>
+            </button>
         </div>
         <button onclick="openOnboardingWizard()" class="bg-green-500 hover:bg-green-600 px-4 py-3 rounded-xl transition flex items-center gap-2 text-white font-semibold">
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
@@ -180,6 +183,26 @@
         <div id="search-results" class="flex-1 space-y-2 hidden"></div>
     </div>
     {% endcall %}
+
+    <!-- QR Scanner Modal -->
+    <div id="qr-scanner-modal" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+        onclick="if(event.target === this) closeQrScanner()">
+        <div class="bg-[#1a1a1a] p-6 rounded-2xl max-w-sm w-full border border-white/10 text-center">
+            <div class="flex justify-between items-center mb-6">
+                <h3 class="text-lg font-bold text-white">Scan Member QR</h3>
+                <button onclick="closeQrScanner()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+            </div>
+            <div class="mb-6">
+                <div id="qr-scan-icon" class="w-24 h-24 mx-auto rounded-2xl bg-purple-500/20 border-2 border-purple-500/50 flex items-center justify-center mb-4 animate-pulse">
+                    <i data-lucide="scan" class="w-12 h-12 text-purple-400"></i>
+                </div>
+                <p id="qr-scan-status" class="text-white font-semibold text-lg">Ready to scan</p>
+                <p class="text-gray-400 text-sm mt-1">Point the QR reader at the member's code</p>
+            </div>
+            <input type="text" id="qr-scanner-input" class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white text-center placeholder-gray-500 outline-none focus:border-purple-500/50 transition"
+                placeholder="Waiting for scan..." autocomplete="off">
+        </div>
+    </div>
 
     <!-- Main Grid: 4 columns on desktop -->
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
@@ -887,9 +910,91 @@ function renderMembers(members) {
     `).join('');
 }
 
-async function searchMember() {
-    const query = document.getElementById('checkin-search').value.trim().toLowerCase();
+// Convert 32 hex chars back to UUID format (8-4-4-4-12)
+function hexToUuid(hex) {
+    return hex.slice(0,8) + '-' + hex.slice(8,12) + '-' + hex.slice(12,16) + '-' + hex.slice(16,20) + '-' + hex.slice(20);
+}
+
+// Show scanned member card with Check In button
+function showScannedMember(memberId, label) {
     const resultsDiv = document.getElementById('search-results');
+    const member = allMembers.find(m => m.id === memberId);
+    if (member) {
+        const initial = member.name ? member.name.charAt(0).toUpperCase() : '?';
+        const profileImg = member.profile_picture_url
+            ? `<img src="${member.profile_picture_url}" class="w-10 h-10 rounded-full object-cover">`
+            : `<div class="w-10 h-10 rounded-full bg-gradient-to-br from-green-500 to-emerald-600 flex items-center justify-center text-white font-bold">${initial}</div>`;
+        resultsDiv.innerHTML = `
+            <div class="glass-card p-4 flex items-center justify-between border border-green-500/30">
+                <div class="flex items-center gap-3">
+                    ${profileImg}
+                    <div>
+                        <span class="text-white font-semibold">${member.name || member.username}</span>
+                        <p class="text-green-400 text-xs flex items-center gap-1">
+                            <i data-lucide="shield-check" class="w-3 h-3"></i> ${label || 'QR Verified'}
+                        </p>
+                    </div>
+                </div>
+                <button onclick="checkInMember('${member.id}')"
+                    class="bg-green-500 hover:bg-green-600 text-white px-4 py-2 rounded-xl font-semibold transition flex items-center gap-2">
+                    <i data-lucide="user-check" class="w-4 h-4"></i> Check In
+                </button>
+            </div>
+        `;
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    } else {
+        resultsDiv.innerHTML = '<p class="text-red-400 text-sm text-center py-2">Member not found in system</p>';
+    }
+    resultsDiv.classList.remove('hidden');
+}
+
+async function searchMember() {
+    const input = document.getElementById('checkin-search');
+    const rawValue = input.value.trim();
+    const resultsDiv = document.getElementById('search-results');
+
+    // QR scanner detection: permanent check-in code (alphanumeric, no colons)
+    // Format: GYMCHECKIN + 32 hex chars (UUID without hyphens)
+    if (rawValue.startsWith('GYMCHECKIN')) {
+        const hex = rawValue.replace('GYMCHECKIN', '');
+        input.value = '';
+        if (hex.length >= 32) {
+            const memberId = hexToUuid(hex.slice(0, 32));
+            showScannedMember(memberId, 'Member QR');
+        }
+        return;
+    }
+
+    // QR scanner detection: temporary access code (alphanumeric, no colons)
+    // Format: GYMACCESS + 32 hex chars (UUID) + 12 hex chars (token)
+    if (rawValue.startsWith('GYMACCESS')) {
+        const payload = rawValue.replace('GYMACCESS', '');
+        input.value = '';
+        if (payload.length >= 44) {
+            const userId = hexToUuid(payload.slice(0, 32));
+            const token = payload.slice(32, 44);
+            try {
+                const res = await fetch('/api/staff/verify-access', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include',
+                    body: JSON.stringify({ user_id: userId, token: token })
+                });
+                if (res.ok) {
+                    showScannedMember(userId, 'Access Verified');
+                } else {
+                    const err = await res.json();
+                    showToast(err.detail || 'Access code expired', 'error');
+                    resultsDiv.classList.add('hidden');
+                }
+            } catch (e) {
+                showToast('Failed to verify access code', 'error');
+            }
+        }
+        return;
+    }
+
+    const query = rawValue.toLowerCase();
 
     if (!query) {
         resultsDiv.classList.add('hidden');
@@ -1468,6 +1573,9 @@ document.getElementById('plan-selector-modal')?.addEventListener('click', (e) =>
     }
 });
 
+// Auto-focus check-in input for QR scanner
+document.getElementById('checkin-search')?.focus();
+
 // Search on Enter key
 document.getElementById('checkin-search')?.addEventListener('keypress', (e) => {
     if (e.key === 'Enter') searchMember();
@@ -1479,6 +1587,63 @@ document.getElementById('checkin-search')?.addEventListener('input', (e) => {
         searchMember();
     } else {
         document.getElementById('search-results').classList.add('hidden');
+    }
+});
+
+// ========== QR SCANNER (USB Reader) ==========
+function openQrScanner() {
+    const modal = document.getElementById('qr-scanner-modal');
+    const input = document.getElementById('qr-scanner-input');
+    const icon = document.getElementById('qr-scan-icon');
+    const status = document.getElementById('qr-scan-status');
+
+    // Reset state
+    input.value = '';
+    icon.classList.remove('bg-green-500/20', 'border-green-500/50');
+    icon.classList.add('bg-purple-500/20', 'border-purple-500/50', 'animate-pulse');
+    status.textContent = 'Ready to scan';
+    status.classList.remove('text-green-400');
+    status.classList.add('text-white');
+
+    modal.classList.remove('hidden');
+
+    // Focus the input so the USB scanner types into it
+    setTimeout(() => input.focus(), 100);
+
+    // Re-init lucide icons in modal
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function closeQrScanner() {
+    document.getElementById('qr-scanner-modal').classList.add('hidden');
+    // Refocus the main check-in input
+    document.getElementById('checkin-search')?.focus();
+}
+
+// Handle scanner input (Enter key triggers check-in)
+document.getElementById('qr-scanner-input')?.addEventListener('keypress', async (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const input = document.getElementById('qr-scanner-input');
+        const value = input.value.trim();
+        if (!value) return;
+
+        // Feed into the main check-in flow
+        document.getElementById('checkin-search').value = value;
+        input.value = '';
+
+        // Show success animation briefly
+        const icon = document.getElementById('qr-scan-icon');
+        const status = document.getElementById('qr-scan-status');
+        icon.classList.remove('bg-purple-500/20', 'border-purple-500/50', 'animate-pulse');
+        icon.classList.add('bg-green-500/20', 'border-green-500/50');
+        status.textContent = 'Scanned!';
+        status.classList.remove('text-white');
+        status.classList.add('text-green-400');
+
+        // Close scanner and process
+        closeQrScanner();
+        await searchMember();
     }
 });
 

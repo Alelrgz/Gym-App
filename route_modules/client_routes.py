@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
+import hashlib, time
 from auth import get_current_user
 from models import ClientData, ClientProfileUpdate
 from models_orm import UserORM, ClientProfileORM, ChatRequestORM, ClientDietSettingsORM
@@ -677,3 +678,59 @@ async def get_member_profile(
         }
     finally:
         db.close()
+
+
+# Secret key for HMAC — in production use env var
+_ACCESS_SECRET = "gym-turnstile-access-2024"
+
+
+@router.post("/api/client/access-token")
+async def generate_access_token(
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Generate a temporary 30-second access token for turnstile entry."""
+    # Round time to 30-second windows so token is valid for up to 30s
+    window = int(time.time() // 30)
+    raw = f"{current_user.id}:{window}:{_ACCESS_SECRET}"
+    token = hashlib.sha256(raw.encode()).hexdigest()[:12]
+    return {
+        "token": token,
+        "user_id": current_user.id,
+        "username": current_user.username,
+        "expires_in": 30
+    }
+
+
+@router.post("/api/staff/verify-access")
+async def verify_access_token(
+    data: dict,
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Verify a temporary access token scanned at the turnstile."""
+    token = data.get("token", "")
+    user_id = data.get("user_id", "")
+
+    if not token or not user_id:
+        raise HTTPException(status_code=400, detail="Token and user_id required")
+
+    # Check current and previous 30-second window (in case of edge timing)
+    current_window = int(time.time() // 30)
+    for window in [current_window, current_window - 1]:
+        raw = f"{user_id}:{window}:{_ACCESS_SECRET}"
+        expected = hashlib.sha256(raw.encode()).hexdigest()[:12]
+        if token == expected:
+            # Valid — also check-in the member
+            db = get_db_session()
+            try:
+                member = db.query(UserORM).filter(UserORM.id == user_id).first()
+                if not member:
+                    raise HTTPException(status_code=404, detail="Member not found")
+                return {
+                    "valid": True,
+                    "username": member.username,
+                    "user_id": user_id
+                }
+            finally:
+                db.close()
+
+    raise HTTPException(status_code=401, detail="Token expired or invalid")
