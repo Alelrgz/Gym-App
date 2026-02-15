@@ -155,6 +155,7 @@ async def get_approved_trainers(
 
 class GymSettingsUpdate(BaseModel):
     gym_name: Optional[str] = None
+    password: Optional[str] = None
 
 
 @router.get("/api/owner/gym-settings")
@@ -174,9 +175,17 @@ async def update_gym_settings(
     request: GymSettingsUpdate,
     user: UserORM = Depends(get_current_user)
 ):
-    """Update gym name."""
+    """Update gym name (requires password confirmation)."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can update gym settings")
+
+    # Require password for gym name changes
+    if request.gym_name is not None:
+        if not request.password:
+            raise HTTPException(status_code=400, detail="Password required to change gym name")
+        from simple_auth import verify_password
+        if not verify_password(request.password, user.hashed_password):
+            raise HTTPException(status_code=403, detail="Incorrect password")
 
     db = get_db_session()
     try:

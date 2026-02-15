@@ -67,18 +67,18 @@
         </div>
     </div>
 
-    <!-- Gym Name -->
+    <!-- Gym Name (read-only display, edit via modal) -->
     <div>
         <label class="text-xs text-gray-400 uppercase tracking-wider block mb-2">Gym Name</label>
-        <div class="flex gap-2">
-            <input type="text" id="gym-name-input" placeholder="Enter your gym name..."
-                class="flex-1 bg-white/5 border border-white/10 rounded-xl p-3 text-white text-sm outline-none focus:border-primary/50 transition">
-            <button onclick="saveGymName()"
-                class="bg-primary/20 hover:bg-primary/30 text-primary px-4 py-2 rounded-xl transition text-sm font-semibold">
-                Save
+        <div class="flex gap-2 items-center">
+            <div id="gym-name-display" class="flex-1 bg-white/5 border border-white/10 rounded-xl p-3 text-white text-sm opacity-60">—</div>
+            <button onclick="openGymNameModal()"
+                class="w-10 h-10 flex items-center justify-center rounded-xl bg-white/5 hover:bg-white/10 transition">
+                <i data-lucide="pencil" class="w-4 h-4 text-gray-400"></i>
             </button>
         </div>
     </div>
+
     {% endcall %}
 
     <!-- Gym Code Card - Prominent -->
@@ -1466,10 +1466,9 @@ async function loadGymSettings() {
         const data = await response.json();
 
         // Gym name
-        const nameInput = document.getElementById('gym-name-input');
-        if (nameInput && data.gym_name) {
-            nameInput.value = data.gym_name;
-            // Update header displays
+        const nameDisplay = document.getElementById('gym-name-display');
+        if (nameDisplay && data.gym_name) {
+            nameDisplay.textContent = data.gym_name;
             const h1 = document.getElementById('gym-name-owner');
             const desktopName = document.getElementById('desktop-gym-name');
             if (h1) h1.textContent = data.gym_name;
@@ -1498,25 +1497,42 @@ async function loadGymSettings() {
     }
 }
 
-async function saveGymName() {
-    const nameInput = document.getElementById('gym-name-input');
-    if (!nameInput) return;
+function openGymNameModal() {
+    const current = document.getElementById('gym-name-display').textContent;
+    document.getElementById('gym-name-new').value = current === '—' ? '' : current;
+    document.getElementById('gym-name-password').value = '';
+    document.getElementById('gym-name-modal').classList.remove('hidden');
+    setTimeout(() => document.getElementById('gym-name-new').focus(), 100);
+}
+
+function closeGymNameModal() {
+    document.getElementById('gym-name-modal').classList.add('hidden');
+}
+
+async function confirmGymNameEdit() {
+    const newName = document.getElementById('gym-name-new').value.trim();
+    const password = document.getElementById('gym-name-password').value;
+    if (!newName) { if (typeof showToast === 'function') showToast('Enter a gym name', 'error'); return; }
+    if (!password) { if (typeof showToast === 'function') showToast('Enter your password', 'error'); return; }
 
     try {
         const response = await fetch('/api/owner/gym-settings', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ gym_name: nameInput.value })
+            body: JSON.stringify({ gym_name: newName, password: password })
         });
         if (response.ok) {
             if (typeof showToast === 'function') showToast('Gym name saved!', 'success');
-            // Update header displays
-            const name = nameInput.value.trim();
+            document.getElementById('gym-name-display').textContent = newName;
             const h1 = document.getElementById('gym-name-owner');
             const desktopName = document.getElementById('desktop-gym-name');
-            if (h1 && name) h1.textContent = name;
-            if (desktopName && name) desktopName.textContent = name;
+            if (h1) h1.textContent = newName;
+            if (desktopName) desktopName.textContent = newName;
+            closeGymNameModal();
+        } else {
+            const data = await response.json();
+            if (typeof showToast === 'function') showToast(data.detail || 'Failed to save', 'error');
         }
     } catch (error) {
         console.error('Error saving gym name:', error);
@@ -2791,4 +2807,22 @@ if (currentMode === 'settings') {
     loadMessageLog();
 }
 </script>
+
+<!-- Gym Name Edit Modal (top-level so fixed positioning works) -->
+<div id="gym-name-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[80] hidden flex items-center justify-center px-4" onclick="if(event.target===this)closeGymNameModal()">
+    <div class="bg-gray-900 border border-white/10 rounded-2xl p-6 w-full max-w-sm">
+        <h3 class="text-white font-bold text-lg mb-1">Change Gym Name</h3>
+        <p class="text-gray-400 text-xs mb-4">Enter the new name and your password to confirm</p>
+        <input type="text" id="gym-name-new" placeholder="New gym name"
+            class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white text-sm outline-none focus:border-primary/50 transition mb-3">
+        <input type="password" id="gym-name-password" placeholder="Your password"
+            class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white text-sm outline-none focus:border-primary/50 transition mb-4">
+        <div class="flex gap-2">
+            <button onclick="closeGymNameModal()"
+                class="flex-1 py-3 rounded-xl bg-white/5 text-gray-400 text-sm font-semibold hover:bg-white/10 transition">Cancel</button>
+            <button onclick="confirmGymNameEdit()"
+                class="flex-1 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 text-white text-sm font-semibold active:scale-95 transition-transform">Confirm</button>
+        </div>
+    </div>
+</div>
 {% endblock %}
