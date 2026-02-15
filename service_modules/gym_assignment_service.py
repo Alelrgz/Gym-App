@@ -376,11 +376,11 @@ class GymAssignmentService:
             db.close()
 
     def get_approved_trainers(self, owner_id: str) -> list:
-        """Get all approved trainers for this gym owner."""
+        """Get all approved trainers and staff for this gym owner."""
         db = get_db_session()
         try:
             trainers = db.query(UserORM).filter(
-                UserORM.role == "trainer",
+                UserORM.role.in_(["trainer", "staff"]),
                 UserORM.gym_owner_id == owner_id,
                 UserORM.is_approved == True
             ).all()
@@ -390,12 +390,14 @@ class GymAssignmentService:
             for trainer in trainers:
                 client_count = db.query(ClientProfileORM).filter(
                     ClientProfileORM.trainer_id == trainer.id
-                ).count()
+                ).count() if trainer.role == "trainer" else 0
 
                 result.append({
                     "id": trainer.id,
                     "username": trainer.username,
                     "email": trainer.email,
+                    "role": trainer.role,
+                    "sub_role": trainer.sub_role,
                     "client_count": client_count,
                     "created_at": trainer.created_at
                 })
