@@ -201,6 +201,25 @@ async def do_register(
     import uuid
     import random
     import string
+    import traceback
+
+    try:
+        return await _do_register(request, username, password, email, role, sub_role, secret_key, gym_code, db)
+    except Exception as e:
+        import logging
+        logging.getLogger("gym_app").error(f"Registration error: {e}\n{traceback.format_exc()}")
+        return templates.TemplateResponse("register.html", {
+            "request": request,
+            "error": f"Registration failed: {str(e)}",
+            "gym_id": "iron_gym",
+            "role": "client",
+            "mode": "auth"
+        })
+
+async def _do_register(request, username, password, email, role, sub_role, secret_key, gym_code, db):
+    import uuid
+    import random
+    import string
 
     # Validate password length
     if not password or len(password) < 12:
