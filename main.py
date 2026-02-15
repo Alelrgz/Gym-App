@@ -190,6 +190,25 @@ from route_modules.crm_routes import router as crm_router
 app.include_router(crm_router)
 
 
+def _safe_add_columns(engine, table_name, columns_list):
+    """Add columns to a table using IF NOT EXISTS (PostgreSQL 9.6+) or fallback."""
+    from sqlalchemy import text
+    from database import IS_POSTGRES
+
+    for col_name, col_type in columns_list:
+        try:
+            with engine.connect() as conn:
+                if IS_POSTGRES:
+                    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
+                else:
+                    # SQLite doesn't support IF NOT EXISTS for columns, use try/except
+                    conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type}"))
+                conn.commit()
+                logger.info(f"Migration: added {col_name} to {table_name}")
+        except Exception as e:
+            logger.debug(f"Migration: {col_name} on {table_name} skipped: {e}")
+
+
 def run_migrations(engine):
     """Run database migrations to add new columns."""
     from sqlalchemy import text, inspect
@@ -313,63 +332,41 @@ def run_migrations(engine):
                 except Exception as e:
                     logger.debug(f"Column session_type may already exist: {e}")
 
-    # Add new columns to client_profile
-    if 'client_profile' in inspector.get_table_names():
-        columns = [col['name'] for col in inspector.get_columns('client_profile')]
-        profile_new_cols = [
-            ("date_of_birth", "TEXT"),
-            ("emergency_contact_name", "TEXT"),
-            ("emergency_contact_phone", "TEXT"),
-            ("is_premium", "BOOLEAN DEFAULT FALSE"),
-            ("privacy_mode", "TEXT DEFAULT 'public'"),
-            ("weight", "DOUBLE PRECISION"),
-            ("body_fat_pct", "DOUBLE PRECISION"),
-            ("fat_mass", "DOUBLE PRECISION"),
-            ("lean_mass", "DOUBLE PRECISION"),
-            ("strength_goal_upper", "INTEGER"),
-            ("strength_goal_lower", "INTEGER"),
-            ("strength_goal_cardio", "INTEGER"),
-            ("health_score", "INTEGER DEFAULT 0"),
-            ("gems", "INTEGER DEFAULT 0"),
-        ]
-        for col_name, col_type in profile_new_cols:
-            if col_name not in columns:
-                with engine.connect() as conn:
-                    try:
-                        conn.execute(text(f"ALTER TABLE client_profile ADD COLUMN {col_name} {col_type}"))
-                        conn.commit()
-                        logger.info(f"Added column {col_name} to client_profile table")
-                    except Exception as e:
-                        logger.debug(f"Column {col_name} may already exist: {e}")
+    # Add new columns to client_profile (PostgreSQL-safe)
+    _safe_add_columns(engine, 'client_profile', [
+        ("date_of_birth", "TEXT"),
+        ("emergency_contact_name", "TEXT"),
+        ("emergency_contact_phone", "TEXT"),
+        ("is_premium", "BOOLEAN DEFAULT FALSE"),
+        ("privacy_mode", "TEXT DEFAULT 'public'"),
+        ("weight", "DOUBLE PRECISION"),
+        ("body_fat_pct", "DOUBLE PRECISION"),
+        ("fat_mass", "DOUBLE PRECISION"),
+        ("lean_mass", "DOUBLE PRECISION"),
+        ("strength_goal_upper", "INTEGER"),
+        ("strength_goal_lower", "INTEGER"),
+        ("strength_goal_cardio", "INTEGER"),
+        ("health_score", "INTEGER DEFAULT 0"),
+        ("gems", "INTEGER DEFAULT 0"),
+    ])
 
-    # Add all potentially missing columns to users table
-    if 'users' in inspector.get_table_names():
-        columns = [col['name'] for col in inspector.get_columns('users')]
-        user_new_cols = [
-            ('phone', 'TEXT'),
-            ('must_change_password', 'BOOLEAN DEFAULT FALSE'),
-            ('profile_picture', 'TEXT'),
-            ('bio', 'TEXT'),
-            ('specialties', 'TEXT'),
-            ('settings', 'TEXT'),
-            ('gym_name', 'TEXT'),
-            ('gym_logo', 'TEXT'),
-            ('session_rate', 'DOUBLE PRECISION'),
-            ('stripe_account_id', 'TEXT'),
-            ('stripe_account_status', 'TEXT'),
-            ('spotify_access_token', 'TEXT'),
-            ('spotify_refresh_token', 'TEXT'),
-            ('spotify_token_expires_at', 'TEXT'),
-        ]
-        for col_name, col_type in user_new_cols:
-            if col_name not in columns:
-                with engine.connect() as conn:
-                    try:
-                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
-                        conn.commit()
-                        logger.info(f"Added column {col_name} to users table")
-                    except Exception as e:
-                        logger.debug(f"Column {col_name} may already exist: {e}")
+    # Add all potentially missing columns to users table (PostgreSQL-safe with IF NOT EXISTS)
+    _safe_add_columns(engine, 'users', [
+        ('phone', 'TEXT'),
+        ('must_change_password', 'BOOLEAN DEFAULT FALSE'),
+        ('profile_picture', 'TEXT'),
+        ('bio', 'TEXT'),
+        ('specialties', 'TEXT'),
+        ('settings', 'TEXT'),
+        ('gym_name', 'TEXT'),
+        ('gym_logo', 'TEXT'),
+        ('session_rate', 'DOUBLE PRECISION'),
+        ('stripe_account_id', 'TEXT'),
+        ('stripe_account_status', 'TEXT'),
+        ('spotify_access_token', 'TEXT'),
+        ('spotify_refresh_token', 'TEXT'),
+        ('spotify_token_expires_at', 'TEXT'),
+    ])
 
     # Add health_score to client_daily_diet_summary
     if 'client_daily_diet_summary' in inspector.get_table_names():
