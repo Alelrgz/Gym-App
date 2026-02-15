@@ -11047,9 +11047,39 @@ function initYouTubePlayer(videoId, playlistId = null, retryCount = 0) {
             events: {
                 onReady: (event) => {
                     console.log('✅ YouTube player initialized and ready!');
+                    // If playlist, load it properly so we can skip restricted videos
+                    if (playlistId) {
+                        event.target.cuePlaylist({list: playlistId, listType: 'playlist'});
+                        console.log('📋 Loaded playlist:', playlistId);
+                    }
                 },
                 onError: (err) => {
                     console.error('❌ YouTube player error:', err);
+                    // Error 150 or 101 = embedding disabled — auto-skip to next in playlist
+                    if (err && (err.data === 150 || err.data === 101)) {
+                        if (playlistId && youtubePlayer && typeof youtubePlayer.nextVideo === 'function') {
+                            console.log('⏭️ Skipping restricted video, trying next...');
+                            youtubePlayer.nextVideo();
+                        } else {
+                            // Single video with no playlist — show fallback
+                            const originalUrl = (typeof liveClassData !== 'undefined' && liveClassData.musicLinks && liveClassData.musicLinks[0])
+                                ? liveClassData.musicLinks[0].url : `https://www.youtube.com/watch?v=${videoId}`;
+                            const container = document.getElementById('youtube-player-iframe');
+                            if (container) {
+                                container.outerHTML = `
+                                    <div class="flex flex-col items-center justify-center p-6 text-center bg-black/40 rounded-xl" style="min-height:200px">
+                                        <svg class="w-12 h-12 text-red-500 mb-3" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0C.488 3.45.029 5.804 0 12c.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0C23.512 20.55 23.971 18.196 24 12c-.029-6.185-.484-8.549-4.385-8.816zM9 16V8l8 4-8 4z"/></svg>
+                                        <p class="text-white font-semibold mb-1">Embedding restricted</p>
+                                        <p class="text-gray-400 text-sm mb-4">This video can't play inline</p>
+                                        <a href="${originalUrl}" target="_blank" rel="noopener"
+                                            class="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-5 py-2.5 rounded-xl font-semibold transition">
+                                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M19.615 3.184c-3.604-.246-11.631-.245-15.23 0C.488 3.45.029 5.804 0 12c.029 6.185.484 8.549 4.385 8.816 3.6.245 11.626.246 15.23 0C23.512 20.55 23.971 18.196 24 12c-.029-6.185-.484-8.549-4.385-8.816zM9 16V8l8 4-8 4z"/></svg>
+                                            Play on YouTube
+                                        </a>
+                                    </div>`;
+                            }
+                        }
+                    }
                 }
             }
         });
@@ -11736,10 +11766,7 @@ function getMusicEmbedUrl(url, type, autoplay = false) {
 
         // Build embed URL with playlist or video
         const autoplayParam = autoplay ? '1' : '0';
-        if (playlistId && videoId) {
-            // If both playlist and video, embed playlist starting with specific video
-            return `https://www.youtube.com/embed/${videoId}?list=${playlistId}&autoplay=${autoplayParam}`;
-        } else if (playlistId) {
+        if (playlistId) {
             // Just playlist
             return `https://www.youtube.com/embed/videoseries?list=${playlistId}&autoplay=${autoplayParam}`;
         } else if (videoId) {
@@ -11810,7 +11837,7 @@ window.showLiveExercise = function(index) {
     // Set default timer to rest time
     liveClassData.timerSeconds = exercise.rest || 60;
     updateTimerDisplay();
-    stopTimer();
+    stopTimer(true); // switching exercise — don't pause music
 };
 
 // Navigation
@@ -11878,15 +11905,22 @@ function startTimer() {
         liveClassData.timerSeconds--;
         updateTimerDisplay();
 
+        // Countdown beeps at 5, 4, 3, 2, 1 seconds
+        if (liveClassData.timerSeconds > 0 && liveClassData.timerSeconds <= 5) {
+            playCountdownTick(liveClassData.timerSeconds);
+        }
+
         if (liveClassData.timerSeconds <= 0) {
-            stopTimer();
+            stopTimer(true); // completed naturally — don't pause music
             playTimerEndSound();
 
             // Auto-advance to next exercise if enabled
             if (liveClassData.autoAdvance && liveClassData.currentExerciseIndex < liveClassData.exercises.length - 1) {
                 showToast('Moving to next exercise...');
                 setTimeout(() => {
-                    nextExercise();
+                    showLiveExercise(liveClassData.currentExerciseIndex + 1);
+                    // Auto-start timer for next exercise
+                    setTimeout(() => startTimer(), 500);
                 }, 1500);
             } else if (liveClassData.autoAdvance && liveClassData.currentExerciseIndex >= liveClassData.exercises.length - 1) {
                 showToast('Workout complete!', 'success');
@@ -11897,7 +11931,7 @@ function startTimer() {
     }, 1000);
 }
 
-function stopTimer() {
+function stopTimer(timerCompleted = false) {
     liveClassData.timerRunning = false;
     if (liveClassData.timerInterval) {
         clearInterval(liveClassData.timerInterval);
@@ -11907,12 +11941,14 @@ function stopTimer() {
     document.getElementById('timer-toggle-btn').classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
     document.getElementById('timer-toggle-btn').classList.add('bg-green-600', 'hover:bg-green-700');
 
-    // Pause media players when timer stops
-    if (typeof window.controlYouTubePlayer === 'function') {
-        window.controlYouTubePlayer('pause');
-    }
-    if (typeof window.controlSpotifyPlayer === 'function') {
-        window.controlSpotifyPlayer('pause');
+    // Only pause music on manual pause, not when timer completes or exercise changes
+    if (!timerCompleted) {
+        if (typeof window.controlYouTubePlayer === 'function') {
+            window.controlYouTubePlayer('pause');
+        }
+        if (typeof window.controlSpotifyPlayer === 'function') {
+            window.controlSpotifyPlayer('pause');
+        }
     }
 }
 
@@ -11991,6 +12027,29 @@ function playTimerEndSound() {
     } catch (e) {
         console.log('Could not play timer sound:', e);
     }
+}
+
+// Pleasant countdown tick at 5, 4, 3, 2, 1 seconds
+function playCountdownTick(secondsLeft) {
+    try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        // Rising pitch as we approach 0: 5s=500Hz, 4s=600Hz, ... 1s=900Hz
+        const freq = secondsLeft === 1 ? 1000 : 400 + (6 - secondsLeft) * 100;
+        osc.frequency.value = freq;
+        osc.type = 'sine';
+
+        // Short soft beep
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.15);
+
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.15);
+    } catch (e) {}
 }
 
 // Music toggle (just shows/hides sidebar on mobile)

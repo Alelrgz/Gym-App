@@ -777,7 +777,14 @@ async def course_workout_player(request: Request, course_id: str, gym_id: str = 
 # Spotify configuration
 SPOTIFY_CLIENT_ID = os.environ.get("SPOTIFY_CLIENT_ID")
 SPOTIFY_CLIENT_SECRET = os.environ.get("SPOTIFY_CLIENT_SECRET")
-SPOTIFY_REDIRECT_URI = os.environ.get("SPOTIFY_REDIRECT_URI", "https://fitos.studio/api/spotify/callback")
+SPOTIFY_REDIRECT_URI = os.environ.get("SPOTIFY_REDIRECT_URI", "")  # Auto-detected from request if empty
+
+def _get_spotify_redirect_uri(request: Request) -> str:
+    """Build Spotify redirect URI from the incoming request's origin."""
+    if SPOTIFY_REDIRECT_URI:
+        return SPOTIFY_REDIRECT_URI
+    base = str(request.base_url).rstrip("/")
+    return f"{base}/api/spotify/callback"
 SPOTIFY_SCOPES = "streaming user-read-email user-read-private user-modify-playback-state user-read-playback-state"
 
 @app.get("/api/spotify/authorize")
@@ -790,11 +797,12 @@ async def spotify_authorize(request: Request, current_user: UserORM = Depends(ge
     state = base64.urlsafe_b64encode(current_user.id.encode()).decode()
 
     # Build authorization URL
+    redirect_uri = _get_spotify_redirect_uri(request)
     auth_url = "https://accounts.spotify.com/authorize?" + urllib.parse.urlencode({
         "response_type": "code",
         "client_id": SPOTIFY_CLIENT_ID,
         "scope": SPOTIFY_SCOPES,
-        "redirect_uri": SPOTIFY_REDIRECT_URI,
+        "redirect_uri": redirect_uri,
         "state": state
     })
 
@@ -802,6 +810,7 @@ async def spotify_authorize(request: Request, current_user: UserORM = Depends(ge
 
 @app.get("/api/spotify/callback")
 async def spotify_callback(
+    request: Request,
     code: str,
     state: str,
     user_service: UserService = Depends(get_user_service)
@@ -813,6 +822,7 @@ async def spotify_callback(
     try:
         # Decode user ID from state
         user_id = base64.urlsafe_b64decode(state.encode()).decode()
+        redirect_uri = _get_spotify_redirect_uri(request)
 
         # Exchange code for tokens
         async with httpx.AsyncClient() as client:
@@ -821,7 +831,7 @@ async def spotify_callback(
                 data={
                     "grant_type": "authorization_code",
                     "code": code,
-                    "redirect_uri": SPOTIFY_REDIRECT_URI
+                    "redirect_uri": redirect_uri
                 },
                 headers={
                     "Authorization": f"Basic {base64.b64encode(f'{SPOTIFY_CLIENT_ID}:{SPOTIFY_CLIENT_SECRET}'.encode()).decode()}"
@@ -848,8 +858,9 @@ async def spotify_callback(
         if not success:
             raise HTTPException(status_code=500, detail="Failed to save Spotify tokens")
 
-        # Redirect back to trainer dashboard
-        return RedirectResponse(url="/?spotify_connected=true")
+        # Redirect back to dashboard (use request origin to preserve cookies)
+        base = str(request.base_url).rstrip("/")
+        return RedirectResponse(url=f"{base}/?spotify_connected=true")
 
     except Exception as e:
         logger.error(f"Spotify callback error: {e}")
