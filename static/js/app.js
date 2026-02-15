@@ -8561,7 +8561,8 @@ window.sendChatMessage = async function() {
         });
 
         if (!res.ok) {
-            throw new Error('Failed to send message');
+            const errData = await res.json().catch(() => ({}));
+            throw new Error(errData.detail || 'Failed to send message');
         }
 
         const result = await res.json();
@@ -8580,7 +8581,7 @@ window.sendChatMessage = async function() {
 
     } catch (e) {
         console.error('Error sending message:', e);
-        showToast('Failed to send message');
+        showToast(e.message || 'Failed to send message', 'error');
 
         // Remove temp message on error
         currentChatState.messages = currentChatState.messages.filter(m => m.id !== tempMsg.id);
@@ -8622,15 +8623,16 @@ async function updateUnreadBadge() {
         });
         if (res.ok) {
             const data = await res.json();
-            const badge = document.getElementById('unread-messages-badge');
-            if (badge) {
+            // Update all unread badge elements (desktop + mobile)
+            const badges = document.querySelectorAll('#unread-messages-badge, #unread-messages-badge-mobile');
+            badges.forEach(badge => {
                 if (data.unread_count > 0) {
                     badge.innerText = data.unread_count;
                     badge.classList.remove('hidden');
                 } else {
                     badge.classList.add('hidden');
                 }
-            }
+            });
         }
     } catch (e) {
         console.error('Error updating unread badge:', e);
@@ -8650,7 +8652,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Initial unread badge update
-    if (APP_CONFIG.role === 'trainer' || APP_CONFIG.role === 'client') {
+    if (APP_CONFIG.role === 'trainer' || APP_CONFIG.role === 'client' || APP_CONFIG.role === 'staff') {
         updateUnreadBadge();
     }
 });

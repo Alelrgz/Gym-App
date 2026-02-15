@@ -21,6 +21,11 @@
            class="px-4 py-2 rounded-xl text-sm font-semibold transition {{ 'bg-primary/20 text-primary border border-primary/30' if mode != 'settings' else 'text-white/60 hover:bg-white/5' }}">
             <i data-lucide="home" class="w-5 h-5 inline-block align-middle"></i> Dashboard
         </a>
+        <button onclick="openConversationsModal()"
+           class="px-4 py-2 rounded-xl text-sm font-semibold transition text-white/60 hover:bg-white/5 relative">
+            <i data-lucide="message-circle" class="w-5 h-5 inline-block align-middle"></i> Messages
+            <span id="unread-messages-badge" class="hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full text-center leading-5">0</span>
+        </button>
         <a href="{{ 'staff.html' if static_build else '/?gym_id=' + gym_id + '&role=staff&mode=settings' }}"
            class="px-4 py-2 rounded-xl text-sm font-semibold transition {{ 'bg-primary/20 text-primary border border-primary/30' if mode == 'settings' else 'text-white/60 hover:bg-white/5' }}">
             <i data-lucide="settings" class="w-5 h-5 inline-block align-middle"></i> Settings
@@ -262,25 +267,6 @@
     </div>
 </div>
 
-<!-- Message Modal -->
-<div id="message-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="glass-card p-6 rounded-2xl max-w-md w-full">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-bold text-white">Send Message</h3>
-            <button onclick="closeMessageModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
-        </div>
-
-        <p class="text-sm text-gray-400 mb-4">To: <span id="message-recipient" class="text-white font-semibold"></span></p>
-
-        <textarea id="message-content" rows="4"
-            class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition resize-none mb-4"
-            placeholder="Type your message..."></textarea>
-
-        <button onclick="sendMessage()" class="w-full bg-primary hover:bg-primary/80 text-white py-3 rounded-xl font-bold transition">
-            Send Message
-        </button>
-    </div>
-</div>
 
 <!-- Member Profile Modal -->
 <div id="member-profile-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -759,7 +745,6 @@
 <script>
 let allMembers = [];
 let allTrainers = [];
-let currentMessageRecipient = null;
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadStaffData();
@@ -839,7 +824,7 @@ async function loadTrainers() {
                             </p>
                             <p class="text-xs text-gray-400">${getRoleLabel(trainer)}</p>
                         </div>
-                        <button onclick="event.stopPropagation(); openMessageModal('${trainer.id}', '${trainer.username}')"
+                        <button onclick="event.stopPropagation(); openChatModal('${trainer.id}', '${trainer.username}')"
                             class="p-2 bg-primary/20 hover:bg-primary/30 text-primary rounded-lg transition" title="Message">
                             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -884,7 +869,7 @@ function renderMembers(members) {
                     <p class="text-xs text-gray-500 truncate">${member.email || ''}</p>
                 </div>
                 <div class="flex gap-1.5 flex-shrink-0">
-                    <button onclick="event.stopPropagation(); openMessageModal('${member.id}', '${member.name || member.username}')"
+                    <button onclick="event.stopPropagation(); openChatModal('${member.id}', '${member.name || member.username}')"
                         class="p-2 bg-primary/20 hover:bg-primary/30 text-primary rounded-lg transition" title="Message">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
@@ -1120,50 +1105,6 @@ function closeTrainerModal() {
     document.getElementById('trainer-schedule-modal').classList.add('hidden');
 }
 
-// Message Modal
-function openMessageModal(userId, userName) {
-    currentMessageRecipient = userId;
-    document.getElementById('message-recipient').textContent = userName;
-    document.getElementById('message-content').value = '';
-    document.getElementById('message-modal').classList.remove('hidden');
-}
-
-function closeMessageModal() {
-    document.getElementById('message-modal').classList.add('hidden');
-    currentMessageRecipient = null;
-}
-
-async function sendMessage() {
-    const content = document.getElementById('message-content').value.trim();
-    if (!content || !currentMessageRecipient) {
-        showToast('Please enter a message', 'error');
-        return;
-    }
-
-    try {
-        const res = await fetch('/api/messages/send', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-                recipient_id: currentMessageRecipient,
-                content: content
-            })
-        });
-
-        if (res.ok) {
-            showToast('Message sent!', 'success');
-            closeMessageModal();
-        } else {
-            const err = await res.json();
-            showToast(err.detail || 'Failed to send message', 'error');
-        }
-    } catch (error) {
-        console.error('Error sending message:', error);
-        showToast('Failed to send message', 'error');
-    }
-}
-
 // ========== MEMBER PROFILE MODAL ==========
 let currentMemberData = null;
 
@@ -1355,7 +1296,7 @@ function messageFromModal() {
     const memberId = currentMemberData.id;
     const memberName = currentMemberData.name || currentMemberData.username;
     closeMemberModal();
-    openMessageModal(memberId, memberName);
+    openChatModal(memberId, memberName);
 }
 
 // Close modal on background click
@@ -2488,5 +2429,66 @@ document.getElementById('onboarding-wizard-modal')?.addEventListener('click', (e
         closeOnboardingWizard();
     }
 });
+
+// ========== NEW CHAT - GYM MEMBERS PICKER ==========
+// Used by conversations modal "New" button to start a new chat
+window.openGymMembersModal = function() {
+    // Build a quick member picker from allMembers + allTrainers
+    const people = [
+        ...allTrainers.map(t => ({ id: t.id, name: t.username, type: 'Trainer' })),
+        ...allMembers.map(m => ({ id: m.id, name: m.name || m.username, type: 'Member' }))
+    ];
+
+    if (people.length === 0) {
+        showToast('No gym members found', 'error');
+        return;
+    }
+
+    // Create a temporary modal for member selection
+    let modal = document.getElementById('member-picker-modal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'member-picker-modal';
+        modal.className = 'fixed inset-0 bg-black/95 backdrop-blur-xl z-[85] flex flex-col';
+        document.body.appendChild(modal);
+    }
+    modal.classList.remove('hidden');
+
+    modal.innerHTML = `
+        <div class="flex items-center justify-between p-4 border-b border-white/10">
+            <h3 class="font-bold text-white text-lg">New Message</h3>
+            <button onclick="document.getElementById('member-picker-modal').classList.add('hidden')" class="text-gray-400 hover:text-white text-2xl">&times;</button>
+        </div>
+        <div class="p-4">
+            <input type="text" id="member-picker-search" placeholder="Search..."
+                class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-primary outline-none mb-3"
+                oninput="filterMemberPicker()">
+        </div>
+        <div id="member-picker-list" class="flex-1 overflow-y-auto px-4 pb-4 space-y-2">
+            ${people.map(p => `
+                <div class="member-picker-item bg-white/5 hover:bg-white/10 p-3 rounded-xl cursor-pointer transition" data-name="${(p.name || '').toLowerCase()}"
+                    onclick="document.getElementById('member-picker-modal').classList.add('hidden'); openChatModal('${p.id}', '${(p.name || '').replace(/'/g, "\\'")}')">
+                    <div class="flex items-center gap-3">
+                        <div class="w-9 h-9 rounded-full bg-gradient-to-br ${p.type === 'Trainer' ? 'from-orange-500 to-red-500' : 'from-green-500 to-emerald-600'} flex items-center justify-center text-white font-bold text-sm">
+                            ${(p.name || '?').charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <p class="font-semibold text-white text-sm">${p.name}</p>
+                            <p class="text-[10px] text-gray-500">${p.type}</p>
+                        </div>
+                    </div>
+                </div>
+            `).join('')}
+        </div>
+    `;
+};
+
+window.filterMemberPicker = function() {
+    const query = (document.getElementById('member-picker-search')?.value || '').toLowerCase();
+    document.querySelectorAll('.member-picker-item').forEach(item => {
+        const name = item.dataset.name || '';
+        item.style.display = name.includes(query) ? '' : 'none';
+    });
+};
 </script>
 {% endblock %}

@@ -87,24 +87,11 @@ class MessageService:
                 if profile and profile.trainer_id == trainer_id:
                     return True
 
-            # Case 2: Staff <-> Client messaging (same gym)
-            if user.role == "staff" and other.role == "client":
-                # Staff can message any client in their gym
-                other_profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == other_user_id).first()
-                if other_profile and other_profile.gym_id and user.gym_owner_id:
-                    # Check if client's gym owner matches staff's gym owner
-                    owner = db.query(UserORM).filter(UserORM.id == other_profile.gym_id).first()
-                    if owner and str(owner.id) == str(user.gym_owner_id):
-                        return True
-                    # Also check direct gym_owner_id match
-                    if str(other_profile.gym_id) == str(user.gym_owner_id):
-                        return True
-                return False
-            elif user.role == "client" and other.role == "staff":
-                # Client can message staff in their gym
-                user_profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == user_id).first()
-                if user_profile and user_profile.gym_id and other.gym_owner_id:
-                    if str(user_profile.gym_id) == str(other.gym_owner_id):
+            # Case 2: Staff <-> anyone in the same gym
+            if user.role == "staff" or other.role == "staff":
+                # Staff can message anyone in their gym — use gym_owner_id (same field staff/members uses)
+                if user.gym_owner_id and other.gym_owner_id:
+                    if str(user.gym_owner_id) == str(other.gym_owner_id):
                         return True
                 return False
 
@@ -200,8 +187,7 @@ class MessageService:
 
             # Determine conversation type
             is_client_client = sender.role == "client" and receiver.role == "client"
-            is_staff_client = (sender.role == "staff" and receiver.role == "client") or \
-                              (sender.role == "client" and receiver.role == "staff")
+            is_staff_involved = sender.role == "staff" or receiver.role == "staff"
 
             if is_client_client:
                 # Client-to-client conversation
@@ -222,23 +208,23 @@ class MessageService:
                     )
                     db.add(conversation)
                     db.flush()
-            elif is_staff_client:
-                # Staff-client conversation (reuse trainer_client format: staff in trainer_id slot)
+            elif is_staff_involved:
+                # Staff conversation (staff in trainer_id slot, other user in client_id slot)
                 if sender.role == "staff":
-                    staff_id, client_id = sender_id, receiver_id
+                    staff_id, other_id = sender_id, receiver_id
                 else:
-                    staff_id, client_id = receiver_id, sender_id
+                    staff_id, other_id = receiver_id, sender_id
 
                 conversation = db.query(ConversationORM).filter(
                     ConversationORM.trainer_id == staff_id,
-                    ConversationORM.client_id == client_id
+                    ConversationORM.client_id == other_id
                 ).first()
 
                 if not conversation:
                     conversation = ConversationORM(
                         id=str(uuid.uuid4()),
                         trainer_id=staff_id,
-                        client_id=client_id,
+                        client_id=other_id,
                         conversation_type="trainer_client",
                         created_at=datetime.utcnow().isoformat()
                     )
@@ -292,8 +278,8 @@ class MessageService:
                 else:
                     conversation.user1_unread_count = (conversation.user1_unread_count or 0) + 1
             else:
-                # For trainer-client
-                if sender.role == "trainer":
+                # For trainer-client (staff uses trainer_id slot)
+                if sender.role in ("trainer", "staff"):
                     conversation.client_unread_count = (conversation.client_unread_count or 0) + 1
                 else:
                     conversation.trainer_unread_count = (conversation.trainer_unread_count or 0) + 1
@@ -498,7 +484,7 @@ class MessageService:
                     conversation.user2_unread_count = 0
             else:
                 user = db.query(UserORM).filter(UserORM.id == user_id).first()
-                if user and user.role == "trainer":
+                if user and user.role in ("trainer", "staff"):
                     conversation.trainer_unread_count = 0
                 else:
                     conversation.client_unread_count = 0
@@ -529,8 +515,8 @@ class MessageService:
 
             total = 0
 
-            if user.role == "trainer":
-                # Trainer: only trainer-client conversations
+            if user.role in ("trainer", "staff"):
+                # Trainer/Staff: only trainer-client conversations (staff uses trainer_id slot)
                 result = db.query(ConversationORM).filter(
                     ConversationORM.trainer_id == user_id
                 ).all()

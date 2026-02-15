@@ -53,13 +53,12 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)):
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    # Get token from Authorization header or cookie
-    token = None
-    auth_header = request.headers.get("Authorization")
-    if auth_header and auth_header.startswith("Bearer "):
-        token = auth_header.replace("Bearer ", "")
-    else:
-        token = request.cookies.get("access_token")
+    # Get token from cookie (preferred, server-set on login) or Authorization header (fallback)
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.replace("Bearer ", "")
 
     if not token:
         raise credentials_exception

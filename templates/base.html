@@ -94,6 +94,12 @@
                     <i data-lucide="home" class="w-5 h-5"></i>
                     <span>Home</span>
                 </a>
+                <a href="#" onclick="event.preventDefault(); openConversationsModal();"
+                    class="bottom-nav-item relative">
+                    <i data-lucide="message-circle" class="w-5 h-5"></i>
+                    <span>Messages</span>
+                    <span id="unread-messages-badge-mobile" class="hidden absolute top-0 right-1/2 -translate-y-1 translate-x-3 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full text-center leading-4">0</span>
+                </a>
                 <a href="{{ 'staff.html' if static_build else '/?gym_id=' + gym_id + '&role=staff&mode=settings' }}"
                     class="bottom-nav-item {% if mode == 'settings' %}active{% endif %}">
                     <i data-lucide="circle-user" class="w-5 h-5"></i>
