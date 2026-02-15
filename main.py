@@ -320,15 +320,17 @@ def run_migrations(engine):
             ("date_of_birth", "TEXT"),
             ("emergency_contact_name", "TEXT"),
             ("emergency_contact_phone", "TEXT"),
-            ("is_premium", "BOOLEAN DEFAULT 0"),
+            ("is_premium", "BOOLEAN DEFAULT FALSE"),
             ("privacy_mode", "TEXT DEFAULT 'public'"),
-            ("weight", "REAL"),
-            ("body_fat_pct", "REAL"),
-            ("fat_mass", "REAL"),
-            ("lean_mass", "REAL"),
+            ("weight", "DOUBLE PRECISION"),
+            ("body_fat_pct", "DOUBLE PRECISION"),
+            ("fat_mass", "DOUBLE PRECISION"),
+            ("lean_mass", "DOUBLE PRECISION"),
             ("strength_goal_upper", "INTEGER"),
             ("strength_goal_lower", "INTEGER"),
             ("strength_goal_cardio", "INTEGER"),
+            ("health_score", "INTEGER DEFAULT 0"),
+            ("gems", "INTEGER DEFAULT 0"),
         ]
         for col_name, col_type in profile_new_cols:
             if col_name not in columns:
@@ -340,12 +342,24 @@ def run_migrations(engine):
                     except Exception as e:
                         logger.debug(f"Column {col_name} may already exist: {e}")
 
-    # Add phone and must_change_password to users table
+    # Add all potentially missing columns to users table
     if 'users' in inspector.get_table_names():
         columns = [col['name'] for col in inspector.get_columns('users')]
         user_new_cols = [
             ('phone', 'TEXT'),
-            ('must_change_password', 'BOOLEAN DEFAULT 0'),
+            ('must_change_password', 'BOOLEAN DEFAULT FALSE'),
+            ('profile_picture', 'TEXT'),
+            ('bio', 'TEXT'),
+            ('specialties', 'TEXT'),
+            ('settings', 'TEXT'),
+            ('gym_name', 'TEXT'),
+            ('gym_logo', 'TEXT'),
+            ('session_rate', 'DOUBLE PRECISION'),
+            ('stripe_account_id', 'TEXT'),
+            ('stripe_account_status', 'TEXT'),
+            ('spotify_access_token', 'TEXT'),
+            ('spotify_refresh_token', 'TEXT'),
+            ('spotify_token_expires_at', 'TEXT'),
         ]
         for col_name, col_type in user_new_cols:
             if col_name not in columns:
