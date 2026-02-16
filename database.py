@@ -33,6 +33,65 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
 
+# --- EARLY MIGRATIONS (runs at import time, before FastAPI starts) ---
+# This ensures columns exist before any ORM query can reference them
+def _run_early_migrations():
+    """Add missing columns to existing tables. Runs once at import time."""
+    from sqlalchemy import text
+    try:
+        with engine.connect() as conn:
+            # Check if users table exists first
+            if IS_POSTGRES:
+                result = conn.execute(text(
+                    "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'users')"
+                ))
+                if not result.scalar():
+                    return  # Table doesn't exist yet, create_all will handle it
+
+                # Get existing columns
+                result = conn.execute(text(
+                    "SELECT column_name FROM information_schema.columns WHERE table_name = 'users'"
+                ))
+                existing = {row[0] for row in result}
+
+                needed_columns = [
+                    ('phone', 'TEXT'),
+                    ('must_change_password', 'BOOLEAN DEFAULT FALSE'),
+                    ('profile_picture', 'TEXT'),
+                    ('bio', 'TEXT'),
+                    ('specialties', 'TEXT'),
+                    ('settings', 'TEXT'),
+                    ('gym_name', 'TEXT'),
+                    ('gym_logo', 'TEXT'),
+                    ('session_rate', 'DOUBLE PRECISION'),
+                    ('stripe_account_id', 'TEXT'),
+                    ('stripe_account_status', 'TEXT'),
+                    ('spotify_access_token', 'TEXT'),
+                    ('spotify_refresh_token', 'TEXT'),
+                    ('spotify_token_expires_at', 'TEXT'),
+                    ('terms_agreed_at', 'TEXT'),
+                    ('shower_timer_minutes', 'INTEGER'),
+                    ('shower_daily_limit', 'INTEGER'),
+                    ('device_api_key', 'TEXT'),
+                ]
+
+                for col_name, col_type in needed_columns:
+                    if col_name not in existing:
+                        try:
+                            conn.execute(text(
+                                f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col_name} {col_type}"
+                            ))
+                            conn.commit()
+                        except Exception:
+                            try:
+                                conn.rollback()
+                            except Exception:
+                                pass
+    except Exception:
+        pass  # Database might not be ready yet — startup_event will retry
+
+_run_early_migrations()
+
 # --- DEPENDENCY ---
 def get_db():
     """

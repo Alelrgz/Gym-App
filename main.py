@@ -555,53 +555,16 @@ def background_trigger_checker():
 @app.on_event("startup")
 async def startup_event():
     logger.info("Initializing Database...")
-    from sqlalchemy import text
-    from database import IS_POSTGRES
 
-    # Step 1: Add missing columns to users table FIRST (before create_all)
-    # This MUST happen before anything else because the ORM models reference these columns
-    try:
-        all_users_columns = [
-            ('phone', 'TEXT'),
-            ('must_change_password', 'BOOLEAN DEFAULT FALSE'),
-            ('profile_picture', 'TEXT'),
-            ('bio', 'TEXT'),
-            ('specialties', 'TEXT'),
-            ('settings', 'TEXT'),
-            ('gym_name', 'TEXT'),
-            ('gym_logo', 'TEXT'),
-            ('session_rate', 'DOUBLE PRECISION'),
-            ('stripe_account_id', 'TEXT'),
-            ('stripe_account_status', 'TEXT'),
-            ('spotify_access_token', 'TEXT'),
-            ('spotify_refresh_token', 'TEXT'),
-            ('spotify_token_expires_at', 'TEXT'),
-            ('terms_agreed_at', 'TEXT'),
-            ('shower_timer_minutes', 'INTEGER'),
-            ('shower_daily_limit', 'INTEGER'),
-            ('device_api_key', 'TEXT'),
-        ]
-        for col_name, col_type in all_users_columns:
-            try:
-                with engine.begin() as conn:
-                    if IS_POSTGRES:
-                        conn.execute(text(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
-                    else:
-                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
-                logger.info(f"Migration: added {col_name} to users")
-            except Exception:
-                pass  # Column likely already exists (SQLite doesn't have IF NOT EXISTS)
-    except Exception as e:
-        logger.warning(f"Users column migration error: {e}")
-
-    # Step 2: Create any new tables (nfc_tags, shower_usage, etc.)
+    # Create any new tables (nfc_tags, shower_usage, etc.)
     try:
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables verified/created.")
     except Exception as e:
         logger.error(f"create_all error: {e}")
 
-    # Step 3: Run remaining migrations (client_profile, exercises, etc.)
+    # Run remaining migrations (client_profile, exercises, etc.)
+    # Note: users columns are already handled by _run_early_migrations() in database.py
     try:
         run_migrations(engine)
     except Exception as e:
