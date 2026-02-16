@@ -187,6 +187,7 @@ async def show_register(request: Request):
 
 # --- REGISTER POST ---
 @simple_auth_router.post("/register")
+@_rate_limit_login
 async def do_register(
     request: Request,
     username: str = Form(...),
@@ -196,6 +197,7 @@ async def do_register(
     sub_role: str = Form(None),
     secret_key: str = Form(None),
     gym_code: str = Form(None),
+    terms_agreed: str = Form(None),
     db: Session = Depends(get_db)
 ):
     import uuid
@@ -204,7 +206,7 @@ async def do_register(
     import traceback
 
     try:
-        return await _do_register(request, username, password, email, role, sub_role, secret_key, gym_code, db)
+        return await _do_register(request, username, password, email, role, sub_role, secret_key, gym_code, terms_agreed, db)
     except Exception as e:
         import logging
         logging.getLogger("gym_app").error(f"Registration error: {e}\n{traceback.format_exc()}")
@@ -216,10 +218,20 @@ async def do_register(
             "mode": "auth"
         })
 
-async def _do_register(request, username, password, email, role, sub_role, secret_key, gym_code, db):
+async def _do_register(request, username, password, email, role, sub_role, secret_key, gym_code, terms_agreed, db):
     import uuid
     import random
     import string
+
+    # Validate terms agreement
+    if not terms_agreed:
+        return templates.TemplateResponse("register.html", {
+            "request": request,
+            "error": "You must agree to the Terms of Service and Privacy Policy",
+            "gym_id": "iron_gym",
+            "role": "client",
+            "mode": "auth"
+        })
 
     # Validate password length
     if not password or len(password) < 12:
@@ -340,7 +352,8 @@ async def _do_register(request, username, password, email, role, sub_role, secre
         sub_role=sub_role,  # Store sub-role (trainer/nutritionist/both or owner/staff)
         gym_code=generated_gym_code,  # Only set for owners
         gym_owner_id=gym_owner_id,  # Set for trainers/clients/staff joining a gym
-        is_approved=is_approved
+        is_approved=is_approved,
+        terms_agreed_at=datetime.utcnow().isoformat() if terms_agreed else None
     )
     db.add(new_user)
     db.commit()

@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FitOS - {{ title }}</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .legal-content h2 { font-size: 1.25rem; font-weight: 700; margin-top: 2rem; margin-bottom: 0.75rem; color: #f97316; }
+        .legal-content h3 { font-size: 1.1rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; color: #e5e7eb; }
+        .legal-content p { margin-bottom: 0.75rem; line-height: 1.7; }
+        .legal-content ul { list-style: disc; padding-left: 1.5rem; margin-bottom: 0.75rem; }
+        .legal-content li { margin-bottom: 0.35rem; line-height: 1.6; }
+        .legal-content a { color: #f97316; text-decoration: underline; }
+    </style>
+</head>
+<body class="bg-gray-900 text-gray-300 min-h-screen">
+
+    <!-- Header -->
+    <header class="sticky top-0 z-50 bg-gray-900/95 backdrop-blur border-b border-white/10">
+        <div class="max-w-4xl mx-auto px-4 py-4 flex items-center justify-between">
+            <a href="/" class="text-xl font-bold text-white">FitOS</a>
+            <div class="flex items-center gap-4">
+                <button onclick="toggleLanguage()" id="lang-toggle"
+                    class="text-sm px-3 py-1.5 rounded-lg border border-white/20 text-gray-400 hover:text-white hover:border-white/40 transition">
+                    🇬🇧 English
+                </button>
+                <a href="/" class="text-sm text-gray-400 hover:text-white transition">← Back</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-8 pb-20">
+        <h1 class="text-3xl font-bold text-white mb-2">{{ title }}</h1>
+        <p class="text-gray-500 text-sm mb-8">Ultimo aggiornamento: Febbraio 2026 | Last updated: February 2026</p>
+
+        <!-- Italian Content -->
+        <div id="content-it" class="legal-content">
+            {% if page == 'terms' %}
+            <h2>1. Accettazione dei Termini</h2>
+            <p>Utilizzando FitOS ("la Piattaforma"), accetti di essere vincolato dai presenti Termini di Servizio. Se non accetti questi termini, non utilizzare la Piattaforma. FitOS è una piattaforma di gestione palestre che fornisce strumenti per proprietari, trainer, staff e clienti.</p>
+
+            <h2>2. Descrizione del Servizio</h2>
+            <p>FitOS offre i seguenti servizi:</p>
+            <ul>
+                <li>Gestione membri e check-in della palestra</li>
+                <li>Programmazione di allenamenti e monitoraggio dei progressi</li>
+                <li>Tracciamento nutrizionale e analisi dei pasti</li>
+                <li>Prenotazione appuntamenti con trainer</li>
+                <li>Elaborazione pagamenti per abbonamenti e sessioni</li>
+                <li>Integrazione musicale per le lezioni</li>
+            </ul>
+
+            <h2>3. Account Utente</h2>
+            <p>Per utilizzare FitOS, devi creare un account fornendo un nome utente e una password di almeno 12 caratteri. Sei responsabile di mantenere la riservatezza delle tue credenziali e di tutte le attività svolte con il tuo account.</p>
+            <p>Puoi eliminare il tuo account in qualsiasi momento dalle Impostazioni Account. L'eliminazione è permanente e irreversibile.</p>
+
+            <h2>4. Pagamenti</h2>
+            <p>I pagamenti per abbonamenti e sessioni vengono elaborati tramite <strong>Stripe</strong>, un fornitore di servizi di pagamento di terze parti. FitOS non memorizza i dati della tua carta di credito. Tutti i dati di pagamento sono gestiti direttamente da Stripe in conformità con gli standard PCI-DSS.</p>
+            <p>Le politiche di rimborso sono determinate dal proprietario della palestra. Contatta direttamente la tua palestra per richieste di rimborso.</p>
+
+            <h2>5. Contenuti dell'Utente</h2>
+            <p>Caricando contenuti (foto profilo, certificati medici, foto dei pasti, foto del fisico), concedi a FitOS una licenza limitata per memorizzare e visualizzare tali contenuti nell'ambito del servizio. Mantieni la proprietà di tutti i tuoi contenuti.</p>
+            <p>Non caricare contenuti illegali, offensivi o che violino i diritti di terzi.</p>
+
+            <h2>6. Limitazione di Responsabilità</h2>
+            <p>FitOS è fornito "così com'è". Non garantiamo che il servizio sia privo di errori o ininterrotto. FitOS non è responsabile per:</p>
+            <ul>
+                <li>Danni derivanti dall'uso o dall'impossibilità di utilizzare il servizio</li>
+                <li>Perdita di dati dovuta a circostanze al di fuori del nostro controllo</li>
+                <li>Azioni di fornitori terzi (Stripe, Spotify, ecc.)</li>
+                <li>Consigli di allenamento o nutrizionali — consulta sempre un professionista qualificato</li>
+            </ul>
+
+            <h2>7. Cessazione</h2>
+            <p>Ci riserviamo il diritto di sospendere o chiudere il tuo account in caso di violazione di questi termini. Puoi interrompere l'utilizzo del servizio in qualsiasi momento eliminando il tuo account.</p>
+
+            <h2>8. Modifiche ai Termini</h2>
+            <p>Possiamo aggiornare questi termini periodicamente. Le modifiche sostanziali saranno comunicate tramite la Piattaforma. L'uso continuato dopo le modifiche costituisce accettazione dei nuovi termini.</p>
+
+            <h2>9. Legge Applicabile</h2>
+            <p>Questi termini sono regolati dalla legge italiana. Per qualsiasi controversia sarà competente il Foro di riferimento.</p>
+
+            <h2>10. Contatti</h2>
+            <p>Per domande sui presenti termini, contattaci tramite la Piattaforma o all'indirizzo email indicato nella sezione contatti.</p>
+
+            {% elif page == 'privacy' %}
+            <h2>1. Titolare del Trattamento</h2>
+            <p>Il titolare del trattamento dei dati personali è il gestore della piattaforma FitOS. Il trattamento avviene nel rispetto del Regolamento UE 2016/679 (GDPR) e della normativa italiana in materia di protezione dei dati personali.</p>
+
+            <h2>2. Dati Raccolti</h2>
+            <p>Raccogliamo e trattiamo le seguenti categorie di dati personali:</p>
+            <h3>Dati forniti direttamente</h3>
+            <ul>
+                <li><strong>Dati di registrazione:</strong> nome utente, email, password (criptata)</li>
+                <li><strong>Dati del profilo:</strong> foto profilo, biografia, numero di telefono</li>
+                <li><strong>Dati di salute e fitness:</strong> peso, altezza, misure corporee, obiettivi fitness, foto del fisico</li>
+                <li><strong>Dati nutrizionali:</strong> diari alimentari, foto dei pasti, analisi nutrizionali</li>
+                <li><strong>Certificati medici:</strong> documenti caricati per idoneità sportiva</li>
+            </ul>
+            <h3>Dati raccolti automaticamente</h3>
+            <ul>
+                <li><strong>Dati di accesso:</strong> indirizzo IP, data e ora di accesso</li>
+                <li><strong>Dati di check-in:</strong> orari di ingresso in palestra</li>
+                <li><strong>Dati di utilizzo:</strong> interazioni con la piattaforma, preferenze</li>
+            </ul>
+
+            <h2>3. Base Giuridica del Trattamento</h2>
+            <ul>
+                <li><strong>Esecuzione del contratto</strong> (Art. 6(1)(b) GDPR): per fornire i servizi della piattaforma</li>
+                <li><strong>Consenso</strong> (Art. 6(1)(a) GDPR): per l'integrazione con servizi terzi come Spotify</li>
+                <li><strong>Interesse legittimo</strong> (Art. 6(1)(f) GDPR): per la sicurezza e il miglioramento del servizio</li>
+            </ul>
+
+            <h2>4. Servizi di Terze Parti</h2>
+            <p>FitOS utilizza i seguenti fornitori di servizi che possono trattare i tuoi dati:</p>
+            <ul>
+                <li><strong>Stripe</strong> (USA) — Elaborazione pagamenti. <a href="https://stripe.com/privacy" target="_blank">Privacy Policy di Stripe</a></li>
+                <li><strong>Spotify</strong> (Svezia) — Riproduzione musicale (solo se connesso dall'utente). <a href="https://www.spotify.com/privacy" target="_blank">Privacy Policy di Spotify</a></li>
+                <li><strong>Cloudinary</strong> (USA) — Archiviazione immagini e media. <a href="https://cloudinary.com/privacy" target="_blank">Privacy Policy di Cloudinary</a></li>
+                <li><strong>Google Gemini</strong> (USA) — Analisi AI dei pasti per il tracciamento nutrizionale. <a href="https://policies.google.com/privacy" target="_blank">Privacy Policy di Google</a></li>
+                <li><strong>Clarifai</strong> (USA) — Riconoscimento immagini alimentari. <a href="https://www.clarifai.com/privacy" target="_blank">Privacy Policy di Clarifai</a></li>
+                <li><strong>YouTube</strong> (USA) — Riproduzione video per esercizi e musica. <a href="https://policies.google.com/privacy" target="_blank">Privacy Policy di Google</a></li>
+            </ul>
+            <p>I trasferimenti di dati verso gli USA sono protetti da adeguate garanzie ai sensi del GDPR (Decisione di adeguatezza, clausole contrattuali standard).</p>
+
+            <h2>5. Conservazione dei Dati</h2>
+            <p>I tuoi dati personali sono conservati per la durata del tuo account. Alla cancellazione dell'account, tutti i dati vengono eliminati definitivamente entro 30 giorni, salvo obblighi di legge che richiedano una conservazione più lunga.</p>
+
+            <h2>6. I Tuoi Diritti (GDPR)</h2>
+            <p>In conformità al GDPR, hai i seguenti diritti:</p>
+            <ul>
+                <li><strong>Accesso</strong> (Art. 15) — Richiedere una copia dei tuoi dati personali</li>
+                <li><strong>Rettifica</strong> (Art. 16) — Correggere dati inesatti o incompleti</li>
+                <li><strong>Cancellazione</strong> (Art. 17) — Richiedere l'eliminazione dei tuoi dati ("diritto all'oblio")</li>
+                <li><strong>Portabilità</strong> (Art. 20) — Ricevere i tuoi dati in formato strutturato e leggibile</li>
+                <li><strong>Opposizione</strong> (Art. 21) — Opporti al trattamento dei tuoi dati</li>
+                <li><strong>Limitazione</strong> (Art. 18) — Richiedere la limitazione del trattamento</li>
+            </ul>
+            <p>Puoi esercitare i diritti di <strong>accesso</strong>, <strong>portabilità</strong> e <strong>cancellazione</strong> direttamente dalla sezione Impostazioni Account della piattaforma:</p>
+            <ul>
+                <li><strong>"Esporta i Miei Dati"</strong> — scarica tutti i tuoi dati in formato JSON</li>
+                <li><strong>"Elimina Account"</strong> — cancella permanentemente il tuo account e tutti i dati associati</li>
+            </ul>
+            <p>Per gli altri diritti, contattaci tramite la piattaforma.</p>
+
+            <h2>7. Sicurezza</h2>
+            <p>Adottiamo misure tecniche e organizzative per proteggere i tuoi dati:</p>
+            <ul>
+                <li>Password criptate con algoritmo bcrypt</li>
+                <li>Connessioni HTTPS con header HSTS</li>
+                <li>Cookie HttpOnly e SameSite per la protezione della sessione</li>
+                <li>Limitazione delle richieste (rate limiting) contro attacchi brute-force</li>
+                <li>Header di sicurezza (CSP, X-Frame-Options, X-Content-Type-Options)</li>
+            </ul>
+
+            <h2>8. Reclami</h2>
+            <p>Hai il diritto di presentare un reclamo all'Autorità Garante per la Protezione dei Dati Personali (www.garanteprivacy.it) se ritieni che il trattamento dei tuoi dati violi il GDPR.</p>
+
+            {% elif page == 'cookies' %}
+            <h2>1. Cosa Sono i Cookie</h2>
+            <p>I cookie sono piccoli file di testo memorizzati nel tuo browser quando visiti un sito web. FitOS utilizza cookie e tecnologie simili (localStorage) per il funzionamento della piattaforma.</p>
+
+            <h2>2. Cookie Utilizzati</h2>
+            <h3>Cookie Tecnici (Necessari)</h3>
+            <p>Questi cookie sono essenziali per il funzionamento della piattaforma e non possono essere disabilitati:</p>
+            <ul>
+                <li><strong>access_token</strong> — Cookie di autenticazione JWT. Mantiene la tua sessione attiva. HttpOnly (non accessibile da JavaScript). Scade alla chiusura del browser.</li>
+            </ul>
+
+            <h3>Dati in localStorage (Necessari)</h3>
+            <p>Utilizziamo il localStorage del browser per memorizzare preferenze funzionali:</p>
+            <ul>
+                <li><strong>token</strong> — Token di autenticazione per le chiamate API</li>
+                <li><strong>role</strong> — Il tuo ruolo nella piattaforma (cliente, trainer, ecc.)</li>
+                <li><strong>cookie_consent</strong> — La tua preferenza sul consenso ai cookie</li>
+            </ul>
+
+            <h3>Cookie di Terze Parti</h3>
+            <p>I seguenti servizi di terze parti possono impostare i propri cookie quando utilizzi le rispettive funzionalità:</p>
+            <ul>
+                <li><strong>Stripe</strong> — Cookie per l'elaborazione sicura dei pagamenti. Impostati solo durante le transazioni.</li>
+                <li><strong>YouTube</strong> — Cookie per la riproduzione dei video. Impostati quando visualizzi video di esercizi o ascolti musica.</li>
+                <li><strong>Spotify</strong> — Cookie per la riproduzione musicale. Impostati solo se colleghi il tuo account Spotify.</li>
+            </ul>
+
+            <h2>3. Gestione dei Cookie</h2>
+            <p>Puoi gestire le preferenze sui cookie in qualsiasi momento:</p>
+            <ul>
+                <li>Tramite il banner dei cookie sulla piattaforma</li>
+                <li>Tramite le impostazioni del tuo browser</li>
+            </ul>
+            <p>Nota: disabilitare i cookie tecnici impedirà il funzionamento della piattaforma, in quanto sono necessari per l'autenticazione.</p>
+
+            <h2>4. Maggiori Informazioni</h2>
+            <p>Per maggiori informazioni su come utilizziamo i tuoi dati, consulta la nostra <a href="/privacy">Informativa sulla Privacy</a>.</p>
+            {% endif %}
+        </div>
+
+        <!-- English Content (hidden by default) -->
+        <div id="content-en" class="legal-content hidden">
+            {% if page == 'terms' %}
+            <h2>1. Acceptance of Terms</h2>
+            <p>By using FitOS ("the Platform"), you agree to be bound by these Terms of Service. If you do not agree to these terms, do not use the Platform. FitOS is a gym management platform providing tools for owners, trainers, staff, and clients.</p>
+
+            <h2>2. Description of Service</h2>
+            <p>FitOS provides the following services:</p>
+            <ul>
+                <li>Gym member management and check-in</li>
+                <li>Workout programming and progress tracking</li>
+                <li>Nutritional tracking and meal analysis</li>
+                <li>Appointment booking with trainers</li>
+                <li>Payment processing for subscriptions and sessions</li>
+                <li>Music integration for classes</li>
+            </ul>
+
+            <h2>3. User Accounts</h2>
+            <p>To use FitOS, you must create an account by providing a username and a password of at least 12 characters. You are responsible for maintaining the confidentiality of your credentials and all activities conducted under your account.</p>
+            <p>You may delete your account at any time from Account Settings. Deletion is permanent and irreversible.</p>
+
+            <h2>4. Payments</h2>
+            <p>Payments for subscriptions and sessions are processed through <strong>Stripe</strong>, a third-party payment service provider. FitOS does not store your credit card data. All payment data is handled directly by Stripe in compliance with PCI-DSS standards.</p>
+            <p>Refund policies are determined by the gym owner. Contact your gym directly for refund requests.</p>
+
+            <h2>5. User Content</h2>
+            <p>By uploading content (profile photos, medical certificates, meal photos, physique photos), you grant FitOS a limited license to store and display such content as part of the service. You retain ownership of all your content.</p>
+            <p>Do not upload content that is illegal, offensive, or infringes on the rights of third parties.</p>
+
+            <h2>6. Limitation of Liability</h2>
+            <p>FitOS is provided "as is". We do not guarantee that the service will be error-free or uninterrupted. FitOS is not liable for:</p>
+            <ul>
+                <li>Damages arising from the use or inability to use the service</li>
+                <li>Data loss due to circumstances beyond our control</li>
+                <li>Actions of third-party providers (Stripe, Spotify, etc.)</li>
+                <li>Workout or nutritional advice — always consult a qualified professional</li>
+            </ul>
+
+            <h2>7. Termination</h2>
+            <p>We reserve the right to suspend or terminate your account in case of violation of these terms. You may stop using the service at any time by deleting your account.</p>
+
+            <h2>8. Changes to Terms</h2>
+            <p>We may update these terms periodically. Material changes will be communicated through the Platform. Continued use after changes constitutes acceptance of the new terms.</p>
+
+            <h2>9. Governing Law</h2>
+            <p>These terms are governed by Italian law. Any disputes shall be subject to the jurisdiction of the competent Italian court.</p>
+
+            <h2>10. Contact</h2>
+            <p>For questions about these terms, contact us through the Platform or at the email address provided in the contact section.</p>
+
+            {% elif page == 'privacy' %}
+            <h2>1. Data Controller</h2>
+            <p>The data controller is the operator of the FitOS platform. Data processing is carried out in compliance with EU Regulation 2016/679 (GDPR) and Italian data protection legislation.</p>
+
+            <h2>2. Data Collected</h2>
+            <p>We collect and process the following categories of personal data:</p>
+            <h3>Data provided directly</h3>
+            <ul>
+                <li><strong>Registration data:</strong> username, email, password (encrypted)</li>
+                <li><strong>Profile data:</strong> profile photo, bio, phone number</li>
+                <li><strong>Health and fitness data:</strong> weight, height, body measurements, fitness goals, physique photos</li>
+                <li><strong>Nutritional data:</strong> food diaries, meal photos, nutritional analyses</li>
+                <li><strong>Medical certificates:</strong> documents uploaded for sports eligibility</li>
+            </ul>
+            <h3>Data collected automatically</h3>
+            <ul>
+                <li><strong>Access data:</strong> IP address, date and time of access</li>
+                <li><strong>Check-in data:</strong> gym entry times</li>
+                <li><strong>Usage data:</strong> platform interactions, preferences</li>
+            </ul>
+
+            <h2>3. Legal Basis for Processing</h2>
+            <ul>
+                <li><strong>Contract performance</strong> (Art. 6(1)(b) GDPR): to provide platform services</li>
+                <li><strong>Consent</strong> (Art. 6(1)(a) GDPR): for third-party integrations like Spotify</li>
+                <li><strong>Legitimate interest</strong> (Art. 6(1)(f) GDPR): for security and service improvement</li>
+            </ul>
+
+            <h2>4. Third-Party Services</h2>
+            <p>FitOS uses the following service providers that may process your data:</p>
+            <ul>
+                <li><strong>Stripe</strong> (USA) — Payment processing. <a href="https://stripe.com/privacy" target="_blank">Stripe Privacy Policy</a></li>
+                <li><strong>Spotify</strong> (Sweden) — Music playback (only if connected by user). <a href="https://www.spotify.com/privacy" target="_blank">Spotify Privacy Policy</a></li>
+                <li><strong>Cloudinary</strong> (USA) — Image and media storage. <a href="https://cloudinary.com/privacy" target="_blank">Cloudinary Privacy Policy</a></li>
+                <li><strong>Google Gemini</strong> (USA) — AI meal analysis for nutritional tracking. <a href="https://policies.google.com/privacy" target="_blank">Google Privacy Policy</a></li>
+                <li><strong>Clarifai</strong> (USA) — Food image recognition. <a href="https://www.clarifai.com/privacy" target="_blank">Clarifai Privacy Policy</a></li>
+                <li><strong>YouTube</strong> (USA) — Video playback for exercises and music. <a href="https://policies.google.com/privacy" target="_blank">Google Privacy Policy</a></li>
+            </ul>
+            <p>Data transfers to the USA are protected by adequate safeguards under GDPR (Adequacy decision, standard contractual clauses).</p>
+
+            <h2>5. Data Retention</h2>
+            <p>Your personal data is retained for the duration of your account. Upon account deletion, all data is permanently deleted within 30 days, unless legal obligations require longer retention.</p>
+
+            <h2>6. Your Rights (GDPR)</h2>
+            <p>Under the GDPR, you have the following rights:</p>
+            <ul>
+                <li><strong>Access</strong> (Art. 15) — Request a copy of your personal data</li>
+                <li><strong>Rectification</strong> (Art. 16) — Correct inaccurate or incomplete data</li>
+                <li><strong>Erasure</strong> (Art. 17) — Request deletion of your data ("right to be forgotten")</li>
+                <li><strong>Portability</strong> (Art. 20) — Receive your data in a structured, readable format</li>
+                <li><strong>Objection</strong> (Art. 21) — Object to the processing of your data</li>
+                <li><strong>Restriction</strong> (Art. 18) — Request restriction of processing</li>
+            </ul>
+            <p>You can exercise your <strong>access</strong>, <strong>portability</strong>, and <strong>erasure</strong> rights directly from the Account Settings section of the platform:</p>
+            <ul>
+                <li><strong>"Export My Data"</strong> — download all your data in JSON format</li>
+                <li><strong>"Delete Account"</strong> — permanently delete your account and all associated data</li>
+            </ul>
+            <p>For other rights, contact us through the platform.</p>
+
+            <h2>7. Security</h2>
+            <p>We implement technical and organizational measures to protect your data:</p>
+            <ul>
+                <li>Passwords encrypted with bcrypt algorithm</li>
+                <li>HTTPS connections with HSTS headers</li>
+                <li>HttpOnly and SameSite cookies for session protection</li>
+                <li>Rate limiting against brute-force attacks</li>
+                <li>Security headers (CSP, X-Frame-Options, X-Content-Type-Options)</li>
+            </ul>
+
+            <h2>8. Complaints</h2>
+            <p>You have the right to lodge a complaint with the Italian Data Protection Authority (Garante per la Protezione dei Dati Personali — www.garanteprivacy.it) if you believe the processing of your data violates the GDPR.</p>
+
+            {% elif page == 'cookies' %}
+            <h2>1. What Are Cookies</h2>
+            <p>Cookies are small text files stored in your browser when you visit a website. FitOS uses cookies and similar technologies (localStorage) for the operation of the platform.</p>
+
+            <h2>2. Cookies Used</h2>
+            <h3>Technical Cookies (Necessary)</h3>
+            <p>These cookies are essential for the platform to function and cannot be disabled:</p>
+            <ul>
+                <li><strong>access_token</strong> — JWT authentication cookie. Keeps your session active. HttpOnly (not accessible via JavaScript). Expires when the browser closes.</li>
+            </ul>
+
+            <h3>localStorage Data (Necessary)</h3>
+            <p>We use browser localStorage to store functional preferences:</p>
+            <ul>
+                <li><strong>token</strong> — Authentication token for API calls</li>
+                <li><strong>role</strong> — Your role on the platform (client, trainer, etc.)</li>
+                <li><strong>cookie_consent</strong> — Your cookie consent preference</li>
+            </ul>
+
+            <h3>Third-Party Cookies</h3>
+            <p>The following third-party services may set their own cookies when you use their features:</p>
+            <ul>
+                <li><strong>Stripe</strong> — Cookies for secure payment processing. Set only during transactions.</li>
+                <li><strong>YouTube</strong> — Cookies for video playback. Set when you view exercise videos or listen to music.</li>
+                <li><strong>Spotify</strong> — Cookies for music playback. Set only if you connect your Spotify account.</li>
+            </ul>
+
+            <h2>3. Managing Cookies</h2>
+            <p>You can manage your cookie preferences at any time:</p>
+            <ul>
+                <li>Via the cookie banner on the platform</li>
+                <li>Via your browser settings</li>
+            </ul>
+            <p>Note: disabling technical cookies will prevent the platform from functioning, as they are required for authentication.</p>
+
+            <h2>4. More Information</h2>
+            <p>For more information about how we use your data, please see our <a href="/privacy">Privacy Policy</a>.</p>
+            {% endif %}
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer class="border-t border-white/10 py-6 mt-8">
+        <div class="max-w-4xl mx-auto px-4 flex flex-col sm:flex-row items-center justify-between gap-3 text-sm text-gray-500">
+            <span>&copy; 2026 FitOS</span>
+            <div class="flex gap-4">
+                <a href="/terms" class="hover:text-white transition {% if page == 'terms' %}text-orange-500{% endif %}">Terms</a>
+                <a href="/privacy" class="hover:text-white transition {% if page == 'privacy' %}text-orange-500{% endif %}">Privacy</a>
+                <a href="/cookies" class="hover:text-white transition {% if page == 'cookies' %}text-orange-500{% endif %}">Cookies</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        let currentLang = 'it';
+        function toggleLanguage() {
+            const itContent = document.getElementById('content-it');
+            const enContent = document.getElementById('content-en');
+            const btn = document.getElementById('lang-toggle');
+            if (currentLang === 'it') {
+                itContent.classList.add('hidden');
+                enContent.classList.remove('hidden');
+                btn.innerHTML = '🇮🇹 Italiano';
+                currentLang = 'en';
+            } else {
+                enContent.classList.add('hidden');
+                itContent.classList.remove('hidden');
+                btn.innerHTML = '🇬🇧 English';
+                currentLang = 'it';
+            }
+        }
+    </script>
+</body>
+</html>

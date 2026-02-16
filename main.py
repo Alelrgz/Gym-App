@@ -366,6 +366,7 @@ def run_migrations(engine):
         ('spotify_access_token', 'TEXT'),
         ('spotify_refresh_token', 'TEXT'),
         ('spotify_token_expires_at', 'TEXT'),
+        ('terms_agreed_at', 'TEXT'),
     ])
 
     # Add health_score to client_daily_diet_summary
@@ -667,12 +668,152 @@ async def log_requests(request: Request, call_next):
     try:
         response = await call_next(request)
         response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate, max-age=0, private"
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "SAMEORIGIN"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(self), microphone=(), geolocation=()"
         return response
     except Exception as e:
         logger.error(f"Request error: {request.method} {request.url.path} - {e}")
         raise e
 
 # Removed conflicting login/register routes (now handled by simple_auth with /auth prefix)
+
+# --- LEGAL PAGES ---
+@app.get("/terms", response_class=HTMLResponse)
+async def terms_page(request: Request):
+    return templates.TemplateResponse("legal.html", {"request": request, "title": "Termini di Servizio | Terms of Service", "page": "terms"})
+
+@app.get("/privacy", response_class=HTMLResponse)
+async def privacy_page(request: Request):
+    return templates.TemplateResponse("legal.html", {"request": request, "title": "Informativa sulla Privacy | Privacy Policy", "page": "privacy"})
+
+@app.get("/cookies", response_class=HTMLResponse)
+async def cookies_page(request: Request):
+    return templates.TemplateResponse("legal.html", {"request": request, "title": "Politica sui Cookie | Cookie Policy", "page": "cookies"})
+
+# --- GDPR DATA EXPORT ---
+from sqlalchemy.orm import Session
+from database import get_db
+
+@app.get("/api/gdpr/export-data")
+async def gdpr_export_data(request: Request, current_user: UserORM = Depends(get_current_user), db: Session = Depends(get_db)):
+    """GDPR Art. 20 - Data portability. Returns all user data as JSON."""
+    from models_orm import (ClientProfileORM, WeightHistoryORM, ClientDietLogORM,
+        ClientDailyDietSummaryORM, ClientDietSettingsORM, ClientExerciseLogORM,
+        ClientScheduleORM, AppointmentORM, CheckInORM, PhysiquePhotoORM,
+        MedicalCertificateORM, ClientDocumentORM, MessageORM, NotificationORM,
+        ClientSubscriptionORM, PaymentORM, DailyQuestCompletionORM,
+        LessonEnrollmentORM, FriendshipORM)
+
+    user = db.query(UserORM).filter(UserORM.id == current_user.id).first()
+    uid = user.id
+
+    def rows_to_list(rows, exclude=None):
+        exclude = exclude or {"hashed_password"}
+        result = []
+        for r in rows:
+            d = {c.name: getattr(r, c.name) for c in r.__table__.columns if c.name not in exclude}
+            result.append(d)
+        return result
+
+    data = {
+        "export_date": datetime.utcnow().isoformat(),
+        "account": rows_to_list([user])[0] if user else {},
+        "profile": rows_to_list(db.query(ClientProfileORM).filter(ClientProfileORM.id == uid).all()),
+        "weight_history": rows_to_list(db.query(WeightHistoryORM).filter(WeightHistoryORM.client_id == uid).all()),
+        "diet_settings": rows_to_list(db.query(ClientDietSettingsORM).filter(ClientDietSettingsORM.id == uid).all()),
+        "diet_logs": rows_to_list(db.query(ClientDietLogORM).filter(ClientDietLogORM.client_id == uid).all()),
+        "diet_summaries": rows_to_list(db.query(ClientDailyDietSummaryORM).filter(ClientDailyDietSummaryORM.client_id == uid).all()),
+        "exercise_logs": rows_to_list(db.query(ClientExerciseLogORM).filter(ClientExerciseLogORM.client_id == uid).all()),
+        "schedule": rows_to_list(db.query(ClientScheduleORM).filter(ClientScheduleORM.client_id == uid).all()),
+        "appointments": rows_to_list(db.query(AppointmentORM).filter(AppointmentORM.client_id == uid).all()),
+        "checkins": rows_to_list(db.query(CheckInORM).filter(CheckInORM.member_id == uid).all()),
+        "physique_photos": rows_to_list(db.query(PhysiquePhotoORM).filter(PhysiquePhotoORM.client_id == uid).all()),
+        "medical_certificates": rows_to_list(db.query(MedicalCertificateORM).filter(MedicalCertificateORM.client_id == uid).all()),
+        "documents": rows_to_list(db.query(ClientDocumentORM).filter(ClientDocumentORM.client_id == uid).all()),
+        "messages_sent": rows_to_list(db.query(MessageORM).filter(MessageORM.sender_id == uid).all()),
+        "notifications": rows_to_list(db.query(NotificationORM).filter(NotificationORM.user_id == uid).all()),
+        "subscriptions": rows_to_list(db.query(ClientSubscriptionORM).filter(ClientSubscriptionORM.client_id == uid).all()),
+        "payments": rows_to_list(db.query(PaymentORM).filter(PaymentORM.client_id == uid).all()),
+        "quest_completions": rows_to_list(db.query(DailyQuestCompletionORM).filter(DailyQuestCompletionORM.client_id == uid).all()),
+        "lesson_enrollments": rows_to_list(db.query(LessonEnrollmentORM).filter(LessonEnrollmentORM.client_id == uid).all()),
+        "friendships": rows_to_list(db.query(FriendshipORM).filter(
+            (FriendshipORM.user1_id == uid) | (FriendshipORM.user2_id == uid)
+        ).all()),
+    }
+
+    from fastapi.responses import Response
+    return Response(
+        content=json.dumps(data, indent=2, default=str),
+        media_type="application/json",
+        headers={"Content-Disposition": f"attachment; filename=fitos_data_export_{uid}.json"}
+    )
+
+# --- GDPR ACCOUNT DELETION ---
+@app.post("/api/gdpr/delete-account")
+async def gdpr_delete_account(request: Request, current_user: UserORM = Depends(get_current_user), db: Session = Depends(get_db)):
+    """GDPR Art. 17 - Right to erasure. Permanently deletes user account and all associated data."""
+    from models_orm import (ClientProfileORM, WeightHistoryORM, ClientDietLogORM,
+        ClientDailyDietSummaryORM, ClientDietSettingsORM, ClientExerciseLogORM,
+        ClientScheduleORM, AppointmentORM, CheckInORM, PhysiquePhotoORM,
+        MedicalCertificateORM, ClientDocumentORM, MessageORM, NotificationORM,
+        ClientSubscriptionORM, PaymentORM, DailyQuestCompletionORM,
+        LessonEnrollmentORM, FriendshipORM, ConversationORM, ChatRequestORM,
+        AutomatedMessageLogORM)
+    import bcrypt
+
+    body = await request.json()
+    password = body.get("password", "")
+
+    # Verify password before deletion
+    user = db.query(UserORM).filter(UserORM.id == current_user.id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if not bcrypt.checkpw(password.encode('utf-8'), user.hashed_password.encode('utf-8')):
+        raise HTTPException(status_code=403, detail="Incorrect password")
+
+    uid = user.id
+
+    # Delete all associated data (order matters for FK constraints)
+    db.query(AutomatedMessageLogORM).filter(AutomatedMessageLogORM.client_id == uid).delete()
+    db.query(DailyQuestCompletionORM).filter(DailyQuestCompletionORM.client_id == uid).delete()
+    db.query(LessonEnrollmentORM).filter(LessonEnrollmentORM.client_id == uid).delete()
+    db.query(NotificationORM).filter(NotificationORM.user_id == uid).delete()
+    db.query(MessageORM).filter(MessageORM.sender_id == uid).delete()
+    db.query(ConversationORM).filter(
+        (ConversationORM.client_id == uid) | (ConversationORM.user1_id == uid) | (ConversationORM.user2_id == uid)
+    ).delete(synchronize_session=False)
+    db.query(ChatRequestORM).filter(
+        (ChatRequestORM.from_user_id == uid) | (ChatRequestORM.to_user_id == uid)
+    ).delete(synchronize_session=False)
+    db.query(FriendshipORM).filter(
+        (FriendshipORM.user1_id == uid) | (FriendshipORM.user2_id == uid)
+    ).delete(synchronize_session=False)
+    db.query(PaymentORM).filter(PaymentORM.client_id == uid).delete()
+    db.query(ClientSubscriptionORM).filter(ClientSubscriptionORM.client_id == uid).delete()
+    db.query(PhysiquePhotoORM).filter(PhysiquePhotoORM.client_id == uid).delete()
+    db.query(MedicalCertificateORM).filter(MedicalCertificateORM.client_id == uid).delete()
+    db.query(ClientDocumentORM).filter(ClientDocumentORM.client_id == uid).delete()
+    db.query(CheckInORM).filter(CheckInORM.member_id == uid).delete()
+    db.query(AppointmentORM).filter(AppointmentORM.client_id == uid).delete()
+    db.query(ClientScheduleORM).filter(ClientScheduleORM.client_id == uid).delete()
+    db.query(ClientExerciseLogORM).filter(ClientExerciseLogORM.client_id == uid).delete()
+    db.query(ClientDailyDietSummaryORM).filter(ClientDailyDietSummaryORM.client_id == uid).delete()
+    db.query(ClientDietLogORM).filter(ClientDietLogORM.client_id == uid).delete()
+    db.query(ClientDietSettingsORM).filter(ClientDietSettingsORM.id == uid).delete()
+    db.query(WeightHistoryORM).filter(WeightHistoryORM.client_id == uid).delete()
+    db.query(ClientProfileORM).filter(ClientProfileORM.id == uid).delete()
+    db.query(UserORM).filter(UserORM.id == uid).delete()
+
+    db.commit()
+    logger.info(f"GDPR: Account deleted for user {uid}")
+
+    response = JSONResponse(content={"detail": "Account deleted successfully"})
+    response.delete_cookie("access_token")
+    return response
 
 @app.get("/", response_class=HTMLResponse)
 async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "client", mode: str = "dashboard"):

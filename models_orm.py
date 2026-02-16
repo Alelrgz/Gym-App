@@ -40,6 +40,9 @@ class UserORM(Base):
     phone = Column(String, nullable=True)  # Phone number
     must_change_password = Column(Boolean, default=False)  # Force password change on first login
 
+    # Legal compliance
+    terms_agreed_at = Column(String, nullable=True)  # ISO datetime when user agreed to Terms/Privacy
+
     # Spotify Integration (for music playback control)
     spotify_access_token = Column(String, nullable=True)  # OAuth access token
     spotify_refresh_token = Column(String, nullable=True)  # OAuth refresh token

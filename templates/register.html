@@ -636,6 +636,15 @@
                     <p id="gym-code-hint" class="hint-text"></p>
                 </div>
 
+                <div class="flex items-start gap-3 my-4">
+                    <input type="checkbox" id="terms_agreed" name="terms_agreed" value="yes" required
+                        class="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-orange-500 focus:ring-orange-500">
+                    <label for="terms_agreed" class="text-sm text-gray-400 leading-snug">
+                        I agree to the <a href="/terms" target="_blank" class="text-orange-500 hover:text-orange-400 underline">Terms of Service</a>
+                        and <a href="/privacy" target="_blank" class="text-orange-500 hover:text-orange-400 underline">Privacy Policy</a>
+                    </label>
+                </div>
+
                 <button type="submit" class="btn-primary">Create Account</button>
             </form>
         </div>
@@ -807,6 +816,60 @@
                 document.getElementById('error-msg').style.display = 'block';
             }
         });
+    </script>
+
+    <!-- Cookie Consent Banner -->
+    <div id="cookie-consent-banner" class="fixed bottom-0 left-0 right-0 z-[100] hidden">
+        <div class="bg-gray-800 border-t border-white/10 px-4 py-3 shadow-2xl">
+            <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-center gap-3">
+                <p class="text-sm text-gray-300 flex-1 text-center sm:text-left">
+                    Utilizziamo cookie tecnici per il funzionamento della piattaforma.
+                    <a href="/cookies" class="text-orange-500 hover:text-orange-400 underline">Maggiori info</a>
+                </p>
+                <button onclick="declineAllCookies()" class="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-gray-300 text-sm font-semibold rounded-lg transition">
+                    Rifiuta tutti
+                </button>
+                <button onclick="essentialCookies()" class="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-gray-300 text-sm font-semibold rounded-lg transition">
+                    Solo essenziali
+                </button>
+                <button onclick="acceptCookies()" class="px-4 py-1.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-lg transition">
+                    Accetta tutti
+                </button>
+            </div>
+        </div>
+    </div>
+    <script>
+        if (!localStorage.getItem('cookie_consent')) {
+            document.getElementById('cookie-consent-banner')?.classList.remove('hidden');
+        }
+        function acceptCookies() {
+            localStorage.setItem('cookie_consent', 'all');
+            document.getElementById('cookie-consent-banner')?.classList.add('hidden');
+        }
+        function essentialCookies() {
+            localStorage.setItem('cookie_consent', 'essential');
+            document.getElementById('cookie-consent-banner')?.classList.add('hidden');
+        }
+        function declineAllCookies() {
+            localStorage.setItem('cookie_consent', 'declined');
+            document.getElementById('cookie-consent-banner')?.classList.add('hidden');
+            const warn = document.createElement('div');
+            warn.id = 'cookie-decline-warning';
+            warn.className = 'fixed bottom-0 left-0 right-0 z-[100]';
+            warn.innerHTML = `
+                <div class="bg-yellow-900/95 border-t border-yellow-500/30 px-4 py-3">
+                    <div class="max-w-4xl mx-auto flex flex-col sm:flex-row items-center gap-3">
+                        <p class="text-sm text-yellow-200 flex-1 text-center sm:text-left">
+                            La piattaforma richiede cookie essenziali per l'autenticazione. Puoi consultare le pagine informative, ma non potrai accedere al tuo account.
+                        </p>
+                        <button onclick="essentialCookies(); document.getElementById('cookie-decline-warning')?.remove()"
+                            class="px-4 py-1.5 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-semibold rounded-lg transition flex-shrink-0">
+                            Accetta essenziali
+                        </button>
+                    </div>
+                </div>`;
+            document.body.appendChild(warn);
+        }
     </script>
 </body>
 
