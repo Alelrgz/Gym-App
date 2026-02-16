@@ -560,8 +560,30 @@ async def startup_event():
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables verified/created.")
 
-        # Critical: ensure users table has all required columns FIRST
-        # (run_migrations can fail partway through on PostgreSQL due to aborted transactions)
+        # Critical: add missing columns to users table using raw SQL
+        # Each column gets its own connection + transaction to avoid PostgreSQL aborted-state issues
+        from sqlalchemy import text
+        from database import IS_POSTGRES
+        print(f"[MIGRATION] IS_POSTGRES={IS_POSTGRES}")
+
+        critical_users_columns = [
+            ('terms_agreed_at', 'TEXT'),
+            ('shower_timer_minutes', 'INTEGER'),
+            ('shower_daily_limit', 'INTEGER'),
+            ('device_api_key', 'TEXT'),
+        ]
+        for col_name, col_type in critical_users_columns:
+            try:
+                with engine.begin() as conn:
+                    if IS_POSTGRES:
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
+                    else:
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
+                print(f"[MIGRATION] OK: users.{col_name}")
+            except Exception as e:
+                print(f"[MIGRATION] SKIP: users.{col_name} — {e}")
+
+        # Run all other migrations (client_profile, exercises, etc.)
         _safe_add_columns(engine, 'users', [
             ('phone', 'TEXT'),
             ('must_change_password', 'BOOLEAN DEFAULT FALSE'),
@@ -582,8 +604,6 @@ async def startup_event():
             ('shower_daily_limit', 'INTEGER'),
             ('device_api_key', 'TEXT'),
         ])
-
-        # Run remaining migrations for other tables
         run_migrations(engine)
 
         # Log DB info (safe to log dialect)
