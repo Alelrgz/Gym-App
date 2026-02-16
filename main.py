@@ -555,36 +555,13 @@ def background_trigger_checker():
 @app.on_event("startup")
 async def startup_event():
     logger.info("Initializing Database...")
+    from sqlalchemy import text
+    from database import IS_POSTGRES
+
+    # Step 1: Add missing columns to users table FIRST (before create_all)
+    # This MUST happen before anything else because the ORM models reference these columns
     try:
-        # Create tables if they don't exist
-        Base.metadata.create_all(bind=engine)
-        logger.info("Database tables verified/created.")
-
-        # Critical: add missing columns to users table using raw SQL
-        # Each column gets its own connection + transaction to avoid PostgreSQL aborted-state issues
-        from sqlalchemy import text
-        from database import IS_POSTGRES
-        print(f"[MIGRATION] IS_POSTGRES={IS_POSTGRES}")
-
-        critical_users_columns = [
-            ('terms_agreed_at', 'TEXT'),
-            ('shower_timer_minutes', 'INTEGER'),
-            ('shower_daily_limit', 'INTEGER'),
-            ('device_api_key', 'TEXT'),
-        ]
-        for col_name, col_type in critical_users_columns:
-            try:
-                with engine.begin() as conn:
-                    if IS_POSTGRES:
-                        conn.execute(text(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
-                    else:
-                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
-                print(f"[MIGRATION] OK: users.{col_name}")
-            except Exception as e:
-                print(f"[MIGRATION] SKIP: users.{col_name} — {e}")
-
-        # Run all other migrations (client_profile, exercises, etc.)
-        _safe_add_columns(engine, 'users', [
+        all_users_columns = [
             ('phone', 'TEXT'),
             ('must_change_password', 'BOOLEAN DEFAULT FALSE'),
             ('profile_picture', 'TEXT'),
@@ -603,17 +580,39 @@ async def startup_event():
             ('shower_timer_minutes', 'INTEGER'),
             ('shower_daily_limit', 'INTEGER'),
             ('device_api_key', 'TEXT'),
-        ])
-        run_migrations(engine)
-
-        # Log DB info (safe to log dialect)
-        db_url = str(engine.url)
-        if "sqlite" in db_url:
-            logger.info("Using SQLite Database (Development)")
-        elif "postgresql" in db_url:
-            logger.info("Using PostgreSQL Database (Production)")
+        ]
+        for col_name, col_type in all_users_columns:
+            try:
+                with engine.begin() as conn:
+                    if IS_POSTGRES:
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
+                    else:
+                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
+                logger.info(f"Migration: added {col_name} to users")
+            except Exception:
+                pass  # Column likely already exists (SQLite doesn't have IF NOT EXISTS)
     except Exception as e:
-        logger.error(f"Database initialization failed: {e}")
+        logger.warning(f"Users column migration error: {e}")
+
+    # Step 2: Create any new tables (nfc_tags, shower_usage, etc.)
+    try:
+        Base.metadata.create_all(bind=engine)
+        logger.info("Database tables verified/created.")
+    except Exception as e:
+        logger.error(f"create_all error: {e}")
+
+    # Step 3: Run remaining migrations (client_profile, exercises, etc.)
+    try:
+        run_migrations(engine)
+    except Exception as e:
+        logger.error(f"run_migrations error: {e}")
+
+    # Log DB info
+    db_url = str(engine.url)
+    if "sqlite" in db_url:
+        logger.info("Using SQLite Database (Development)")
+    elif "postgresql" in db_url:
+        logger.info("Using PostgreSQL Database (Production)")
 
     # Log storage provider
     from service_modules.upload_helper import _is_cloudinary_ready
