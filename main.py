@@ -560,7 +560,30 @@ async def startup_event():
         Base.metadata.create_all(bind=engine)
         logger.info("Database tables verified/created.")
 
-        # Run migrations for new columns
+        # Critical: ensure users table has all required columns FIRST
+        # (run_migrations can fail partway through on PostgreSQL due to aborted transactions)
+        _safe_add_columns(engine, 'users', [
+            ('phone', 'TEXT'),
+            ('must_change_password', 'BOOLEAN DEFAULT FALSE'),
+            ('profile_picture', 'TEXT'),
+            ('bio', 'TEXT'),
+            ('specialties', 'TEXT'),
+            ('settings', 'TEXT'),
+            ('gym_name', 'TEXT'),
+            ('gym_logo', 'TEXT'),
+            ('session_rate', 'DOUBLE PRECISION'),
+            ('stripe_account_id', 'TEXT'),
+            ('stripe_account_status', 'TEXT'),
+            ('spotify_access_token', 'TEXT'),
+            ('spotify_refresh_token', 'TEXT'),
+            ('spotify_token_expires_at', 'TEXT'),
+            ('terms_agreed_at', 'TEXT'),
+            ('shower_timer_minutes', 'INTEGER'),
+            ('shower_daily_limit', 'INTEGER'),
+            ('device_api_key', 'TEXT'),
+        ])
+
+        # Run remaining migrations for other tables
         run_migrations(engine)
 
         # Log DB info (safe to log dialect)
