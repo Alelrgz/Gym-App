@@ -163,6 +163,51 @@
     </div>
     {% endcall %}
 
+    <!-- Shower System Settings -->
+    {% call card(classes="p-4 mb-5") %}
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Shower System</h3>
+        <i data-lucide="droplets" class="w-4 h-4 text-cyan-400"></i>
+    </div>
+
+    <div class="space-y-4">
+        <div>
+            <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Timer Duration (minutes)</label>
+            <input type="number" id="shower-timer-input" min="1" max="30" value="8"
+                class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500/50 transition">
+        </div>
+
+        <div>
+            <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Daily Limit per Member</label>
+            <input type="number" id="shower-limit-input" min="1" max="20" value="3"
+                class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500/50 transition">
+        </div>
+
+        <button onclick="saveShowerSettings()"
+            class="w-full bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 py-2.5 rounded-xl font-bold transition text-sm">
+            Save Shower Settings
+        </button>
+    </div>
+
+    <!-- Device API Key -->
+    <div class="mt-5 pt-4 border-t border-white/10">
+        <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Device API Key (for ESP32)</label>
+        <div class="flex gap-2">
+            <input type="text" id="device-api-key-display" readonly
+                class="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono opacity-60"
+                value="Not generated yet">
+            <button onclick="copyDeviceKey()" title="Copy" class="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition">
+                <i data-lucide="clipboard" class="w-4 h-4 text-gray-400"></i>
+            </button>
+        </div>
+        <button onclick="generateDeviceKey()"
+            class="mt-2 w-full bg-white/10 hover:bg-white/20 text-white py-2 rounded-xl font-semibold transition text-sm">
+            Generate New Key
+        </button>
+        <p class="text-xs text-gray-500 mt-2">Regenerating the key will disconnect all currently configured ESP32 devices.</p>
+    </div>
+    {% endcall %}
+
     <!-- Logout Button -->
     <a href="/auth/logout" class="block w-full bg-red-500/20 hover:bg-red-500/30 text-red-400 text-center py-3 rounded-xl font-bold transition">
         Logout
@@ -2785,11 +2830,79 @@ function displayActivityFeed(activities) {
     `}).join('');
 }
 
+// ========== SHOWER SYSTEM SETTINGS ==========
+
+async function loadShowerSettings() {
+    try {
+        const res = await fetch('/api/owner/shower-settings', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const timerEl = document.getElementById('shower-timer-input');
+        const limitEl = document.getElementById('shower-limit-input');
+        const keyEl = document.getElementById('device-api-key-display');
+
+        if (timerEl) timerEl.value = data.shower_timer_minutes;
+        if (limitEl) limitEl.value = data.shower_daily_limit;
+        if (keyEl) keyEl.value = data.device_api_key || 'Not generated yet';
+    } catch (err) {
+        console.error('Error loading shower settings:', err);
+    }
+}
+
+async function saveShowerSettings() {
+    const timer = parseInt(document.getElementById('shower-timer-input').value);
+    const limit = parseInt(document.getElementById('shower-limit-input').value);
+
+    if (isNaN(timer) || timer < 1 || timer > 30) { alert('Timer must be 1-30 minutes'); return; }
+    if (isNaN(limit) || limit < 1 || limit > 20) { alert('Limit must be 1-20 sessions'); return; }
+
+    try {
+        const res = await fetch('/api/owner/shower-settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ shower_timer_minutes: timer, shower_daily_limit: limit })
+        });
+
+        if (!res.ok) throw new Error('Failed to save');
+        showToast('Shower settings saved!');
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+async function generateDeviceKey() {
+    if (!confirm('Generate a new device API key? This will disconnect all ESP32 devices until reconfigured.')) return;
+
+    try {
+        const res = await fetch('/api/owner/generate-device-key', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed');
+
+        document.getElementById('device-api-key-display').value = data.device_api_key;
+        showToast('New device key generated!');
+    } catch (err) {
+        alert('Error: ' + err.message);
+    }
+}
+
+function copyDeviceKey() {
+    const key = document.getElementById('device-api-key-display').value;
+    if (key === 'Not generated yet') { alert('Generate a key first'); return; }
+    navigator.clipboard.writeText(key);
+    showToast('Device key copied!');
+}
+
 // Initialize based on mode
 if (currentMode === 'settings') {
     loadGymCode();
     loadGymSettings();
     loadStripeConnectStatus();
+    loadShowerSettings();
 } else if (currentMode === 'crm') {
     loadPipeline();
     loadRetentionAnalytics();

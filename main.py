@@ -189,6 +189,10 @@ app.include_router(course_router)
 from route_modules.crm_routes import router as crm_router
 app.include_router(crm_router)
 
+# Include NFC shower routes
+from route_modules.shower_routes import router as shower_router
+app.include_router(shower_router)
+
 
 def _safe_add_columns(engine, table_name, columns_list):
     """Add columns to a table using IF NOT EXISTS (PostgreSQL 9.6+) or fallback."""
@@ -367,6 +371,9 @@ def run_migrations(engine):
         ('spotify_refresh_token', 'TEXT'),
         ('spotify_token_expires_at', 'TEXT'),
         ('terms_agreed_at', 'TEXT'),
+        ('shower_timer_minutes', 'INTEGER'),
+        ('shower_daily_limit', 'INTEGER'),
+        ('device_api_key', 'TEXT'),
     ])
 
     # Add health_score to client_daily_diet_summary
@@ -705,7 +712,7 @@ async def gdpr_export_data(request: Request, current_user: UserORM = Depends(get
         ClientScheduleORM, AppointmentORM, CheckInORM, PhysiquePhotoORM,
         MedicalCertificateORM, ClientDocumentORM, MessageORM, NotificationORM,
         ClientSubscriptionORM, PaymentORM, DailyQuestCompletionORM,
-        LessonEnrollmentORM, FriendshipORM)
+        LessonEnrollmentORM, FriendshipORM, NfcTagORM, ShowerUsageORM)
 
     user = db.query(UserORM).filter(UserORM.id == current_user.id).first()
     uid = user.id
@@ -742,6 +749,8 @@ async def gdpr_export_data(request: Request, current_user: UserORM = Depends(get
         "friendships": rows_to_list(db.query(FriendshipORM).filter(
             (FriendshipORM.user1_id == uid) | (FriendshipORM.user2_id == uid)
         ).all()),
+        "nfc_tags": rows_to_list(db.query(NfcTagORM).filter(NfcTagORM.member_id == uid).all()),
+        "shower_usage": rows_to_list(db.query(ShowerUsageORM).filter(ShowerUsageORM.member_id == uid).all()),
     }
 
     from fastapi.responses import Response
@@ -761,7 +770,7 @@ async def gdpr_delete_account(request: Request, current_user: UserORM = Depends(
         MedicalCertificateORM, ClientDocumentORM, MessageORM, NotificationORM,
         ClientSubscriptionORM, PaymentORM, DailyQuestCompletionORM,
         LessonEnrollmentORM, FriendshipORM, ConversationORM, ChatRequestORM,
-        AutomatedMessageLogORM)
+        AutomatedMessageLogORM, NfcTagORM, ShowerUsageORM)
     import bcrypt
 
     body = await request.json()
@@ -778,6 +787,8 @@ async def gdpr_delete_account(request: Request, current_user: UserORM = Depends(
     uid = user.id
 
     # Delete all associated data (order matters for FK constraints)
+    db.query(ShowerUsageORM).filter(ShowerUsageORM.member_id == uid).delete()
+    db.query(NfcTagORM).filter(NfcTagORM.member_id == uid).delete()
     db.query(AutomatedMessageLogORM).filter(AutomatedMessageLogORM.client_id == uid).delete()
     db.query(DailyQuestCompletionORM).filter(DailyQuestCompletionORM.client_id == uid).delete()
     db.query(LessonEnrollmentORM).filter(LessonEnrollmentORM.client_id == uid).delete()

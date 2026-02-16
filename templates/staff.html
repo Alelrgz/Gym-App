@@ -204,6 +204,66 @@
         </div>
     </div>
 
+    <!-- NFC Shower System -->
+    {% call card(classes="p-4 mb-6") %}
+    <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center gap-2">
+            <i data-lucide="radio" class="w-5 h-5 text-cyan-400"></i>
+            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">NFC Shower System</h3>
+        </div>
+        <button onclick="toggleNfcSection()" id="nfc-toggle-btn" class="text-xs bg-cyan-500/20 text-cyan-400 px-3 py-1.5 rounded-lg hover:bg-cyan-500/30 transition font-semibold">
+            Show
+        </button>
+    </div>
+    <div id="nfc-section" class="hidden">
+        <!-- NFC Registration -->
+        <div class="mb-4 p-3 bg-white/5 rounded-xl">
+            <h4 class="text-sm font-semibold text-white mb-3">Register NFC Tag</h4>
+            <div class="flex flex-col lg:flex-row gap-2">
+                <input type="text" id="nfc-uid-input"
+                    class="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 outline-none focus:border-cyan-500/50 transition text-sm uppercase font-mono"
+                    placeholder="Scan NFC tag or enter UID...">
+                <select id="nfc-member-select"
+                    class="flex-1 bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 text-white outline-none focus:border-cyan-500/50 transition text-sm">
+                    <option value="">Select member...</option>
+                </select>
+                <input type="text" id="nfc-label-input"
+                    class="lg:w-40 bg-black/30 border border-white/10 rounded-xl px-4 py-2.5 text-white placeholder-gray-500 outline-none focus:border-cyan-500/50 transition text-sm"
+                    placeholder="Label (optional)">
+                <button onclick="registerNfcTag()"
+                    class="bg-cyan-500 hover:bg-cyan-600 text-white px-4 py-2.5 rounded-xl transition font-semibold text-sm whitespace-nowrap">
+                    Register
+                </button>
+            </div>
+        </div>
+
+        <!-- Two column: Registered Tags + Today's Shower Usage -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <!-- Registered Tags -->
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <h4 class="text-sm font-semibold text-white">Registered Tags</h4>
+                    <span class="text-xs text-gray-500" id="nfc-tags-count">0</span>
+                </div>
+                <div id="nfc-tags-list" class="space-y-2 max-h-64 overflow-y-auto">
+                    <p class="text-gray-400 text-sm text-center py-2">Loading...</p>
+                </div>
+            </div>
+
+            <!-- Today's Shower Usage -->
+            <div>
+                <div class="flex justify-between items-center mb-2">
+                    <h4 class="text-sm font-semibold text-white">Today's Showers</h4>
+                    <span class="text-xs text-gray-500" id="shower-usage-count">0</span>
+                </div>
+                <div id="shower-usage-list" class="space-y-2 max-h-64 overflow-y-auto">
+                    <p class="text-gray-400 text-sm text-center py-2">Loading...</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endcall %}
+
     <!-- Main Grid: 4 columns on desktop -->
     <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-6">
 
@@ -797,6 +857,13 @@ async function loadStaffData() {
 
             const countEl = document.getElementById('members-count');
             if (countEl) countEl.textContent = allMembers.length;
+
+            // Populate NFC member dropdown
+            const nfcSelect = document.getElementById('nfc-member-select');
+            if (nfcSelect && allMembers.length > 0) {
+                nfcSelect.innerHTML = '<option value="">Select member...</option>' +
+                    allMembers.map(m => `<option value="${m.id}">${escapeHtml(m.name || m.username)}</option>`).join('');
+            }
         }
 
         // Load trainers immediately
@@ -1644,6 +1711,149 @@ document.getElementById('qr-scanner-input')?.addEventListener('keypress', async 
         // Close scanner and process
         closeQrScanner();
         await searchMember();
+    }
+});
+
+// ========== NFC SHOWER SYSTEM ==========
+
+function toggleNfcSection() {
+    const section = document.getElementById('nfc-section');
+    const btn = document.getElementById('nfc-toggle-btn');
+    if (section.classList.contains('hidden')) {
+        section.classList.remove('hidden');
+        btn.textContent = 'Hide';
+        loadNfcTags();
+        loadShowerUsage();
+    } else {
+        section.classList.add('hidden');
+        btn.textContent = 'Show';
+    }
+}
+
+async function loadNfcTags() {
+    try {
+        const res = await fetch('/api/staff/nfc-tags', { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load NFC tags');
+        const tags = await res.json();
+
+        document.getElementById('nfc-tags-count').textContent = tags.length;
+        const container = document.getElementById('nfc-tags-list');
+
+        if (tags.length === 0) {
+            container.innerHTML = '<p class="text-gray-400 text-sm text-center py-2">No NFC tags registered</p>';
+            return;
+        }
+
+        container.innerHTML = tags.map(tag => `
+            <div class="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold text-white truncate">${escapeHtml(tag.member_name)}</p>
+                    <p class="text-xs text-gray-400">
+                        <span class="font-mono">${escapeHtml(tag.nfc_uid)}</span>
+                        ${tag.label ? ' · ' + escapeHtml(tag.label) : ''}
+                    </p>
+                </div>
+                <button onclick="unregisterNfc(${tag.id})" class="text-red-400 hover:text-red-300 p-1 ml-2" title="Unregister">
+                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                </button>
+            </div>
+        `).join('');
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    } catch (err) {
+        console.error('Error loading NFC tags:', err);
+    }
+}
+
+async function registerNfcTag() {
+    const nfcUid = document.getElementById('nfc-uid-input').value.trim();
+    const memberId = document.getElementById('nfc-member-select').value;
+    const label = document.getElementById('nfc-label-input').value.trim();
+
+    if (!nfcUid) { alert('Please scan or enter an NFC tag UID'); return; }
+    if (!memberId) { alert('Please select a member'); return; }
+
+    try {
+        const res = await fetch('/api/staff/register-nfc', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ nfc_uid: nfcUid, member_id: memberId, label: label || undefined })
+        });
+
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.detail || 'Registration failed');
+
+        document.getElementById('nfc-uid-input').value = '';
+        document.getElementById('nfc-label-input').value = '';
+        document.getElementById('nfc-member-select').value = '';
+
+        showToast(result.message, 'success');
+        loadNfcTags();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+async function unregisterNfc(tagId) {
+    if (!confirm('Unregister this NFC tag?')) return;
+
+    try {
+        const res = await fetch(`/api/staff/unregister-nfc/${tagId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        if (!res.ok) throw new Error('Failed to unregister');
+        showToast('NFC tag unregistered', 'success');
+        loadNfcTags();
+    } catch (err) {
+        showToast('Error: ' + err.message, 'error');
+    }
+}
+
+async function loadShowerUsage() {
+    try {
+        const res = await fetch('/api/staff/shower-usage', { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to load shower usage');
+        const data = await res.json();
+
+        document.getElementById('shower-usage-count').textContent = data.count;
+        const container = document.getElementById('shower-usage-list');
+
+        if (data.count === 0) {
+            container.innerHTML = '<p class="text-gray-400 text-sm text-center py-2">No showers used today</p>';
+            return;
+        }
+
+        container.innerHTML = data.usages.map(u => {
+            const mins = u.duration_seconds ? Math.floor(u.duration_seconds / 60) : Math.floor(u.timer_seconds / 60);
+            const secs = u.duration_seconds ? (u.duration_seconds % 60).toString().padStart(2, '0') : '00';
+            const statusColor = u.completed ? 'text-green-400' : 'text-yellow-400';
+            const statusText = u.completed ? `${mins}:${secs}` : 'Active';
+
+            return `
+                <div class="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+                    <div>
+                        <p class="text-sm font-semibold text-white">${escapeHtml(u.member_name)}</p>
+                        <p class="text-xs text-gray-400">${u.time}${u.shower_id && u.shower_id !== 'default' ? ' · ' + escapeHtml(u.shower_id) : ''}</p>
+                    </div>
+                    <span class="text-xs ${statusColor} font-semibold">${statusText}</span>
+                </div>
+            `;
+        }).join('');
+    } catch (err) {
+        console.error('Error loading shower usage:', err);
+    }
+}
+
+// NFC UID input listener — USB NFC readers type UID + Enter
+document.getElementById('nfc-uid-input')?.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        const memberId = document.getElementById('nfc-member-select').value;
+        if (memberId) {
+            registerNfcTag();
+        }
     }
 });
 

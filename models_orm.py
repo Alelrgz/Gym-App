@@ -48,6 +48,11 @@ class UserORM(Base):
     spotify_refresh_token = Column(String, nullable=True)  # OAuth refresh token
     spotify_token_expires_at = Column(String, nullable=True)  # ISO datetime when token expires
 
+    # Shower/NFC system settings (for owners)
+    shower_timer_minutes = Column(Integer, nullable=True)  # Default shower duration in minutes
+    shower_daily_limit = Column(Integer, nullable=True)  # Max showers per member per day
+    device_api_key = Column(String, nullable=True, unique=True, index=True)  # UUID for ESP32 device auth
+
 # --- EXERCISE & WORKOUT LIBRARY (Global + Personal) ---
 
 class ExerciseORM(Base):
@@ -793,3 +798,35 @@ class LessonWaitlistORM(Base):
     notification_expires_at = Column(String, nullable=True)  # Deadline to accept
 
     status = Column(String, default="waiting")  # waiting, notified, accepted, declined, expired
+
+
+# --- NFC SHOWER SYSTEM ---
+
+class NfcTagORM(Base):
+    """NFC tags (wristbands/cards) registered to gym members."""
+    __tablename__ = "nfc_tags"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    nfc_uid = Column(String, unique=True, nullable=False, index=True)  # Hardware UID (e.g., "04:A3:2B:1C:5D:80:00")
+    member_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    gym_owner_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    registered_by = Column(String, ForeignKey("users.id"), nullable=True)  # Staff who registered
+    label = Column(String, nullable=True)  # e.g., "Wristband #42"
+    is_active = Column(Boolean, default=True)
+    registered_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
+class ShowerUsageORM(Base):
+    """Shower session usage logs."""
+    __tablename__ = "shower_usage"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    nfc_tag_id = Column(Integer, ForeignKey("nfc_tags.id"), nullable=True, index=True)
+    member_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    gym_owner_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    shower_id = Column(String, nullable=True)  # Which shower/device (e.g., "shower-1")
+    started_at = Column(String, nullable=False)  # ISO datetime
+    duration_seconds = Column(Integer, nullable=True)  # Actual duration (from ESP32 report)
+    timer_seconds = Column(Integer, nullable=False)  # Granted timer duration
+    completed = Column(Boolean, default=False)
+    ended_at = Column(String, nullable=True)  # ISO datetime when session ended
