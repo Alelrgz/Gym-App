@@ -196,21 +196,28 @@ app.include_router(shower_router)
 
 def _safe_add_columns(engine, table_name, columns_list):
     """Add columns to a table using IF NOT EXISTS (PostgreSQL 9.6+) or fallback."""
-    from sqlalchemy import text
+    from sqlalchemy import text, inspect
     from database import IS_POSTGRES
 
+    # Get existing columns to skip ones that already exist
+    try:
+        inspector = inspect(engine)
+        existing = {col['name'] for col in inspector.get_columns(table_name)}
+    except Exception:
+        existing = set()
+
     for col_name, col_type in columns_list:
+        if col_name in existing:
+            continue  # Already exists, skip
         try:
-            with engine.connect() as conn:
+            with engine.begin() as conn:
                 if IS_POSTGRES:
                     conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN IF NOT EXISTS {col_name} {col_type}"))
                 else:
-                    # SQLite doesn't support IF NOT EXISTS for columns, use try/except
                     conn.execute(text(f"ALTER TABLE {table_name} ADD COLUMN {col_name} {col_type}"))
-                conn.commit()
-                logger.info(f"Migration: added {col_name} to {table_name}")
+            logger.info(f"Migration: added {col_name} to {table_name}")
         except Exception as e:
-            logger.debug(f"Migration: {col_name} on {table_name} skipped: {e}")
+            logger.warning(f"Migration: {col_name} on {table_name} failed: {e}")
 
 
 def run_migrations(engine):
