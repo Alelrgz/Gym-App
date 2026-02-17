@@ -1,56 +1,66 @@
 {% extends "base.html" %}
 
 {% block content %}
-<!-- Desktop Sidebar + Main Content Layout -->
-<div class="lg:flex lg:min-h-screen">
 
-    <!-- Desktop Sidebar - Hidden on mobile -->
-    <aside id="trainer-sidebar" class="hidden lg:flex lg:flex-col lg:w-64 lg:fixed lg:left-0 lg:top-0 lg:h-screen trainer-sidebar lg:z-40">
-        <!-- Sidebar Header -->
-        <div class="trainer-sidebar-header">
-            <p class="sidebar-label">Trainer</p>
-            <h2 class="sidebar-title" id="sidebar-trainer-name">Coach Loading...</h2>
+<!-- ===== MOBILE HEADER ===== -->
+<header class="staff-mobile-header">
+    <div class="staff-mobile-header-logo">
+        <img src="/static/fitos-logo.svg" alt="FitOS" class="staff-logo-img">
+        <span class="staff-role-label">{{ role | capitalize }}</span>
+    </div>
+    <div class="staff-mobile-header-actions">
+        <button class="staff-mobile-msg-btn" onclick="openConversationsModal()">
+            <i data-lucide="message-circle" class="w-5 h-5"></i>
+        </button>
+        <a href="/auth/logout" class="staff-mobile-msg-btn" style="color:#f87171;">
+            <i data-lucide="log-out" class="w-5 h-5"></i>
+        </a>
+    </div>
+</header>
+
+<!-- Desktop Sidebar + Main Content Layout -->
+<div class="trainer-layout">
+
+    <!-- ===== LEFT SIDEBAR (desktop) ===== -->
+    <aside class="staff-sidebar trainer-sidebar-new">
+        <div class="staff-sidebar-logo">
+            <img src="/static/fitos-logo.svg" alt="FitOS" class="staff-logo-img staff-logo-img--sidebar">
+            <span class="staff-role-label">{{ role | capitalize }}</span>
         </div>
 
-        <!-- Navigation Items -->
-        <nav class="flex-1 p-4 space-y-2">
+        <nav class="staff-sidebar-nav">
             <button onclick="switchSection('dashboard')"
-                    class="sidebar-nav-item active"
+                    class="staff-nav-item active sidebar-nav-item"
                     data-section="dashboard">
-                <i data-lucide="home" class="w-5 h-5"></i>
-                <span class="nav-label">Dashboard</span>
-            </button>
-            <button onclick="switchSection('schedule')"
-                    class="sidebar-nav-item lg:hidden"
-                    data-section="schedule">
-                <i data-lucide="calendar" class="w-5 h-5"></i>
-                <span class="nav-label">Schedule</span>
+                <i data-lucide="home" class="w-[18px] h-[18px]"></i>
+                <span>Dashboard</span>
             </button>
             <button onclick="switchSection('courses')"
-                    class="sidebar-nav-item"
+                    class="staff-nav-item sidebar-nav-item"
                     data-section="courses">
-                <i data-lucide="book-open" class="w-5 h-5"></i>
-                <span class="nav-label">Courses</span>
+                <i data-lucide="book-open" class="w-[18px] h-[18px]"></i>
+                <span>Corsi</span>
             </button>
             <button onclick="switchSection('settings')"
-                    class="sidebar-nav-item"
+                    class="staff-nav-item sidebar-nav-item"
                     data-section="settings">
-                <i data-lucide="settings" class="w-5 h-5"></i>
-                <span class="nav-label">Settings</span>
+                <i data-lucide="settings" class="w-[18px] h-[18px]"></i>
+                <span>Impostazioni</span>
             </button>
         </nav>
 
-        <!-- Sidebar Footer -->
-        <div class="trainer-sidebar-footer">
-            <a href="/auth/logout" class="sidebar-logout">
-                <i data-lucide="log-out" class="w-5 h-5"></i>
-                <span class="nav-label">Logout</span>
+        <div style="flex:1"></div>
+
+        <div style="display:flex;flex-direction:column;gap:0.25rem;">
+            <a href="/auth/logout" class="staff-nav-item" style="color:#f87171;">
+                <i data-lucide="log-out" class="w-[18px] h-[18px]"></i>
+                <span>Esci</span>
             </a>
         </div>
     </aside>
 
     <!-- Main Content Area -->
-    <main class="flex-1 lg:ml-64 min-h-screen">
+    <main class="staff-main trainer-main-new">
 
         <!-- ==================== SECTION: DASHBOARD ==================== -->
         <section id="section-dashboard" class="trainer-section p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
@@ -606,6 +616,30 @@
     </main>
 </div>
 
+<!-- ===== MOBILE BOTTOM NAV ===== -->
+<nav class="staff-mobile-nav trainer-mobile-nav">
+    <a href="#dashboard" onclick="switchSection('dashboard');updateTrainerBottomNav(this);return false;"
+       class="staff-mobile-nav-item active" data-section="dashboard">
+        <i data-lucide="home" class="w-5 h-5"></i>
+        <span>Home</span>
+    </a>
+    <a href="#schedule" onclick="switchSection('schedule');updateTrainerBottomNav(this);return false;"
+       class="staff-mobile-nav-item" data-section="schedule">
+        <i data-lucide="calendar" class="w-5 h-5"></i>
+        <span>Calendario</span>
+    </a>
+    <a href="#courses" onclick="switchSection('courses');updateTrainerBottomNav(this);return false;"
+       class="staff-mobile-nav-item" data-section="courses">
+        <i data-lucide="book-open" class="w-5 h-5"></i>
+        <span>Corsi</span>
+    </a>
+    <a href="#settings" onclick="switchSection('settings');updateTrainerBottomNav(this);return false;"
+       class="staff-mobile-nav-item" data-section="settings">
+        <i data-lucide="settings" class="w-5 h-5"></i>
+        <span>Impostazioni</span>
+    </a>
+</nav>
+
 <!-- Add Event Modal -->
 <div id="add-event-modal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 backdrop-blur-sm">
     <div class="glass-card w-full max-w-sm mx-4 p-6 rounded-2xl relative">
@@ -814,8 +848,16 @@ function switchSection(sectionId) {
     // Update URL hash
     history.replaceState(null, '', `#${sectionId}`);
 
-    // Update bottom nav state
+    // Update bottom nav state (legacy base.html nav)
     document.querySelectorAll('.bottom-nav-item').forEach(btn => {
+        btn.classList.remove('active');
+        if (btn.dataset.section === sectionId) {
+            btn.classList.add('active');
+        }
+    });
+
+    // Update new mobile bottom nav state
+    document.querySelectorAll('.trainer-mobile-nav .staff-mobile-nav-item').forEach(btn => {
         btn.classList.remove('active');
         if (btn.dataset.section === sectionId) {
             btn.classList.add('active');
@@ -826,6 +868,11 @@ function switchSection(sectionId) {
     initSection(sectionId);
 
     currentSection = sectionId;
+}
+
+function updateTrainerBottomNav(el) {
+    document.querySelectorAll('.trainer-mobile-nav .staff-mobile-nav-item').forEach(btn => btn.classList.remove('active'));
+    if (el) el.classList.add('active');
 }
 
 function initSection(sectionId) {

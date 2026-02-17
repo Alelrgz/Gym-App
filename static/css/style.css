@@ -862,3 +862,909 @@ select option {
     }
 }
 
+/* ============ STAFF DESKTOP LAYOUT ============ */
+
+/* Override body padding/nav when staff layout is active */
+body:has(.staff-layout) {
+    padding-bottom: 0 !important;
+    overflow: hidden;
+}
+
+body:has(.staff-layout) > nav {
+    display: none !important;
+}
+
+.staff-layout {
+    display: grid;
+    grid-template-columns: 200px 1fr 340px;
+    height: 100vh;
+    background: var(--bg-base);
+    overflow: hidden;
+}
+
+.staff-sidebar {
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.6) 0%, rgba(0, 0, 0, 0.4) 100%);
+    backdrop-filter: blur(32px);
+    -webkit-backdrop-filter: blur(32px);
+    border-right: 1px solid var(--glass-border-1);
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    padding: 1.5rem 0.75rem;
+}
+
+.staff-sidebar-logo {
+    padding: 0 0.5rem;
+    margin-bottom: 2.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+/* SVG logo image */
+.staff-logo-img {
+    height: 28px;
+    width: auto;
+}
+
+.staff-logo-img--sidebar {
+    height: 32px;
+}
+
+/* Role label (Staff / Trainer / Owner) */
+.staff-role-label {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.06);
+    padding: 0.2rem 0.5rem;
+    border-radius: 4px;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.staff-sidebar-nav {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+}
+
+.staff-nav-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 0.75rem;
+    border-radius: var(--radius-md);
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all var(--transition-base);
+    text-decoration: none;
+    border: 1px solid transparent;
+}
+
+.staff-nav-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+    color: rgba(255, 255, 255, 0.85);
+}
+
+.staff-nav-item.active {
+    background: rgba(255, 255, 255, 0.06);
+    color: white;
+    border-color: var(--glass-border-1);
+}
+
+.staff-nav-item i,
+.staff-nav-item svg {
+    width: 18px;
+    height: 18px;
+    flex-shrink: 0;
+}
+
+.staff-main {
+    padding: 2.5rem 2.5rem 2rem;
+    overflow-y: auto;
+    max-height: 100vh;
+}
+
+.staff-right-panel {
+    border-left: 1px solid var(--glass-border-1);
+    background: linear-gradient(180deg, rgba(0, 0, 0, 0.3) 0%, rgba(0, 0, 0, 0.1) 100%);
+    display: flex;
+    flex-direction: column;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* Staff page header */
+.staff-page-header {
+    margin-bottom: 2rem;
+}
+
+.staff-page-header h1 {
+    font-size: 2rem;
+    font-weight: 800;
+    color: white;
+    letter-spacing: -0.03em;
+    margin-bottom: 0.25rem;
+}
+
+.staff-page-header p {
+    color: rgba(255, 255, 255, 0.4);
+    font-size: 0.875rem;
+}
+
+/* Staff stats bar */
+.staff-stats-bar {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: var(--glass-bg-2);
+    border: 1px solid var(--glass-border-2);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+}
+
+.staff-stat-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1.25rem;
+    border-right: 1px solid var(--glass-border-1);
+}
+
+.staff-stat-item:last-child {
+    border-right: none;
+}
+
+.staff-stat-value {
+    font-size: 1.375rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1;
+}
+
+.staff-stat-label {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    font-weight: 500;
+}
+
+/* Staff actions bar */
+.staff-actions-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.25rem;
+}
+
+.staff-actions-left {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.staff-actions-right {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.staff-btn-action {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--glass-bg-2);
+    border: 1px solid var(--glass-border-2);
+    border-radius: var(--radius-md);
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.staff-btn-action:hover {
+    background: var(--glass-bg-3);
+    border-color: var(--glass-border-3);
+    color: white;
+}
+
+.staff-btn-primary {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+}
+
+.staff-btn-primary:hover {
+    background: var(--primary-hover);
+    border-color: var(--primary-hover);
+}
+
+/* Staff search bar */
+.staff-search-bar {
+    position: relative;
+    margin-bottom: 1.25rem;
+}
+
+.staff-search-bar input {
+    width: 100%;
+    padding: 0.65rem 1rem 0.65rem 2.5rem;
+    background: var(--glass-bg-1);
+    border: 1px solid var(--glass-border-1);
+    border-radius: var(--radius-md);
+    color: white;
+    font-size: 0.85rem;
+    outline: none;
+    transition: all var(--transition-base);
+}
+
+.staff-search-bar input::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+}
+
+.staff-search-bar input:focus {
+    border-color: rgba(249, 115, 22, 0.4);
+    background: var(--glass-bg-2);
+}
+
+.staff-search-bar .search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255, 255, 255, 0.3);
+    pointer-events: none;
+}
+
+/* Staff table */
+.staff-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.staff-table thead th {
+    text-align: left;
+    padding: 0.75rem 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid var(--glass-border-1);
+}
+
+.staff-table thead th:first-child {
+    padding-left: 1rem;
+}
+
+.staff-table tbody tr {
+    transition: background var(--transition-fast);
+    cursor: pointer;
+}
+
+.staff-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.staff-table tbody td {
+    padding: 0.75rem 1rem;
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    border-bottom: 1px solid var(--glass-border-1);
+    vertical-align: middle;
+}
+
+.staff-table tbody td:first-child {
+    padding-left: 1rem;
+}
+
+.staff-table .member-cell {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.staff-table .member-avatar {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #22c55e, #059669);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 0.75rem;
+    flex-shrink: 0;
+}
+
+.staff-table .member-name {
+    font-weight: 600;
+    color: white;
+}
+
+.staff-table .member-email {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.35);
+}
+
+/* Table card wrapper */
+.staff-table-card {
+    background: var(--glass-bg-2);
+    border: 1px solid var(--glass-border-2);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+}
+
+/* Badge styles for table */
+.staff-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 9999px;
+    font-size: 0.7rem;
+    font-weight: 600;
+}
+
+.staff-badge-active {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+}
+
+.staff-badge-inactive {
+    background: rgba(156, 163, 175, 0.15);
+    color: #9ca3af;
+}
+
+.staff-badge-warning {
+    background: rgba(250, 204, 21, 0.15);
+    color: #facc15;
+}
+
+.staff-badge-danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+
+.staff-badge-valid {
+    background: rgba(34, 197, 94, 0.15);
+    color: #4ade80;
+}
+
+.staff-badge-expired {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+}
+
+.staff-badge-none {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* Skeleton loading rows */
+.staff-skeleton-row td {
+    padding: 0.85rem 1rem;
+}
+
+.staff-skeleton {
+    height: 14px;
+    background: linear-gradient(90deg,
+        rgba(255, 255, 255, 0.04) 25%,
+        rgba(255, 255, 255, 0.08) 50%,
+        rgba(255, 255, 255, 0.04) 75%
+    );
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.5s ease-in-out infinite;
+    border-radius: 6px;
+}
+
+@keyframes skeletonShimmer {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Right panel messages */
+.staff-messages-header {
+    padding: 1.25rem 1.25rem 1rem;
+    border-bottom: 1px solid var(--glass-border-1);
+}
+
+.staff-messages-search {
+    padding: 0.75rem 1.25rem;
+}
+
+.staff-messages-list {
+    flex: 1;
+    overflow-y: auto;
+    padding: 0.5rem 0.75rem;
+}
+
+.staff-message-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 0.5rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+
+.staff-message-item:hover {
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.staff-message-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), #ea580c);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.staff-message-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.staff-message-name {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: white;
+}
+
+.staff-message-preview {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.35);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.staff-message-time {
+    font-size: 0.65rem;
+    color: rgba(255, 255, 255, 0.3);
+    flex-shrink: 0;
+}
+
+.staff-message-unread {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--primary);
+    flex-shrink: 0;
+}
+
+/* ============ STAFF DESKTOP/MOBILE VISIBILITY ============ */
+.staff-mobile-only {
+    display: none !important;
+}
+
+.staff-desktop-only {
+    display: block;
+}
+
+/* ============ STAFF MOBILE CARDS ============ */
+.staff-mobile-cards {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.staff-mobile-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    background: var(--glass-bg-2);
+    border: 1px solid var(--glass-border-1);
+    border-radius: var(--radius-lg);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.staff-mobile-card:hover,
+.staff-mobile-card:active {
+    background: var(--glass-bg-3);
+    border-color: var(--glass-border-2);
+}
+
+.staff-mobile-card-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #22c55e, #059669);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: 700;
+    font-size: 0.8rem;
+    flex-shrink: 0;
+}
+
+.staff-mobile-card-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.staff-mobile-card-name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.staff-mobile-card-badges {
+    display: flex;
+    gap: 0.4rem;
+    margin-top: 0.25rem;
+}
+
+.staff-mobile-card-meta {
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.35);
+    margin-top: 0.15rem;
+}
+
+.staff-skeleton-card {
+    pointer-events: none;
+}
+
+/* ============ STAFF MOBILE HEADER ============ */
+.staff-mobile-header {
+    display: none; /* hidden on desktop */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    height: 56px;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-bottom: 1px solid var(--glass-border-1);
+    padding: 0 1rem;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.staff-mobile-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.staff-mobile-header-logo {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+}
+
+.staff-mobile-msg-btn {
+    position: relative;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.7);
+    cursor: pointer;
+    padding: 0.5rem;
+    border-radius: var(--radius-md);
+    transition: all var(--transition-fast);
+}
+
+.staff-mobile-msg-btn:hover {
+    background: rgba(255, 255, 255, 0.06);
+    color: white;
+}
+
+.staff-mobile-msg-dot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 8px;
+    height: 8px;
+    background: var(--primary);
+    border-radius: 50%;
+}
+
+/* ============ STAFF MOBILE BOTTOM NAV ============ */
+.staff-mobile-nav {
+    display: none; /* hidden on desktop */
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    z-index: 100;
+    height: 64px;
+    background: rgba(0, 0, 0, 0.9);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-top: 1px solid var(--glass-border-1);
+    align-items: center;
+    justify-content: space-around;
+    padding: 0 0.5rem;
+}
+
+.staff-mobile-nav-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    padding: 0.5rem 0.75rem;
+    color: rgba(255, 255, 255, 0.35);
+    text-decoration: none;
+    font-size: 0.65rem;
+    font-weight: 500;
+    transition: color var(--transition-fast);
+    border-radius: var(--radius-md);
+}
+
+.staff-mobile-nav-item.active {
+    color: var(--primary);
+}
+
+.staff-mobile-nav-item:hover {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.staff-mobile-nav-item.active:hover {
+    color: var(--primary);
+}
+
+/* ============ STAFF MOBILE MESSAGES OVERLAY ============ */
+.staff-mobile-messages-overlay {
+    display: none; /* hidden by default */
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(0, 0, 0, 0.6);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+}
+
+.staff-mobile-messages-overlay.open {
+    display: flex;
+    opacity: 1;
+    justify-content: flex-end;
+}
+
+.staff-mobile-messages-panel {
+    width: 85%;
+    max-width: 380px;
+    height: 100%;
+    background: var(--bg-base);
+    border-left: 1px solid var(--glass-border-1);
+    display: flex;
+    flex-direction: column;
+    animation: slideInFromRight 0.25s ease;
+}
+
+@keyframes slideInFromRight {
+    from { transform: translateX(100%); }
+    to { transform: translateX(0); }
+}
+
+/* ============ STAFF MOBILE RESPONSIVE ============ */
+@media (max-width: 1024px) {
+    /* Show mobile header and bottom nav */
+    .staff-mobile-header {
+        display: flex;
+    }
+
+    .staff-mobile-nav {
+        display: flex;
+    }
+
+    /* Hide desktop sidebar and right panel */
+    .staff-sidebar {
+        display: none !important;
+    }
+
+    .staff-right-panel {
+        display: none !important;
+    }
+
+    /* Swap table (desktop) for cards (mobile) */
+    .staff-desktop-only {
+        display: none !important;
+    }
+
+    .staff-mobile-only {
+        display: flex !important;
+    }
+
+    /* Make layout single column */
+    .staff-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
+    }
+
+    /* Main content full width with mobile header/nav spacing */
+    .staff-main {
+        padding: 72px 1rem 80px;
+        max-height: none;
+        overflow: visible;
+    }
+
+    /* Page header smaller on mobile */
+    .staff-page-header h1 {
+        font-size: 1.5rem;
+    }
+
+    /* Stats bar scroll horizontally */
+    .staff-stats-bar {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        flex-wrap: nowrap;
+    }
+
+    .staff-stat-item {
+        white-space: nowrap;
+        flex-shrink: 0;
+        padding: 0.6rem 1rem;
+    }
+
+    /* Actions bar stack on small screens */
+    .staff-actions-bar {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 0.75rem;
+    }
+
+    .staff-actions-left,
+    .staff-actions-right {
+        justify-content: flex-start;
+    }
+
+    /* Search bar full width */
+    .staff-search-bar {
+        max-width: 100% !important;
+    }
+
+    /* Override body for staff mobile */
+    body:has(.staff-layout) {
+        overflow: auto;
+    }
+}
+
+@media (max-width: 640px) {
+    .staff-main {
+        padding: 64px 0.75rem 72px;
+    }
+
+    .staff-page-header h1 {
+        font-size: 1.25rem;
+    }
+
+    .staff-page-header p {
+        font-size: 0.8rem;
+    }
+
+    .staff-stats-bar {
+        border-radius: var(--radius-md);
+    }
+
+    .staff-stat-value {
+        font-size: 1.1rem;
+    }
+
+    .staff-stat-label {
+        font-size: 0.7rem;
+    }
+
+    .staff-btn-action,
+    .staff-btn-primary {
+        font-size: 0.75rem;
+        padding: 0.45rem 0.75rem;
+    }
+
+    .staff-search-bar input {
+        font-size: 0.8rem;
+    }
+
+    .staff-table {
+        min-width: 520px;
+    }
+
+    .staff-table thead th,
+    .staff-table tbody td {
+        padding: 0.6rem 0.75rem;
+        font-size: 0.8rem;
+    }
+
+    .staff-mobile-messages-panel {
+        width: 92%;
+    }
+}
+
+/* ============ TRAINER LAYOUT (reuses staff- classes) ============ */
+
+/* Override body when trainer layout is active */
+body:has(.trainer-layout) {
+    padding-bottom: 0 !important;
+    overflow: hidden;
+}
+
+/* Hide base.html bottom nav when trainer layout is active */
+body:has(.trainer-layout) > nav {
+    display: none !important;
+}
+
+.trainer-layout {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    height: 100vh;
+    background: var(--bg-base);
+    overflow: hidden;
+}
+
+.trainer-main-new {
+    padding: 2rem 2.5rem;
+    overflow-y: auto;
+    max-height: 100vh;
+}
+
+/* Trainer sections: remove max-width constraint when inside new layout */
+.trainer-layout .trainer-section {
+    max-width: 1400px;
+}
+
+/* ============ TRAINER MOBILE RESPONSIVE ============ */
+@media (max-width: 1024px) {
+    /* Show mobile header and bottom nav for trainer */
+    body:has(.trainer-layout) .staff-mobile-header {
+        display: flex;
+    }
+
+    body:has(.trainer-layout) .trainer-mobile-nav {
+        display: flex;
+    }
+
+    /* Hide desktop sidebar */
+    .trainer-layout .trainer-sidebar-new {
+        display: none !important;
+    }
+
+    /* Single column */
+    .trainer-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: 100vh;
+        overflow: visible;
+    }
+
+    .trainer-main-new {
+        padding: 64px 0 72px;
+        max-height: none;
+        overflow: visible;
+    }
+
+    /* Trainer sections get their own padding on mobile */
+    .trainer-layout .trainer-section {
+        padding: 1rem;
+    }
+
+    body:has(.trainer-layout) {
+        overflow: auto;
+    }
+}
+
