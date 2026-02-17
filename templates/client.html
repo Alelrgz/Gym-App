@@ -3257,7 +3257,7 @@ async function selectFitnessGoal(goal) {
     </div>
 </div>
 
-<!-- Booking Choice Modal (1-on-1 vs Course) -->
+<!-- Booking Choice Modal (1-on-1 vs Course vs Facility) -->
 <div id="booking-choice-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
     onclick="if(event.target === this) closeBookingChoiceModal()">
     <div class="glass-card p-6 rounded-2xl max-w-sm w-full">
@@ -3290,6 +3290,19 @@ async function selectFitnessGoal(goal) {
                     <div>
                         <h4 class="font-bold text-white">Group Course</h4>
                         <p class="text-sm text-white/70">Join a scheduled fitness class</p>
+                    </div>
+                </div>
+            </button>
+
+            <!-- Book Facility Option -->
+            <button onclick="selectBookingType('facility')" class="w-full bg-gradient-to-r from-green-500 to-teal-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                        <i data-lucide="map-pin" class="w-6 h-6 stroke-current"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white">Book Facility</h4>
+                        <p class="text-sm text-white/70">Courts, fields, rooms & more</p>
                     </div>
                 </div>
             </button>
@@ -5057,10 +5070,13 @@ function bookWithTrainerFromProfile() {
     if (!currentViewingTrainerId) return;
 
     const trainerId = currentViewingTrainerId;
-    const trainerName = currentViewingTrainerName;
-
     closeTrainerProfileModal();
-    openBookingChoiceModal(trainerId, trainerName);
+
+    // Go directly to 1-on-1 booking (skip choice modal)
+    selectedTrainerId = trainerId;
+    if (typeof openBookingModal === 'function') {
+        openBookingModal();
+    }
 }
 
 // Booking Choice Modal Functions
@@ -5097,7 +5113,11 @@ async function openBookingChoiceForMyTrainer() {
     }
 
     if (trainerId) {
-        openBookingChoiceModal(trainerId, trainerName);
+        // Go directly to 1-on-1 booking with the assigned trainer
+        selectedTrainerId = trainerId;
+        if (typeof openBookingModal === 'function') {
+            openBookingModal();
+        }
     } else {
         showToast('No trainer assigned yet', 'error');
     }
@@ -5125,6 +5145,9 @@ function selectBookingType(type) {
     } else if (type === 'course') {
         // Show all gym courses
         openGymCoursesModal();
+    } else if (type === 'facility') {
+        // Book a facility
+        openFacilityBookingModal();
     }
 }
 
@@ -7187,6 +7210,19 @@ loadFriendsPreview();
                     </div>
                 </div>
             </button>
+
+            <!-- Book Facility Option -->
+            <button onclick="selectBookingType('facility')" class="w-full bg-gradient-to-r from-green-500 to-teal-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                        <i data-lucide="map-pin" class="w-6 h-6 stroke-current"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white">Book Facility</h4>
+                        <p class="text-sm text-white/70">Courts, fields, rooms & more</p>
+                    </div>
+                </div>
+            </button>
         </div>
     </div>
 </div>
@@ -7315,6 +7351,11 @@ if (typeof selectBookingType !== 'function') {
             } else if (typeof openGymCoursesModalShared === 'function') {
                 openGymCoursesModalShared();
             }
+        } else if (type === 'facility') {
+            // Book a facility (court, field, room)
+            if (typeof openFacilityBookingModal === 'function') {
+                openFacilityBookingModal();
+            }
         }
     };
 }
@@ -7383,6 +7424,320 @@ if (typeof closeGymCoursesModal !== 'function') {
         if (modal) modal.classList.add('hidden');
     };
 }
+// ==================== FACILITY BOOKING ====================
+
+let facilityBookingState = { activityTypeId: null, facilityId: null, facilityName: '', date: null };
+
+window.openFacilityBookingModal = async function() {
+    const modal = document.getElementById('facility-booking-modal');
+    if (!modal) return;
+
+    // Reset state
+    facilityBookingState = { activityTypeId: null, facilityId: null, facilityName: '', date: null };
+
+    // Show step 1, hide others
+    document.getElementById('fb-step-activities').classList.remove('hidden');
+    document.getElementById('fb-step-facilities').classList.add('hidden');
+    document.getElementById('fb-step-slots').classList.add('hidden');
+    document.getElementById('fb-modal-title').innerText = 'Book Facility';
+
+    modal.classList.remove('hidden');
+
+    // Load activity types
+    const container = document.getElementById('fb-activity-types');
+    container.innerHTML = '<div class="text-center text-gray-500 py-4 text-sm">Loading...</div>';
+
+    try {
+        const res = await fetch('/api/client/facility/activity-types', { credentials: 'include' });
+        const types = await res.json();
+        if (!types.length) {
+            container.innerHTML = '<div class="text-center text-gray-500 py-4 text-sm">No activities available at your gym</div>';
+            return;
+        }
+        container.innerHTML = types.map(t => `
+            <button onclick="fbSelectActivity('${t.id}', '${t.name.replace(/'/g, "\\'")}')"
+                class="glass-card p-4 rounded-xl text-center hover:bg-white/10 transition tap-effect">
+                <div class="text-2xl mb-1">${t.emoji || '🏟️'}</div>
+                <p class="font-bold text-white text-sm">${t.name}</p>
+                <p class="text-xs text-gray-400">${t.facility_count || 0} available</p>
+            </button>
+        `).join('');
+    } catch (e) {
+        container.innerHTML = '<div class="text-center text-red-400 py-4 text-sm">Failed to load</div>';
+    }
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+};
+
+window.fbSelectActivity = async function(typeId, typeName) {
+    facilityBookingState.activityTypeId = typeId;
+    document.getElementById('fb-step-activities').classList.add('hidden');
+    document.getElementById('fb-step-facilities').classList.remove('hidden');
+    document.getElementById('fb-modal-title').innerText = typeName;
+
+    const container = document.getElementById('fb-facilities-list');
+    container.innerHTML = '<div class="text-center text-gray-500 py-4 text-sm">Loading...</div>';
+
+    try {
+        const res = await fetch(`/api/client/facility/facilities/${typeId}`, { credentials: 'include' });
+        const facilities = await res.json();
+        if (!facilities.length) {
+            container.innerHTML = '<div class="text-center text-gray-500 py-4 text-sm">No facilities available</div>';
+            return;
+        }
+        container.innerHTML = facilities.map(f => `
+            <button onclick="fbSelectFacility('${f.id}', '${f.name.replace(/'/g, "\\'")}')"
+                class="glass-card p-4 rounded-xl text-left hover:bg-white/10 transition tap-effect w-full">
+                <p class="font-bold text-white">${f.name}</p>
+                <p class="text-xs text-gray-400">${f.slot_duration}min slots${f.price_per_slot ? ' · €' + f.price_per_slot : ' · Free'}</p>
+            </button>
+        `).join('');
+    } catch (e) {
+        container.innerHTML = '<div class="text-center text-red-400 py-4 text-sm">Failed to load</div>';
+    }
+};
+
+window.fbSelectFacility = async function(facilityId, facilityName) {
+    facilityBookingState.facilityId = facilityId;
+    facilityBookingState.facilityName = facilityName;
+    facilityBookingState.availableDays = []; // days of week with availability (0=Mon..6=Sun)
+    facilityBookingState.selectedDate = null;
+
+    document.getElementById('fb-step-facilities').classList.add('hidden');
+    document.getElementById('fb-step-slots').classList.remove('hidden');
+    document.getElementById('fb-modal-title').innerText = facilityName;
+    document.getElementById('fb-slots-container').innerHTML = '<div class="text-center text-gray-500 py-4 text-sm">Select a date to see available slots</div>';
+
+    // Fetch availability days (which days of week have availability)
+    try {
+        const res = await fetch(`/api/client/facility/${facilityId}/availability`, { credentials: 'include' });
+        const avail = await res.json();
+        // Convert to JS day-of-week (0=Sun, 1=Mon..6=Sat) from Python (0=Mon..6=Sun)
+        facilityBookingState.availableDays = avail.map(a => (a.day_of_week + 1) % 7);
+    } catch (e) { console.error('Failed to load availability days:', e); }
+
+    // Init calendar to current month
+    const now = new Date();
+    facilityBookingState.calYear = now.getFullYear();
+    facilityBookingState.calMonth = now.getMonth();
+    fbRenderCalendar();
+};
+
+window.fbRenderCalendar = function() {
+    const cal = document.getElementById('fb-calendar');
+    if (!cal) return;
+
+    const year = facilityBookingState.calYear;
+    const month = facilityBookingState.calMonth;
+    const availDays = facilityBookingState.availableDays || [];
+    const selectedDate = facilityBookingState.selectedDate || '';
+    const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+    const canGoPrev = year > today.getFullYear() || (year === today.getFullYear() && month > today.getMonth());
+
+    let html = `<div class="flex items-center justify-between mb-3">
+        <button onclick="fbChangeMonth(-1)" class="w-8 h-8 rounded-lg ${canGoPrev ? 'hover:bg-white/10 text-white' : 'text-gray-600 cursor-not-allowed'} flex items-center justify-center transition" ${canGoPrev ? '' : 'disabled'}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <span class="text-sm font-bold text-white">${monthNames[month]} ${year}</span>
+        <button onclick="fbChangeMonth(1)" class="w-8 h-8 rounded-lg hover:bg-white/10 text-white flex items-center justify-center transition">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+    </div>`;
+
+    // Weekday headers
+    html += '<div class="grid grid-cols-7 gap-1 mb-1">';
+    ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(d => {
+        html += `<div class="text-center text-[10px] text-gray-500 font-medium py-1">${d}</div>`;
+    });
+    html += '</div>';
+
+    // Day cells
+    html += '<div class="grid grid-cols-7 gap-1">';
+    for (let i = 0; i < firstDay; i++) {
+        html += '<div></div>';
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+        const date = new Date(year, month, d);
+        const jsDow = date.getDay(); // 0=Sun..6=Sat
+        const mm = String(month + 1).padStart(2, '0');
+        const dd = String(d).padStart(2, '0');
+        const dateStr = `${year}-${mm}-${dd}`;
+        const isPast = date < today;
+        const isToday = dateStr === todayStr;
+        const isSelected = dateStr === selectedDate;
+        const hasAvailability = availDays.includes(jsDow) && !isPast;
+
+        let cls = 'w-full aspect-square rounded-lg text-xs font-medium flex flex-col items-center justify-center transition relative';
+        if (isPast) {
+            cls += ' text-gray-600 cursor-not-allowed';
+        } else if (isSelected) {
+            cls += ' bg-primary text-white cursor-pointer';
+        } else if (isToday) {
+            cls += ' border border-primary/50 text-primary hover:bg-primary/20 cursor-pointer';
+        } else if (hasAvailability) {
+            cls += ' text-white hover:bg-white/10 cursor-pointer';
+        } else {
+            cls += ' text-gray-500 cursor-pointer hover:bg-white/5';
+        }
+
+        if (isPast) {
+            html += `<div class="${cls}"><span>${d}</span></div>`;
+        } else {
+            html += `<button onclick="fbSelectDate('${dateStr}')" class="${cls}">
+                <span>${d}</span>
+                ${hasAvailability ? '<span class="w-1.5 h-1.5 rounded-full bg-green-400 mt-0.5"></span>' : ''}
+            </button>`;
+        }
+    }
+    html += '</div>';
+
+    cal.innerHTML = html;
+};
+
+window.fbChangeMonth = function(dir) {
+    facilityBookingState.calMonth += dir;
+    if (facilityBookingState.calMonth > 11) {
+        facilityBookingState.calMonth = 0;
+        facilityBookingState.calYear++;
+    } else if (facilityBookingState.calMonth < 0) {
+        facilityBookingState.calMonth = 11;
+        facilityBookingState.calYear--;
+    }
+    fbRenderCalendar();
+};
+
+window.fbSelectDate = async function(dateStr) {
+    facilityBookingState.selectedDate = dateStr;
+    facilityBookingState.date = dateStr;
+    fbRenderCalendar(); // re-render to highlight selected
+
+    const container = document.getElementById('fb-slots-container');
+    container.innerHTML = '<div class="text-center py-4"><div class="inline-block w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div><p class="text-gray-500 text-sm mt-2">Loading slots...</p></div>';
+
+    try {
+        const res = await fetch(`/api/client/facility/${facilityBookingState.facilityId}/available-slots?date=${dateStr}`, { credentials: 'include' });
+        const slots = await res.json();
+        if (!slots.length) {
+            container.innerHTML = '<div class="text-center text-gray-500 py-4 text-sm">No available slots on this date</div>';
+            return;
+        }
+        const dateObj = new Date(dateStr + 'T00:00:00');
+        const dayLabel = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' });
+        container.innerHTML = `
+            <p class="text-xs text-gray-400 mb-2 font-semibold uppercase tracking-wider">${dayLabel} — ${slots.length} slot${slots.length > 1 ? 's' : ''}</p>
+            <div class="grid grid-cols-3 gap-2">${slots.map(s => `
+                <button onclick="fbBookSlot('${s.start_time}')"
+                    class="bg-white/10 hover:bg-primary/30 text-white text-sm font-medium py-3 rounded-xl transition tap-effect">
+                    ${s.start_time}
+                </button>
+            `).join('')}</div>`;
+    } catch (e) {
+        container.innerHTML = '<div class="text-center text-red-400 py-4 text-sm">Failed to load slots</div>';
+    }
+};
+
+window.fbBookSlot = async function(startTime) {
+    if (!confirm(`Book ${facilityBookingState.facilityName} on ${facilityBookingState.date} at ${startTime}?`)) return;
+
+    try {
+        const res = await fetch('/api/client/facility/bookings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                facility_id: facilityBookingState.facilityId,
+                date: facilityBookingState.date,
+                start_time: startTime
+            })
+        });
+        const result = await res.json();
+        if (res.ok) {
+            document.getElementById('facility-booking-modal').classList.add('hidden');
+            showToast('Booking confirmed!', 'success');
+        } else {
+            showToast(result.detail || 'Failed to book', 'error');
+        }
+    } catch (e) {
+        showToast('Error booking facility', 'error');
+    }
+};
+
+window.fbGoBack = function() {
+    const slotsStep = document.getElementById('fb-step-slots');
+    const facilitiesStep = document.getElementById('fb-step-facilities');
+    const activitiesStep = document.getElementById('fb-step-activities');
+
+    if (!slotsStep.classList.contains('hidden')) {
+        slotsStep.classList.add('hidden');
+        facilitiesStep.classList.remove('hidden');
+        document.getElementById('fb-modal-title').innerText = 'Select Facility';
+    } else if (!facilitiesStep.classList.contains('hidden')) {
+        facilitiesStep.classList.add('hidden');
+        activitiesStep.classList.remove('hidden');
+        document.getElementById('fb-modal-title').innerText = 'Book Facility';
+    }
+};
 </script>
+
+<!-- Facility Booking Modal -->
+<div id="facility-booking-modal" class="fixed inset-0 bg-black/90 z-[60] hidden flex items-center justify-center p-0 backdrop-blur-sm">
+    <div class="bg-[#1a1a1a] w-full h-full relative overflow-y-auto">
+        <!-- Header -->
+        <div class="sticky top-0 z-10 bg-[#1a1a1a]/95 backdrop-blur-xl border-b border-white/10 px-4 py-3 flex items-center justify-between">
+            <button onclick="fbGoBack()" class="flex items-center gap-2 text-white/70 hover:text-white transition">
+                <i data-lucide="chevron-left" class="w-5 h-5"></i>
+                <span class="text-sm font-medium">Back</span>
+            </button>
+            <h2 id="fb-modal-title" class="text-base font-bold text-white">Book Facility</h2>
+            <button onclick="document.getElementById('facility-booking-modal').classList.add('hidden')" class="text-white/70 hover:text-white">
+                <i data-lucide="x" class="w-5 h-5"></i>
+            </button>
+        </div>
+
+        <div class="max-w-lg mx-auto px-4 py-6 pb-24">
+            <!-- Step 1: Activity Types -->
+            <div id="fb-step-activities">
+                <p class="text-gray-400 text-sm mb-4">Select an activity</p>
+                <div id="fb-activity-types" class="grid grid-cols-2 gap-3"></div>
+            </div>
+
+            <!-- Step 2: Facilities -->
+            <div id="fb-step-facilities" class="hidden">
+                <p class="text-gray-400 text-sm mb-4">Select a facility</p>
+                <div id="fb-facilities-list" class="space-y-3"></div>
+            </div>
+
+            <!-- Step 3: Date & Time Slots -->
+            <div id="fb-step-slots" class="hidden">
+                <p class="text-gray-400 text-sm mb-3">Pick a date</p>
+                <!-- Calendar -->
+                <div class="glass-card p-4 mb-4">
+                    <div id="fb-calendar"></div>
+                    <div class="flex items-center gap-4 mt-3 pt-3 border-t border-white/5">
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
+                            <span class="text-[10px] text-gray-500">Available</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <span class="w-1.5 h-1.5 rounded-full bg-gray-600"></span>
+                            <span class="text-[10px] text-gray-500">No availability</span>
+                        </div>
+                    </div>
+                </div>
+                <!-- Time Slots -->
+                <div id="fb-slots-container">
+                    <div class="text-center text-gray-500 py-4 text-sm">Select a date to see available slots</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
 {% endblock %}

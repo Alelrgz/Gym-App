@@ -12,6 +12,9 @@
         <button class="staff-mobile-msg-btn" onclick="openConversationsModal()">
             <i data-lucide="message-circle" class="w-5 h-5"></i>
         </button>
+        <button class="staff-mobile-msg-btn" data-action="showModal" data-target="notification-modal">
+            <i data-lucide="bell" class="w-5 h-5"></i>
+        </button>
         <a href="/auth/logout" class="staff-mobile-msg-btn" style="color:#f87171;">
             <i data-lucide="log-out" class="w-5 h-5"></i>
         </a>
@@ -65,7 +68,7 @@
         <!-- ==================== SECTION: DASHBOARD ==================== -->
         <section id="section-dashboard" class="trainer-section p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
             <!-- Header Row -->
-            <div class="flex justify-between items-start mb-8">
+            <div class="flex justify-between items-start mb-4 lg:mb-8">
                 <div>
                     <p class="label-uppercase mb-1">Trainer Dashboard</p>
                     <h2 class="heading-page" id="trainer-name">Coach <span id="trainer-username">Loading...</span></h2>
@@ -73,18 +76,14 @@
                         <option value="trainer_default">Default Trainer</option>
                     </select>
                 </div>
-                <div class="flex gap-3">
+                <!-- Desktop only: these icons are in the mobile header already -->
+                <div class="hidden lg:flex gap-3">
                     <div onclick="openConversationsModal()" class="relative w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center">
                         <i data-lucide="message-circle" class="w-5 h-5"></i>
                         <span id="unread-messages-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center hidden">0</span>
                     </div>
                     <div data-action="showModal" data-target="notification-modal" class="w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center">
                         <i data-lucide="bell" class="w-5 h-5"></i>
-                    </div>
-                    <div class="lg:hidden" data-action="showModal" data-target="profile-modal">
-                        <div class="w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center">
-                            <i data-lucide="settings" class="w-5 h-5"></i>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -289,12 +288,6 @@
                 <div>
                     <p class="label-uppercase mb-1">My Profile</p>
                     <h2 class="heading-page" id="personal-name">Loading...</h2>
-                </div>
-                <div class="flex gap-3 lg:hidden">
-                    <div id="notification-bell-schedule" onclick="openNotificationsModal()"
-                        class="w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center">
-                        <i data-lucide="bell" class="w-5 h-5"></i>
-                    </div>
                 </div>
             </div>
 
@@ -616,29 +609,7 @@
     </main>
 </div>
 
-<!-- ===== MOBILE BOTTOM NAV ===== -->
-<nav class="staff-mobile-nav trainer-mobile-nav">
-    <a href="#dashboard" onclick="switchSection('dashboard');updateTrainerBottomNav(this);return false;"
-       class="staff-mobile-nav-item active" data-section="dashboard">
-        <i data-lucide="home" class="w-5 h-5"></i>
-        <span>Home</span>
-    </a>
-    <a href="#schedule" onclick="switchSection('schedule');updateTrainerBottomNav(this);return false;"
-       class="staff-mobile-nav-item" data-section="schedule">
-        <i data-lucide="calendar" class="w-5 h-5"></i>
-        <span>Calendario</span>
-    </a>
-    <a href="#courses" onclick="switchSection('courses');updateTrainerBottomNav(this);return false;"
-       class="staff-mobile-nav-item" data-section="courses">
-        <i data-lucide="book-open" class="w-5 h-5"></i>
-        <span>Corsi</span>
-    </a>
-    <a href="#settings" onclick="switchSection('settings');updateTrainerBottomNav(this);return false;"
-       class="staff-mobile-nav-item" data-section="settings">
-        <i data-lucide="settings" class="w-5 h-5"></i>
-        <span>Impostazioni</span>
-    </a>
-</nav>
+<!-- Bottom nav is in base.html for trainer role -->
 
 <!-- Add Event Modal -->
 <div id="add-event-modal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 backdrop-blur-sm">
@@ -826,6 +797,12 @@ let coursesInitialized = false;
 let settingsInitialized = false;
 
 function switchSection(sectionId) {
+    // Close any open modals (e.g. course detail)
+    const courseDetailModal = document.getElementById('course-detail-modal');
+    if (courseDetailModal && !courseDetailModal.classList.contains('hidden')) {
+        courseDetailModal.classList.add('hidden');
+    }
+
     // Hide all sections
     document.querySelectorAll('.trainer-section').forEach(section => {
         section.classList.add('hidden');
@@ -856,23 +833,10 @@ function switchSection(sectionId) {
         }
     });
 
-    // Update new mobile bottom nav state
-    document.querySelectorAll('.trainer-mobile-nav .staff-mobile-nav-item').forEach(btn => {
-        btn.classList.remove('active');
-        if (btn.dataset.section === sectionId) {
-            btn.classList.add('active');
-        }
-    });
-
     // Initialize section-specific content
     initSection(sectionId);
 
     currentSection = sectionId;
-}
-
-function updateTrainerBottomNav(el) {
-    document.querySelectorAll('.trainer-mobile-nav .staff-mobile-nav-item').forEach(btn => btn.classList.remove('active'));
-    if (el) el.classList.add('active');
 }
 
 function initSection(sectionId) {

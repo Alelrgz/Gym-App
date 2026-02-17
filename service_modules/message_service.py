@@ -87,6 +87,31 @@ class MessageService:
                 if profile and profile.trainer_id == trainer_id:
                     return True
 
+            # Case 1b: Nutritionist <-> Client messaging
+            if user.role == "nutritionist" and other.role == "client":
+                # Nutritionist can message any client in same gym
+                profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == other_user_id).first()
+                if profile and profile.gym_id and user.gym_owner_id:
+                    if str(profile.gym_id) == str(user.gym_owner_id):
+                        return True
+            elif user.role == "client" and other.role == "nutritionist":
+                profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == user_id).first()
+                if profile and profile.gym_id and other.gym_owner_id:
+                    if str(profile.gym_id) == str(other.gym_owner_id):
+                        return True
+
+            # Case 1c: Nutritionist <-> Trainer/Owner/Staff messaging (same gym)
+            if user.role == "nutritionist" and other.role in ("trainer", "owner", "staff", "nutritionist"):
+                if user.gym_owner_id and (other.gym_owner_id or other.id == user.gym_owner_id):
+                    other_gym = other.gym_owner_id or other.id
+                    if str(user.gym_owner_id) == str(other_gym):
+                        return True
+            elif other.role == "nutritionist" and user.role in ("trainer", "owner", "staff", "nutritionist"):
+                if other.gym_owner_id and (user.gym_owner_id or user.id == other.gym_owner_id):
+                    user_gym = user.gym_owner_id or user.id
+                    if str(other.gym_owner_id) == str(user_gym):
+                        return True
+
             # Case 2: Staff <-> anyone in the same gym
             if user.role == "staff" or other.role == "staff":
                 # Staff can message anyone in their gym — use gym_owner_id (same field staff/members uses)

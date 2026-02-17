@@ -359,6 +359,8 @@ def run_migrations(engine):
         ("strength_goal_cardio", "INTEGER"),
         ("health_score", "INTEGER DEFAULT 0"),
         ("gems", "INTEGER DEFAULT 0"),
+        ("nutritionist_id", "TEXT"),
+        ("weight_goal", "DOUBLE PRECISION"),
     ])
 
     # Add all potentially missing columns to users table (PostgreSQL-safe with IF NOT EXISTS)
@@ -872,7 +874,9 @@ async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "cli
         template_name = "staff.html"
     elif role == "owner":
         template_name = "owner.html"
-    
+    elif role == "nutritionist":
+        template_name = "nutritionist.html"
+
     context = {
         "request": request,
         "gym_id": gym_id,

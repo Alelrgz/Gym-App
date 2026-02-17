@@ -2,43 +2,86 @@
 {% from 'macros.html' import card %}
 
 {% block content %}
-<!-- Desktop Navigation Bar (hidden on mobile) -->
-<nav class="hidden lg:flex items-center justify-between px-8 py-4 border-b border-white/10 mb-6">
-    <div class="flex items-center gap-3">
-        <i data-lucide="building" class="w-7 h-7 stroke-current"></i>
-        <div>
-            <p class="label-uppercase text-[10px]">Gym Owner</p>
-            <h1 class="text-lg font-bold" id="desktop-gym-name">My Gym</h1>
-        </div>
+<!-- ===== MOBILE HEADER ===== -->
+<header class="owner-mobile-header">
+    <div class="staff-mobile-header-logo">
+        <img src="/static/fitos-logo.svg" alt="FitOS" class="staff-logo-img">
+        <span class="staff-role-label">Owner</span>
     </div>
-    <div class="flex items-center gap-2">
-        <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner' }}"
-           class="px-4 py-2 rounded-xl text-sm font-semibold transition {{ 'bg-primary/20 text-primary border border-primary/30' if mode != 'settings' and mode != 'crm' else 'text-white/60 hover:bg-white/5' }}">
-            <i data-lucide="home" class="w-5 h-5 inline-block align-middle"></i> Dashboard
-        </a>
-        <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=crm' }}"
-           class="px-4 py-2 rounded-xl text-sm font-semibold transition {{ 'bg-primary/20 text-primary border border-primary/30' if mode == 'crm' else 'text-white/60 hover:bg-white/5' }}">
-            <i data-lucide="bar-chart-3" class="w-5 h-5 inline-block align-middle"></i> CRM
-        </a>
-        <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=settings' }}"
-           class="px-4 py-2 rounded-xl text-sm font-semibold transition {{ 'bg-primary/20 text-primary border border-primary/30' if mode == 'settings' else 'text-white/60 hover:bg-white/5' }}">
-            <i data-lucide="settings" class="w-5 h-5 inline-block align-middle"></i> Settings
-        </a>
-        <div class="w-px h-6 bg-white/10 mx-2"></div>
-        <a href="/auth/logout" class="px-4 py-2 rounded-xl text-sm font-semibold text-red-400 hover:bg-red-500/10 transition">
-            <i data-lucide="log-out" class="w-5 h-5 inline-block align-middle"></i> Logout
+    <div class="staff-mobile-header-actions">
+        <button class="staff-mobile-msg-btn" data-action="showModal" data-target="notification-modal">
+            <i data-lucide="bell" class="w-5 h-5"></i>
+        </button>
+        <a href="/auth/logout" class="staff-mobile-msg-btn" style="color:#f87171;">
+            <i data-lucide="log-out" class="w-5 h-5"></i>
         </a>
     </div>
-</nav>
+</header>
 
-<div class="px-5 py-5 lg:pt-0 pt-8 max-w-6xl mx-auto">
+<!-- Desktop Sidebar + Main Content Layout -->
+<div class="owner-layout">
+
+    <!-- ===== LEFT SIDEBAR (desktop) ===== -->
+    <aside class="staff-sidebar owner-sidebar">
+        <div class="staff-sidebar-logo">
+            <img src="/static/fitos-logo.svg" alt="FitOS" class="staff-logo-img staff-logo-img--sidebar">
+            <span class="staff-role-label">Owner</span>
+        </div>
+
+        <nav class="staff-sidebar-nav">
+            <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner' }}"
+               class="staff-nav-item owner-sidebar-item {{ 'active' if mode not in ['settings', 'crm', 'facilities'] }}">
+                <i data-lucide="home" class="w-[18px] h-[18px]"></i>
+                <span>Dashboard</span>
+            </a>
+            <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=crm' }}"
+               class="staff-nav-item owner-sidebar-item {{ 'active' if mode == 'crm' }}">
+                <i data-lucide="bar-chart-3" class="w-[18px] h-[18px]"></i>
+                <span>CRM</span>
+            </a>
+            <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=facilities' }}"
+               class="staff-nav-item owner-sidebar-item {{ 'active' if mode == 'facilities' }}">
+                <i data-lucide="map-pin" class="w-[18px] h-[18px]"></i>
+                <span>Facilities</span>
+            </a>
+            <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=settings' }}"
+               class="staff-nav-item owner-sidebar-item {{ 'active' if mode == 'settings' }}">
+                <i data-lucide="settings" class="w-[18px] h-[18px]"></i>
+                <span>Settings</span>
+            </a>
+        </nav>
+
+        <div style="flex:1"></div>
+
+        <div style="display:flex;flex-direction:column;gap:0.25rem;">
+            <a href="/auth/logout" class="staff-nav-item" style="color:#f87171;">
+                <i data-lucide="log-out" class="w-[18px] h-[18px]"></i>
+                <span>Logout</span>
+            </a>
+        </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="owner-main">
+
+<div class="p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
     <!-- Mobile header -->
     <div class="lg:hidden text-center mb-5">
         <h1 class="text-2xl font-black tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent" id="gym-name-owner">My Gym</h1>
-        <p class="text-xs text-gray-500 uppercase tracking-widest mt-1">{{ 'Settings' if mode == 'settings' else ('CRM' if mode == 'crm' else 'Dashboard') }}</p>
+        <p class="text-xs text-gray-500 uppercase tracking-widest mt-1">{{ 'Settings' if mode == 'settings' else ('CRM' if mode == 'crm' else ('Facilities' if mode == 'facilities' else 'Dashboard')) }}</p>
     </div>
     <!-- Desktop header -->
-    <h2 class="hidden lg:block text-2xl font-bold text-left mb-6">{{ 'Settings' if mode == 'settings' else ('CRM' if mode == 'crm' else 'Dashboard') }}</h2>
+    <div class="hidden lg:flex justify-between items-start mb-6">
+        <div>
+            <p class="label-uppercase mb-1">{{ 'Settings' if mode == 'settings' else ('CRM' if mode == 'crm' else ('Facilities' if mode == 'facilities' else 'Dashboard')) }}</p>
+            <h2 class="heading-page" id="desktop-gym-name">My Gym</h2>
+        </div>
+        <div class="flex gap-3">
+            <div data-action="showModal" data-target="notification-modal" class="w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center cursor-pointer">
+                <i data-lucide="bell" class="w-5 h-5"></i>
+            </div>
+        </div>
+    </div>
 
     {% if mode == 'settings' %}
     <!-- ==================== SETTINGS MODE ==================== -->
@@ -320,6 +363,177 @@
         </div>
     </div>
 
+    {% elif mode == 'facilities' %}
+    <!-- ==================== FACILITIES MODE ==================== -->
+
+    <!-- ZONE: Activity Types (Teal) -->
+    <section id="activity-types-section" class="mb-6">
+        <div class="flex items-center gap-2 mb-4 border-l-4 border-teal-400 pl-3">
+            <div class="w-8 h-8 rounded-lg bg-teal-500/20 flex items-center justify-center">
+                <i data-lucide="layers" class="w-4 h-4 text-teal-400"></i>
+            </div>
+            <div class="flex-1">
+                <h3 class="text-sm font-bold text-teal-400 uppercase tracking-wider">Activity Types</h3>
+                <p class="text-xs text-gray-500">Tennis, paddle, soccer, yoga & more</p>
+            </div>
+            <button onclick="openCreateActivityTypeModal()"
+                class="text-xs bg-teal-500/20 text-teal-400 px-3 py-1.5 rounded-lg hover:bg-teal-500/30 transition font-semibold">
+                + New
+            </button>
+        </div>
+        <div id="activity-types-grid" class="grid grid-cols-2 md:grid-cols-3 gap-3">
+            <div class="glass-card p-4 text-center text-gray-500 text-sm col-span-full">
+                <i data-lucide="plus-circle" class="w-8 h-8 mx-auto mb-2 text-gray-600"></i>
+                <p>No activity types yet</p>
+                <p class="text-xs text-gray-600 mt-1">Click "+ New" to get started</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- ZONE: Facilities for Selected Activity Type (Orange) -->
+    <section id="facilities-section" class="hidden mb-6">
+        <div class="flex items-center gap-2 mb-4 border-l-4 border-orange-400 pl-3">
+            <button onclick="closeFacilitiesSection()" class="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center hover:bg-orange-500/30 transition">
+                <i data-lucide="chevron-left" class="w-4 h-4 text-orange-400"></i>
+            </button>
+            <div class="flex-1">
+                <h3 class="text-sm font-bold text-orange-400 uppercase tracking-wider" id="facilities-section-title">Facilities</h3>
+                <p class="text-xs text-gray-500">Courts, fields & rooms</p>
+            </div>
+            <button onclick="openCreateFacilityModal()"
+                class="text-xs bg-orange-500/20 text-orange-400 px-3 py-1.5 rounded-lg hover:bg-orange-500/30 transition font-semibold">
+                + New
+            </button>
+        </div>
+        <div id="facilities-list" class="space-y-3">
+            <div class="glass-card p-4 text-center text-gray-500 text-sm">No facilities yet</div>
+        </div>
+    </section>
+
+    <!-- ZONE: Facility Availability (Purple) -->
+    <section id="facility-availability-section" class="hidden mb-6">
+        <div class="flex items-center gap-2 mb-4 border-l-4 border-purple-400 pl-3">
+            <button onclick="closeFacilityAvailability()" class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center hover:bg-purple-500/30 transition">
+                <i data-lucide="chevron-left" class="w-4 h-4 text-purple-400"></i>
+            </button>
+            <div class="flex-1">
+                <h3 class="text-sm font-bold text-purple-400 uppercase tracking-wider" id="facility-avail-title">Set Availability</h3>
+                <p class="text-xs text-gray-500">Weekly schedule</p>
+            </div>
+        </div>
+        {% call card(classes="p-5 relative overflow-hidden") %}
+        <div class="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent"></div>
+        <div class="relative z-10">
+            <div id="facility-days-grid" class="space-y-3">
+            </div>
+            <button onclick="saveFacilityAvailability()"
+                class="w-full mt-5 bg-primary text-white font-bold py-3 rounded-xl hover:bg-primary/80 transition">
+                Save Availability
+            </button>
+        </div>
+        {% endcall %}
+    </section>
+
+    <!-- ZONE: Upcoming Bookings (Blue) -->
+    <section class="mb-6">
+        <div class="flex items-center gap-2 mb-4 border-l-4 border-blue-400 pl-3">
+            <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <i data-lucide="calendar-check" class="w-4 h-4 text-blue-400"></i>
+            </div>
+            <div>
+                <h3 class="text-sm font-bold text-blue-400 uppercase tracking-wider">Upcoming Bookings</h3>
+                <p class="text-xs text-gray-500">Client reservations</p>
+            </div>
+        </div>
+        <div id="facility-bookings-list" class="space-y-2 max-h-96 overflow-y-auto">
+            <div class="glass-card p-3 text-center text-gray-400 text-sm">
+                No upcoming bookings
+            </div>
+        </div>
+    </section>
+
+    <!-- Facility Modals -->
+
+    <!-- Create/Edit Activity Type Modal -->
+    <div id="activity-type-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+        onclick="if(event.target === this) hideModal('activity-type-modal')">
+        <div class="glass-card p-6 rounded-2xl max-w-md w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" id="activity-type-modal-title">New Activity Type</h3>
+                <button onclick="hideModal('activity-type-modal')" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+            </div>
+            <form id="activity-type-form" class="space-y-4" onsubmit="event.preventDefault(); saveActivityType()">
+                <input type="hidden" id="activity-type-id">
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Name</label>
+                    <input type="text" id="activity-type-name" required
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none"
+                        placeholder="e.g. Tennis, Paddle, Soccer">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Emoji (optional)</label>
+                    <input type="text" id="activity-type-emoji" maxlength="4"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none text-2xl"
+                        placeholder="🎾">
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Description (optional)</label>
+                    <input type="text" id="activity-type-description"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none"
+                        placeholder="Brief description">
+                </div>
+                <div class="flex gap-3">
+                    <button type="submit" class="flex-1 bg-primary text-white font-bold py-3 rounded-xl hover:bg-primary/80 transition">Save</button>
+                    <button type="button" onclick="hideModal('activity-type-modal')" class="flex-1 bg-white/10 text-white font-bold py-3 rounded-xl hover:bg-white/20 transition">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Create/Edit Facility Modal -->
+    <div id="facility-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+        onclick="if(event.target === this) hideModal('facility-modal')">
+        <div class="glass-card p-6 rounded-2xl max-w-md w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-bold" id="facility-modal-title">New Facility</h3>
+                <button onclick="hideModal('facility-modal')" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+            </div>
+            <form id="facility-form" class="space-y-4" onsubmit="event.preventDefault(); saveFacility()">
+                <input type="hidden" id="facility-id">
+                <input type="hidden" id="facility-activity-type-id">
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Name</label>
+                    <input type="text" id="facility-name" required
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none"
+                        placeholder="e.g. Court 1, Room A">
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-bold ml-1">Slot Duration (min)</label>
+                        <input type="number" id="facility-slot-duration" value="60" min="15" step="15"
+                            class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-500 uppercase font-bold ml-1">Price per Slot</label>
+                        <input type="number" id="facility-price" step="0.01" min="0"
+                            class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none"
+                            placeholder="0 = free">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Max Participants (optional)</label>
+                    <input type="number" id="facility-max-participants" min="1"
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none"
+                        placeholder="Leave empty for single booking">
+                </div>
+                <div class="flex gap-3">
+                    <button type="submit" class="flex-1 bg-primary text-white font-bold py-3 rounded-xl hover:bg-primary/80 transition">Save</button>
+                    <button type="button" onclick="hideModal('facility-modal')" class="flex-1 bg-white/10 text-white font-bold py-3 rounded-xl hover:bg-white/20 transition">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     {% else %}
     <!-- ==================== DASHBOARD MODE (default) — merged with Automation ==================== -->
 
@@ -498,6 +712,9 @@
     </div>
     {% endif %}
 </div>
+
+    </main>
+</div><!-- /owner-layout -->
 
 <!-- Create/Edit Plan Modal -->
 <div id="plan-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
@@ -2897,6 +3114,366 @@ function copyDeviceKey() {
     showToast('Device key copied!');
 }
 
+// ========== FACILITY MANAGEMENT ==========
+
+let currentActivityTypeId = null;
+let currentFacilityId = null;
+const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+
+async function loadActivityTypes() {
+    const container = document.getElementById('activity-types-grid');
+    if (!container) return;
+    try {
+        const res = await fetch('/api/owner/activity-types', { credentials: 'include' });
+        const types = await res.json();
+        if (!types.length) {
+            container.innerHTML = `<div class="glass-card p-6 text-center text-gray-500 text-sm col-span-full">
+                <i data-lucide="plus-circle" class="w-10 h-10 mx-auto mb-3 text-gray-600"></i>
+                <p class="font-semibold text-gray-400">No activity types yet</p>
+                <p class="text-xs text-gray-600 mt-1">Create your first activity to start managing courts, fields & rooms</p>
+            </div>`;
+            lucide.createIcons();
+            return;
+        }
+        container.innerHTML = types.map(t => {
+            const count = t.facility_count || 0;
+            const countLabel = count === 0 ? 'No facilities' : count === 1 ? '1 facility' : count + ' facilities';
+            const countColor = count === 0 ? 'text-yellow-400' : 'text-teal-400';
+            const escapedName = t.name.replace(/'/g, "\\'");
+            const escapedDesc = (t.description || '').replace(/'/g, "\\'");
+            return `
+            <div class="glass-card p-4 rounded-2xl cursor-pointer hover:bg-white/10 transition group relative"
+                 onclick="selectActivityType('${t.id}', '${t.name}')">
+                <div class="flex items-start gap-3">
+                    <div class="text-3xl flex-shrink-0">${t.emoji || '🏟️'}</div>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-bold text-white text-sm">${t.name}</p>
+                        <p class="text-xs ${countColor} mt-0.5">${countLabel}</p>
+                        ${t.description ? `<p class="text-xs text-gray-500 mt-1 line-clamp-2">${t.description}</p>` : ''}
+                    </div>
+                    <i data-lucide="chevron-right" class="w-4 h-4 text-gray-600 group-hover:text-white transition flex-shrink-0 mt-1"></i>
+                </div>
+                <div class="mt-3 flex gap-2 opacity-0 group-hover:opacity-100 transition">
+                    <button onclick="event.stopPropagation(); editActivityType('${t.id}', '${escapedName}', '${t.emoji || ''}', '${escapedDesc}')"
+                        class="text-xs text-gray-400 hover:text-white px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 transition">Edit</button>
+                    <button onclick="event.stopPropagation(); deleteActivityType('${t.id}')"
+                        class="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition">Delete</button>
+                </div>
+            </div>
+        `}).join('');
+        lucide.createIcons();
+    } catch (e) {
+        container.innerHTML = '<div class="glass-card p-3 text-center text-red-400 text-sm">Failed to load</div>';
+    }
+}
+
+function openCreateActivityTypeModal() {
+    document.getElementById('activity-type-id').value = '';
+    document.getElementById('activity-type-name').value = '';
+    document.getElementById('activity-type-emoji').value = '';
+    document.getElementById('activity-type-description').value = '';
+    document.getElementById('activity-type-modal-title').innerText = 'New Activity Type';
+    showModal('activity-type-modal');
+}
+
+function editActivityType(id, name, emoji, description) {
+    document.getElementById('activity-type-id').value = id;
+    document.getElementById('activity-type-name').value = name;
+    document.getElementById('activity-type-emoji').value = emoji;
+    document.getElementById('activity-type-description').value = description;
+    document.getElementById('activity-type-modal-title').innerText = 'Edit Activity Type';
+    showModal('activity-type-modal');
+}
+
+async function saveActivityType() {
+    const id = document.getElementById('activity-type-id').value;
+    const isNew = !id;
+    const data = {
+        name: document.getElementById('activity-type-name').value,
+        emoji: document.getElementById('activity-type-emoji').value || null,
+        description: document.getElementById('activity-type-description').value || null
+    };
+    if (!data.name) { alert('Name is required'); return; }
+
+    const url = id ? `/api/owner/activity-types/${id}` : '/api/owner/activity-types';
+    const method = id ? 'PUT' : 'POST';
+    try {
+        const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
+        if (res.ok) {
+            const result = await res.json();
+            hideModal('activity-type-modal');
+            showToast(isNew ? 'Activity type created! Now add your facilities.' : 'Activity type saved!');
+            if (isNew && result.id) {
+                // Auto-navigate to facilities for the new activity type
+                await loadActivityTypes();
+                selectActivityType(result.id, data.name);
+            } else {
+                loadActivityTypes();
+            }
+        } else {
+            const err = await res.json();
+            alert(err.detail || 'Failed to save');
+        }
+    } catch (e) { alert('Error saving activity type'); }
+}
+
+async function deleteActivityType(id) {
+    if (!confirm('Delete this activity type?')) return;
+    try {
+        await fetch(`/api/owner/activity-types/${id}`, { method: 'DELETE', credentials: 'include' });
+        loadActivityTypes();
+        showToast('Activity type deleted');
+    } catch (e) { alert('Error deleting'); }
+}
+
+async function selectActivityType(id, name) {
+    currentActivityTypeId = id;
+    document.getElementById('activity-types-section').classList.add('hidden');
+    document.getElementById('facilities-section').classList.remove('hidden');
+    document.getElementById('facilities-section-title').innerText = name.toUpperCase();
+    document.getElementById('facility-activity-type-id').value = id;
+    await loadFacilities(id);
+}
+
+function closeFacilitiesSection() {
+    document.getElementById('facilities-section').classList.add('hidden');
+    document.getElementById('facility-availability-section').classList.add('hidden');
+    document.getElementById('activity-types-section').classList.remove('hidden');
+    currentActivityTypeId = null;
+    // Refresh to update facility counts
+    loadActivityTypes();
+}
+
+async function loadFacilities(activityTypeId) {
+    const container = document.getElementById('facilities-list');
+    try {
+        const res = await fetch(`/api/owner/facilities/${activityTypeId}`, { credentials: 'include' });
+        const facilities = await res.json();
+        if (!facilities.length) {
+            container.innerHTML = '<div class="glass-card p-4 text-center text-gray-500 text-sm">No facilities yet. Click "+ New" to add one.</div>';
+            return;
+        }
+        container.innerHTML = facilities.map(f => {
+            const days = f.availability_days || 0;
+            const availLabel = days === 0 ? 'No availability set' : days + ' day' + (days > 1 ? 's' : '') + ' available';
+            const availColor = days === 0 ? 'text-yellow-400' : 'text-green-400';
+            const availIcon = days === 0 ? 'alert-circle' : 'check-circle';
+            return `
+            <div class="glass-card p-4 rounded-2xl">
+                <div class="flex items-start gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-orange-500/20 flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="map-pin" class="w-5 h-5 text-orange-400"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-bold text-white">${f.name}</p>
+                        <p class="text-xs text-gray-400">${f.slot_duration}min slots${f.price_per_slot ? ' · $' + f.price_per_slot : ' · Free'}${f.max_participants ? ' · Max ' + f.max_participants : ''}</p>
+                        <p class="text-xs ${availColor} mt-1"><i data-lucide="${availIcon}" class="w-3 h-3 inline-block align-middle"></i> ${availLabel}</p>
+                    </div>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button onclick="openFacilityAvailability('${f.id}', '${f.name.replace(/'/g, "\\'")}')"
+                        class="flex-1 text-xs bg-purple-500/20 text-purple-400 px-3 py-2 rounded-lg hover:bg-purple-500/30 transition font-semibold text-center">
+                        <i data-lucide="clock" class="w-3 h-3 inline-block align-middle"></i> Set Availability
+                    </button>
+                    <button onclick="editFacility('${f.id}', '${f.name.replace(/'/g, "\\'")}', ${f.slot_duration}, ${f.price_per_slot || 0}, ${f.max_participants || 0})"
+                        class="text-xs bg-white/10 text-white px-3 py-2 rounded-lg hover:bg-white/20 transition">Edit</button>
+                    <button onclick="deleteFacility('${f.id}')"
+                        class="text-xs text-red-400 hover:text-red-300 px-2 py-2 rounded-lg hover:bg-red-500/10 transition">
+                        <i data-lucide="trash-2" class="w-3 h-3"></i>
+                    </button>
+                </div>
+            </div>
+        `}).join('');
+        lucide.createIcons();
+    } catch (e) {
+        container.innerHTML = '<div class="glass-card p-3 text-center text-red-400 text-sm">Failed to load</div>';
+    }
+}
+
+function openCreateFacilityModal() {
+    document.getElementById('facility-id').value = '';
+    document.getElementById('facility-name').value = '';
+    document.getElementById('facility-slot-duration').value = '60';
+    document.getElementById('facility-price').value = '';
+    document.getElementById('facility-max-participants').value = '';
+    document.getElementById('facility-modal-title').innerText = 'New Facility';
+    showModal('facility-modal');
+}
+
+function editFacility(id, name, duration, price, maxP) {
+    document.getElementById('facility-id').value = id;
+    document.getElementById('facility-name').value = name;
+    document.getElementById('facility-slot-duration').value = duration;
+    document.getElementById('facility-price').value = price || '';
+    document.getElementById('facility-max-participants').value = maxP || '';
+    document.getElementById('facility-modal-title').innerText = 'Edit Facility';
+    showModal('facility-modal');
+}
+
+async function saveFacility() {
+    const id = document.getElementById('facility-id').value;
+    const isNew = !id;
+    const data = {
+        activity_type_id: currentActivityTypeId,
+        name: document.getElementById('facility-name').value,
+        slot_duration: parseInt(document.getElementById('facility-slot-duration').value) || 60,
+        price_per_slot: parseFloat(document.getElementById('facility-price').value) || null,
+        max_participants: parseInt(document.getElementById('facility-max-participants').value) || null
+    };
+    if (!data.name) { alert('Name is required'); return; }
+
+    const url = id ? `/api/owner/facilities/${id}` : '/api/owner/facilities';
+    const method = id ? 'PUT' : 'POST';
+    try {
+        const res = await fetch(url, { method, headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(data) });
+        if (res.ok) {
+            const result = await res.json();
+            hideModal('facility-modal');
+            await loadFacilities(currentActivityTypeId);
+            if (isNew && result.id) {
+                showToast('Facility created! Set its availability now.');
+                openFacilityAvailability(result.id, data.name);
+            } else {
+                showToast('Facility saved!');
+            }
+        } else {
+            const err = await res.json();
+            alert(err.detail || 'Failed to save');
+        }
+    } catch (e) { alert('Error saving facility'); }
+}
+
+async function deleteFacility(id) {
+    if (!confirm('Delete this facility?')) return;
+    try {
+        await fetch(`/api/owner/facilities/${id}`, { method: 'DELETE', credentials: 'include' });
+        loadFacilities(currentActivityTypeId);
+        showToast('Facility deleted');
+    } catch (e) { alert('Error deleting'); }
+}
+
+// ---- Availability ----
+
+async function openFacilityAvailability(facilityId, facilityName) {
+    currentFacilityId = facilityId;
+    document.getElementById('facility-avail-title').innerText = facilityName + ' — Availability';
+    document.getElementById('facility-availability-section').classList.remove('hidden');
+
+    // Build day grid
+    const grid = document.getElementById('facility-days-grid');
+    grid.innerHTML = DAY_NAMES.map((day, i) => `
+        <div class="flex items-center gap-3 bg-white/5 rounded-xl p-3">
+            <label class="flex items-center gap-2 cursor-pointer flex-1">
+                <input type="checkbox" id="fday-${i}" class="w-4 h-4 accent-orange-500" onchange="toggleFacilityDay(${i})">
+                <span class="text-sm font-medium text-white">${day}</span>
+            </label>
+            <div id="fday-times-${i}" class="hidden flex items-center gap-2">
+                <input type="time" id="fday-start-${i}" value="${i < 5 ? '09:00' : '10:00'}" class="bg-white/10 text-white text-sm rounded-lg px-2 py-1 border border-white/10 outline-none">
+                <span class="text-gray-400 text-xs">to</span>
+                <input type="time" id="fday-end-${i}" value="${i < 5 ? '20:00' : '14:00'}" class="bg-white/10 text-white text-sm rounded-lg px-2 py-1 border border-white/10 outline-none">
+            </div>
+        </div>
+    `).join('');
+
+    // Load existing availability
+    try {
+        const res = await fetch(`/api/owner/facilities/${facilityId}/availability`, { credentials: 'include' });
+        const slots = await res.json();
+        for (const slot of slots) {
+            const d = slot.day_of_week;
+            const cb = document.getElementById(`fday-${d}`);
+            if (cb) {
+                cb.checked = true;
+                document.getElementById(`fday-times-${d}`).classList.remove('hidden');
+                document.getElementById(`fday-start-${d}`).value = slot.start_time;
+                document.getElementById(`fday-end-${d}`).value = slot.end_time;
+            }
+        }
+    } catch (e) { console.error('Error loading availability:', e); }
+}
+
+function closeFacilityAvailability() {
+    document.getElementById('facility-availability-section').classList.add('hidden');
+    currentFacilityId = null;
+}
+
+function toggleFacilityDay(dayIndex) {
+    const cb = document.getElementById(`fday-${dayIndex}`);
+    const times = document.getElementById(`fday-times-${dayIndex}`);
+    if (cb.checked) times.classList.remove('hidden');
+    else times.classList.add('hidden');
+}
+
+async function saveFacilityAvailability() {
+    if (!currentFacilityId) { showToast('No facility selected', 'error'); return; }
+    const availability = [];
+    for (let i = 0; i < 7; i++) {
+        const cb = document.getElementById(`fday-${i}`);
+        if (cb && cb.checked) {
+            availability.push({
+                day_of_week: i,
+                start_time: document.getElementById(`fday-start-${i}`).value,
+                end_time: document.getElementById(`fday-end-${i}`).value
+            });
+        }
+    }
+    if (!availability.length) {
+        if (!confirm('No days selected. This will clear all availability. Continue?')) return;
+    }
+    const activityTypeId = currentActivityTypeId; // save before close clears it
+    try {
+        const res = await fetch(`/api/owner/facilities/${currentFacilityId}/availability`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ availability })
+        });
+        if (res.ok) {
+            showToast('Availability saved!');
+            closeFacilityAvailability();
+            if (activityTypeId) {
+                await loadFacilities(activityTypeId);
+            }
+        } else {
+            const err = await res.json().catch(() => ({}));
+            showToast(err.detail || 'Failed to save availability', 'error');
+        }
+    } catch (e) { showToast('Error saving availability', 'error'); }
+}
+
+// ---- Bookings ----
+
+async function loadFacilityBookings() {
+    const container = document.getElementById('facility-bookings-list');
+    if (!container) return;
+    try {
+        const today = new Date().toISOString().split('T')[0];
+        const res = await fetch(`/api/owner/facility-bookings?date_from=${today}`, { credentials: 'include' });
+        const bookings = await res.json();
+        if (!bookings.length) {
+            container.innerHTML = `<div class="glass-card p-3 text-center text-gray-400 text-sm">
+                No upcoming bookings
+            </div>`;
+            return;
+        }
+        container.innerHTML = bookings.map(b => `
+            <div class="glass-card p-3 rounded-xl flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl ${b.status === 'confirmed' ? 'bg-green-500/20' : 'bg-gray-500/20'} flex items-center justify-center flex-shrink-0">
+                    <i data-lucide="calendar-check" class="w-5 h-5 ${b.status === 'confirmed' ? 'text-green-400' : 'text-gray-400'}"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-bold text-white truncate">${b.title || 'Booking'}</p>
+                    <p class="text-xs text-gray-400">${b.date} · ${b.start_time} - ${b.end_time}${b.client_name ? ' · ' + b.client_name : ''}</p>
+                </div>
+                <span class="text-xs px-2 py-1 rounded-full flex-shrink-0 ${b.status === 'confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}">${b.status}</span>
+            </div>
+        `).join('');
+        lucide.createIcons();
+    } catch (e) {
+        container.innerHTML = '<div class="glass-card p-3 text-center text-red-400 text-sm">Failed to load bookings</div>';
+    }
+}
+
 // Initialize based on mode
 if (currentMode === 'settings') {
     loadGymCode();
@@ -2909,6 +3486,9 @@ if (currentMode === 'settings') {
     loadAtRiskClients();
     loadInteractions();
     loadCertificatesOverview();
+} else if (currentMode === 'facilities') {
+    loadActivityTypes();
+    loadFacilityBookings();
 } else {
     // Dashboard mode (default) — includes automation
     loadPendingTrainers();

@@ -114,9 +114,10 @@ class ClientProfileORM(Base):
     status = Column(String, nullable=True)
     last_seen = Column(String, nullable=True)
 
-    # Gym and trainer assignment
+    # Gym and trainer/nutritionist assignment
     gym_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)  # Owner's ID representing the gym
     trainer_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)
+    nutritionist_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)
 
     is_premium = Column(Boolean, default=False)
 
@@ -138,6 +139,9 @@ class ClientProfileORM(Base):
     strength_goal_upper = Column(Integer, nullable=True)  # Upper body target %
     strength_goal_lower = Column(Integer, nullable=True)  # Lower body target %
     strength_goal_cardio = Column(Integer, nullable=True)  # Cardio target %
+
+    # Weight goal set by nutritionist
+    weight_goal = Column(Float, nullable=True)  # Target weight in kg
 
 
 class ClientDocumentORM(Base):
@@ -830,3 +834,82 @@ class ShowerUsageORM(Base):
     timer_seconds = Column(Integer, nullable=False)  # Granted timer duration
     completed = Column(Boolean, default=False)
     ended_at = Column(String, nullable=True)  # ISO datetime when session ended
+
+
+# --- FACILITY / FIELD / ROOM BOOKING MODELS ---
+
+class ActivityTypeORM(Base):
+    """Owner-defined activity types (tennis, paddle, yoga, etc.)"""
+    __tablename__ = "activity_types"
+
+    id = Column(String, primary_key=True, index=True)
+    gym_id = Column(String, ForeignKey("users.id"), index=True)
+    name = Column(String)
+    emoji = Column(String, nullable=True)
+    description = Column(String, nullable=True)
+    is_active = Column(Boolean, default=True)
+    sort_order = Column(Integer, default=0)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    updated_at = Column(String, nullable=True)
+
+
+class FacilityORM(Base):
+    """Individual facility (court, room, field) under an activity type"""
+    __tablename__ = "facilities"
+
+    id = Column(String, primary_key=True, index=True)
+    activity_type_id = Column(String, ForeignKey("activity_types.id"), index=True)
+    gym_id = Column(String, ForeignKey("users.id"), index=True)
+    name = Column(String)
+    description = Column(String, nullable=True)
+    slot_duration = Column(Integer, default=60)  # Minutes per booking slot
+    price_per_slot = Column(Float, nullable=True)
+    max_participants = Column(Integer, nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    updated_at = Column(String, nullable=True)
+
+
+class FacilityAvailabilityORM(Base):
+    """Facility weekly availability schedule (mirrors trainer_availability)"""
+    __tablename__ = "facility_availability"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    facility_id = Column(String, ForeignKey("facilities.id"), index=True)
+    day_of_week = Column(Integer, index=True)  # 0=Monday, 6=Sunday
+    start_time = Column(String)  # HH:MM (24h)
+    end_time = Column(String)    # HH:MM (24h)
+    is_available = Column(Boolean, default=True)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
+class FacilityBookingORM(Base):
+    """Facility booking by a client"""
+    __tablename__ = "facility_bookings"
+
+    id = Column(String, primary_key=True, index=True)
+    facility_id = Column(String, ForeignKey("facilities.id"), index=True)
+    activity_type_id = Column(String, ForeignKey("activity_types.id"), index=True)
+    gym_id = Column(String, ForeignKey("users.id"), index=True)
+    client_id = Column(String, ForeignKey("users.id"), index=True)
+
+    date = Column(String, index=True)  # YYYY-MM-DD
+    start_time = Column(String)        # HH:MM
+    end_time = Column(String)          # HH:MM
+    duration = Column(Integer, default=60)
+
+    title = Column(String, nullable=True)
+    notes = Column(String, nullable=True)
+
+    price = Column(Float, nullable=True)
+    payment_method = Column(String, nullable=True)
+    payment_status = Column(String, default="pending")
+
+    status = Column(String, default="confirmed", index=True)  # confirmed, completed, canceled
+
+    canceled_by = Column(String, nullable=True)
+    canceled_at = Column(String, nullable=True)
+    cancellation_reason = Column(String, nullable=True)
+
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    updated_at = Column(String, nullable=True)

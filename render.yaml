@@ -1,6 +1,7 @@
 services:
   - type: web
     name: gym-app-prototype
+    region: frankfurt  # EU region for Italian users
     plan: free
     env: python
     buildCommand: pip install -r requirements.txt
@@ -18,4 +19,5 @@ services:
 
 databases:
   - name: gym-db
+    region: frankfurt  # Same region as web service for low latency
     plan: free

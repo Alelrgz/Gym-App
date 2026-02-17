@@ -10,7 +10,7 @@ import json
 import asyncio
 
 # Redis URL for production (fallback to memory for local dev)
-BROADCAST_URL = os.getenv("REDIS_URL", "memory://")
+BROADCAST_URL = os.getenv("REDIS_URL") or "memory://"
 broadcast = Broadcast(BROADCAST_URL)
 
 class ConnectionManager:

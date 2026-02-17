@@ -18,6 +18,8 @@ from route_modules.appointment_routes import router as appointment_router
 from route_modules.notification_routes import router as notification_router
 from route_modules.course_routes import router as course_router
 from route_modules.friend_routes import router as friend_router
+from route_modules.facility_routes import router as facility_router
+from route_modules.nutritionist_routes import router as nutritionist_router
 # Gym assignment routes are now defined directly in main.py
 # from route_modules.gym_assignment_routes import router as gym_assignment_router
 
@@ -35,6 +37,8 @@ router.include_router(appointment_router)
 router.include_router(notification_router)
 router.include_router(course_router)
 router.include_router(friend_router)
+router.include_router(facility_router)
+router.include_router(nutritionist_router)
 # router.include_router(gym_assignment_router)
 # Trigger reload v14 - added gym/trainer assignment system
 

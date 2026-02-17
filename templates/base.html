@@ -42,6 +42,15 @@
 </head>
 
 <body class="bg-gray-900 flex flex-col min-h-screen w-full pb-24">
+    <script>
+        // Ensure body scroll is always reset on page load (prevents stuck overflow:hidden from modals)
+        // Skip for sidebar layouts (owner/trainer/staff) where body must stay overflow:hidden
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!document.querySelector('.owner-layout') && !document.querySelector('.trainer-layout') && !document.querySelector('.staff-layout') && !document.querySelector('.nutritionist-layout')) {
+                document.body.style.overflow = '';
+            }
+        });
+    </script>
 
     <!-- DEBUG CONTROLS REMOVED AS PER USER REQUEST -->
     <!-- (Was here) -->
@@ -50,7 +59,7 @@
 
     {% if mode != 'workout' %}
     <!-- Bottom Navigation Bar (mobile only) -->
-    <nav class="fixed bottom-0 left-0 right-0 z-[60] lg:hidden">
+    <nav class="fixed bottom-0 left-0 right-0 z-[65] lg:hidden">
         <div class="bg-black/95 backdrop-blur-xl border-t border-white/10">
             <div class="flex justify-around items-center h-16 px-2 max-w-lg mx-auto">
                 {% if role == 'owner' %}
@@ -63,6 +72,11 @@
                     class="bottom-nav-item {% if mode == 'crm' %}active{% endif %}">
                     <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
                     <span>CRM</span>
+                </a>
+                <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=facilities' }}"
+                    class="bottom-nav-item {% if mode == 'facilities' %}active{% endif %}">
+                    <i data-lucide="map-pin" class="w-5 h-5"></i>
+                    <span>Facilities</span>
                 </a>
                 <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=settings' }}"
                     class="bottom-nav-item {% if mode == 'settings' %}active{% endif %}">
@@ -348,7 +362,8 @@
 
         // --- NOTIFICATION FUNCTIONS (Global) ---
         function closeNotificationsModal() {
-            window.hideModal('notification-modal');
+            var modal = document.getElementById('notification-modal');
+            if (modal) modal.classList.add('hidden');
         }
 
         async function loadNotifications() {

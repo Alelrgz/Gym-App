@@ -261,6 +261,15 @@ document.addEventListener('click', (e) => {
     }
 });
 
+// Handle phone back button - close modals instead of leaving the page
+window.addEventListener('popstate', function(e) {
+    const courseModal = document.getElementById('course-detail-modal');
+    if (courseModal && !courseModal.classList.contains('hidden')) {
+        courseModal.classList.add('hidden');
+        return;
+    }
+});
+
 // Debug logout button removed (moved to Settings modal)
 /*
 document.addEventListener('DOMContentLoaded', () => {
@@ -8624,7 +8633,7 @@ async function updateUnreadBadge() {
         if (res.ok) {
             const data = await res.json();
             // Update all unread badge elements (desktop + mobile)
-            const badges = document.querySelectorAll('#unread-messages-badge, #unread-messages-badge-mobile');
+            const badges = document.querySelectorAll('#unread-messages-badge, #unread-messages-badge-mobile, #unread-messages-badge-desktop');
             badges.forEach(badge => {
                 if (data.unread_count > 0) {
                     badge.innerText = data.unread_count;
@@ -8652,7 +8661,7 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     // Initial unread badge update
-    if (APP_CONFIG.role === 'trainer' || APP_CONFIG.role === 'client' || APP_CONFIG.role === 'staff') {
+    if (APP_CONFIG.role === 'trainer' || APP_CONFIG.role === 'client' || APP_CONFIG.role === 'staff' || APP_CONFIG.role === 'nutritionist') {
         updateUnreadBadge();
     }
 });
@@ -10748,6 +10757,8 @@ window.openCourseDetail = async function(courseId) {
         const lessons = await lessonsRes.json();
 
         // Populate course info
+        const headerEl = document.getElementById('detail-course-header');
+        if (headerEl) headerEl.innerText = course.name;
         document.getElementById('detail-course-name').innerText = course.name;
         document.getElementById('detail-course-schedule').innerText =
             course.day_of_week !== null ? `${getDayName(course.day_of_week)} ${course.time_slot || ''}` : 'No schedule set';
@@ -10773,7 +10784,7 @@ window.openCourseDetail = async function(courseId) {
             exercisesContainer.innerHTML = course.exercises.map(ex => `
                 <div class="glass-card p-2 flex justify-between items-center">
                     <span class="text-sm text-white">${ex.name}</span>
-                    <span class="text-xs text-gray-400">${ex.sets}x${ex.reps}</span>
+                    <span class="text-xs text-gray-400">${ex.sets || ex.duration ? (ex.sets ? ex.sets + 'x' + (ex.reps || '-') : ex.duration + 's') : ''}</span>
                 </div>
             `).join('');
         } else {
@@ -10809,6 +10820,8 @@ window.openCourseDetail = async function(courseId) {
         }
 
         showModal('course-detail-modal');
+        history.pushState({ modal: 'course-detail' }, '');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
     } catch (e) {
         console.error('Error loading course detail:', e);
         showToast('Failed to load course');

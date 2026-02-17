@@ -749,8 +749,12 @@
             if (!selectedSubRole) return;
 
             // Set hidden inputs
-            // For staff, the role is still 'owner' but sub_role is 'staff'
-            document.getElementById('role').value = selectedRole;
+            // For nutritionist sub-role, set role to 'nutritionist' (standalone role)
+            if (selectedSubRole === 'nutritionist') {
+                document.getElementById('role').value = 'nutritionist';
+            } else {
+                document.getElementById('role').value = selectedRole;
+            }
             document.getElementById('sub_role').value = selectedSubRole;
 
             setupStep3();
@@ -810,7 +814,7 @@
             const subRole = document.getElementById('sub_role').value;
             const gymCode = document.getElementById('gym_code').value;
 
-            if ((role === 'trainer' || subRole === 'staff') && !gymCode.trim()) {
+            if ((role === 'trainer' || role === 'nutritionist' || subRole === 'staff') && !gymCode.trim()) {
                 e.preventDefault();
                 document.getElementById('error-msg').textContent = 'Gym code is required.';
                 document.getElementById('error-msg').style.display = 'block';

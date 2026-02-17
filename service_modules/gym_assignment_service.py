@@ -285,7 +285,7 @@ class GymAssignmentService:
         try:
             # Get pending trainers AND staff
             pending = db.query(UserORM).filter(
-                UserORM.role.in_(["trainer", "staff"]),
+                UserORM.role.in_(["trainer", "staff", "nutritionist"]),
                 UserORM.gym_owner_id == owner_id,
                 UserORM.is_approved == False
             ).all()
@@ -311,7 +311,7 @@ class GymAssignmentService:
             # Find trainer OR staff member
             user = db.query(UserORM).filter(
                 UserORM.id == trainer_id,
-                UserORM.role.in_(["trainer", "staff"]),
+                UserORM.role.in_(["trainer", "staff", "nutritionist"]),
                 UserORM.gym_owner_id == owner_id
             ).first()
 
@@ -321,7 +321,7 @@ class GymAssignmentService:
             user.is_approved = True
             db.commit()
 
-            role_label = "Staff member" if user.role == "staff" else "Trainer"
+            role_label = {"staff": "Staff member", "trainer": "Trainer", "nutritionist": "Nutritionist"}.get(user.role, "User")
             logger.info(f"Owner {owner_id} approved {user.role} {trainer_id}")
 
             return {
@@ -346,7 +346,7 @@ class GymAssignmentService:
             # Find trainer OR staff member
             user = db.query(UserORM).filter(
                 UserORM.id == trainer_id,
-                UserORM.role.in_(["trainer", "staff"]),
+                UserORM.role.in_(["trainer", "staff", "nutritionist"]),
                 UserORM.gym_owner_id == owner_id
             ).first()
 
@@ -380,7 +380,7 @@ class GymAssignmentService:
         db = get_db_session()
         try:
             trainers = db.query(UserORM).filter(
-                UserORM.role.in_(["trainer", "staff"]),
+                UserORM.role.in_(["trainer", "staff", "nutritionist"]),
                 UserORM.gym_owner_id == owner_id,
                 UserORM.is_approved == True
             ).all()
@@ -388,9 +388,16 @@ class GymAssignmentService:
             # Count clients for each trainer
             result = []
             for trainer in trainers:
-                client_count = db.query(ClientProfileORM).filter(
-                    ClientProfileORM.trainer_id == trainer.id
-                ).count() if trainer.role == "trainer" else 0
+                if trainer.role == "trainer":
+                    client_count = db.query(ClientProfileORM).filter(
+                        ClientProfileORM.trainer_id == trainer.id
+                    ).count()
+                elif trainer.role == "nutritionist":
+                    client_count = db.query(ClientProfileORM).filter(
+                        ClientProfileORM.nutritionist_id == trainer.id
+                    ).count()
+                else:
+                    client_count = 0
 
                 result.append({
                     "id": trainer.id,

@@ -365,6 +365,20 @@ class JoinGymRequest(BaseModel):
 class SelectTrainerRequest(BaseModel):
     trainer_id: str
 
+class SelectNutritionistRequest(BaseModel):
+    nutritionist_id: str
+
+class AddBodyCompositionRequest(BaseModel):
+    client_id: str
+    weight: float
+    body_fat_pct: Optional[float] = None
+    fat_mass: Optional[float] = None
+    lean_mass: Optional[float] = None
+
+class SetWeightGoalRequest(BaseModel):
+    client_id: str
+    weight_goal: float
+
 class TrainerInfo(BaseModel):
     id: str
     username: str

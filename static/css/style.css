@@ -50,6 +50,7 @@
 
 html {
     height: 100%;
+    overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     touch-action: manipulation;
@@ -60,7 +61,9 @@ body {
     background-color: #0f0f0f;
     color: white;
     width: 100%;
+    max-width: 100vw;
     min-height: 100%;
+    overflow-x: hidden;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
     /* Safe area padding for notched phones */
@@ -1704,9 +1707,11 @@ body:has(.trainer-layout) {
     overflow: hidden;
 }
 
-/* Hide base.html bottom nav when trainer layout is active */
-body:has(.trainer-layout) > nav {
-    display: none !important;
+/* On desktop, hide the base.html bottom nav for trainer */
+@media (min-width: 1025px) {
+    body:has(.trainer-layout) > nav {
+        display: none !important;
+    }
 }
 
 .trainer-layout {
@@ -1735,10 +1740,6 @@ body:has(.trainer-layout) > nav {
         display: flex;
     }
 
-    body:has(.trainer-layout) .trainer-mobile-nav {
-        display: flex;
-    }
-
     /* Hide desktop sidebar */
     .trainer-layout .trainer-sidebar-new {
         display: none !important;
@@ -1749,22 +1750,189 @@ body:has(.trainer-layout) > nav {
         grid-template-columns: 1fr;
         height: auto;
         min-height: 100vh;
-        overflow: visible;
+        max-width: 100vw;
+        overflow-x: hidden;
+        overflow-y: visible;
     }
 
     .trainer-main-new {
         padding: 64px 0 72px;
         max-height: none;
-        overflow: visible;
+        max-width: 100vw;
+        overflow-x: hidden;
+        overflow-y: visible;
     }
 
     /* Trainer sections get their own padding on mobile */
     .trainer-layout .trainer-section {
         padding: 1rem;
+        max-width: 100vw;
+        overflow-x: hidden;
     }
 
     body:has(.trainer-layout) {
-        overflow: auto;
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+}
+
+/* ============ NUTRITIONIST LAYOUT (matches trainer design) ============ */
+
+/* Override body when nutritionist layout is active */
+body:has(.nutritionist-layout) {
+    padding-bottom: 0 !important;
+    overflow: hidden;
+}
+
+/* On desktop, hide the base.html bottom nav for nutritionist */
+@media (min-width: 1025px) {
+    body:has(.nutritionist-layout) > nav {
+        display: none !important;
+    }
+}
+
+.nutritionist-layout {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    height: 100vh;
+    background: var(--bg-base);
+    overflow: hidden;
+}
+
+.nutritionist-main {
+    padding: 2rem 2.5rem;
+    overflow-y: auto;
+    max-height: 100vh;
+}
+
+/* Nutritionist sections: remove max-width constraint when inside layout */
+.nutritionist-layout .nutritionist-section {
+    max-width: 1400px;
+}
+
+/* ============ NUTRITIONIST MOBILE RESPONSIVE ============ */
+@media (max-width: 1024px) {
+    /* Show mobile header for nutritionist */
+    body:has(.nutritionist-layout) .nutritionist-mobile-header {
+        display: flex;
+    }
+
+    /* Hide desktop sidebar */
+    .nutritionist-layout .nutritionist-sidebar {
+        display: none !important;
+    }
+
+    /* Single column */
+    .nutritionist-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: 100vh;
+        max-width: 100vw;
+        overflow-x: hidden;
+        overflow-y: visible;
+    }
+
+    .nutritionist-main {
+        padding: 64px 0 72px;
+        max-height: none;
+        max-width: 100vw;
+        overflow-x: hidden;
+        overflow-y: visible;
+    }
+
+    /* Nutritionist sections get their own padding on mobile */
+    .nutritionist-layout .nutritionist-section {
+        padding: 1rem;
+        max-width: 100vw;
+        overflow-x: hidden;
+    }
+
+    body:has(.nutritionist-layout) {
+        overflow-x: hidden;
+        overflow-y: auto;
+    }
+}
+
+/* ============ OWNER LAYOUT (sidebar, matches trainer design) ============ */
+
+/* Override body when owner layout is active */
+body:has(.owner-layout) {
+    padding-bottom: 0 !important;
+    overflow: hidden;
+}
+
+/* On desktop, hide the base.html bottom nav for owner */
+@media (min-width: 1025px) {
+    body:has(.owner-layout) > nav {
+        display: none !important;
+    }
+}
+
+/* Mobile header for owner */
+.owner-mobile-header {
+    display: none; /* hidden on desktop */
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 50;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 1px solid var(--glass-border-1);
+    padding: 0 1rem;
+    height: 56px;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.owner-layout {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    height: 100vh;
+    background: var(--bg-base);
+    overflow: hidden;
+}
+
+.owner-main {
+    overflow-y: auto;
+    max-height: 100vh;
+}
+
+/* ============ OWNER MOBILE RESPONSIVE ============ */
+@media (max-width: 1024px) {
+    /* Show mobile header for owner */
+    .owner-mobile-header {
+        display: flex;
+    }
+
+    /* Hide desktop sidebar */
+    .owner-layout .owner-sidebar {
+        display: none !important;
+    }
+
+    /* Single column */
+    .owner-layout {
+        grid-template-columns: 1fr;
+        height: auto;
+        min-height: 100vh;
+        max-width: 100vw;
+        overflow-x: hidden;
+        overflow-y: visible;
+    }
+
+    .owner-main {
+        padding-top: 64px;
+        padding-bottom: 72px;
+        max-height: none;
+        max-width: 100vw;
+        overflow-x: hidden;
+        overflow-y: visible;
+    }
+
+    body:has(.owner-layout) {
+        overflow-x: hidden;
+        overflow-y: auto;
     }
 }
 

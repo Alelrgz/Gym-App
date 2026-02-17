@@ -121,7 +121,7 @@ async def do_login(request: Request, db: Session = Depends(get_db)):
         })
 
     # Check if trainer is approved
-    if user.role == "trainer" and hasattr(user, 'is_approved') and user.is_approved == False:
+    if user.role in ("trainer", "nutritionist") and hasattr(user, 'is_approved') and user.is_approved == False:
         error_msg = "Your account is pending approval from your gym owner. Please wait for them to approve your registration."
         if is_json:
             from fastapi.responses import JSONResponse
@@ -330,6 +330,34 @@ async def _do_register(request, username, password, email, role, sub_role, secre
 
         gym_owner_id = gym_owner.id
         is_approved = False  # Trainers need owner approval
+
+    elif role == "nutritionist":
+        # Nutritionists MUST have a gym code
+        if not gym_code or not gym_code.strip():
+            return templates.TemplateResponse("register.html", {
+                "request": request,
+                "error": "Gym code is required for nutritionists. Please get the code from your gym owner.",
+                "gym_id": "iron_gym",
+                "role": "client",
+                "mode": "auth"
+            })
+
+        gym_owner = db.query(User).filter(
+            User.gym_code == gym_code.strip().upper(),
+            User.role == "owner"
+        ).first()
+
+        if not gym_owner:
+            return templates.TemplateResponse("register.html", {
+                "request": request,
+                "error": "Invalid gym code. Please check with your gym owner.",
+                "gym_id": "iron_gym",
+                "role": "client",
+                "mode": "auth"
+            })
+
+        gym_owner_id = gym_owner.id
+        is_approved = False  # Nutritionists need owner approval
 
     elif role == "client" and gym_code and gym_code.strip():
         # Clients can optionally join a gym
