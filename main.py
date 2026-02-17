@@ -194,6 +194,7 @@ from route_modules.shower_routes import router as shower_router
 app.include_router(shower_router)
 
 
+
 def _safe_add_columns(engine, table_name, columns_list):
     """Add columns to a table using IF NOT EXISTS (PostgreSQL 9.6+) or fallback."""
     from sqlalchemy import text, inspect
@@ -361,6 +362,16 @@ def run_migrations(engine):
         ("gems", "INTEGER DEFAULT 0"),
         ("nutritionist_id", "TEXT"),
         ("weight_goal", "DOUBLE PRECISION"),
+        ("height_cm", "DOUBLE PRECISION"),
+        ("gender", "TEXT"),
+        ("activity_level", "TEXT"),
+        ("allergies", "TEXT"),
+        ("medical_conditions", "TEXT"),
+        ("supplements", "TEXT"),
+        ("sleep_hours", "DOUBLE PRECISION"),
+        ("meal_frequency", "TEXT"),
+        ("food_preferences", "TEXT"),
+        ("occupation_type", "TEXT"),
     ])
 
     # Add all potentially missing columns to users table (PostgreSQL-safe with IF NOT EXISTS)

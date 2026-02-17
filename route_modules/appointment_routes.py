@@ -14,6 +14,14 @@ from models_orm import UserORM, AppointmentORM
 
 router = APIRouter()
 
+STAFF_ROLES = {"trainer", "nutritionist"}
+
+
+def _require_staff(user):
+    """Require trainer or nutritionist role."""
+    if user.role not in STAFF_ROLES:
+        raise HTTPException(status_code=403, detail="Only trainers and nutritionists can access this endpoint")
+
 
 # --- TRAINER ENDPOINTS (Availability Management) ---
 
@@ -23,10 +31,8 @@ async def set_availability(
     user = Depends(get_current_user),
     service: AppointmentService = Depends(get_appointment_service)
 ):
-    """Set trainer's weekly availability for appointments."""
-    if user.role != "trainer":
-        raise HTTPException(status_code=403, detail="Only trainers can set availability")
-
+    """Set weekly availability for appointments."""
+    _require_staff(user)
     return service.set_trainer_availability(user.id, request.availability)
 
 
@@ -35,10 +41,8 @@ async def get_my_availability(
     user = Depends(get_current_user),
     service: AppointmentService = Depends(get_appointment_service)
 ):
-    """Get trainer's current availability schedule."""
-    if user.role != "trainer":
-        raise HTTPException(status_code=403, detail="Only trainers can view their availability")
-
+    """Get current availability schedule."""
+    _require_staff(user)
     return service.get_trainer_availability(user.id)
 
 
@@ -47,10 +51,8 @@ async def get_session_types(
     user = Depends(get_current_user),
     service: AppointmentService = Depends(get_appointment_service)
 ):
-    """Get trainer's custom session types."""
-    if user.role != "trainer":
-        raise HTTPException(status_code=403, detail="Only trainers can view their session types")
-
+    """Get custom session types."""
+    _require_staff(user)
     return service.get_trainer_session_types(user.id)
 
 
@@ -60,10 +62,8 @@ async def set_session_types(
     user = Depends(get_current_user),
     service: AppointmentService = Depends(get_appointment_service)
 ):
-    """Set trainer's custom session types."""
-    if user.role != "trainer":
-        raise HTTPException(status_code=403, detail="Only trainers can set session types")
-
+    """Set custom session types."""
+    _require_staff(user)
     session_types = request.get("session_types", [])
     return service.set_trainer_session_types(user.id, session_types)
 
@@ -74,7 +74,7 @@ async def get_trainer_session_types_for_client(
     user = Depends(get_current_user),
     service: AppointmentService = Depends(get_appointment_service)
 ):
-    """Get a trainer's session types (for clients booking)."""
+    """Get a staff member's session types (for clients booking)."""
     return service.get_trainer_session_types(trainer_id)
 
 
@@ -84,10 +84,8 @@ async def get_my_available_slots(
     user = Depends(get_current_user),
     service: AppointmentService = Depends(get_appointment_service)
 ):
-    """Get trainer's own available slots for a specific date."""
-    if user.role != "trainer":
-        raise HTTPException(status_code=403, detail="Only trainers can view their slots")
-
+    """Get own available slots for a specific date."""
+    _require_staff(user)
     return service.get_available_slots(user.id, date)
 
 
@@ -97,10 +95,8 @@ async def get_trainer_appointments(
     user = Depends(get_current_user),
     service: AppointmentService = Depends(get_appointment_service)
 ):
-    """Get all appointments for the trainer."""
-    if user.role != "trainer":
-        raise HTTPException(status_code=403, detail="Only trainers can view their appointments")
-
+    """Get all appointments."""
+    _require_staff(user)
     return service.get_trainer_appointments(user.id, include_past)
 
 
@@ -112,9 +108,7 @@ async def complete_appointment(
     service: AppointmentService = Depends(get_appointment_service)
 ):
     """Mark an appointment as completed."""
-    if user.role != "trainer":
-        raise HTTPException(status_code=403, detail="Only trainers can complete appointments")
-
+    _require_staff(user)
     return service.complete_appointment(appointment_id, user.id, trainer_notes)
 
 
@@ -124,12 +118,8 @@ async def trainer_book_appointment(
     user = Depends(get_current_user),
     service: AppointmentService = Depends(get_appointment_service)
 ):
-    """Allow trainer to book an appointment with a client."""
-    if user.role != "trainer":
-        raise HTTPException(status_code=403, detail="Only trainers can book appointments for clients")
-
-    # Use trainer's ID instead of client_id for the trainer_id field
-    # The request.trainer_id field will actually contain the client_id when called by trainer
+    """Book an appointment with a client."""
+    _require_staff(user)
     return service.book_appointment_as_trainer(user.id, request)
 
 
@@ -217,10 +207,8 @@ async def cancel_appointment(
 async def get_session_rate(
     user = Depends(get_current_user)
 ):
-    """Get trainer's hourly session rate."""
-    if user.role != "trainer":
-        raise HTTPException(status_code=403, detail="Only trainers can view their rate")
-
+    """Get session rate."""
+    _require_staff(user)
     return {"session_rate": getattr(user, 'session_rate', None)}
 
 
@@ -229,9 +217,8 @@ async def set_session_rate(
     data: dict,
     user = Depends(get_current_user)
 ):
-    """Set trainer's hourly session rate."""
-    if user.role != "trainer":
-        raise HTTPException(status_code=403, detail="Only trainers can set their rate")
+    """Set session rate."""
+    _require_staff(user)
 
     rate = data.get("session_rate")
     if rate is not None and rate < 0:
@@ -257,10 +244,10 @@ async def get_trainer_rate_for_client(
     try:
         trainer = db.query(UserORM).filter(
             UserORM.id == trainer_id,
-            UserORM.role == "trainer"
+            UserORM.role.in_(["trainer", "nutritionist"])
         ).first()
         if not trainer:
-            raise HTTPException(status_code=404, detail="Trainer not found")
+            raise HTTPException(status_code=404, detail="Staff member not found")
 
         return {
             "trainer_id": trainer_id,
@@ -299,15 +286,15 @@ async def create_appointment_payment_intent(
     try:
         trainer = db.query(UserORM).filter(
             UserORM.id == trainer_id,
-            UserORM.role == "trainer"
+            UserORM.role.in_(["trainer", "nutritionist"])
         ).first()
 
         if not trainer:
-            raise HTTPException(status_code=404, detail="Trainer not found")
+            raise HTTPException(status_code=404, detail="Staff member not found")
 
         session_rate = getattr(trainer, 'session_rate', None)
         if not session_rate or session_rate <= 0:
-            raise HTTPException(status_code=400, detail="Trainer has no session rate configured")
+            raise HTTPException(status_code=400, detail="No session rate configured")
 
         # Calculate price based on duration
         price = round(session_rate * (duration / 60), 2)
@@ -371,15 +358,15 @@ async def create_appointment_checkout_session(
     try:
         trainer = db.query(UserORM).filter(
             UserORM.id == trainer_id,
-            UserORM.role == "trainer"
+            UserORM.role.in_(["trainer", "nutritionist"])
         ).first()
 
         if not trainer:
-            raise HTTPException(status_code=404, detail="Trainer not found")
+            raise HTTPException(status_code=404, detail="Staff member not found")
 
         session_rate = getattr(trainer, 'session_rate', None)
         if not session_rate or session_rate <= 0:
-            raise HTTPException(status_code=400, detail="Trainer has no session rate configured")
+            raise HTTPException(status_code=400, detail="No session rate configured")
 
         price = round(session_rate * (duration / 60), 2)
         amount_cents = int(price * 100)

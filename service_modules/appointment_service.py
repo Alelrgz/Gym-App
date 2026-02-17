@@ -249,14 +249,14 @@ class AppointmentService:
             if appointment_date < date.today():
                 raise HTTPException(status_code=400, detail="Cannot book appointments in the past")
 
-            # Verify trainer exists
+            # Verify trainer or nutritionist exists
             trainer = db.query(UserORM).filter(
                 UserORM.id == request.trainer_id,
-                UserORM.role == "trainer"
+                UserORM.role.in_(["trainer", "nutritionist"])
             ).first()
 
             if not trainer:
-                raise HTTPException(status_code=404, detail="Trainer not found")
+                raise HTTPException(status_code=404, detail="Staff member not found")
 
             # Get client info
             client = db.query(UserORM).filter(UserORM.id == client_id).first()

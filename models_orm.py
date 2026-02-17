@@ -143,6 +143,18 @@ class ClientProfileORM(Base):
     # Weight goal set by nutritionist
     weight_goal = Column(Float, nullable=True)  # Target weight in kg
 
+    # Nutritionist-only health data
+    height_cm = Column(Float, nullable=True)
+    gender = Column(String, nullable=True)  # male / female / other
+    activity_level = Column(String, nullable=True)  # sedentary / light / moderate / active / very_active
+    allergies = Column(String, nullable=True)
+    medical_conditions = Column(String, nullable=True)
+    supplements = Column(String, nullable=True)
+    sleep_hours = Column(Float, nullable=True)
+    meal_frequency = Column(String, nullable=True)  # 3_meals / 5_small / intermittent_fasting / custom
+    food_preferences = Column(String, nullable=True)  # none / vegan / vegetarian / halal / kosher / other
+    occupation_type = Column(String, nullable=True)  # sedentary / light_physical / heavy_physical
+
 
 class ClientDocumentORM(Base):
     """Stores client documents like medical certificates and signed waivers"""

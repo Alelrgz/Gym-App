@@ -46,6 +46,12 @@
                 <span>Messages</span>
                 <span id="unread-messages-badge" class="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center hidden">0</span>
             </button>
+            <button onclick="switchNutriSection('schedule')"
+                    class="staff-nav-item sidebar-nav-item"
+                    data-section="schedule">
+                <i data-lucide="calendar" class="w-[18px] h-[18px]"></i>
+                <span>Schedule</span>
+            </button>
             <button onclick="switchNutriSection('settings')"
                     class="staff-nav-item sidebar-nav-item"
                     data-section="settings">
@@ -132,6 +138,37 @@
                             <div class="p-4 text-center text-gray-500 text-sm">Loading clients...</div>
                         </div>
                     {% endcall %}
+
+                    <!-- Quick Notes -->
+                    <div class="mt-4">
+                        <div class="flex items-center gap-2 mb-3 border-l-4 border-slate-500 pl-3">
+                            <div class="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
+                                <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i>
+                            </div>
+                            <div>
+                                <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Quick Notes</h3>
+                                <p class="text-xs text-gray-500">Reminders & to-dos</p>
+                            </div>
+                            <span class="text-[10px] text-green-400 opacity-0 transition-opacity duration-500 ml-auto" id="nutri-notes-saved">Saved</span>
+                        </div>
+                        {% call card(classes="overflow-hidden") %}
+                            <div class="p-3 border-b border-white/5 flex items-center justify-between">
+                                <input type="text" id="nutri-note-title" placeholder="Note title..."
+                                    class="flex-1 bg-transparent border-none text-sm text-white font-semibold outline-none placeholder-gray-500">
+                                <button type="button" onclick="saveNutriNote()" class="text-xs bg-green-500/20 text-green-400 px-3 py-1 rounded-lg hover:bg-green-500/30 transition font-semibold">
+                                    + Add
+                                </button>
+                            </div>
+                            <div class="p-3">
+                                <textarea id="nutri-note-content" rows="3"
+                                    class="w-full bg-white/5 border border-white/10 rounded-lg p-2 text-sm text-white resize-none outline-none focus:border-slate-500/50 placeholder-gray-500"
+                                    placeholder="Write a note..."></textarea>
+                            </div>
+                            <div id="nutri-notes-list" class="max-h-[50vh] overflow-y-auto border-t border-white/5">
+                                <div class="p-3 text-center text-gray-500 text-xs">No notes yet</div>
+                            </div>
+                        {% endcall %}
+                    </div>
                 </div>
 
                 <!-- Client Detail Panel (2/3) -->
@@ -139,7 +176,11 @@
 
                     <!-- Client header -->
                     <div class="flex items-center gap-3 mb-4">
-                        <img id="detail-client-avatar" src="/static/img/default-avatar.png" class="w-12 h-12 rounded-full object-cover border-2 border-green-500/30">
+                        <img id="detail-client-avatar" class="w-12 h-12 rounded-full object-cover border-2 border-green-500/30" style="display:none;"
+                             onerror="this.style.display='none';document.getElementById('detail-client-initials').style.display='flex'">
+                        <div id="detail-client-initials" class="w-12 h-12 rounded-full bg-green-500/20 border-2 border-green-500/30 flex items-center justify-center">
+                            <span class="text-sm font-bold text-green-400" id="detail-initials-text">??</span>
+                        </div>
                         <div class="flex-1">
                             <h2 class="text-xl font-bold text-white" id="detail-client-name"></h2>
                             <p class="text-xs text-gray-400" id="detail-client-status"></p>
@@ -167,6 +208,31 @@
                             <p class="text-lg font-bold text-white" id="detail-fatmass">—</p>
                             <p class="text-[10px] text-gray-500 uppercase">Fat Mass</p>
                         </div>
+                    </div>
+
+                    <!-- Computed Metrics (BMI / BMR / TDEE) -->
+                    <div class="grid grid-cols-3 gap-3 mb-4" id="computed-metrics" style="display:none;">
+                        <div class="glass-card p-3 text-center border border-cyan-500/20">
+                            <p class="text-lg font-bold text-cyan-400" id="detail-bmi">—</p>
+                            <p class="text-[10px] text-gray-500 uppercase">BMI</p>
+                        </div>
+                        <div class="glass-card p-3 text-center border border-cyan-500/20">
+                            <p class="text-lg font-bold text-cyan-400" id="detail-bmr">—</p>
+                            <p class="text-[10px] text-gray-500 uppercase">BMR (kcal)</p>
+                        </div>
+                        <div class="glass-card p-3 text-center border border-cyan-500/20">
+                            <p class="text-lg font-bold text-cyan-400" id="detail-tdee">—</p>
+                            <p class="text-[10px] text-gray-500 uppercase">TDEE (kcal)</p>
+                        </div>
+                    </div>
+
+                    <!-- Health Profile Button -->
+                    <div onclick="openHealthProfileModal()" class="flex items-center gap-2 mb-4 border-l-4 border-cyan-400 pl-3 cursor-pointer group">
+                        <div class="w-7 h-7 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                            <i data-lucide="clipboard-list" class="w-4 h-4 text-cyan-400"></i>
+                        </div>
+                        <h3 class="text-sm font-bold text-cyan-400 uppercase tracking-wider group-hover:text-cyan-300 transition">Health Profile</h3>
+                        <i data-lucide="external-link" class="w-3.5 h-3.5 text-gray-500 group-hover:text-cyan-400 transition ml-auto"></i>
                     </div>
 
                     <!-- Body Composition Form -->
@@ -262,15 +328,22 @@
                         <div class="flex-1">
                             <h3 class="text-sm font-bold text-blue-400 uppercase tracking-wider">Progress Charts</h3>
                         </div>
-                        <select id="chart-period" onchange="loadClientCharts()" class="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white outline-none">
-                            <option value="week">Week</option>
-                            <option value="month" selected>Month</option>
-                            <option value="year">Year</option>
-                        </select>
+                        <div class="flex gap-1 bg-white/5 rounded-lg p-0.5 border border-white/10">
+                            <button onclick="setChartPeriod('week')" class="chart-period-btn px-3 py-1 text-[10px] font-bold uppercase rounded-md transition" data-period="week">Week</button>
+                            <button onclick="setChartPeriod('month')" class="chart-period-btn px-3 py-1 text-[10px] font-bold uppercase rounded-md transition active" data-period="month">Month</button>
+                            <button onclick="setChartPeriod('year')" class="chart-period-btn px-3 py-1 text-[10px] font-bold uppercase rounded-md transition" data-period="year">Year</button>
+                        </div>
+                        <input type="hidden" id="chart-period" value="month">
                     </div>
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {% call card(classes="p-4") %}
-                            <h4 class="text-xs font-bold text-gray-400 uppercase mb-3">Weight Trend</h4>
+                            <div class="flex items-center justify-between mb-3">
+                                <div class="flex gap-1 bg-white/5 rounded-lg p-0.5 border border-white/10">
+                                    <button onclick="setWeightTab('weight')" class="weight-tab-btn px-3 py-1 text-[10px] font-bold uppercase rounded-md transition active" data-tab="weight">Weight</button>
+                                    <button onclick="setWeightTab('bodyfat')" class="weight-tab-btn px-3 py-1 text-[10px] font-bold uppercase rounded-md transition" data-tab="bodyfat">Body Fat</button>
+                                    <button onclick="setWeightTab('composition')" class="weight-tab-btn px-3 py-1 text-[10px] font-bold uppercase rounded-md transition" data-tab="composition">Composition</button>
+                                </div>
+                            </div>
                             <canvas id="nutri-weight-chart" height="200"></canvas>
                         {% endcall %}
                         {% call card(classes="p-4") %}
@@ -288,6 +361,74 @@
                         <p class="text-gray-500 text-sm">Select a client from the list to view their data</p>
                     {% endcall %}
                 </div>
+            </div>
+        </section>
+
+        <!-- ==================== SECTION: SCHEDULE ==================== -->
+        <section id="section-schedule" class="nutritionist-section" style="display:none;">
+            <div class="max-w-2xl">
+                <h1 class="text-2xl font-black text-white mb-6">Schedule & Availability</h1>
+
+                <!-- Weekly Availability -->
+                {% call card(classes="p-6 mb-6") %}
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-7 h-7 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                            <i data-lucide="clock" class="w-4 h-4 text-cyan-400"></i>
+                        </div>
+                        <h3 class="text-sm font-bold text-cyan-400 uppercase tracking-wider">Weekly Availability</h3>
+                    </div>
+                    <p class="text-xs text-gray-400 mb-4">Set the hours you're available for client consultations</p>
+
+                    <div class="space-y-2" id="nutri-availability-days">
+                        {% set days = [("0","Monday"),("1","Tuesday"),("2","Wednesday"),("3","Thursday"),("4","Friday"),("5","Saturday"),("6","Sunday")] %}
+                        {% for day_val, day_name in days %}
+                        <div class="flex items-center gap-3 bg-white/5 hover:bg-white/10 rounded-xl p-3 cursor-pointer transition" onclick="toggleNutriDay('{{ day_val }}')">
+                            <div class="flex items-center gap-2 min-w-[120px] pointer-events-none">
+                                <input type="checkbox" class="nutri-day-toggle accent-cyan-500 pointer-events-auto" data-day="{{ day_val }}">
+                                <span class="text-sm font-semibold text-white">{{ day_name }}</span>
+                            </div>
+                            <div class="nutri-day-times hidden flex items-center gap-2 ml-auto pointer-events-auto" data-day="{{ day_val }}" onclick="event.stopPropagation()">
+                                <input type="time" class="nutri-start-time bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-white text-xs" value="{{ '10:00' if day_val in ['5','6'] else '09:00' }}">
+                                <span class="text-gray-500 text-xs">to</span>
+                                <input type="time" class="nutri-end-time bg-black/30 border border-white/10 rounded-lg px-2 py-1 text-white text-xs" value="{{ '14:00' if day_val in ['5','6'] else '17:00' }}">
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% endcall %}
+
+                <!-- Session Rate -->
+                {% call card(classes="p-6 mb-6") %}
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-7 h-7 rounded-lg bg-green-500/20 flex items-center justify-center">
+                            <i data-lucide="banknote" class="w-4 h-4 text-green-400"></i>
+                        </div>
+                        <h3 class="text-sm font-bold text-green-400 uppercase tracking-wider">Consultation Rate</h3>
+                    </div>
+                    <p class="text-xs text-gray-400 mb-3">Clients will see this price when booking a consultation. Leave empty for free sessions.</p>
+                    <div class="flex items-center gap-3">
+                        <input type="number" id="nutri-session-rate" min="0" step="0.01" placeholder="e.g. 40.00"
+                            class="w-48 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-green-500/50">
+                        <span class="text-gray-400 text-sm">$ / hour</span>
+                    </div>
+                {% endcall %}
+
+                <!-- Upcoming Appointments -->
+                {% call card(classes="p-6 mb-6") %}
+                    <div class="flex items-center gap-2 mb-4">
+                        <div class="w-7 h-7 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                            <i data-lucide="calendar-check" class="w-4 h-4 text-orange-400"></i>
+                        </div>
+                        <h3 class="text-sm font-bold text-orange-400 uppercase tracking-wider">Upcoming Appointments</h3>
+                    </div>
+                    <div id="nutri-appointments-list" class="space-y-2">
+                        <p class="text-gray-500 text-xs text-center py-4">Loading...</p>
+                    </div>
+                {% endcall %}
+
+                <button onclick="saveNutriAvailability()" class="bg-cyan-500 hover:bg-cyan-400 text-white font-bold py-3 px-8 rounded-xl transition text-sm">
+                    Save Availability & Rate
+                </button>
             </div>
         </section>
 
@@ -319,16 +460,27 @@
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
+<style>
+    .chart-period-btn { color: #6b7280; }
+    .chart-period-btn.active { background: rgba(96,165,250,0.2); color: #60a5fa; }
+    .chart-period-btn:hover:not(.active) { color: #d1d5db; }
+    .weight-tab-btn { color: #6b7280; }
+    .weight-tab-btn.active { background: rgba(96,165,250,0.2); color: #60a5fa; }
+    .weight-tab-btn:hover:not(.active) { color: #d1d5db; }
+</style>
 <script>
 // ===================== STATE =====================
 let nutriData = null;
 let selectedClientId = null;
 let weightChartInstance = null;
 let dietChartInstance = null;
+let activeWeightTab = 'weight';
+let cachedWeightData = null;
 
 // ===================== INIT =====================
 document.addEventListener('DOMContentLoaded', async () => {
     await loadNutritionistData();
+    loadNutriNotes();
     if (typeof lucide !== 'undefined') lucide.createIcons();
     // Load unread message count
     if (typeof updateUnreadBadge === 'function') updateUnreadBadge();
@@ -359,18 +511,22 @@ function renderClientList(clients) {
         container.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">No clients in your gym yet</div>';
         return;
     }
-    container.innerHTML = clients.map(c => `
+    container.innerHTML = clients.map(c => {
+        const initials = (c.name || '?').substring(0, 2).toUpperCase();
+        const avatar = c.profile_picture
+            ? `<img src="${c.profile_picture}" class="w-9 h-9 rounded-full object-cover flex-shrink-0" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'"><div class="w-9 h-9 rounded-full bg-green-500/20 flex-shrink-0 items-center justify-center hidden"><span class="text-xs font-bold text-green-400">${initials}</span></div>`
+            : `<div class="w-9 h-9 rounded-full bg-green-500/20 flex-shrink-0 flex items-center justify-center"><span class="text-xs font-bold text-green-400">${initials}</span></div>`;
+        return `
         <div class="p-3 border-b border-white/5 flex items-center gap-3 cursor-pointer hover:bg-white/5 transition ${selectedClientId === c.id ? 'bg-green-500/10 border-l-2 border-l-green-400' : ''}"
              onclick="selectClient('${c.id}')">
-            <img src="${c.profile_picture || '/static/img/default-avatar.png'}"
-                 class="w-9 h-9 rounded-full object-cover flex-shrink-0" onerror="this.src='/static/img/default-avatar.png'">
+            ${avatar}
             <div class="flex-1 min-w-0">
                 <p class="text-white font-medium text-sm truncate">${c.name}</p>
                 <p class="text-[10px] ${c.status === 'Active' ? 'text-green-400' : 'text-red-400'}">${c.status} · ${c.weight ? c.weight + 'kg' : 'No data'}</p>
             </div>
             <i data-lucide="chevron-right" class="w-4 h-4 text-gray-600 flex-shrink-0"></i>
-        </div>
-    `).join('');
+        </div>`;
+    }).join('');
     if (typeof lucide !== 'undefined') lucide.createIcons();
 }
 
@@ -395,7 +551,18 @@ async function selectClient(clientId) {
         const data = await res.json();
 
         document.getElementById('detail-client-name').textContent = data.name;
-        document.getElementById('detail-client-avatar').src = data.profile_picture || '/static/img/default-avatar.png';
+        const avatarImg = document.getElementById('detail-client-avatar');
+        const initialsDiv = document.getElementById('detail-client-initials');
+        const initialsText = document.getElementById('detail-initials-text');
+        initialsText.textContent = (data.name || '??').substring(0, 2).toUpperCase();
+        if (data.profile_picture) {
+            avatarImg.src = data.profile_picture;
+            avatarImg.style.display = '';
+            initialsDiv.style.display = 'none';
+        } else {
+            avatarImg.style.display = 'none';
+            initialsDiv.style.display = 'flex';
+        }
         document.getElementById('detail-client-status').textContent = `Weight: ${data.weight || '—'}kg · Body Fat: ${data.body_fat_pct || '—'}%`;
 
         document.getElementById('detail-weight').textContent = data.weight ? data.weight + 'kg' : '—';
@@ -426,10 +593,86 @@ async function selectClient(clientId) {
         document.getElementById('bc-fatmass').value = data.fat_mass || '';
         document.getElementById('bc-leanmass').value = data.lean_mass || '';
 
+        // Computed metrics (BMI / BMR / TDEE)
+        const metricsDiv = document.getElementById('computed-metrics');
+        if (data.bmi || data.bmr || data.tdee) {
+            metricsDiv.style.display = '';
+            document.getElementById('detail-bmi').textContent = data.bmi || '—';
+            document.getElementById('detail-bmr').textContent = data.bmr || '—';
+            document.getElementById('detail-tdee').textContent = data.tdee || '—';
+        } else {
+            metricsDiv.style.display = 'none';
+        }
+
+        // Health profile fields
+        document.getElementById('hp-height').value = data.height_cm || '';
+        document.getElementById('hp-gender').value = data.gender || '';
+        document.getElementById('hp-dob').value = data.date_of_birth || '';
+        document.getElementById('hp-activity').value = data.activity_level || '';
+        document.getElementById('hp-allergies').value = data.allergies || '';
+        document.getElementById('hp-medical').value = data.medical_conditions || '';
+        document.getElementById('hp-supplements').value = data.supplements || '';
+        document.getElementById('hp-sleep').value = data.sleep_hours || '';
+        document.getElementById('hp-meals').value = data.meal_frequency || '';
+        document.getElementById('hp-food').value = data.food_preferences || '';
+        document.getElementById('hp-occupation').value = data.occupation_type || '';
+
         await loadClientCharts();
     } catch (e) {
         console.error('Failed to load client detail:', e);
         showToast('Failed to load client data', 'error');
+    }
+}
+
+// ===================== HEALTH PROFILE =====================
+function openHealthProfileModal() {
+    const modal = document.getElementById('health-profile-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    }
+}
+
+function closeHealthProfileModal() {
+    const modal = document.getElementById('health-profile-modal');
+    if (modal) modal.classList.add('hidden');
+}
+
+async function saveHealthData() {
+    if (!selectedClientId) return;
+    const payload = {
+        client_id: selectedClientId,
+        height_cm: parseFloat(document.getElementById('hp-height').value) || null,
+        gender: document.getElementById('hp-gender').value || null,
+        date_of_birth: document.getElementById('hp-dob').value || null,
+        activity_level: document.getElementById('hp-activity').value || null,
+        allergies: document.getElementById('hp-allergies').value || null,
+        medical_conditions: document.getElementById('hp-medical').value || null,
+        supplements: document.getElementById('hp-supplements').value || null,
+        sleep_hours: parseFloat(document.getElementById('hp-sleep').value) || null,
+        meal_frequency: document.getElementById('hp-meals').value || null,
+        food_preferences: document.getElementById('hp-food').value || null,
+        occupation_type: document.getElementById('hp-occupation').value || null,
+    };
+    try {
+        const res = await fetch('/api/nutritionist/client/health-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload)
+        });
+        if (res.ok) {
+            showToast('Health data saved!');
+            closeHealthProfileModal();
+            // Refresh client to update computed metrics
+            await selectClient(selectedClientId);
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Failed to save', 'error');
+        }
+    } catch (e) {
+        console.error('Failed to save health data:', e);
+        showToast('Failed to save health data', 'error');
     }
 }
 
@@ -519,71 +762,34 @@ async function assignDiet() {
 }
 
 // ===================== CHARTS =====================
+function setChartPeriod(period) {
+    document.getElementById('chart-period').value = period;
+    document.querySelectorAll('.chart-period-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.period === period);
+    });
+    cachedWeightData = null;
+    loadClientCharts();
+}
+
+function setWeightTab(tab) {
+    activeWeightTab = tab;
+    document.querySelectorAll('.weight-tab-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tab === tab);
+    });
+    if (cachedWeightData) {
+        renderWeightChart(cachedWeightData);
+    }
+}
+
 async function loadClientCharts() {
     if (!selectedClientId) return;
     const period = document.getElementById('chart-period').value;
 
-    // Weight chart
+    // Fetch weight data and cache it
     try {
         const res = await fetch(`/api/nutritionist/client/${selectedClientId}/weight-history?period=${period}`, { credentials: 'include' });
-        const weightData = await res.json();
-
-        const ctx = document.getElementById('nutri-weight-chart');
-        if (weightChartInstance) weightChartInstance.destroy();
-
-        const datasets = [{
-            label: 'Weight (kg)',
-            data: weightData.data.map(d => d.weight),
-            borderColor: '#f97316',
-            backgroundColor: 'rgba(249,115,22,0.1)',
-            fill: true,
-            tension: 0.4,
-            pointRadius: 3
-        }];
-
-        // Add lean mass if available
-        if (weightData.data.some(d => d.lean_mass)) {
-            datasets.push({
-                label: 'Lean Mass (kg)',
-                data: weightData.data.map(d => d.lean_mass),
-                borderColor: '#22c55e',
-                backgroundColor: 'rgba(34,197,94,0.05)',
-                fill: false,
-                tension: 0.4,
-                pointRadius: 2,
-                borderDash: [5, 5]
-            });
-        }
-
-        // Add fat mass if available
-        if (weightData.data.some(d => d.fat_mass)) {
-            datasets.push({
-                label: 'Fat Mass (kg)',
-                data: weightData.data.map(d => d.fat_mass),
-                borderColor: '#ef4444',
-                backgroundColor: 'rgba(239,68,68,0.05)',
-                fill: false,
-                tension: 0.4,
-                pointRadius: 2,
-                borderDash: [5, 5]
-            });
-        }
-
-        weightChartInstance = new Chart(ctx, {
-            type: 'line',
-            data: { labels: weightData.data.map(d => d.label), datasets },
-            options: {
-                responsive: true,
-                interaction: { intersect: false, mode: 'index' },
-                plugins: {
-                    legend: { display: datasets.length > 1, labels: { color: '#9ca3af', boxWidth: 12, font: { size: 10 } } }
-                },
-                scales: {
-                    x: { ticks: { color: '#6b7280', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.03)' } },
-                    y: { ticks: { color: '#6b7280', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
-                }
-            }
-        });
+        cachedWeightData = await res.json();
+        renderWeightChart(cachedWeightData);
     } catch (e) { console.error('Weight chart error:', e); }
 
     // Diet consistency chart
@@ -619,6 +825,151 @@ async function loadClientCharts() {
             }
         });
     } catch (e) { console.error('Diet chart error:', e); }
+}
+
+function renderWeightChart(weightData) {
+    const ctx = document.getElementById('nutri-weight-chart');
+    if (weightChartInstance) weightChartInstance.destroy();
+    if (!weightData || !weightData.data || !weightData.data.length) return;
+
+    const labels = weightData.data.map(d => d.label);
+    const goalEl = document.getElementById('detail-weight-goal');
+    const goalText = goalEl ? goalEl.textContent : '';
+    const weightGoal = parseFloat(goalText);
+
+    let datasets = [];
+    let yLabel = '';
+
+    if (activeWeightTab === 'weight') {
+        const weights = weightData.data.map(d => d.weight);
+
+        function proximityColor(w, alpha) {
+            if (!weightGoal || !weights.length) {
+                return alpha < 1 ? 'rgba(249,115,22,' + alpha + ')' : '#f97316';
+            }
+            const maxDist = Math.max(...weights.map(v => Math.abs(v - weightGoal)));
+            const dist = Math.abs(w - weightGoal);
+            const t = maxDist > 0 ? Math.min(1, Math.max(0, 1 - dist / maxDist)) : 1;
+            let r, g, b;
+            if (t < 0.5) {
+                const s = t * 2;
+                r = Math.round(249 + (234 - 249) * s);
+                g = Math.round(115 + (179 - 115) * s);
+                b = Math.round(22 + (8 - 22) * s);
+            } else {
+                const s = (t - 0.5) * 2;
+                r = Math.round(234 + (34 - 234) * s);
+                g = Math.round(179 + (197 - 179) * s);
+                b = Math.round(8 + (94 - 8) * s);
+            }
+            return alpha < 1 ? `rgba(${r},${g},${b},${alpha})` : `rgb(${r},${g},${b})`;
+        }
+
+        const pointColors = weights.map(w => proximityColor(w, 1));
+        const segmentBorder = weightGoal ? {
+            borderColor: (segCtx) => {
+                const idx = segCtx.p1DataIndex;
+                return proximityColor(weights[idx], 1);
+            }
+        } : {};
+
+        datasets.push({
+            label: 'Weight (kg)',
+            data: weights,
+            borderColor: weightGoal ? pointColors[pointColors.length - 1] : '#f97316',
+            backgroundColor: weightGoal
+                ? (function() {
+                    if (!ctx) return 'rgba(249,115,22,0.1)';
+                    const chartCtx = ctx.getContext('2d');
+                    const grad = chartCtx.createLinearGradient(0, 0, ctx.width, 0);
+                    weights.forEach((w, i) => {
+                        grad.addColorStop(i / Math.max(weights.length - 1, 1), proximityColor(w, 0.15));
+                    });
+                    return grad;
+                })()
+                : 'rgba(249,115,22,0.1)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 4,
+            pointBackgroundColor: pointColors,
+            pointBorderColor: pointColors,
+            segment: segmentBorder
+        });
+
+        if (weightGoal && weights.length > 0) {
+            datasets.push({
+                label: 'Goal',
+                data: weights.map(() => weightGoal),
+                borderColor: 'rgba(34,197,94,0.5)',
+                borderDash: [6, 4],
+                borderWidth: 2,
+                pointRadius: 0,
+                fill: false,
+                tension: 0
+            });
+        }
+        yLabel = 'kg';
+
+    } else if (activeWeightTab === 'bodyfat') {
+        const bfData = weightData.data.map(d => d.body_fat_pct);
+
+        datasets.push({
+            label: 'Body Fat %',
+            data: bfData,
+            borderColor: '#f59e0b',
+            backgroundColor: 'rgba(245,158,11,0.1)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 4,
+            pointBackgroundColor: '#f59e0b',
+            pointBorderColor: '#f59e0b'
+        });
+        yLabel = '%';
+
+    } else if (activeWeightTab === 'composition') {
+        const leanData = weightData.data.map(d => d.lean_mass);
+        const fatData = weightData.data.map(d => d.fat_mass);
+
+        datasets.push({
+            label: 'Lean Mass (kg)',
+            data: leanData,
+            borderColor: '#22c55e',
+            backgroundColor: 'rgba(34,197,94,0.15)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 3,
+            pointBackgroundColor: '#22c55e',
+            pointBorderColor: '#22c55e'
+        });
+        datasets.push({
+            label: 'Fat Mass (kg)',
+            data: fatData,
+            borderColor: '#ef4444',
+            backgroundColor: 'rgba(239,68,68,0.15)',
+            fill: true,
+            tension: 0.4,
+            pointRadius: 3,
+            pointBackgroundColor: '#ef4444',
+            pointBorderColor: '#ef4444'
+        });
+        yLabel = 'kg';
+    }
+
+    weightChartInstance = new Chart(ctx, {
+        type: 'line',
+        data: { labels, datasets },
+        options: {
+            responsive: true,
+            interaction: { intersect: false, mode: 'index' },
+            plugins: {
+                legend: { display: datasets.length > 1, labels: { color: '#9ca3af', boxWidth: 12, font: { size: 10 } } }
+            },
+            scales: {
+                x: { ticks: { color: '#6b7280', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.03)' } },
+                y: { ticks: { color: '#6b7280', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            }
+        }
+    });
 }
 
 // ===================== SETTINGS =====================
@@ -862,7 +1213,356 @@ function switchNutriSection(section) {
     document.getElementById(`section-${section}`).style.display = 'block';
     document.querySelectorAll('.sidebar-nav-item').forEach(l => l.classList.remove('active'));
     document.querySelector(`[data-section="${section}"]`).classList.add('active');
+    if (section === 'schedule') {
+        loadNutriAvailability();
+        loadNutriAppointments();
+    }
+}
+
+// ===================== SCHEDULE & AVAILABILITY =====================
+
+function toggleNutriDay(day) {
+    const cb = document.querySelector(`.nutri-day-toggle[data-day="${day}"]`);
+    if (!cb) return;
+    cb.checked = !cb.checked;
+    const timesDiv = document.querySelector(`.nutri-day-times[data-day="${day}"]`);
+    if (timesDiv) timesDiv.classList.toggle('hidden', !cb.checked);
+}
+
+(function setupNutriDayToggles() {
+    document.querySelectorAll('.nutri-day-toggle').forEach(cb => {
+        cb.addEventListener('change', function() {
+            const day = this.dataset.day;
+            const timesDiv = document.querySelector(`.nutri-day-times[data-day="${day}"]`);
+            if (timesDiv) timesDiv.classList.toggle('hidden', !this.checked);
+        });
+    });
+})();
+
+async function loadNutriAvailability() {
+    try {
+        const res = await fetch('/api/trainer/availability', { credentials: 'include' });
+        if (!res.ok) return;
+        const slots = await res.json();
+
+        // Reset all
+        document.querySelectorAll('.nutri-day-toggle').forEach(cb => cb.checked = false);
+        document.querySelectorAll('.nutri-day-times').forEach(div => div.classList.add('hidden'));
+
+        slots.forEach(slot => {
+            const cb = document.querySelector(`.nutri-day-toggle[data-day="${slot.day_of_week}"]`);
+            const times = document.querySelector(`.nutri-day-times[data-day="${slot.day_of_week}"]`);
+            if (cb && times) {
+                cb.checked = true;
+                times.classList.remove('hidden');
+                times.querySelector('.nutri-start-time').value = slot.start_time;
+                times.querySelector('.nutri-end-time').value = slot.end_time;
+            }
+        });
+    } catch (e) { console.error('Error loading availability:', e); }
+
+    // Load session rate
+    try {
+        const rateRes = await fetch('/api/trainer/session-rate', { credentials: 'include' });
+        if (rateRes.ok) {
+            const rateData = await rateRes.json();
+            const input = document.getElementById('nutri-session-rate');
+            if (input && rateData.session_rate != null) input.value = rateData.session_rate;
+        }
+    } catch (e) {}
+}
+
+async function saveNutriAvailability() {
+    const availability = [];
+    document.querySelectorAll('.nutri-day-toggle:checked').forEach(cb => {
+        const day = parseInt(cb.dataset.day);
+        const times = document.querySelector(`.nutri-day-times[data-day="${day}"]`);
+        if (times) {
+            availability.push({
+                day_of_week: day,
+                start_time: times.querySelector('.nutri-start-time').value,
+                end_time: times.querySelector('.nutri-end-time').value
+            });
+        }
+    });
+
+    try {
+        const res = await fetch('/api/trainer/availability', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ availability })
+        });
+
+        // Save session rate
+        const rateInput = document.getElementById('nutri-session-rate');
+        const rateValue = rateInput.value ? parseFloat(rateInput.value) : null;
+        await fetch('/api/trainer/session-rate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ session_rate: rateValue })
+        });
+
+        if (res.ok) {
+            showToast('Availability & rate saved!', 'success');
+        }
+    } catch (e) { console.error('Error saving availability:', e); }
+}
+
+async function loadNutriAppointments() {
+    const container = document.getElementById('nutri-appointments-list');
+    try {
+        const res = await fetch('/api/trainer/appointments', { credentials: 'include' });
+        if (!res.ok) { container.innerHTML = '<p class="text-gray-500 text-xs text-center py-4">Could not load appointments</p>'; return; }
+        const appointments = await res.json();
+
+        if (!appointments.length) {
+            container.innerHTML = '<p class="text-gray-500 text-xs text-center py-4">No upcoming appointments</p>';
+            return;
+        }
+
+        container.innerHTML = appointments.slice(0, 10).map(a => {
+            const statusColor = a.status === 'completed' ? 'text-green-400' : a.status === 'canceled' ? 'text-red-400' : 'text-cyan-400';
+            return `
+                <div class="flex items-center gap-3 bg-white/5 rounded-xl p-3">
+                    <div class="w-10 h-10 rounded-lg bg-cyan-500/20 flex items-center justify-center flex-shrink-0">
+                        <i data-lucide="user" class="w-5 h-5 text-cyan-400"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-white truncate">${a.title || 'Consultation'}</p>
+                        <p class="text-xs text-gray-400">${a.date} at ${a.start_time}${a.duration ? ' (' + a.duration + ' min)' : ''}</p>
+                    </div>
+                    <span class="text-[10px] font-bold uppercase ${statusColor}">${a.status}</span>
+                </div>
+            `;
+        }).join('');
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    } catch (e) {
+        container.innerHTML = '<p class="text-gray-500 text-xs text-center py-4">Could not load appointments</p>';
+    }
+}
+
+// ===================== QUICK NOTES =====================
+let nutriNotes = [];
+
+async function loadNutriNotes() {
+    try {
+        const res = await fetch('/api/trainer/notes', { credentials: 'include' });
+        if (!res.ok) return;
+        nutriNotes = await res.json();
+        renderNutriNotes();
+    } catch (e) {
+        console.error('Failed to load notes:', e);
+    }
+}
+
+function renderNutriNotes() {
+    const container = document.getElementById('nutri-notes-list');
+    if (!nutriNotes.length) {
+        container.innerHTML = '<div class="p-3 text-center text-gray-500 text-xs">No notes yet</div>';
+        return;
+    }
+    container.innerHTML = nutriNotes.map(n => {
+        const date = n.updated_at ? new Date(n.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+        return `
+            <div class="p-3 border-b border-white/5 hover:bg-white/5 transition group" data-note-id="${n.id}">
+                <div class="flex items-start justify-between gap-2">
+                    <div class="flex-1 min-w-0 cursor-pointer" onclick="editNutriNote('${n.id}')">
+                        <p class="text-sm font-semibold text-white truncate">${n.title || 'Untitled'}</p>
+                        <p class="text-xs text-gray-400 mt-0.5 whitespace-pre-wrap">${n.content || ''}</p>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0">
+                        <span class="text-[10px] text-gray-500">${date}</span>
+                        <button onclick="deleteNutriNote('${n.id}')" class="opacity-0 group-hover:opacity-100 text-red-400 hover:text-red-300 transition p-1" title="Delete">
+                            <i data-lucide="trash-2" class="w-3 h-3"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+async function saveNutriNote() {
+    const titleEl = document.getElementById('nutri-note-title');
+    const contentEl = document.getElementById('nutri-note-content');
+    const listEl = document.getElementById('nutri-notes-list');
+    const title = (titleEl.value || '').trim();
+    const content = (contentEl.value || '').trim();
+    if (!title && !content) {
+        titleEl.focus();
+        titleEl.placeholder = 'Type a title first...';
+        return;
+    }
+
+    const editId = titleEl.dataset.editId;
+    try {
+        const url = editId ? `/api/trainer/notes/${editId}` : '/api/trainer/notes';
+        const method = editId ? 'PUT' : 'POST';
+        listEl.innerHTML = '<div class="p-3 text-center text-gray-400 text-xs">Saving...</div>';
+        const res = await fetch(url, {
+            method,
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: title || 'Untitled', content })
+        });
+        if (!res.ok) {
+            const err = await res.text();
+            listEl.innerHTML = `<div class="p-3 text-center text-red-400 text-xs">Error ${res.status}: ${err}</div>`;
+            return;
+        }
+
+        titleEl.value = '';
+        contentEl.value = '';
+        titleEl.placeholder = 'Note title...';
+        delete titleEl.dataset.editId;
+
+        const indicator = document.getElementById('nutri-notes-saved');
+        indicator.style.opacity = '1';
+        setTimeout(() => indicator.style.opacity = '0', 2000);
+
+        await loadNutriNotes();
+    } catch (e) {
+        listEl.innerHTML = `<div class="p-3 text-center text-red-400 text-xs">Failed: ${e.message}</div>`;
+    }
+}
+
+function editNutriNote(noteId) {
+    const note = nutriNotes.find(n => n.id === noteId);
+    if (!note) return;
+    const titleEl = document.getElementById('nutri-note-title');
+    const contentEl = document.getElementById('nutri-note-content');
+    titleEl.value = note.title || '';
+    contentEl.value = note.content || '';
+    titleEl.dataset.editId = noteId;
+    titleEl.focus();
+}
+
+async function deleteNutriNote(noteId) {
+    try {
+        const res = await fetch(`/api/trainer/notes/${noteId}`, {
+            method: 'DELETE',
+            credentials: 'include'
+        });
+        if (!res.ok) throw new Error('Delete failed');
+        await loadNutriNotes();
+    } catch (e) {
+        console.error('Failed to delete note:', e);
+    }
 }
 </script>
+
+<!-- Health Profile Modal -->
+<div id="health-profile-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+     onclick="if(event.target === this) closeHealthProfileModal()">
+    <div class="bg-[#1a1a1a] border border-white/10 rounded-2xl w-full max-w-lg max-h-[85vh] overflow-y-auto p-6 slide-up">
+        <!-- Header -->
+        <div class="flex items-center justify-between mb-5">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                    <i data-lucide="clipboard-list" class="w-4 h-4 text-cyan-400"></i>
+                </div>
+                <h3 class="text-lg font-bold text-white">Health Profile</h3>
+            </div>
+            <button onclick="closeHealthProfileModal()" class="text-gray-400 hover:text-white text-xl">&times;</button>
+        </div>
+
+        <!-- Basic Measurements -->
+        <p class="text-[10px] text-cyan-400 uppercase font-bold mb-2 tracking-wider">Basic Measurements</p>
+        <div class="grid grid-cols-2 gap-3 mb-4">
+            <div>
+                <label class="text-[10px] text-gray-400 uppercase font-bold">Height (cm)</label>
+                <input type="number" step="0.1" id="hp-height" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-cyan-500/50">
+            </div>
+            <div>
+                <label class="text-[10px] text-gray-400 uppercase font-bold">Gender</label>
+                <select id="hp-gender" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-cyan-500/50">
+                    <option value="">—</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-[10px] text-gray-400 uppercase font-bold">Date of Birth</label>
+                <input type="date" id="hp-dob" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-cyan-500/50">
+            </div>
+            <div>
+                <label class="text-[10px] text-gray-400 uppercase font-bold">Activity Level</label>
+                <select id="hp-activity" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-cyan-500/50">
+                    <option value="">—</option>
+                    <option value="sedentary">Sedentary</option>
+                    <option value="light">Lightly Active</option>
+                    <option value="moderate">Moderately Active</option>
+                    <option value="active">Active</option>
+                    <option value="very_active">Very Active</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Medical & Dietary -->
+        <p class="text-[10px] text-cyan-400 uppercase font-bold mb-2 tracking-wider">Medical & Dietary</p>
+        <div class="grid grid-cols-1 gap-3 mb-4">
+            <div>
+                <label class="text-[10px] text-gray-400 uppercase font-bold">Allergies / Intolerances</label>
+                <input type="text" id="hp-allergies" placeholder="e.g. gluten, lactose, nuts" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-cyan-500/50">
+            </div>
+            <div>
+                <label class="text-[10px] text-gray-400 uppercase font-bold">Medical Conditions</label>
+                <input type="text" id="hp-medical" placeholder="e.g. diabetes, thyroid" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-cyan-500/50">
+            </div>
+            <div>
+                <label class="text-[10px] text-gray-400 uppercase font-bold">Supplements</label>
+                <input type="text" id="hp-supplements" placeholder="e.g. creatine, whey" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-cyan-500/50">
+            </div>
+        </div>
+
+        <!-- Lifestyle -->
+        <p class="text-[10px] text-cyan-400 uppercase font-bold mb-2 tracking-wider">Lifestyle</p>
+        <div class="grid grid-cols-2 gap-3 mb-5">
+            <div>
+                <label class="text-[10px] text-gray-400 uppercase font-bold">Sleep (hrs/day)</label>
+                <input type="number" step="0.5" min="0" max="24" id="hp-sleep" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-cyan-500/50">
+            </div>
+            <div>
+                <label class="text-[10px] text-gray-400 uppercase font-bold">Meal Frequency</label>
+                <select id="hp-meals" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-cyan-500/50">
+                    <option value="">—</option>
+                    <option value="3_meals">3 Meals</option>
+                    <option value="5_small">5 Small Meals</option>
+                    <option value="intermittent_fasting">Intermittent Fasting</option>
+                    <option value="custom">Custom</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-[10px] text-gray-400 uppercase font-bold">Food Preferences</label>
+                <select id="hp-food" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-cyan-500/50">
+                    <option value="">—</option>
+                    <option value="none">No Restrictions</option>
+                    <option value="vegan">Vegan</option>
+                    <option value="vegetarian">Vegetarian</option>
+                    <option value="halal">Halal</option>
+                    <option value="kosher">Kosher</option>
+                    <option value="other">Other</option>
+                </select>
+            </div>
+            <div>
+                <label class="text-[10px] text-gray-400 uppercase font-bold">Occupation</label>
+                <select id="hp-occupation" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-cyan-500/50">
+                    <option value="">—</option>
+                    <option value="sedentary">Desk Job</option>
+                    <option value="light_physical">Light Physical</option>
+                    <option value="heavy_physical">Heavy Physical</option>
+                </select>
+            </div>
+        </div>
+
+        <button onclick="saveHealthData()" class="w-full bg-cyan-500 hover:bg-cyan-400 text-white font-bold py-3 rounded-xl transition text-sm">
+            Save Health Data
+        </button>
+    </div>
+</div>
 
 {% endblock %}

@@ -620,17 +620,63 @@ class ClientService:
             ).order_by(WeightHistoryORM.recorded_at.asc()).all()
 
             # Format for chart with body composition
-            data = []
+            # For year view, aggregate by month; for month, by day; for week, show all entries
+            raw_data = []
             for entry in entries:
                 recorded = datetime.fromisoformat(entry.recorded_at)
-                data.append({
+                raw_data.append({
+                    "recorded": recorded,
                     "date": recorded.strftime("%Y-%m-%d"),
                     "weight": round(entry.weight, 1),
                     "body_fat_pct": round(entry.body_fat_pct, 1) if entry.body_fat_pct else None,
                     "fat_mass": round(entry.fat_mass, 1) if entry.fat_mass else None,
                     "lean_mass": round(entry.lean_mass, 1) if entry.lean_mass else None,
-                    "label": recorded.strftime("%d %b") if period != "year" else recorded.strftime("%b %y")
                 })
+
+            data = []
+            if period == "year" and raw_data:
+                # Aggregate by month — use latest entry per month
+                from collections import OrderedDict
+                months = OrderedDict()
+                for d in raw_data:
+                    key = d["recorded"].strftime("%Y-%m")
+                    months[key] = d  # last entry wins
+                for key, d in months.items():
+                    data.append({
+                        "date": d["date"],
+                        "weight": d["weight"],
+                        "body_fat_pct": d["body_fat_pct"],
+                        "fat_mass": d["fat_mass"],
+                        "lean_mass": d["lean_mass"],
+                        "label": d["recorded"].strftime("%b %y")
+                    })
+            elif period == "month" and raw_data:
+                # Aggregate by day — use latest entry per day
+                from collections import OrderedDict
+                days = OrderedDict()
+                for d in raw_data:
+                    key = d["date"]
+                    days[key] = d
+                for key, d in days.items():
+                    data.append({
+                        "date": d["date"],
+                        "weight": d["weight"],
+                        "body_fat_pct": d["body_fat_pct"],
+                        "fat_mass": d["fat_mass"],
+                        "lean_mass": d["lean_mass"],
+                        "label": d["recorded"].strftime("%d %b")
+                    })
+            else:
+                # Week: show all entries
+                for d in raw_data:
+                    data.append({
+                        "date": d["date"],
+                        "weight": d["weight"],
+                        "body_fat_pct": d["body_fat_pct"],
+                        "fat_mass": d["fat_mass"],
+                        "lean_mass": d["lean_mass"],
+                        "label": d["recorded"].strftime("%d %b %H:%M") if len(raw_data) > 7 else d["recorded"].strftime("%a %d")
+                    })
 
             # Helper to calculate stats for a metric
             def calc_stats(values):

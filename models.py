@@ -379,6 +379,20 @@ class SetWeightGoalRequest(BaseModel):
     client_id: str
     weight_goal: float
 
+class UpdateClientHealthDataRequest(BaseModel):
+    client_id: str
+    height_cm: Optional[float] = None
+    gender: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    activity_level: Optional[str] = None
+    allergies: Optional[str] = None
+    medical_conditions: Optional[str] = None
+    supplements: Optional[str] = None
+    sleep_hours: Optional[float] = None
+    meal_frequency: Optional[str] = None
+    food_preferences: Optional[str] = None
+    occupation_type: Optional[str] = None
+
 class TrainerInfo(BaseModel):
     id: str
     username: str

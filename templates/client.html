@@ -3114,7 +3114,7 @@ async function selectFitnessGoal(goal) {
                     <button onclick="openClientChatModal()" class="bg-white/10 px-3 py-2 rounded-lg text-sm font-bold hover:bg-white/20 transition tap-effect" title="Message Trainer">
                         <i data-lucide="message-circle" class="w-5 h-5"></i>
                     </button>
-                    <button onclick="openBookingChoiceForMyTrainer()" class="bg-orange-500 px-4 py-2 rounded-lg text-sm font-bold hover:bg-orange-400 transition tap-effect">
+                    <button onclick="bookDirectWithMyTrainer()" class="bg-orange-500 px-4 py-2 rounded-lg text-sm font-bold hover:bg-orange-400 transition tap-effect">
                         Book Session
                     </button>
                 </div>
@@ -3262,21 +3262,21 @@ async function selectFitnessGoal(goal) {
     onclick="if(event.target === this) closeBookingChoiceModal()">
     <div class="glass-card p-6 rounded-2xl max-w-sm w-full">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold">Book with <span id="booking-choice-trainer-name">Trainer</span></h3>
+            <h3 class="text-xl font-bold">Book a Session</h3>
             <button onclick="closeBookingChoiceModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
         </div>
-        <p class="text-gray-400 text-sm mb-6">What type of session would you like to book?</p>
+        <p class="text-gray-400 text-sm mb-6">What would you like to book?</p>
 
         <div class="space-y-3">
             <!-- 1-on-1 Session Option -->
-            <button onclick="selectBookingType('personal')" class="w-full bg-gradient-to-r from-orange-500 to-red-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
+            <button id="booking-choice-personal-btn" onclick="selectBookingType('personal')" class="w-full bg-gradient-to-r from-orange-500 to-red-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
                         <i data-lucide="user" class="w-6 h-6 stroke-current"></i>
                     </div>
                     <div>
                         <h4 class="font-bold text-white">1-on-1 Session</h4>
-                        <p class="text-sm text-white/70">Personal training tailored to you</p>
+                        <p class="text-sm text-white/70">Personal training with <span id="booking-choice-trainer-name">your trainer</span></p>
                     </div>
                 </div>
             </button>
@@ -3290,6 +3290,19 @@ async function selectFitnessGoal(goal) {
                     <div>
                         <h4 class="font-bold text-white">Group Course</h4>
                         <p class="text-sm text-white/70">Join a scheduled fitness class</p>
+                    </div>
+                </div>
+            </button>
+
+            <!-- Nutritionist Consultation Option -->
+            <button id="booking-choice-nutritionist-btn" onclick="selectBookingType('nutritionist')" class="w-full bg-gradient-to-r from-cyan-500 to-blue-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                        <i data-lucide="apple" class="w-6 h-6 stroke-current"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white">Nutritionist Consultation</h4>
+                        <p class="text-sm text-white/70">Diet & nutrition guidance</p>
                     </div>
                 </div>
             </button>
@@ -5083,19 +5096,9 @@ function bookWithTrainerFromProfile() {
 var bookingChoiceTrainerId = null;
 var bookingChoiceTrainerName = null;
 
-function openBookingChoiceModal(trainerId, trainerName) {
-    bookingChoiceTrainerId = trainerId;
-    bookingChoiceTrainerName = trainerName;
-    document.getElementById('booking-choice-trainer-name').textContent = trainerName || 'Trainer';
-    document.getElementById('booking-choice-modal').classList.remove('hidden');
-}
-
-async function openBookingChoiceForMyTrainer() {
-    // Use the client's assigned trainer
-    let trainerName = document.getElementById('trainer-name')?.textContent || 'Trainer';
+async function bookDirectWithMyTrainer() {
+    // Go straight to 1-on-1 booking with the assigned trainer
     let trainerId = selectedTrainerId;
-
-    // If no trainer ID yet, try to fetch it
     if (!trainerId) {
         try {
             const response = await fetch('/api/client/gym-info', { credentials: 'include' });
@@ -5104,23 +5107,64 @@ async function openBookingChoiceForMyTrainer() {
                 if (info.has_trainer && info.trainer_id) {
                     trainerId = info.trainer_id;
                     selectedTrainerId = trainerId;
-                    if (info.trainer_name) trainerName = info.trainer_name;
                 }
             }
-        } catch (e) {
-            console.log('Could not fetch trainer info for booking');
-        }
+        } catch (e) {}
     }
-
     if (trainerId) {
-        // Go directly to 1-on-1 booking with the assigned trainer
         selectedTrainerId = trainerId;
-        if (typeof openBookingModal === 'function') {
-            openBookingModal();
-        }
+        if (typeof openBookingModal === 'function') openBookingModal();
     } else {
         showToast('No trainer assigned yet', 'error');
     }
+}
+
+function openBookingChoiceModal(trainerId, trainerName, nutritionistId, nutritionistName) {
+    bookingChoiceTrainerId = trainerId;
+    bookingChoiceTrainerName = trainerName;
+    window._bookingNutritionistId = nutritionistId || window._bookingNutritionistId;
+    window._bookingNutritionistName = nutritionistName || window._bookingNutritionistName;
+
+    document.getElementById('booking-choice-trainer-name').textContent = trainerName || 'your trainer';
+    // Hide 1-on-1 option if no trainer assigned
+    const personalBtn = document.getElementById('booking-choice-personal-btn');
+    if (personalBtn) personalBtn.style.display = trainerId ? '' : 'none';
+    // Hide nutritionist option if no nutritionist assigned
+    const nutriBtn = document.getElementById('booking-choice-nutritionist-btn');
+    if (nutriBtn) nutriBtn.style.display = window._bookingNutritionistId ? '' : 'none';
+
+    document.getElementById('booking-choice-modal').classList.remove('hidden');
+}
+
+async function openBookingChoiceForMyTrainer() {
+    // Fetch gym info to get trainer and nutritionist
+    let trainerName = document.getElementById('trainer-name')?.textContent || 'Trainer';
+    let trainerId = selectedTrainerId;
+    let nutritionistId = window._bookingNutritionistId || null;
+    let nutritionistName = window._bookingNutritionistName || null;
+
+    try {
+        const response = await fetch('/api/client/gym-info', { credentials: 'include' });
+        if (response.ok) {
+            const info = await response.json();
+            if (info.has_trainer && info.trainer_id) {
+                trainerId = info.trainer_id;
+                selectedTrainerId = trainerId;
+                if (info.trainer_name) trainerName = info.trainer_name;
+            }
+            if (info.has_nutritionist && info.nutritionist_id) {
+                nutritionistId = info.nutritionist_id;
+                nutritionistName = info.nutritionist_name || 'Nutritionist';
+                window._bookingNutritionistId = nutritionistId;
+                window._bookingNutritionistName = nutritionistName;
+            }
+        }
+    } catch (e) {
+        console.log('Could not fetch gym info for booking');
+    }
+
+    if (trainerId) selectedTrainerId = trainerId;
+    openBookingChoiceModal(trainerId, trainerName, nutritionistId, nutritionistName);
 }
 
 function closeBookingChoiceModal() {
@@ -5130,17 +5174,27 @@ function closeBookingChoiceModal() {
 }
 
 function selectBookingType(type) {
-    // Save trainer ID BEFORE closing modal (closeBookingChoiceModal nullifies it)
+    // Save IDs BEFORE closing modal (closeBookingChoiceModal nullifies them)
     const savedTrainerId = bookingChoiceTrainerId;
     const savedTrainerName = bookingChoiceTrainerName;
+    const savedNutritionistId = window._bookingNutritionistId;
     closeBookingChoiceModal();
 
     if (type === 'personal') {
-        // Book 1-on-1 session - use the saved trainer ID
+        // Book 1-on-1 session with trainer
         selectedTrainerId = savedTrainerId;
-
         if (typeof openBookingModal === 'function') {
             openBookingModal();
+        }
+    } else if (type === 'nutritionist') {
+        // Book consultation with nutritionist - reuse same booking flow
+        if (savedNutritionistId) {
+            selectedTrainerId = savedNutritionistId;
+            if (typeof openBookingModal === 'function') {
+                openBookingModal();
+            }
+        } else {
+            showToast('No nutritionist assigned yet', 'error');
         }
     } else if (type === 'course') {
         // Show all gym courses
@@ -7179,21 +7233,34 @@ loadFriendsPreview();
     onclick="if(event.target === this) closeBookingChoiceModal()">
     <div class="glass-card p-6 rounded-2xl max-w-sm w-full">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold">Book with <span id="booking-choice-trainer-name-shared">Trainer</span></h3>
+            <h3 class="text-xl font-bold">Book a Session</h3>
             <button onclick="closeBookingChoiceModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
         </div>
-        <p class="text-gray-400 text-sm mb-6">What type of session would you like to book?</p>
+        <p class="text-gray-400 text-sm mb-6">What would you like to book?</p>
 
         <div class="space-y-3">
             <!-- 1-on-1 Session Option -->
-            <button onclick="selectBookingType('personal')" class="w-full bg-gradient-to-r from-orange-500 to-red-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
+            <button id="booking-choice-personal-btn-shared" onclick="selectBookingType('personal')" class="w-full bg-gradient-to-r from-orange-500 to-red-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
                         <i data-lucide="user" class="w-6 h-6 stroke-current"></i>
                     </div>
                     <div>
                         <h4 class="font-bold text-white">1-on-1 Session</h4>
-                        <p class="text-sm text-white/70">Personal training tailored to you</p>
+                        <p class="text-sm text-white/70">Personal training with <span id="booking-choice-trainer-name-shared">your trainer</span></p>
+                    </div>
+                </div>
+            </button>
+
+            <!-- Nutritionist Consultation Option -->
+            <button id="booking-choice-nutritionist-btn-shared" onclick="selectBookingType('nutritionist')" class="w-full bg-gradient-to-r from-cyan-500 to-blue-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                        <i data-lucide="apple" class="w-6 h-6 stroke-current"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white">Nutritionist Consultation</h4>
+                        <p class="text-sm text-white/70">Diet & nutrition guidance</p>
                     </div>
                 </div>
             </button>
@@ -7279,15 +7346,23 @@ if (typeof selectedTrainerId === 'undefined') {
 
 // Only define functions if not already defined by mode-specific scripts
 if (typeof openBookingChoiceModal !== 'function') {
-    window.openBookingChoiceModal = function(trainerId, trainerName) {
+    window.openBookingChoiceModal = function(trainerId, trainerName, nutritionistId, nutritionistName) {
         bookingChoiceTrainerId = trainerId;
         bookingChoiceTrainerName = trainerName;
+        window._bookingNutritionistId = nutritionistId || window._bookingNutritionistId;
+        window._bookingNutritionistName = nutritionistName || window._bookingNutritionistName;
 
         // Try both modal IDs (mode-specific and shared)
         const modal = document.getElementById('booking-choice-modal') || document.getElementById('booking-choice-modal-shared');
         const nameEl = document.getElementById('booking-choice-trainer-name') || document.getElementById('booking-choice-trainer-name-shared');
 
-        if (nameEl) nameEl.textContent = trainerName || 'Trainer';
+        if (nameEl) nameEl.textContent = trainerName || 'your trainer';
+        // Hide 1-on-1 option if no trainer assigned
+        const personalBtn = document.getElementById('booking-choice-personal-btn') || document.getElementById('booking-choice-personal-btn-shared');
+        if (personalBtn) personalBtn.style.display = trainerId ? '' : 'none';
+        // Hide nutritionist option if no nutritionist assigned
+        const nutriBtn = document.getElementById('booking-choice-nutritionist-btn') || document.getElementById('booking-choice-nutritionist-btn-shared');
+        if (nutriBtn) nutriBtn.style.display = window._bookingNutritionistId ? '' : 'none';
         if (modal) modal.classList.remove('hidden');
     };
 }
@@ -7331,28 +7406,36 @@ if (typeof closeBookingChoiceModal !== 'function') {
 
 if (typeof selectBookingType !== 'function') {
     window.selectBookingType = function(type) {
-        // Save trainer ID BEFORE closing modal (closeBookingChoiceModal nullifies it)
+        // Save IDs BEFORE closing modal (closeBookingChoiceModal nullifies them)
         const savedTrainerId = bookingChoiceTrainerId;
+        const savedNutritionistId = window._bookingNutritionistId;
         closeBookingChoiceModal();
 
         if (type === 'personal') {
-            // Book 1-on-1 session - use the saved trainer ID
             if (typeof selectedTrainerId !== 'undefined') {
                 selectedTrainerId = savedTrainerId;
             }
-
             if (typeof openBookingModal === 'function') {
                 openBookingModal();
             }
+        } else if (type === 'nutritionist') {
+            if (savedNutritionistId) {
+                if (typeof selectedTrainerId !== 'undefined') {
+                    selectedTrainerId = savedNutritionistId;
+                }
+                if (typeof openBookingModal === 'function') {
+                    openBookingModal();
+                }
+            } else {
+                if (typeof showToast === 'function') showToast('No nutritionist assigned yet', 'error');
+            }
         } else if (type === 'course') {
-            // Show all gym courses
             if (typeof openGymCoursesModal === 'function') {
                 openGymCoursesModal();
             } else if (typeof openGymCoursesModalShared === 'function') {
                 openGymCoursesModalShared();
             }
         } else if (type === 'facility') {
-            // Book a facility (court, field, room)
             if (typeof openFacilityBookingModal === 'function') {
                 openFacilityBookingModal();
             }

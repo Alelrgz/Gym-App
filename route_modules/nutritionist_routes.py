@@ -3,7 +3,7 @@ Nutritionist Routes - API endpoints for nutritionist dashboard and client body m
 """
 from fastapi import APIRouter, Depends, HTTPException
 from auth import get_current_user
-from models import AddBodyCompositionRequest, SetWeightGoalRequest, AssignDietRequest
+from models import AddBodyCompositionRequest, SetWeightGoalRequest, AssignDietRequest, UpdateClientHealthDataRequest
 from models_orm import UserORM
 from service_modules.nutritionist_service import NutritionistService, get_nutritionist_service
 from service_modules.diet_service import DietService, get_diet_service
@@ -62,6 +62,18 @@ async def set_weight_goal(
 ):
     _require_nutritionist(current_user)
     return service.set_weight_goal(current_user.id, request.client_id, request.weight_goal)
+
+
+# ==================== HEALTH DATA ====================
+
+@router.post("/api/nutritionist/client/health-data")
+async def update_client_health_data(
+    request: UpdateClientHealthDataRequest,
+    service: NutritionistService = Depends(get_nutritionist_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    _require_nutritionist(current_user)
+    return service.update_client_health_data(current_user.id, request)
 
 
 # ==================== DIET ====================
