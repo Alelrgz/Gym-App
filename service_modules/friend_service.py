@@ -193,6 +193,7 @@ class FriendService:
                     friends.append({
                         "id": friend_id,
                         "username": user.username,
+                        "name": profile.name or user.username,
                         "profile_picture": user.profile_picture,
                         "streak": profile.streak or 0,
                         "gems": profile.gems or 0,
@@ -219,12 +220,14 @@ class FriendService:
             for f in friendships:
                 sender_id = f.initiated_by
                 user = db.query(UserORM).filter(UserORM.id == sender_id).first()
+                sender_profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == sender_id).first()
 
                 if user:
                     requests.append({
                         "id": f.id,
                         "user_id": sender_id,
                         "username": user.username,
+                        "name": (sender_profile.name if sender_profile else None) or user.username,
                         "profile_picture": user.profile_picture,
                         "message": f.message,
                         "created_at": f.created_at
@@ -248,12 +251,14 @@ class FriendService:
                 # Find the other user
                 recipient_id = f.user2_id if f.user1_id == user_id else f.user1_id
                 user = db.query(UserORM).filter(UserORM.id == recipient_id).first()
+                recipient_profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == recipient_id).first()
 
                 if user:
                     requests.append({
                         "id": f.id,
                         "user_id": recipient_id,
                         "username": user.username,
+                        "name": (recipient_profile.name if recipient_profile else None) or user.username,
                         "profile_picture": user.profile_picture,
                         "message": f.message,
                         "created_at": f.created_at

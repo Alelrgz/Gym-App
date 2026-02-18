@@ -193,6 +193,9 @@ app.include_router(crm_router)
 from route_modules.shower_routes import router as shower_router
 app.include_router(shower_router)
 
+# Include client import routes
+from route_modules.client_import_routes import router as client_import_router
+app.include_router(client_import_router)
 
 
 def _safe_add_columns(engine, table_name, columns_list):

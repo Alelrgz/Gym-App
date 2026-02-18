@@ -843,10 +843,11 @@ async function init() {
                     }
                 };
 
-                // Update display name with actual username from API
-                if (user.username) {
-                    if (displayNameEl) displayNameEl.textContent = user.username;
-                    if (welcomeNameEl) welcomeNameEl.textContent = user.username;
+                // Update display name with profile name (fallback to username)
+                const displayName = user.name || user.username;
+                if (displayName) {
+                    if (displayNameEl) displayNameEl.textContent = displayName;
+                    if (welcomeNameEl) welcomeNameEl.textContent = displayName;
                 }
 
                 // Update streak display (day streak)
@@ -5889,12 +5890,13 @@ async function finishWorkout() {
                         const clientData = await clientDataRes.json();
                         console.log("Refreshed client data after workout:", clientData);
 
-                        // Update username display
-                        if (clientData.username) {
+                        // Update display name with profile name (fallback to username)
+                        const refreshDisplayName = clientData.name || clientData.username;
+                        if (refreshDisplayName) {
                             const displayNameEl = document.getElementById('client-display-name');
                             const welcomeNameEl = document.getElementById('client-welcome-name');
-                            if (displayNameEl) displayNameEl.textContent = clientData.username;
-                            if (welcomeNameEl) welcomeNameEl.textContent = clientData.username;
+                            if (displayNameEl) displayNameEl.textContent = refreshDisplayName;
+                            if (welcomeNameEl) welcomeNameEl.textContent = refreshDisplayName;
                         }
 
                         // Update streak display (week streak)
