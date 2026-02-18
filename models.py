@@ -132,6 +132,8 @@ class ClientSummary(BaseModel):
     plan: str
     is_premium: Optional[bool] = False
     profile_picture: Optional[str] = None
+    assigned_split: Optional[str] = None
+    plan_expiry: Optional[str] = None
 
 class Video(BaseModel):
     id: str

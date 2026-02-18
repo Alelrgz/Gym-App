@@ -707,58 +707,103 @@ async function loadClientCertificates() {
 }
 
 function renderClientList(clients) {
-    const list = document.getElementById('client-list');
-    if (!list) return;
+    // Table-based rendering for Utenti page
+    const tbody = document.getElementById('trainer-clients-table-body');
+    if (!tbody) return;
 
-    list.innerHTML = ''; // Clear current list
+    tbody.innerHTML = '';
 
     if (clients.length === 0) {
-        list.innerHTML = '<p class="text-gray-500 text-xs text-center py-4">No clients found.</p>';
+        tbody.innerHTML = '<tr><td colspan="4" style="text-align:center;padding:2rem;color:rgba(255,255,255,0.3);font-size:0.85rem;">Nessun cliente trovato</td></tr>';
         return;
     }
 
-    const certBadge = {
-        valid: '<span class="w-2 h-2 rounded-full bg-green-400 inline-block ml-1" title="Certificate valid"></span>',
-        expiring: '<span class="w-2 h-2 rounded-full bg-yellow-400 inline-block ml-1" title="Certificate expiring soon"></span>',
-        expired: '<span class="w-2 h-2 rounded-full bg-red-400 inline-block ml-1" title="Certificate expired"></span>',
-        missing: '<span class="w-2 h-2 rounded-full bg-gray-500 inline-block ml-1" title="No certificate"></span>'
-    };
-
     clients.forEach(c => {
-        const div = document.createElement('div');
-        div.className = "glass-card p-4 flex justify-between items-center tap-effect cursor-pointer hover:bg-white/5 transition";
-        div.onclick = function () {
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.onclick = function () {
             showClientModal(c.name, c.plan, c.status, c.id, c.is_premium);
         };
-        const statusColor = c.status === 'At Risk' ? 'text-red-400' : 'text-green-400';
-
-        // Premium Tag Logic - PRO means this client selected this trainer as their personal trainer
-        let premiumBtn = '';
-        if (c.is_premium) {
-            premiumBtn = `<span class="ml-2 bg-yellow-500/20 text-yellow-500 border border-yellow-500 px-2 py-0.5 rounded text-[10px] font-bold">PRO</span>`;
-        }
-
-        const certStatus = clientCertificateMap[c.id] || 'missing';
-        const certDot = certBadge[certStatus] || certBadge.missing;
 
         const avatarUrl = c.profile_picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.name}`;
-        div.innerHTML = `<div class="flex items-center"><div class="w-10 h-10 rounded-full bg-white/10 mr-3 overflow-hidden"><img src="${avatarUrl}" class="w-full h-full object-cover" /></div><div><p class="font-bold text-sm text-white flex items-center">${c.name} ${premiumBtn} ${certDot}</p><p class="text-[10px] text-gray-400">${c.plan} • Seen ${c.last_seen}</p></div></div><span class="text-xs font-bold ${statusColor}">${c.status}</span>`;
-        list.appendChild(div);
-    });
+        const initials = c.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
-    // Scroll Shadow Logic
-    list.removeEventListener('scroll', handleClientListScroll); // Avoid duplicates
-    list.addEventListener('scroll', handleClientListScroll);
+        // Format expiry date
+        let expiryDisplay = '\u2014';
+        if (c.plan_expiry) {
+            try {
+                const d = new Date(c.plan_expiry);
+                expiryDisplay = d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short', year: 'numeric' });
+            } catch(e) {
+                expiryDisplay = c.plan_expiry;
+            }
+        }
+
+        tr.innerHTML = `
+            <td><input type="checkbox" style="opacity:0.3;" onclick="event.stopPropagation();"></td>
+            <td>
+                <div class="member-cell">
+                    <div class="member-avatar" style="overflow:hidden;">
+                        <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.parentElement.textContent='${initials}';">
+                    </div>
+                    <div>
+                        <div class="member-name">${c.name}</div>
+                    </div>
+                </div>
+            </td>
+            <td>${c.assigned_split || '\u2014'}</td>
+            <td>${expiryDisplay}</td>
+        `;
+        tbody.appendChild(tr);
+    });
 }
 
-function handleClientListScroll(e) {
-    const shadow = document.getElementById('client-list-top-shadow');
-    if (shadow) {
-        if (e.target.scrollTop > 10) {
-            shadow.classList.remove('opacity-0');
+function renderTrainerWorkoutCard(workout) {
+    const titleEl = document.getElementById('my-workout-title');
+    const durationEl = document.getElementById('my-workout-duration');
+    const exercisesEl = document.getElementById('my-workout-exercises');
+    const difficultyEl = document.getElementById('my-workout-difficulty');
+    const ctaBtn = document.getElementById('my-workout-cta');
+    const emptyOverlay = document.getElementById('my-workout-empty');
+    if (!titleEl) return;
+
+    const contentDiv = document.getElementById('my-workout-content');
+
+    if (!workout) {
+        // Keep placeholder layout visible behind the blur
+        titleEl.textContent = 'Allenamento';
+        durationEl.textContent = '-- min';
+        exercisesEl.textContent = '-- esercizi';
+        difficultyEl.textContent = '--';
+        if (contentDiv) contentDiv.style.filter = 'blur(8px)';
+        if (emptyOverlay) emptyOverlay.style.display = 'flex';
+        return;
+    }
+
+    if (contentDiv) contentDiv.style.filter = 'none';
+    if (emptyOverlay) emptyOverlay.style.display = 'none';
+
+    titleEl.textContent = workout.title || 'Allenamento';
+    durationEl.textContent = workout.duration ? `${workout.duration} min` : '';
+    const exCount = Array.isArray(workout.exercises) ? workout.exercises.length : 0;
+    exercisesEl.textContent = exCount > 0 ? `${exCount} esercizi` : '';
+    difficultyEl.textContent = workout.difficulty || '';
+
+    if (ctaBtn) {
+        ctaBtn.classList.remove('hidden');
+        if (workout.completed) {
+            ctaBtn.textContent = 'Completato';
+            ctaBtn.classList.remove('bg-primary', 'hover:bg-primary-hover');
+            ctaBtn.classList.add('bg-green-600', 'hover:bg-green-700');
         } else {
-            shadow.classList.add('opacity-0');
+            ctaBtn.textContent = 'Avvia Allenamento';
+            ctaBtn.classList.remove('bg-green-600', 'hover:bg-green-700');
+            ctaBtn.classList.add('bg-primary', 'hover:bg-primary-hover');
         }
+        const gymId = new URLSearchParams(window.location.search).get('gym_id');
+        ctaBtn.onclick = function() {
+            window.location.href = `/?gym_id=${gymId}&role=trainer&mode=workout&workout_id=${workout.id}${workout.completed ? '&view=completed' : ''}`;
+        };
     }
 }
 
@@ -1084,76 +1129,36 @@ async function init() {
             // Store trainer data globally for course modal and other features
             window.trainerData = data;
 
-            if (document.getElementById('active-clients-count')) {
-                document.getElementById('active-clients-count').innerText = data.active_clients;
-            }
-            if (document.getElementById('at-risk-clients-count')) {
-                document.getElementById('at-risk-clients-count').innerText = data.at_risk_clients;
-            }
+            // --- UTENTI PAGE STATS ---
+            const totalClients = data.clients ? data.clients.length : 0;
+            const atRisk = data.at_risk_clients || 0;
+            const activeCount = data.active_clients || 0;
+            const inactive = totalClients - activeCount;
 
-            // --- TODAY'S PLAN SECTION ---
-            const planContainer = document.getElementById('todays-plan-container');
-            if (planContainer && data.todays_workout) {
-                const workout = data.todays_workout;
-                const completedClass = workout.completed ? 'bg-green-500' : 'bg-white';
-                const completedText = workout.completed ? 'COMPLETED ✓' : 'START SESSION';
-                const completedTextColor = workout.completed ? 'text-white' : 'text-black';
+            const totalEl = document.getElementById('total-clients-count');
+            const inactiveEl = document.getElementById('inactive-clients-count');
+            const atRiskEl = document.getElementById('at-risk-clients-count');
+            if (totalEl) totalEl.innerText = totalClients;
+            if (inactiveEl) inactiveEl.innerText = inactive;
+            if (atRiskEl) atRiskEl.innerText = atRisk;
 
-                planContainer.innerHTML = `
-                    <div class="glass-card p-5 relative overflow-hidden group tap-effect cursor-pointer" onclick="window.location.href='/?gym_id=${gymId}&role=trainer&mode=workout&workout_id=${workout.id}${workout.completed ? '&view=completed' : ''}'">
-                        <div class="absolute inset-0 bg-primary opacity-20 group-hover:opacity-30 transition"></div>
-                        <div class="relative z-10">
-                            <div class="flex justify-between items-start mb-4">
-                                <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
-                                <span class="text-xl">${icon('dumbbell', 20)}</span>
-                            </div>
-                            <h3 class="text-2xl font-black italic uppercase mb-1">${workout.title}</h3>
-                            <p class="text-sm text-gray-300 mb-4">${workout.duration} min • ${workout.difficulty}</p>
-                            <button class="block w-full py-3 ${completedClass} hover:bg-gray-200 ${completedTextColor} text-center font-bold rounded-xl transition">${completedText}</button>
-                        </div>
-                    </div>
-                `;
-            }
+            // --- MY WORKOUT CARD ---
+            renderTrainerWorkoutCard(data.todays_workout || null);
 
             // --- TRAINER STATS ---
-            // Update streak on personal page
             const streakEl = document.getElementById('personal-streak');
             if (streakEl && data.streak !== undefined) {
                 streakEl.innerText = data.streak;
             }
 
-            // --- TRAINER PROFILE & NOTES ---
-            // Populate Profile Modal
+            // --- TRAINER PROFILE ---
             const tProfileName = document.getElementById('profile-name');
             const tProfileEmail = document.getElementById('profile-email');
             const tProfileClientCount = document.getElementById('profile-client-count');
 
             if (tProfileName) tProfileName.innerText = username;
-            if (tProfileEmail) tProfileEmail.innerText = `${username.toLowerCase().replace(/\s+/g, '')}@irongym.com`; // Mock email if not available
-            if (tProfileClientCount) tProfileClientCount.innerText = data.active_clients;
-
-            // Simple Quick Notes Logic (LocalStorage)
-            const notesArea = document.getElementById('trainer-notes');
-            if (notesArea) {
-                // Load saved notes
-                const savedNotes = localStorage.getItem(`trainer_notes_${username}`);
-                if (savedNotes) notesArea.value = savedNotes;
-
-                // Auto-save logic
-                let saveTimeout;
-                notesArea.addEventListener('input', () => {
-                    const indicator = document.getElementById('notes-saved-indicator');
-                    if (indicator) indicator.style.opacity = '0';
-
-                    clearTimeout(saveTimeout);
-                    saveTimeout = setTimeout(() => {
-                        localStorage.setItem(`trainer_notes_${username}`, notesArea.value);
-                        if (indicator) {
-                            indicator.style.opacity = '1';
-                        }
-                    }, 1000); // Save after 1 second of inactivity
-                });
-            }
+            if (tProfileEmail) tProfileEmail.innerText = `${username.toLowerCase().replace(/\s+/g, '')}@irongym.com`;
+            if (tProfileClientCount) tProfileClientCount.innerText = activeCount;
 
             // Store and render clients
             if (data.clients) {
@@ -1162,7 +1167,7 @@ async function init() {
                 loadClientCertificates();
 
                 // Setup Search Listener
-                const searchInput = document.getElementById('client-search');
+                const searchInput = document.getElementById('trainer-client-search');
                 if (searchInput) {
                     searchInput.addEventListener('input', (e) => {
                         const term = e.target.value.toLowerCase();
@@ -5447,6 +5452,7 @@ window.deleteWorkout = async function (workoutId, workoutTitle) {
 
         showToast(`"${workoutTitle}" deleted successfully`);
         fetchAndRenderWorkouts(); // Refresh the list
+        if (window.refreshWorkoutsPage) window.refreshWorkoutsPage();
     } catch (error) {
         console.error('Error deleting workout:', error);
         showToast(`Error: ${error.message}`);
@@ -5626,6 +5632,7 @@ window.createWorkout = async function () {
             renderSelectedExercises();
 
             fetchAndRenderWorkouts();
+            if (window.refreshWorkoutsPage) window.refreshWorkoutsPage();
         } else {
             const errText = await res.text();
             console.error(errText);
@@ -7952,6 +7959,7 @@ window.deleteSplit = async function (splitId) {
         if (res.ok) {
             showToast("Split deleted");
             fetchAndRenderSplits();
+            if (window.refreshWorkoutsPage) window.refreshWorkoutsPage();
         } else {
             showToast("Failed to delete split");
         }
@@ -8096,6 +8104,7 @@ window.createSplit = async function () {
             if (window.fetchAndRenderSplits) {
                 window.fetchAndRenderSplits();
             }
+            if (window.refreshWorkoutsPage) window.refreshWorkoutsPage();
         } else {
             const err = await res.text();
             console.error("Create Split Error:", err);
@@ -12126,7 +12135,7 @@ window.loadCourseExercises = async function() {
         renderCourseExerciseLibrary();
     } catch (e) {
         console.error('Error loading course exercises:', e);
-        container.innerHTML = `<div class="col-span-2 glass-card p-6 text-center"><p class="text-red-400 text-xs">Failed to load exercises</p></div>`;
+        container.innerHTML = `<div class="glass-card p-6 text-center"><p class="text-red-400 text-xs">Failed to load exercises</p></div>`;
     }
 };
 
@@ -12166,7 +12175,7 @@ function renderCourseExerciseLibrary() {
     if (filtered.length === 0) {
         const isFiltered = currentCourseExerciseFilter !== 'all' || searchTerm;
         container.innerHTML = `
-            <div class="col-span-2 glass-card p-6 text-center">
+            <div class="glass-card p-6 text-center">
                 <p class="mb-2">${icon('heart', 32)}</p>
                 <p class="text-gray-400 text-sm">${isFiltered ? 'No matching exercises' : 'No course exercises yet'}</p>
                 <p class="text-gray-500 text-xs mt-1">${isFiltered ? 'Try a different filter or search' : 'Create yoga poses, pilates moves, stretches and more'}</p>

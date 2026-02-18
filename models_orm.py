@@ -155,6 +155,10 @@ class ClientProfileORM(Base):
     food_preferences = Column(String, nullable=True)  # none / vegan / vegetarian / halal / kosher / other
     occupation_type = Column(String, nullable=True)  # sedentary / light_physical / heavy_physical
 
+    # Current assigned split tracking
+    current_split_id = Column(String, nullable=True)  # WeeklySplitORM.id
+    split_expiry_date = Column(String, nullable=True)  # YYYY-MM-DD when the 4-week split ends
+
 
 class ClientDocumentORM(Base):
     """Stores client documents like medical certificates and signed waivers"""

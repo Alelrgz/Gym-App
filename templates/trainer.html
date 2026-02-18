@@ -32,11 +32,17 @@
         </div>
 
         <nav class="staff-sidebar-nav">
+            <button onclick="switchSection('workouts')"
+                    class="staff-nav-item sidebar-nav-item"
+                    data-section="workouts">
+                <i data-lucide="dumbbell" class="w-[18px] h-[18px]"></i>
+                <span>Allenamenti</span>
+            </button>
             <button onclick="switchSection('dashboard')"
                     class="staff-nav-item active sidebar-nav-item"
                     data-section="dashboard">
-                <i data-lucide="home" class="w-[18px] h-[18px]"></i>
-                <span>Dashboard</span>
+                <i data-lucide="users" class="w-[18px] h-[18px]"></i>
+                <span>Utenti</span>
             </button>
             <button onclick="switchSection('courses')"
                     class="staff-nav-item sidebar-nav-item"
@@ -65,22 +71,43 @@
     <!-- Main Content Area -->
     <main class="staff-main trainer-main-new">
 
-        <!-- ==================== SECTION: DASHBOARD ==================== -->
+        <!-- ==================== SECTION: DASHBOARD (UTENTI) ==================== -->
         <section id="section-dashboard" class="trainer-section p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
-            <!-- Header Row -->
-            <div class="flex justify-between items-start mb-4 lg:mb-8">
-                <div>
-                    <p class="label-uppercase mb-1">Trainer Dashboard</p>
-                    <h2 class="heading-page" id="trainer-name">Coach <span id="trainer-username">Loading...</span></h2>
-                    <select id="trainer-selector" class="hidden">
-                        <option value="trainer_default">Default Trainer</option>
-                    </select>
+
+            <!-- Hidden elements needed by other JS -->
+            <span id="trainer-username" class="hidden">Loading...</span>
+            <span id="unread-messages-badge" class="hidden">0</span>
+            <select id="trainer-selector" class="hidden">
+                <option value="trainer_default">Default Trainer</option>
+            </select>
+
+            <!-- Page Header -->
+            <div class="staff-page-header">
+                <h1>Utenti</h1>
+                <p>Da qui puoi registrare, cercare o gestire i clienti e i loro dati</p>
+            </div>
+
+            <!-- Stats Bar -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+                <div class="staff-stats-bar" style="margin-bottom:0;">
+                    <div class="staff-stat-item">
+                        <span class="staff-stat-value text-primary" id="total-clients-count">0</span>
+                        <span class="staff-stat-label">Clienti</span>
+                    </div>
+                    <div class="staff-stat-item">
+                        <span class="staff-stat-value" style="color:rgba(255,255,255,0.5);" id="inactive-clients-count">0</span>
+                        <span class="staff-stat-label">Inattivi</span>
+                    </div>
+                    <div class="staff-stat-item">
+                        <span class="staff-stat-value" style="color:#f87171;" id="at-risk-clients-count">0</span>
+                        <span class="staff-stat-label">A rischio</span>
+                    </div>
                 </div>
-                <!-- Desktop only: these icons are in the mobile header already -->
+
+                <!-- Desktop only: message & notification icons -->
                 <div class="hidden lg:flex gap-3">
                     <div onclick="openConversationsModal()" class="relative w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center">
                         <i data-lucide="message-circle" class="w-5 h-5"></i>
-                        <span id="unread-messages-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center hidden">0</span>
                     </div>
                     <div data-action="showModal" data-target="notification-modal" class="w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center">
                         <i data-lucide="bell" class="w-5 h-5"></i>
@@ -88,198 +115,203 @@
                 </div>
             </div>
 
-            <!-- Stats Row -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-                <div class="stat-card stat-card-primary">
-                    <p class="stat-value" id="active-clients-count">0</p>
-                    <p class="stat-label">Active Clients</p>
+            <!-- Dual Search Row -->
+            <div class="trainer-dual-search">
+                <div class="staff-search-bar" style="margin-bottom:0;">
+                    <i data-lucide="search" class="w-4 h-4 search-icon"></i>
+                    <input type="text" id="trainer-client-search" placeholder="Cerca clienti">
                 </div>
-                <div class="stat-card stat-card-danger">
-                    <p class="stat-value" id="at-risk-clients-count">0</p>
-                    <p class="stat-label">At Risk</p>
-                </div>
-                <div class="hidden lg:block stat-card stat-card-success">
-                    <p class="stat-value" id="workouts-count">0</p>
-                    <p class="stat-label">Workouts</p>
-                </div>
-                <div class="hidden lg:block stat-card stat-card-purple">
-                    <p class="stat-value" id="splits-count">0</p>
-                    <p class="stat-label">Splits</p>
+                <div class="staff-search-bar" style="margin-bottom:0;">
+                    <i data-lucide="search" class="w-4 h-4 search-icon"></i>
+                    <input type="text" id="trainer-appointment-search" placeholder="Appuntamenti">
                 </div>
             </div>
 
-            <!-- Main Grid: 2/3 zones + 1/3 schedule on desktop -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <!-- Left 2/3: Main zones -->
-            <div class="lg:col-span-2 grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <!-- TOP LEFT: Clients (Blue) -->
-                <section>
-                    <div class="flex items-center gap-2 mb-4 border-l-4 border-blue-400 pl-3">
-                        <div class="w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
-                            <i data-lucide="users" class="w-4 h-4 text-blue-400"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-sm font-bold text-blue-400 uppercase tracking-wider">Clients</h3>
-                            <p class="text-xs text-gray-500">Your active roster</p>
-                        </div>
-                        <span class="text-xs text-gray-500 ml-auto" id="client-count-badge">0 total</span>
-                    </div>
-                    <div class="glass-card p-5 rounded-2xl lg:h-[380px] flex flex-col">
-                        <div class="input-search-wrapper mb-4">
-                            <i data-lucide="search" class="w-4 h-4"></i>
-                            <input type="text" id="client-search" placeholder="Search clients..."
-                                class="input-glass">
-                        </div>
-                        <div id="client-list" class="card-scroll-content space-y-2 pr-2 max-h-[280px] lg:max-h-none"></div>
-                    </div>
-                </section>
+            <!-- Two Column Layout -->
+            <div class="trainer-utenti-grid">
+                <!-- LEFT: Client Table -->
+                <div class="staff-table-card">
+                    <table class="staff-table">
+                        <thead>
+                            <tr>
+                                <th style="width:40px;"><input type="checkbox" style="opacity:0.3;"></th>
+                                <th>Clienti</th>
+                                <th>Scheda</th>
+                                <th>Scadenza</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trainer-clients-table-body">
+                            <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:160px;"></div></td><td><div class="staff-skeleton" style="width:100px;"></div></td><td><div class="staff-skeleton" style="width:80px;"></div></td></tr>
+                            <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:130px;"></div></td><td><div class="staff-skeleton" style="width:110px;"></div></td><td><div class="staff-skeleton" style="width:90px;"></div></td></tr>
+                            <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:150px;"></div></td><td><div class="staff-skeleton" style="width:90px;"></div></td><td><div class="staff-skeleton" style="width:70px;"></div></td></tr>
+                            <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:140px;"></div></td><td><div class="staff-skeleton" style="width:100px;"></div></td><td><div class="staff-skeleton" style="width:85px;"></div></td></tr>
+                        </tbody>
+                    </table>
+                </div>
 
-                <!-- TOP RIGHT: Programs (Green) -->
-                <section>
-                    <div class="flex items-center gap-2 mb-4 border-l-4 border-green-400 pl-3">
-                        <div class="w-8 h-8 rounded-lg bg-green-500/20 flex items-center justify-center">
-                            <i data-lucide="clipboard" class="w-4 h-4 text-green-400"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-sm font-bold text-green-400 uppercase tracking-wider">Programs</h3>
-                            <p class="text-xs text-gray-500">Workouts & weekly splits</p>
-                        </div>
-                    </div>
-                    <div class="glass-card p-5 rounded-2xl lg:h-[380px] flex flex-col">
-                        <!-- Workouts -->
-                        <div class="mb-5">
-                            <div class="flex justify-between items-center mb-3">
-                                <span class="label-uppercase">Workouts</span>
-                                <button data-action="openCreateWorkout" class="text-xs bg-green-500/20 text-green-400 px-3 py-1.5 rounded-lg hover:bg-green-500/30 transition font-semibold">+ New</button>
-                            </div>
-                            <div id="workout-library" class="space-y-2 max-h-[140px] overflow-y-auto pr-1"></div>
-                        </div>
-                        <!-- Splits -->
-                        <div class="flex-1 min-h-0 flex flex-col">
-                            <div class="flex justify-between items-center mb-3">
-                                <span class="label-uppercase">Weekly Splits</span>
-                                <button data-action="openCreateSplit" class="text-xs bg-purple-500/20 text-purple-400 px-3 py-1.5 rounded-lg hover:bg-purple-500/30 transition font-semibold">+ New</button>
-                            </div>
-                            <div id="split-library" class="card-scroll-content space-y-2 pr-1"></div>
-                        </div>
-                    </div>
-                </section>
-
-                <!-- BOTTOM LEFT: Quick Notes (Slate) -->
-                <section>
-                    <div class="flex items-center gap-2 mb-4 border-l-4 border-slate-500 pl-3">
-                        <div class="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center">
-                            <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Quick Notes</h3>
-                            <p class="text-xs text-gray-500">Reminders & to-dos</p>
-                        </div>
-                        <span class="text-[10px] text-green-400 opacity-0 transition-opacity duration-500 ml-auto" id="notes-saved-indicator">Saved ✓</span>
-                    </div>
-                    <div class="glass-card p-5 rounded-2xl lg:h-[280px] flex flex-col">
-                        <textarea id="trainer-notes"
-                            class="flex-1 w-full input-glass resize-none"
-                            placeholder="Write your thoughts, reminders, or todolist here..."></textarea>
-                    </div>
-                </section>
-
-                <!-- BOTTOM RIGHT: Exercises (Purple) -->
-                <section>
-                    <div class="flex items-center gap-2 mb-4 border-l-4 border-purple-400 pl-3">
-                        <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                            <i data-lucide="dumbbell" class="w-4 h-4 text-purple-400"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-sm font-bold text-purple-400 uppercase tracking-wider">Exercises</h3>
-                            <p class="text-xs text-gray-500">Your exercise library</p>
-                        </div>
-                        <button data-action="showModal" data-target="create-exercise-modal" class="text-xs bg-purple-500/20 text-purple-400 px-3 py-1.5 rounded-lg hover:bg-purple-500/30 transition font-semibold ml-auto">+ New</button>
-                    </div>
-                    <div class="glass-card p-5 rounded-2xl lg:h-[280px] flex flex-col">
-                        <!-- Mobile toggle -->
-                        <button id="toggle-exercises-btn" class="lg:hidden w-full flex items-center justify-center gap-2 bg-white/5 hover:bg-white/10 transition p-3 rounded-xl mb-3">
-                            <span class="text-xs text-white/70 uppercase tracking-wider font-bold">Show Exercises</span>
-                            <span id="exercises-chevron" class="text-white/40 text-xs transition-transform duration-300">▼</span>
-                        </button>
-                        <div id="exercises-section" class="flex-1 flex flex-col min-h-0 lg:!flex" style="max-height: 0; opacity: 0; overflow: hidden; transition: max-height 0.3s ease, opacity 0.3s ease;">
-                            <div class="flex gap-2 mb-3">
-                                <div class="input-search-wrapper flex-1">
-                                    <i data-lucide="search" class="w-3 h-3"></i>
-                                    <input type="text" id="main-ex-search" placeholder="Search..."
-                                        class="input-glass text-xs py-2">
-                                </div>
-                                <select id="main-ex-filter-muscle" class="input-glass text-xs py-2 px-2 w-auto">
-                                    <option value="">All Muscles</option>
-                                    <option value="Chest">Chest</option>
-                                    <option value="Back">Back</option>
-                                    <option value="Legs">Legs</option>
-                                    <option value="Shoulders">Shoulders</option>
-                                    <option value="Arms">Arms</option>
-                                    <option value="Abs">Abs</option>
-                                </select>
-                                <select id="main-ex-filter-type" class="input-glass text-xs py-2 px-2 w-auto">
-                                    <option value="">All Types</option>
-                                    <option value="Compound">Compound</option>
-                                    <option value="Isolation">Isolation</option>
-                                    <option value="Bodyweight">Bodyweight</option>
-                                </select>
-                            </div>
-                            <div id="main-exercise-library" class="card-scroll-content space-y-2 pr-1 max-h-[360px] lg:max-h-none"></div>
-                        </div>
-                    </div>
-                </section>
-            </div><!-- /inner 2-col grid -->
-
-            <!-- Right 1/3: Schedule (desktop only) -->
-            <div class="hidden lg:flex lg:flex-col gap-6 lg:col-span-1">
-
-                <!-- ZONE: Schedule (Orange) -->
-                <section>
-                    <div class="flex items-center gap-2 mb-4 border-l-4 border-orange-400 pl-3">
-                        <div class="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
-                            <i data-lucide="calendar" class="w-4 h-4 text-orange-400"></i>
-                        </div>
-                        <div>
-                            <h3 class="text-sm font-bold text-orange-400 uppercase tracking-wider">Schedule</h3>
-                            <p class="text-xs text-gray-500">Calendar & appointments</p>
-                        </div>
-                    </div>
-
-                    <!-- Today's Plan (compact) -->
-                    <div id="d-todays-plan-container" class="mb-4">
-                        <div class="glass-card p-4 relative overflow-hidden" id="d-default-plan-placeholder">
-                            <div class="flex justify-between items-start mb-3">
-                                <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
-                                <i data-lucide="clipboard" class="w-4 h-4"></i>
-                            </div>
-                            <h4 class="text-base font-bold text-white/50 mb-1">No Workout Assigned</h4>
-                            <p class="text-xs text-gray-400">Assign a workout from "Programs"</p>
-                        </div>
-                    </div>
-
-                    <!-- Calendar -->
+                <!-- RIGHT: Appointments + My Workout -->
+                <div style="display:flex;flex-direction:column;gap:1.5rem;">
+                    <!-- Appointments Widget -->
                     <div class="glass-card p-4 rounded-2xl">
-                        <div class="flex justify-between items-center mb-3">
-                            <span></span>
-                            <div class="flex items-center space-x-2">
-                                <button onclick="changeWeek(-1)"
-                                    class="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70">←</button>
-                                <span class="text-xs text-white/40 min-w-[3rem] text-center" id="d-month-label">...</span>
-                                <button onclick="changeWeek(1)"
-                                    class="w-6 h-6 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/70">→</button>
+                        <div style="display:flex;justify-content:center;align-items:center;gap:0.75rem;margin-bottom:1rem;">
+                            <button onclick="changeWeek(-1)" class="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 text-sm">&lt;</button>
+                            <span class="text-sm font-semibold text-white" id="d-week-range-label">...</span>
+                            <button onclick="changeWeek(1)" class="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 text-sm">&gt;</button>
+                        </div>
+                        <!-- Day tabs -->
+                        <div class="grid grid-cols-7 gap-1 mb-4" id="d-calendar-strip"></div>
+                        <!-- Events for selected day -->
+                        <div id="d-schedule-container" class="space-y-2 mb-3"></div>
+                    </div>
+
+                    <!-- My Workout Card -->
+                    <div id="trainer-my-workout" style="flex:1;display:flex;flex-direction:column;">
+                        <div class="glass-card rounded-2xl" style="flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden;">
+                            <!-- Content (always visible, blurred when empty) -->
+                            <div id="my-workout-content" style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:1.25rem;">
+                                <p class="text-xs text-white/40 uppercase tracking-wider font-semibold mb-3">Il mio allenamento</p>
+                                <div class="flex justify-between items-end">
+                                    <div>
+                                        <h3 class="text-xl font-black text-white mb-1" id="my-workout-title">Allenamento</h3>
+                                    </div>
+                                    <div class="text-right text-xs text-white/50 space-y-0.5">
+                                        <p id="my-workout-duration">-- min</p>
+                                        <p id="my-workout-exercises">-- esercizi</p>
+                                        <p id="my-workout-difficulty">--</p>
+                                    </div>
+                                </div>
+                                <button id="my-workout-cta" class="w-full mt-4 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl transition text-sm">
+                                    Avvia Allenamento
+                                </button>
+                            </div>
+                            <!-- Empty overlay (blur + text) -->
+                            <div id="my-workout-empty" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0.4rem;background:rgba(20,20,20,0.5);border-radius:inherit;z-index:1;">
+                                <p style="font-size:0.9rem;font-weight:600;color:rgba(255,255,255,0.5);">Nessun workout assegnato</p>
+                                <p style="font-size:0.8rem;color:rgba(255,255,255,0.3);">
+                                    <a onclick="switchSection('workouts')" style="cursor:pointer;color:rgba(255,255,255,0.3);">aggiungi un <span style="color:var(--primary);font-weight:600;">workout</span></a>
+                                </p>
                             </div>
                         </div>
-                        <div class="text-xs text-center font-mono mb-2 text-white/50 uppercase tracking-widest" id="d-current-full-date"></div>
-                        <div class="grid grid-cols-7 gap-1 mb-3 text-xs text-center font-mono" id="d-calendar-strip"></div>
-                        <div class="space-y-3" id="d-schedule-container"></div>
                     </div>
-                </section>
+                </div>
+            </div>
 
-            </div><!-- /schedule column -->
-
-            </div><!-- /outer 3-col grid -->
         </section>
+
+        <!-- ==================== SECTION: ALLENAMENTI (WORKOUTS) ==================== -->
+        <section id="section-workouts" class="trainer-section hidden p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
+
+            <!-- Page Header -->
+            <div class="staff-page-header">
+                <h1>Allenamenti</h1>
+                <p>Da qui puoi creare e assegnare allenamenti ai tuoi clienti</p>
+            </div>
+
+            <!-- Stats + Actions row -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+                <div class="staff-stats-bar" style="margin-bottom:0;">
+                    <div class="staff-stat-item">
+                        <span class="staff-stat-value text-primary" id="workouts-total-count">0</span>
+                        <span class="staff-stat-label">Allenamenti</span>
+                    </div>
+                    <div class="staff-stat-item">
+                        <span class="staff-stat-value" style="color:rgba(255,255,255,0.5);" id="workouts-expiring-count">0</span>
+                        <span class="staff-stat-label">In scadenza</span>
+                    </div>
+                    <div class="staff-stat-item">
+                        <span class="staff-stat-value" style="color:#f87171;" id="workouts-expired-count">0</span>
+                        <span class="staff-stat-label">Scaduti</span>
+                    </div>
+                </div>
+                <button onclick="openCreateWorkoutModal()" class="staff-btn-action staff-btn-primary" style="border-radius:9999px;padding:0.6rem 1.5rem;">
+                    + Crea allenamento
+                </button>
+            </div>
+
+            <!-- Dual Search Row -->
+            <div class="trainer-workouts-dual-search">
+                <div class="staff-search-bar" style="margin-bottom:0;">
+                    <i data-lucide="search" class="w-4 h-4 search-icon"></i>
+                    <input type="text" id="workouts-search" placeholder="Cerca allenamento">
+                </div>
+                <div class="staff-search-bar" style="margin-bottom:0;">
+                    <i data-lucide="search" class="w-4 h-4 search-icon"></i>
+                    <input type="text" id="workouts-client-search" placeholder="Cerca clienti">
+                </div>
+            </div>
+
+            <!-- Two Column Grid -->
+            <div class="trainer-workouts-grid">
+                <!-- LEFT: Tabs + List -->
+                <div>
+                    <!-- Tab Bar -->
+                    <div class="trainer-tab-bar">
+                        <button class="trainer-tab active" data-tab="workouts-tab" onclick="switchWorkoutTab('workouts-tab')">Workout</button>
+                        <button class="trainer-tab" data-tab="splits-tab" onclick="switchWorkoutTab('splits-tab')">Split</button>
+                    </div>
+
+                    <!-- Workout List (table with checkbox + name) -->
+                    <div id="workouts-tab" class="trainer-tab-content">
+                        <div class="staff-table-card">
+                            <table class="staff-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:40px;"><input type="checkbox" style="opacity:0.3;"></th>
+                                        <th>Allenamento</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="workouts-drag-list">
+                                    <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:180px;"></div></td></tr>
+                                    <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:150px;"></div></td></tr>
+                                    <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:170px;"></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Split List (table with checkbox + name) -->
+                    <div id="splits-tab" class="trainer-tab-content hidden">
+                        <div class="staff-table-card">
+                            <table class="staff-table">
+                                <thead>
+                                    <tr>
+                                        <th style="width:40px;"><input type="checkbox" style="opacity:0.3;"></th>
+                                        <th>Split</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="splits-drag-list">
+                                    <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:180px;"></div></td></tr>
+                                    <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:150px;"></div></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: Client Drop Targets -->
+                <div>
+                    <div id="workouts-client-list" class="space-y-2"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== ASSIGNMENT MODAL (triggered by drag-and-drop) ===== -->
+        <div id="assign-modal-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:1000;align-items:center;justify-content:center;">
+            <div style="background:var(--bg-elevated);border:1px solid var(--glass-border-2);border-radius:var(--radius-xl);padding:2rem;width:100%;max-width:420px;box-shadow:var(--shadow-xl);">
+                <h3 style="font-size:1.1rem;font-weight:700;color:white;margin-bottom:0.25rem;" id="assign-modal-title">Assegna allenamento</h3>
+                <p style="font-size:0.8rem;color:rgba(255,255,255,0.4);margin-bottom:1.5rem;" id="assign-modal-subtitle"></p>
+
+                <label style="font-size:0.75rem;font-weight:600;color:rgba(255,255,255,0.5);text-transform:uppercase;letter-spacing:0.05em;display:block;margin-bottom:0.5rem;">
+                    <span id="assign-modal-date-label">Data di inizio</span>
+                </label>
+                <input type="date" id="assign-modal-date" style="width:100%;padding:0.65rem 1rem;background:var(--glass-bg-1);border:1px solid var(--glass-border-1);border-radius:var(--radius-md);color:white;font-size:0.85rem;outline:none;margin-bottom:1.5rem;">
+
+                <div style="display:flex;gap:0.75rem;">
+                    <button onclick="closeAssignModal()" style="flex:1;padding:0.65rem;background:var(--glass-bg-2);border:1px solid var(--glass-border-2);border-radius:var(--radius-md);color:rgba(255,255,255,0.7);font-size:0.85rem;font-weight:600;cursor:pointer;">Annulla</button>
+                    <button onclick="confirmAssignment()" style="flex:1;padding:0.65rem;background:var(--primary);border:none;border-radius:var(--radius-md);color:white;font-size:0.85rem;font-weight:600;cursor:pointer;">Assegna</button>
+                </div>
+            </div>
+        </div>
 
         <!-- ==================== SECTION: SCHEDULE ==================== -->
         <section id="section-schedule" class="trainer-section hidden p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
@@ -407,117 +439,110 @@
 
         <!-- ==================== SECTION: COURSES ==================== -->
         <section id="section-courses" class="trainer-section hidden p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
-            <!-- Header -->
-            <div class="flex justify-between items-start mb-8">
+
+            <!-- Page Header -->
+            <div class="staff-page-header">
+                <h1>Corsi</h1>
+                <p>Da qui puoi registrare, cercare o gestire i clienti e i loro dati</p>
+            </div>
+
+            <!-- Stats + Actions row -->
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
+                <div class="staff-stats-bar" style="margin-bottom:0;">
+                    <div class="staff-stat-item">
+                        <span class="staff-stat-value text-primary" id="total-courses-count">0</span>
+                        <span class="staff-stat-label">Corsi</span>
+                    </div>
+                    <div class="staff-stat-item">
+                        <span class="staff-stat-value" style="color:rgba(255,255,255,0.5);" id="lessons-this-week">0</span>
+                        <span class="staff-stat-label">Questa settimana</span>
+                    </div>
+                </div>
+                <button data-action="openCreateCourse" class="staff-btn-action staff-btn-primary" style="border-radius:9999px;padding:0.6rem 1.5rem;">
+                    Crea corso
+                </button>
+            </div>
+
+            <!-- Hidden elements for backward compatibility -->
+            <span id="avg-engagement" class="hidden">-</span>
+
+            <!-- Three Column Grid -->
+            <div class="trainer-courses-grid">
+
+                <!-- LEFT: Courses (Tabs: I miei corsi / Corsi condivisi) -->
                 <div>
-                    <p class="label-uppercase mb-1">Trainer Dashboard</p>
-                    <h2 class="heading-page">Group Courses</h2>
-                </div>
-            </div>
-
-            <!-- Stats Row -->
-            <div class="grid grid-cols-3 gap-4 mb-8">
-                <div class="stat-card stat-card-primary">
-                    <p class="stat-value text-2xl" id="total-courses-count">0</p>
-                    <p class="stat-label">Courses</p>
-                </div>
-                <div class="stat-card stat-card-success">
-                    <p class="stat-value text-2xl" id="lessons-this-week">0</p>
-                    <p class="stat-label">This Week</p>
-                </div>
-                <div class="stat-card" style="--stat-color: #facc15;">
-                    <p class="stat-value text-2xl text-yellow-400" id="avg-engagement">-</p>
-                    <p class="stat-label">Avg Rating</p>
-                </div>
-            </div>
-
-            <!-- ZONE: Your Courses (Purple) -->
-            <section class="mb-8">
-                <div class="flex items-center gap-2 mb-4 border-l-4 border-purple-400 pl-3">
-                    <div class="w-8 h-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
-                        <i data-lucide="book-open" class="w-4 h-4 text-purple-400"></i>
+                    <div class="trainer-tab-bar">
+                        <button class="trainer-tab active" data-tab="own-courses-tab" onclick="switchCourseTab('own-courses-tab')">I miei corsi</button>
+                        <button class="trainer-tab" data-tab="shared-courses-tab" onclick="switchCourseTab('shared-courses-tab')">Corsi condivisi</button>
                     </div>
-                    <div>
-                        <h3 class="text-sm font-bold text-purple-400 uppercase tracking-wider">Your Courses</h3>
-                        <p class="text-xs text-gray-500">Group classes you teach</p>
+
+                    <div id="own-courses-tab" class="trainer-tab-content">
+                        <div id="courses-page-list" class="space-y-3" style="max-height:calc(100vh - 340px);overflow-y:auto;">
+                            <div class="staff-skeleton" style="width:100%;height:60px;border-radius:var(--radius-md);margin-bottom:0.5rem;"></div>
+                            <div class="staff-skeleton" style="width:100%;height:60px;border-radius:var(--radius-md);margin-bottom:0.5rem;"></div>
+                            <div class="staff-skeleton" style="width:100%;height:60px;border-radius:var(--radius-md);"></div>
+                        </div>
                     </div>
-                </div>
 
-                <!-- Create Course Button -->
-                <button data-action="openCreateCourse"
-                    class="w-full glass-card-interactive p-5 mb-5 flex items-center justify-center gap-3 border-2 border-dashed border-white/20 hover:border-purple-400/50">
-                    <span class="text-2xl">+</span>
-                    <span class="heading-card">Create New Course</span>
-                </button>
-
-                <div id="courses-page-list" class="space-y-3 mb-5">
-                    <div class="glass-card p-6 text-center">
-                        <p class="text-gray-400 text-sm">Loading courses...</p>
-                    </div>
-                </div>
-
-                <!-- Shared Courses -->
-                <div class="mt-4">
-                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-3">Shared by Gym</h4>
-                    <div id="shared-courses-list" class="space-y-3">
-                        <div class="glass-card p-4 text-center">
-                            <p class="text-gray-400/50 text-xs">No shared courses from other trainers</p>
+                    <div id="shared-courses-tab" class="trainer-tab-content hidden">
+                        <div id="shared-courses-list" class="space-y-3" style="max-height:calc(100vh - 340px);overflow-y:auto;">
+                            <div style="text-align:center;padding:2rem;color:rgba(255,255,255,0.3);font-size:0.85rem;">Nessun corso condiviso</div>
                         </div>
                     </div>
                 </div>
-            </section>
 
-            <!-- ZONE: Exercise Library (Orange) -->
-            <section>
-                <div class="flex items-center gap-2 mb-4 border-l-4 border-orange-400 pl-3">
-                    <div class="w-8 h-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
-                        <i data-lucide="footprints" class="w-4 h-4 text-orange-400"></i>
+                <!-- MIDDLE: Partecipanti -->
+                <div>
+                    <div style="padding:0.65rem 1rem;font-size:0.75rem;font-weight:600;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--glass-border-1);margin-bottom:1rem;">
+                        Partecipanti
                     </div>
-                    <div>
-                        <h3 class="text-sm font-bold text-orange-400 uppercase tracking-wider">Exercise Library</h3>
-                        <p class="text-xs text-gray-500">Create & manage course exercises</p>
+                    <div id="courses-participants-list" style="max-height:calc(100vh - 340px);overflow-y:auto;">
+                        <div style="text-align:center;padding:3rem 1rem;color:rgba(255,255,255,0.25);font-size:0.8rem;">
+                            <p style="margin-bottom:0.25rem;">Seleziona un corso</p>
+                            <p style="font-size:0.75rem;">per vedere i partecipanti</p>
+                        </div>
                     </div>
                 </div>
 
-                <button id="toggle-course-exercises-btn"
-                    class="w-full glass-card p-4 flex items-center justify-between hover:bg-white/10 transition tap-effect rounded-2xl">
-                    <span class="text-xs text-white/70 uppercase tracking-wider font-bold">Show Exercises</span>
-                    <span id="course-exercises-chevron" class="text-white/40 text-sm transition-transform duration-300">▼</span>
-                </button>
+                <!-- RIGHT: Exercise Library -->
+                <div>
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:0.65rem 1rem;border-bottom:1px solid var(--glass-border-1);margin-bottom:1rem;">
+                        <span style="font-size:0.75rem;font-weight:600;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;">Exercise Library</span>
+                        <button onclick="openCourseExerciseModal()" style="font-size:0.7rem;font-weight:600;color:var(--primary);background:none;border:none;cursor:pointer;">+ Nuovo</button>
+                    </div>
 
-                <div id="course-exercises-section" class="overflow-hidden transition-all duration-300 ease-out mt-3" style="max-height: 0; opacity: 0;">
-                    <button onclick="openCourseExerciseModal()"
-                        class="w-full glass-card p-3 mb-4 flex items-center justify-center space-x-2 hover:bg-white/10 transition tap-effect border-2 border-dashed border-white/20 hover:border-orange-400/50">
-                        <span class="text-lg">+</span>
-                        <span class="text-xs font-bold uppercase tracking-wider">Create New Exercise</span>
-                    </button>
-
-                    <div class="flex flex-wrap gap-2 mb-4">
+                    <!-- Category filters -->
+                    <div class="flex flex-wrap gap-1.5 mb-3" style="padding:0 0.25rem;">
                         <button onclick="filterCourseExercises('all')" data-filter="all"
-                            class="course-ex-filter-btn active px-3 py-1.5 text-xs rounded-full bg-primary/20 text-primary border border-primary/30 transition">All</button>
+                            class="course-ex-filter-btn active px-2.5 py-1 text-[10px] rounded-full bg-primary/20 text-primary border border-primary/30 transition">All</button>
                         <button onclick="filterCourseExercises('yoga')" data-filter="yoga"
-                            class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition"><i data-lucide="heart" class="w-3 h-3 inline-block align-middle"></i> Yoga</button>
+                            class="course-ex-filter-btn px-2.5 py-1 text-[10px] rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">Yoga</button>
                         <button onclick="filterCourseExercises('pilates')" data-filter="pilates"
-                            class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition"><i data-lucide="person-standing" class="w-3 h-3 inline-block align-middle"></i> Pilates</button>
+                            class="course-ex-filter-btn px-2.5 py-1 text-[10px] rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">Pilates</button>
                         <button onclick="filterCourseExercises('stretch')" data-filter="stretch"
-                            class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition"><i data-lucide="move" class="w-3 h-3 inline-block align-middle"></i> Stretch</button>
+                            class="course-ex-filter-btn px-2.5 py-1 text-[10px] rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">Stretch</button>
                         <button onclick="filterCourseExercises('cardio')" data-filter="cardio"
-                            class="course-ex-filter-btn px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition"><i data-lucide="footprints" class="w-3 h-3 inline-block align-middle"></i> Cardio</button>
+                            class="course-ex-filter-btn px-2.5 py-1 text-[10px] rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">Cardio</button>
                     </div>
 
-                    <div class="relative mb-4">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-white/30 text-sm"><i data-lucide="search" class="w-4 h-4"></i></span>
-                        <input type="text" id="course-exercise-search" placeholder="Search exercises..."
-                            class="w-full bg-white/5 border border-white/10 rounded-xl pl-9 pr-3 py-2.5 text-sm text-white outline-none focus:border-white/25 focus:bg-white/10 transition placeholder-white/30">
+                    <!-- Search -->
+                    <div style="position:relative;margin-bottom:0.75rem;padding:0 0.25rem;">
+                        <span style="position:absolute;left:0.75rem;top:50%;transform:translateY(-50%);color:rgba(255,255,255,0.3);pointer-events:none;"><i data-lucide="search" class="w-3.5 h-3.5"></i></span>
+                        <input type="text" id="course-exercise-search" placeholder="Cerca esercizi..."
+                            style="width:100%;background:var(--glass-bg-1);border:1px solid var(--glass-border-1);border-radius:var(--radius-md);padding:0.5rem 0.75rem 0.5rem 2rem;font-size:0.8rem;color:white;outline:none;">
                     </div>
 
-                    <div id="course-exercise-library" class="grid grid-cols-2 gap-3 max-h-96 overflow-y-auto pr-1">
-                        <div class="col-span-2 glass-card p-6 text-center">
-                            <p class="text-gray-400/50 text-xs">Loading exercises...</p>
-                        </div>
+                    <!-- Exercise grid -->
+                    <div id="course-exercise-library" class="space-y-2" style="max-height:calc(100vh - 440px);overflow-y:auto;">
+                        <div style="text-align:center;padding:2rem;color:rgba(255,255,255,0.3);font-size:0.8rem;">Caricamento...</div>
                     </div>
                 </div>
-            </section>
+            </div>
+
+            <!-- Hidden elements needed by toggle JS (no longer visible but keeps compatibility) -->
+            <button id="toggle-course-exercises-btn" class="hidden"></button>
+            <span id="course-exercises-chevron" class="hidden"></span>
+            <div id="course-exercises-section" class="hidden" style="max-height:2000px;opacity:1;"></div>
         </section>
 
         <!-- ==================== SECTION: SETTINGS ==================== -->
@@ -793,6 +818,7 @@ async function loadNotifications() {
 // ============ SECTION SWITCHING ============
 let currentSection = 'dashboard';
 let scheduleInitialized = false;
+let workoutsInitialized = false;
 let coursesInitialized = false;
 let settingsInitialized = false;
 
@@ -841,6 +867,12 @@ function switchSection(sectionId) {
 
 function initSection(sectionId) {
     switch(sectionId) {
+        case 'workouts':
+            if (!workoutsInitialized) {
+                initWorkoutsSection();
+                workoutsInitialized = true;
+            }
+            break;
         case 'schedule':
             if (!scheduleInitialized) {
                 initScheduleSection();
@@ -861,6 +893,497 @@ function initSection(sectionId) {
             break;
     }
 }
+
+// ============ WORKOUTS (ALLENAMENTI) SECTION ============
+
+// State for assignment modal
+let pendingAssignment = null;
+
+// State for click-to-assign (alternative to drag-and-drop)
+let selectedWorkoutItem = null;
+
+// Refresh the Allenamenti page lists by re-fetching trainer data
+window.refreshWorkoutsPage = async function() {
+    try {
+        const apiBase = (window.APP_CONFIG || {}).apiBase || '';
+        const res = await fetch(`${apiBase}/api/trainer/data?limit_cache=${Date.now()}`, { credentials: 'include' });
+        if (res.ok) {
+            const data = await res.json();
+            window.trainerData = data;
+            renderWorkoutDragList(data.workouts || []);
+            renderSplitDragList(data.splits || []);
+            renderClientDropTargets(data.clients || []);
+            // Update stats
+            const totalCount = (data.workouts || []).length + (data.splits || []).length;
+            const el = document.getElementById('workouts-total-count');
+            if (el) el.textContent = totalCount;
+        }
+    } catch(e) { console.error('Error refreshing workouts page:', e); }
+};
+
+function initWorkoutsSection() {
+    const data = window.trainerData;
+    if (!data) return;
+
+    const workouts = data.workouts || [];
+    const splits = data.splits || [];
+    const clients = data.clients || [];
+
+    // --- Stats ---
+    const totalCount = workouts.length + splits.length;
+    document.getElementById('workouts-total-count').textContent = totalCount;
+
+    // In scadenza: clients with plan_expiry within next 7 days
+    const now = new Date();
+    const in7Days = new Date(now.getTime() + 7 * 86400000);
+    let expiringCount = 0;
+    let expiredCount = 0;
+    clients.forEach(c => {
+        if (c.plan_expiry) {
+            const exp = new Date(c.plan_expiry);
+            if (exp < now) expiredCount++;
+            else if (exp <= in7Days) expiringCount++;
+        }
+    });
+    document.getElementById('workouts-expiring-count').textContent = expiringCount;
+    document.getElementById('workouts-expired-count').textContent = expiredCount;
+
+    // --- Render Workouts (left column, Workout tab) ---
+    renderWorkoutDragList(workouts);
+
+    // --- Render Splits (left column, Split tab) ---
+    renderSplitDragList(splits);
+
+    // --- Render Client Drop Targets (right column) ---
+    renderClientDropTargets(clients);
+
+    // --- Search filtering ---
+    const workoutSearch = document.getElementById('workouts-search');
+    if (workoutSearch) {
+        workoutSearch.addEventListener('input', () => {
+            const q = workoutSearch.value.toLowerCase().trim();
+            // Filter active tab
+            const activeTab = document.querySelector('.trainer-tab.active');
+            if (activeTab && activeTab.dataset.tab === 'splits-tab') {
+                const filtered = splits.filter(s => (s.name || '').toLowerCase().includes(q) || (s.description || '').toLowerCase().includes(q));
+                renderSplitDragList(filtered);
+            } else {
+                const filtered = workouts.filter(w => (w.title || '').toLowerCase().includes(q) || (w.difficulty || '').toLowerCase().includes(q));
+                renderWorkoutDragList(filtered);
+            }
+        });
+    }
+
+    const clientSearch = document.getElementById('workouts-client-search');
+    if (clientSearch) {
+        clientSearch.addEventListener('input', () => {
+            const q = clientSearch.value.toLowerCase().trim();
+            const filtered = clients.filter(c => (c.name || '').toLowerCase().includes(q));
+            renderClientDropTargets(filtered);
+        });
+    }
+
+    // Refresh lucide icons
+    if (window.lucide) lucide.createIcons();
+}
+
+function renderWorkoutDragList(workouts) {
+    const tbody = document.getElementById('workouts-drag-list');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (workouts.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;padding:2rem;color:rgba(255,255,255,0.3);font-size:0.85rem;">Nessun allenamento creato</td></tr>';
+        return;
+    }
+
+    workouts.forEach(w => {
+        const tr = document.createElement('tr');
+        tr.className = 'workout-drag-card';
+        tr.draggable = true;
+        tr.dataset.type = 'workout';
+        tr.dataset.itemId = w.id;
+        tr.dataset.itemName = w.title || 'Workout';
+
+        const exCount = Array.isArray(w.exercises) ? w.exercises.length : 0;
+        const meta = [w.duration, w.difficulty, exCount > 0 ? `${exCount} es.` : null].filter(Boolean).join(' · ');
+
+        tr.innerHTML = `
+            <td style="width:40px;"><input type="checkbox" style="opacity:0.3;" onclick="event.stopPropagation();"></td>
+            <td>
+                <div style="display:flex;align-items:center;gap:0.75rem;">
+                    <i data-lucide="grip-vertical" class="w-4 h-4" style="color:rgba(255,255,255,0.2);flex-shrink:0;"></i>
+                    <div>
+                        <div style="font-weight:600;color:white;font-size:0.85rem;">${w.title || 'Untitled'}</div>
+                        <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);">${meta}</div>
+                    </div>
+                </div>
+            </td>
+        `;
+
+        // Drag handlers
+        tr.addEventListener('dragstart', handleDragStart);
+        tr.addEventListener('dragend', handleDragEnd);
+
+        // Click-to-select handler (alternative to drag-and-drop)
+        tr.addEventListener('click', function(e) {
+            if (e.target.tagName === 'INPUT') return; // Ignore checkbox clicks
+            selectWorkoutItem(this);
+        });
+
+        tbody.appendChild(tr);
+    });
+
+    if (window.lucide) lucide.createIcons();
+}
+
+function renderSplitDragList(splits) {
+    const tbody = document.getElementById('splits-drag-list');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+
+    if (splits.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="2" style="text-align:center;padding:2rem;color:rgba(255,255,255,0.3);font-size:0.85rem;">Nessun split creato</td></tr>';
+        return;
+    }
+
+    splits.forEach(s => {
+        const tr = document.createElement('tr');
+        tr.className = 'workout-drag-card';
+        tr.draggable = true;
+        tr.dataset.type = 'split';
+        tr.dataset.itemId = s.id;
+        tr.dataset.itemName = s.name || 'Split';
+
+        const dayCount = Array.isArray(s.days) ? s.days.length : 0;
+        const meta = [s.description, dayCount > 0 ? `${dayCount} giorni` : null].filter(Boolean).join(' · ');
+
+        tr.innerHTML = `
+            <td style="width:40px;"><input type="checkbox" style="opacity:0.3;" onclick="event.stopPropagation();"></td>
+            <td>
+                <div style="display:flex;align-items:center;gap:0.75rem;">
+                    <i data-lucide="grip-vertical" class="w-4 h-4" style="color:rgba(255,255,255,0.2);flex-shrink:0;"></i>
+                    <div>
+                        <div style="font-weight:600;color:white;font-size:0.85rem;">${s.name || 'Untitled'}</div>
+                        <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);">${meta || 'Split settimanale'}</div>
+                    </div>
+                </div>
+            </td>
+        `;
+
+        tr.addEventListener('dragstart', handleDragStart);
+        tr.addEventListener('dragend', handleDragEnd);
+
+        // Click-to-select handler
+        tr.addEventListener('click', function(e) {
+            if (e.target.tagName === 'INPUT') return;
+            selectWorkoutItem(this);
+        });
+
+        tbody.appendChild(tr);
+    });
+
+    if (window.lucide) lucide.createIcons();
+}
+
+// Click-to-select: highlight selected workout/split, then click client to assign
+function selectWorkoutItem(el) {
+    // Deselect previous
+    document.querySelectorAll('.workout-drag-card.selected').forEach(r => r.classList.remove('selected'));
+    // Select this one
+    el.classList.add('selected');
+    selectedWorkoutItem = {
+        type: el.dataset.type,
+        id: el.dataset.itemId,
+        name: el.dataset.itemName
+    };
+    console.log('[Select]', selectedWorkoutItem);
+}
+
+function renderClientDropTargets(clients) {
+    const container = document.getElementById('workouts-client-list');
+    if (!container) return;
+    container.innerHTML = '';
+
+    if (clients.length === 0) {
+        container.innerHTML = '<div style="text-align:center;padding:2rem;color:rgba(255,255,255,0.3);font-size:0.85rem;">Nessun cliente trovato</div>';
+        return;
+    }
+
+    clients.forEach(c => {
+        const div = document.createElement('div');
+        div.className = 'client-drop-target';
+        div.dataset.clientId = c.id;
+        div.dataset.clientName = c.name;
+
+        const avatarUrl = c.profile_picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.name}`;
+        const initials = c.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+
+        let expiryDisplay = '\u2014';
+        if (c.plan_expiry) {
+            try {
+                const d = new Date(c.plan_expiry);
+                expiryDisplay = d.toLocaleDateString('it-IT', { day: '2-digit', month: 'short' });
+            } catch(e) { expiryDisplay = c.plan_expiry; }
+        }
+
+        div.innerHTML = `
+            <div style="display:flex;align-items:center;gap:0.75rem;flex:1;">
+                <div class="member-avatar" style="width:32px;height:32px;overflow:hidden;flex-shrink:0;">
+                    <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.parentElement.textContent='${initials}';">
+                </div>
+                <div style="min-width:0;">
+                    <div style="font-weight:600;color:white;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
+                    <div style="font-size:0.7rem;color:rgba(255,255,255,0.4);">${c.assigned_split || '\u2014'} · Scade: ${expiryDisplay}</div>
+                </div>
+            </div>
+        `;
+
+        // Drop target handlers (drag-and-drop)
+        div.addEventListener('dragover', handleDragOver);
+        div.addEventListener('dragenter', handleDragEnter);
+        div.addEventListener('dragleave', handleDragLeave);
+        div.addEventListener('drop', handleDrop);
+
+        // Click handler (click-to-assign alternative)
+        div.addEventListener('click', function() {
+            if (!selectedWorkoutItem) {
+                window.showToast && window.showToast('Seleziona prima un allenamento o split dalla lista', 'info');
+                return;
+            }
+            const cId = this.dataset.clientId;
+            const cName = this.dataset.clientName;
+            console.log('[ClickAssign]', selectedWorkoutItem, '→', cId, cName);
+            openAssignModal(selectedWorkoutItem.type, selectedWorkoutItem.id, selectedWorkoutItem.name, cId, cName);
+        });
+
+        container.appendChild(div);
+    });
+}
+
+// ============ TAB SWITCHING ============
+
+function switchWorkoutTab(tabId) {
+    document.querySelectorAll('.trainer-tab-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('.trainer-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById(tabId).classList.remove('hidden');
+    const tabBtn = document.querySelector(`.trainer-tab[data-tab="${tabId}"]`);
+    if (tabBtn) tabBtn.classList.add('active');
+
+    // Re-apply search filter for the new tab
+    const workoutSearch = document.getElementById('workouts-search');
+    if (workoutSearch && workoutSearch.value.trim()) {
+        workoutSearch.dispatchEvent(new Event('input'));
+    }
+}
+window.switchWorkoutTab = switchWorkoutTab;
+
+// ============ DRAG AND DROP ============
+
+// Store drag data in a variable as fallback (Safari sometimes loses dataTransfer)
+let currentDragData = null;
+
+function handleDragStart(e) {
+    console.log('[DragStart]', this.dataset);
+    this.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    const data = {
+        type: this.dataset.type,
+        id: this.dataset.itemId,
+        name: this.dataset.itemName
+    };
+    currentDragData = data;
+    try {
+        e.dataTransfer.setData('text/plain', JSON.stringify(data));
+    } catch(err) {
+        console.warn('[DragStart] setData failed:', err);
+    }
+}
+
+function handleDragEnd(e) {
+    this.classList.remove('dragging');
+    // Clean up any leftover highlights
+    document.querySelectorAll('.client-drop-target.drag-over').forEach(el => el.classList.remove('drag-over'));
+}
+
+function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+}
+
+function handleDragEnter(e) {
+    e.preventDefault();
+    this.classList.add('drag-over');
+}
+
+function handleDragLeave(e) {
+    // Only remove if truly leaving the element (not entering a child)
+    if (!this.contains(e.relatedTarget)) {
+        this.classList.remove('drag-over');
+    }
+}
+
+function handleDrop(e) {
+    e.preventDefault();
+    this.classList.remove('drag-over');
+
+    let dragData;
+    try {
+        const raw = e.dataTransfer.getData('text/plain');
+        console.log('[Drop] raw data:', raw);
+        dragData = JSON.parse(raw);
+    } catch(err) {
+        console.warn('[Drop] dataTransfer parse failed, using fallback:', err);
+        // Fallback: use the variable stored during dragstart
+        dragData = currentDragData;
+    }
+
+    if (!dragData || !dragData.id) {
+        console.error('[Drop] No valid drag data');
+        window.showToast && window.showToast('Errore nel trascinamento', 'error');
+        return;
+    }
+
+    const clientId = this.dataset.clientId;
+    const clientName = this.dataset.clientName;
+    console.log('[Drop] Assigning', dragData, 'to client', clientId, clientName);
+
+    openAssignModal(dragData.type, dragData.id, dragData.name, clientId, clientName);
+    currentDragData = null;
+}
+
+// ============ ASSIGNMENT MODAL ============
+
+function openAssignModal(type, itemId, itemName, clientId, clientName) {
+    pendingAssignment = { type, itemId, itemName, clientId, clientName };
+
+    const overlay = document.getElementById('assign-modal-overlay');
+    const title = document.getElementById('assign-modal-title');
+    const subtitle = document.getElementById('assign-modal-subtitle');
+    const dateLabel = document.getElementById('assign-modal-date-label');
+    const dateInput = document.getElementById('assign-modal-date');
+
+    if (type === 'split') {
+        title.textContent = 'Assegna split';
+        subtitle.textContent = `${itemName} → ${clientName}`;
+        dateLabel.textContent = 'Data di inizio';
+        // Default to next Monday
+        const today = new Date();
+        const dayOfWeek = today.getDay() || 7;
+        const nextMonday = new Date(today);
+        nextMonday.setDate(today.getDate() + (8 - dayOfWeek));
+        dateInput.value = nextMonday.toISOString().split('T')[0];
+    } else {
+        title.textContent = 'Assegna allenamento';
+        subtitle.textContent = `${itemName} → ${clientName}`;
+        dateLabel.textContent = 'Data';
+        dateInput.value = new Date().toISOString().split('T')[0];
+    }
+
+    overlay.classList.remove('hidden');
+    overlay.style.display = 'flex';
+}
+
+function closeAssignModal() {
+    const overlay = document.getElementById('assign-modal-overlay');
+    overlay.classList.add('hidden');
+    overlay.style.display = 'none';
+    pendingAssignment = null;
+    // Clear click-to-assign selection
+    selectedWorkoutItem = null;
+    document.querySelectorAll('.workout-drag-card.selected').forEach(r => r.classList.remove('selected'));
+}
+window.closeAssignModal = closeAssignModal;
+
+async function confirmAssignment() {
+    if (!pendingAssignment) return;
+
+    const { type, itemId, clientId } = pendingAssignment;
+    const dateValue = document.getElementById('assign-modal-date').value;
+
+    if (!dateValue) {
+        window.showToast('Seleziona una data', 'error');
+        return;
+    }
+
+    try {
+        let res;
+        const trainerSelector = document.getElementById('trainer-selector');
+        const trainerId = trainerSelector ? trainerSelector.value : 'trainer_default';
+
+        const apiBase = (window.APP_CONFIG || {}).apiBase || '';
+
+        if (type === 'split') {
+            console.log('[Assignment] Assigning split', itemId, 'to client', clientId, 'start:', dateValue);
+            res = await fetch(`${apiBase}/api/trainer/assign_split`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'x-trainer-id': trainerId
+                },
+                credentials: 'include',
+                body: JSON.stringify({
+                    split_id: itemId,
+                    client_id: clientId,
+                    start_date: dateValue
+                })
+            });
+        } else {
+            console.log('[Assignment] Assigning workout', itemId, 'to client', clientId, 'date:', dateValue);
+            res = await fetch(`${apiBase}/api/trainer/assign_workout`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({
+                    client_id: clientId,
+                    date: dateValue,
+                    workout_id: itemId
+                })
+            });
+        }
+        console.log('[Assignment] Response status:', res.status);
+
+        if (res.ok) {
+            const assignedClientId = clientId;
+            const assignedItemName = pendingAssignment.itemName;
+            window.showToast(`${type === 'split' ? 'Split' : 'Allenamento'} assegnato con successo!`, 'success');
+            closeAssignModal();
+
+            // Flash the client card green to confirm
+            const clientCard = document.querySelector(`.client-drop-target[data-client-id="${assignedClientId}"]`);
+            if (clientCard) {
+                clientCard.style.borderColor = '#22c55e';
+                clientCard.style.background = 'rgba(34, 197, 94, 0.1)';
+                setTimeout(() => {
+                    clientCard.style.borderColor = '';
+                    clientCard.style.background = '';
+                }, 1500);
+            }
+
+            // Refresh trainer data to update client cards
+            const trainerRes = await fetch(`${apiBase}/api/trainer/data?limit_cache=${Date.now()}`, { credentials: 'include' });
+            if (trainerRes.ok) {
+                const newData = await trainerRes.json();
+                window.trainerData = newData;
+                // Re-render client drop targets with updated data
+                renderClientDropTargets(newData.clients || []);
+                // Also update the Utenti page client table
+                if (typeof renderClientList === 'function') {
+                    allClients = newData.clients || [];
+                    renderClientList(allClients);
+                }
+            }
+        } else {
+            const errText = await res.text();
+            console.error('[Assignment] Error response:', res.status, errText);
+            window.showToast('Errore: ' + errText, 'error');
+        }
+    } catch(err) {
+        window.showToast('Errore di rete', 'error');
+        console.error('Assignment error:', err);
+    }
+}
+window.confirmAssignment = confirmAssignment;
 
 // ============ SCHEDULE SECTION ============
 let currentSchedule = [];
@@ -1017,6 +1540,9 @@ function renderCalendarStripInto(containerId, monthLabelId) {
     const monthLabel = document.getElementById(monthLabelId);
     if (monthLabel) monthLabel.innerText = currentWeekMonday.toLocaleDateString('en-US', { month: 'short' });
 
+    const itDays = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+    const isDashboard = containerId === 'd-calendar-strip';
+
     for (let i = 0; i < 7; i++) {
         const d = new Date(currentWeekMonday);
         d.setDate(currentWeekMonday.getDate() + i);
@@ -1028,12 +1554,12 @@ function renderCalendarStripInto(containerId, monthLabelId) {
         div.className = `flex flex-col items-center p-2 rounded cursor-pointer transition ${isSelected ? 'bg-white/10 text-white' : 'text-white/40 hover:bg-white/5'}`;
         if (isToday && !isSelected) div.classList.add('border', 'border-white/10');
 
-        const dayName = d.toLocaleDateString('en-US', { weekday: 'narrow' });
+        const dayName = isDashboard ? itDays[(d.getDay() + 6) % 7] : d.toLocaleDateString('en-US', { weekday: 'narrow' });
         const dayNum = d.getDate();
         const hasEvents = currentSchedule.some(e => e.date === dateStr);
         const dot = hasEvents ? `<div class="w-1 h-1 rounded-full bg-primary mt-1"></div>` : '';
 
-        div.innerHTML = `<span class="opacity-50">${dayName}</span><span>${dayNum}</span>${dot}`;
+        div.innerHTML = `<span class="opacity-50 text-[10px]">${dayName}</span><span>${dayNum}</span>${dot}`;
         div.onclick = () => {
             selectedDateStr = dateStr;
             renderCalendarStrip();
@@ -1046,6 +1572,17 @@ function renderCalendarStripInto(containerId, monthLabelId) {
 function renderCalendarStrip() {
     renderCalendarStripInto('calendar-strip', 'month-label');
     renderCalendarStripInto('d-calendar-strip', 'd-month-label');
+
+    // Update week range label for Utenti page
+    const weekRangeEl = document.getElementById('d-week-range-label');
+    if (weekRangeEl) {
+        const startDay = currentWeekMonday.getDate().toString().padStart(2, '0');
+        const endDate = new Date(currentWeekMonday);
+        endDate.setDate(endDate.getDate() + 6);
+        const endDay = endDate.getDate().toString().padStart(2, '0');
+        const monthName = endDate.toLocaleDateString('it-IT', { month: 'short' });
+        weekRangeEl.textContent = `${startDay} - ${endDay} ${monthName}`;
+    }
 }
 
 function renderScheduleInto(dateStr, containerId, dateElId) {
@@ -1100,9 +1637,11 @@ function renderScheduleInto(dateStr, containerId, dateElId) {
 
     // Add button
     const addDiv = document.createElement('div');
-    addDiv.className = "flex items-center justify-center space-x-3 p-3 rounded-xl border border-white/20 border-dashed hover:bg-white/5 transition cursor-pointer py-4";
+    addDiv.className = "flex items-center justify-center rounded-xl border border-white/20 border-dashed hover:bg-white/5 transition cursor-pointer";
+    addDiv.style.padding = "0.75rem";
+    addDiv.style.minHeight = "72px";
     addDiv.onclick = () => openAddModal(dateStr);
-    addDiv.innerHTML = `<span class="text-2xl font-light mr-2">+</span><span class="font-bold text-sm text-white/60">Free Slot</span>`;
+    addDiv.innerHTML = `<span class="text-sm text-white/40">+ Aggiungi appuntamento</span>`;
     container.appendChild(addDiv);
 }
 
@@ -1250,27 +1789,9 @@ function initCoursesSection() {
         window.loadCoursesPage();
     }
 
-    // Toggle exercise library
-    const toggleBtn = document.getElementById('toggle-course-exercises-btn');
-    const exercisesSection = document.getElementById('course-exercises-section');
-    const chevron = document.getElementById('course-exercises-chevron');
-
-    if (toggleBtn && exercisesSection) {
-        toggleBtn.addEventListener('click', () => {
-            const isOpen = exercisesSection.style.maxHeight !== '0px';
-            if (isOpen) {
-                exercisesSection.style.maxHeight = '0';
-                exercisesSection.style.opacity = '0';
-                chevron.style.transform = 'rotate(0deg)';
-            } else {
-                exercisesSection.style.maxHeight = '2000px';
-                exercisesSection.style.opacity = '1';
-                chevron.style.transform = 'rotate(180deg)';
-                if (typeof window.loadCourseExercises === 'function') {
-                    window.loadCourseExercises();
-                }
-            }
-        });
+    // Load exercise library directly (always visible now)
+    if (typeof window.loadCourseExercises === 'function') {
+        window.loadCourseExercises();
     }
 
     // Search
@@ -1280,6 +1801,16 @@ function initCoursesSection() {
         }
     });
 }
+
+// Course tab switching
+function switchCourseTab(tabId) {
+    document.querySelectorAll('#section-courses .trainer-tab-content').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('#section-courses .trainer-tab').forEach(el => el.classList.remove('active'));
+    document.getElementById(tabId).classList.remove('hidden');
+    const tabBtn = document.querySelector(`#section-courses .trainer-tab[data-tab="${tabId}"]`);
+    if (tabBtn) tabBtn.classList.add('active');
+}
+window.switchCourseTab = switchCourseTab;
 
 // ============ SETTINGS SECTION ============
 function initSettingsSection() {
@@ -1384,7 +1915,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // Handle hash navigation
     const hash = window.location.hash.replace('#', '');
-    if (hash && ['dashboard', 'schedule', 'courses', 'settings'].includes(hash)) {
+    if (hash && ['dashboard', 'workouts', 'schedule', 'courses', 'settings'].includes(hash)) {
         switchSection(hash);
     }
 

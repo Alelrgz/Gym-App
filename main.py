@@ -372,6 +372,8 @@ def run_migrations(engine):
         ("meal_frequency", "TEXT"),
         ("food_preferences", "TEXT"),
         ("occupation_type", "TEXT"),
+        ("current_split_id", "TEXT"),
+        ("split_expiry_date", "TEXT"),
     ])
 
     # Add all potentially missing columns to users table (PostgreSQL-safe with IF NOT EXISTS)
