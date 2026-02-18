@@ -840,6 +840,21 @@ class ShowerUsageORM(Base):
     ended_at = Column(String, nullable=True)  # ISO datetime when session ended
 
 
+# --- PASSWORD RESET TOKENS ---
+
+class PasswordResetTokenORM(Base):
+    """Password reset tokens for self-service password recovery."""
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), index=True)
+    token_hash = Column(String, nullable=False)
+    token_type = Column(String, default="password_reset")  # "password_reset" or "username_recovery"
+    expires_at = Column(String, nullable=False)
+    used_at = Column(String, nullable=True)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
 # --- FACILITY / FIELD / ROOM BOOKING MODELS ---
 
 class ActivityTypeORM(Base):

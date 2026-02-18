@@ -725,6 +725,53 @@ By signing below, I acknowledge that I have read and understood this waiver and 
     }
 
 
+@router.post("/reset-member-password")
+async def reset_member_password(
+    data: dict,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Staff resets a member's password, generating a temporary one."""
+    if user.role not in ("staff", "owner"):
+        raise HTTPException(status_code=403, detail="Staff or owner access required")
+
+    member_id = data.get("member_id")
+    if not member_id:
+        raise HTTPException(status_code=400, detail="member_id is required")
+
+    from service_modules.password_reset_service import staff_reset_password
+    result = staff_reset_password(user, member_id)
+
+    if result["status"] == "error":
+        raise HTTPException(status_code=400, detail=result["message"])
+
+    return result
+
+
+@router.post("/change-member-username")
+async def change_member_username(
+    data: dict,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Staff changes a member's username."""
+    if user.role not in ("staff", "owner"):
+        raise HTTPException(status_code=403, detail="Staff or owner access required")
+
+    member_id = data.get("member_id")
+    new_username = data.get("new_username", "").strip()
+    if not member_id or not new_username:
+        raise HTTPException(status_code=400, detail="member_id and new_username are required")
+
+    from service_modules.password_reset_service import staff_change_username
+    result = staff_change_username(user, member_id, new_username)
+
+    if result["status"] == "error":
+        raise HTTPException(status_code=400, detail=result["message"])
+
+    return result
+
+
 @router.post("/onboard-client")
 async def onboard_new_client(
     data: dict,

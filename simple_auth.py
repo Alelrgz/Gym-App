@@ -448,6 +448,111 @@ async def do_logout():
     return response
 
 
+# --- FORGOT PASSWORD ---
+@simple_auth_router.get("/forgot-password", response_class=HTMLResponse)
+async def show_forgot_password(request: Request):
+    return templates.TemplateResponse("forgot_password.html", {"request": request})
+
+def _rate_limit_forgot(func):
+    if limiter:
+        return limiter.limit("3/15minutes")(func)
+    return func
+
+@simple_auth_router.post("/forgot-password")
+@_rate_limit_forgot
+async def do_forgot_password(request: Request):
+    form = await request.form()
+    email = form.get("email", "").strip()
+
+    if not email:
+        return templates.TemplateResponse("forgot_password.html", {
+            "request": request, "error": "Please enter your email address."
+        })
+
+    # Get base URL for reset link
+    base_url = str(request.base_url).rstrip("/")
+
+    from service_modules.password_reset_service import request_password_reset
+    result = request_password_reset(email, base_url)
+
+    return templates.TemplateResponse("forgot_password.html", {
+        "request": request, "success": result["message"]
+    })
+
+
+# --- RESET PASSWORD ---
+@simple_auth_router.get("/reset-password", response_class=HTMLResponse)
+async def show_reset_password(request: Request, token: str = ""):
+    if not token:
+        return templates.TemplateResponse("reset_password.html", {
+            "request": request, "error": "Invalid or missing reset link.", "token": ""
+        })
+
+    from service_modules.password_reset_service import validate_reset_token
+    user = validate_reset_token(token)
+    if not user:
+        return templates.TemplateResponse("reset_password.html", {
+            "request": request, "error": "Invalid or expired reset link. Please request a new one.", "token": ""
+        })
+
+    return templates.TemplateResponse("reset_password.html", {
+        "request": request, "token": token
+    })
+
+@simple_auth_router.post("/reset-password")
+async def do_reset_password(request: Request):
+    form = await request.form()
+    token = form.get("token", "")
+    new_password = form.get("new_password", "").strip()
+    confirm_password = form.get("confirm_password", "").strip()
+
+    if not new_password or len(new_password) < 12:
+        return templates.TemplateResponse("reset_password.html", {
+            "request": request, "error": "Password must be at least 12 characters.", "token": token
+        })
+
+    if new_password != confirm_password:
+        return templates.TemplateResponse("reset_password.html", {
+            "request": request, "error": "Passwords do not match.", "token": token
+        })
+
+    from service_modules.password_reset_service import reset_password
+    result = reset_password(token, new_password)
+
+    if result["status"] == "success":
+        return templates.TemplateResponse("reset_password.html", {
+            "request": request, "success": result["message"], "token": ""
+        })
+    else:
+        return templates.TemplateResponse("reset_password.html", {
+            "request": request, "error": result["message"], "token": token
+        })
+
+
+# --- FORGOT USERNAME ---
+@simple_auth_router.get("/forgot-username", response_class=HTMLResponse)
+async def show_forgot_username(request: Request):
+    return templates.TemplateResponse("forgot_username.html", {"request": request})
+
+@simple_auth_router.post("/forgot-username")
+@_rate_limit_forgot
+async def do_forgot_username(request: Request):
+    form = await request.form()
+    email = form.get("email", "").strip()
+
+    if not email:
+        return templates.TemplateResponse("forgot_username.html", {
+            "request": request, "error": "Please enter your email address."
+        })
+
+    from service_modules.password_reset_service import request_username_reminder
+    result = request_username_reminder(email)
+
+    return templates.TemplateResponse("forgot_username.html", {
+        "request": request, "success": result["message"]
+    })
+
+
 # --- SETUP ACCOUNT (First Login Password Change) ---
 @simple_auth_router.get("/setup-account", response_class=HTMLResponse)
 async def show_setup_account(request: Request, db: Session = Depends(get_db)):

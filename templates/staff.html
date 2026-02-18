@@ -534,6 +534,26 @@
                 Message
             </button>
         </div>
+
+        <!-- Account Management Actions -->
+        <div class="flex gap-3 mt-3">
+            <button onclick="resetMemberPassword()"
+                class="flex-1 bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2 text-sm">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                </svg>
+                Reset Password
+            </button>
+            <button onclick="openChangeUsername()"
+                class="flex-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2 text-sm">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                    <circle cx="12" cy="7" r="4"/>
+                </svg>
+                Change Username
+            </button>
+        </div>
     </div>
 </div>
 
@@ -1582,6 +1602,98 @@ document.getElementById('member-profile-modal')?.addEventListener('click', (e) =
         closeMemberModal();
     }
 });
+
+// ========== ACCOUNT MANAGEMENT (Reset Password / Change Username) ==========
+async function resetMemberPassword() {
+    if (!currentMemberData) return;
+    const name = currentMemberData.name || currentMemberData.username;
+    if (!confirm(`Reset password for ${name}? A temporary password will be generated.`)) return;
+
+    try {
+        const res = await fetch('/api/staff/reset-member-password', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ member_id: currentMemberData.id })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            // Show temporary password in a clear alert (staff needs to share it with the member)
+            const tempPw = data.temporary_password;
+            closeMemberModal();
+            // Create a styled modal with the temp password
+            const overlay = document.createElement('div');
+            overlay.id = 'temp-password-overlay';
+            overlay.className = 'fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4';
+            overlay.innerHTML = `
+                <div class="glass-card p-6 rounded-2xl max-w-sm w-full text-center">
+                    <div class="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center mx-auto mb-4">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#eab308" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                            <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+                        </svg>
+                    </div>
+                    <h3 class="text-lg font-bold text-white mb-2">Password Reset</h3>
+                    <p class="text-gray-400 text-sm mb-4">Temporary password for <strong class="text-white">${name}</strong></p>
+                    <div class="bg-black/40 border border-yellow-500/30 rounded-xl p-4 mb-4">
+                        <p class="text-yellow-400 font-mono text-lg select-all" id="temp-pw-display">${tempPw}</p>
+                    </div>
+                    <button onclick="navigator.clipboard.writeText('${tempPw}'); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy Password',1500)"
+                        class="w-full bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 py-2 rounded-xl font-semibold transition mb-3 text-sm">
+                        Copy Password
+                    </button>
+                    <p class="text-gray-500 text-xs mb-4">The member will be asked to change it on first login.</p>
+                    <button onclick="document.getElementById('temp-password-overlay')?.remove()"
+                        class="w-full bg-white/10 hover:bg-white/20 text-white py-2 rounded-xl font-semibold transition text-sm">
+                        Close
+                    </button>
+                </div>
+            `;
+            document.body.appendChild(overlay);
+            overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Failed to reset password');
+        }
+    } catch (error) {
+        console.error('Error resetting password:', error);
+        showToast('Failed to reset password');
+    }
+}
+
+async function openChangeUsername() {
+    if (!currentMemberData) return;
+    const currentUsername = currentMemberData.username;
+    const newUsername = prompt(`Enter new username for ${currentMemberData.name || currentUsername}:`, currentUsername);
+    if (!newUsername || newUsername === currentUsername) return;
+
+    if (newUsername.length < 3) {
+        showToast('Username must be at least 3 characters');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/staff/change-member-username', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ member_id: currentMemberData.id, new_username: newUsername })
+        });
+
+        if (res.ok) {
+            showToast('Username changed successfully');
+            currentMemberData.username = newUsername;
+            openMemberProfile(currentMemberData.id);
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Failed to change username');
+        }
+    } catch (error) {
+        console.error('Error changing username:', error);
+        showToast('Failed to change username');
+    }
+}
 
 // ========== SUBSCRIPTION MANAGEMENT ==========
 let availablePlans = [];
