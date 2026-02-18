@@ -316,13 +316,25 @@ class UserService:
                 # Client is "PRO" for this trainer if they selected this trainer as their personal trainer
                 is_my_client = profile.trainer_id == trainer_id if profile else False
 
+                # Get assigned split name and expiry
+                assigned_split_name = None
+                split_expiry = None
+                if profile and profile.current_split_id:
+                    split_orm = db.query(WeeklySplitORM).filter(WeeklySplitORM.id == profile.current_split_id).first()
+                    if split_orm:
+                        assigned_split_name = split_orm.name
+                    split_expiry = profile.split_expiry_date
+
                 clients.append({
                     "id": c.id,
                     "name": profile.name if profile and profile.name else c.username,
                     "status": status,
                     "last_seen": f"{days_inactive} days ago" if days_inactive < 99 else "Never",
                     "plan": profile.plan if profile and profile.plan else "Standard",
-                    "is_premium": is_my_client  # PRO tag shown only if this client selected this trainer
+                    "is_premium": is_my_client,
+                    "profile_picture": c.profile_picture,
+                    "assigned_split": assigned_split_name,
+                    "plan_expiry": split_expiry,
                 })
             
             # --- FETCH MY WORKOUT (TRAINER) ---

@@ -259,6 +259,16 @@ class SplitService:
             if success_count == 0 and fail_count > 0:
                 raise HTTPException(status_code=400, detail=f"Failed to assign any workouts. Errors: {logs[:3]}...")
 
+            # Track the assigned split on the client profile
+            if not is_self_assignment and success_count > 0:
+                from models_orm import ClientProfileORM
+                profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
+                if profile:
+                    profile.current_split_id = split_id
+                    expiry_date = start_date + timedelta(days=27)
+                    profile.split_expiry_date = expiry_date.isoformat()
+                    db.commit()
+
             return {
                 "status": "success",
                 "message": f"Split assigned. {success_count} workouts scheduled. {fail_count} failed.",

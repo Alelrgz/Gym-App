@@ -1712,6 +1712,38 @@ body:has(.trainer-layout) {
     body:has(.trainer-layout) > nav {
         display: none !important;
     }
+
+    /* Conversations & chat modals: side panel on desktop */
+    body:has(.trainer-layout) #conversations-modal,
+    body:has(.trainer-layout) #chat-modal {
+        left: auto;
+        right: 0;
+        width: 420px;
+        background: var(--bg-elevated);
+        backdrop-filter: blur(32px);
+        -webkit-backdrop-filter: blur(32px);
+        border-left: 1px solid var(--glass-border-2);
+    }
+
+    body:has(.trainer-layout) #conversations-modal > div:first-child,
+    body:has(.trainer-layout) #chat-modal > div:first-child {
+        border-bottom-color: var(--glass-border-1);
+    }
+
+    body:has(.trainer-layout) #chat-modal > div:last-child {
+        border-top-color: var(--glass-border-1);
+    }
+
+    body:has(.trainer-layout) #conversations-list > div {
+        background: var(--glass-bg-2);
+        border: 1px solid var(--glass-border-1);
+        border-radius: var(--radius-md);
+    }
+
+    body:has(.trainer-layout) #conversations-list > div:hover {
+        background: var(--glass-bg-3);
+        border-color: var(--glass-border-2);
+    }
 }
 
 .trainer-layout {
@@ -1731,6 +1763,139 @@ body:has(.trainer-layout) {
 /* Trainer sections: remove max-width constraint when inside new layout */
 .trainer-layout .trainer-section {
     max-width: 1400px;
+}
+
+/* Trainer Utenti page grid */
+.trainer-utenti-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 1.5rem;
+    align-items: stretch;
+}
+
+/* Client table: fill height and scroll */
+.trainer-utenti-grid > .staff-table-card {
+    min-height: 650px;
+    max-height: calc(100vh - 320px);
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.trainer-utenti-grid > .staff-table-card .staff-table {
+    width: 100%;
+}
+
+/* Appointments schedule list: scrollable with space for ~3 items */
+#d-schedule-container {
+    min-height: 220px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.trainer-dual-search {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Trainer Corsi page */
+.trainer-courses-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+/* Trainer Allenamenti page */
+.trainer-workouts-dual-search {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+.trainer-workouts-grid {
+    display: grid;
+    grid-template-columns: 1.2fr 1fr;
+    gap: 1.5rem;
+    align-items: start;
+}
+
+.trainer-tab-bar {
+    display: flex;
+    gap: 0;
+    margin-bottom: 1rem;
+    background: var(--glass-bg-2);
+    border: 1px solid var(--glass-border-2);
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+}
+
+.trainer-tab {
+    flex: 1;
+    padding: 0.65rem 1rem;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.4);
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    transition: all var(--transition-base);
+}
+
+.trainer-tab:hover {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.trainer-tab.active {
+    color: white;
+    background: rgba(255, 255, 255, 0.08);
+}
+
+/* Draggable workout/split table rows */
+tr.workout-drag-card {
+    cursor: grab;
+    user-select: none;
+    transition: background var(--transition-base), opacity 0.2s;
+}
+
+tr.workout-drag-card:hover {
+    background: rgba(255, 255, 255, 0.06);
+}
+
+tr.workout-drag-card:active {
+    cursor: grabbing;
+}
+
+tr.workout-drag-card.dragging {
+    opacity: 0.35;
+}
+
+tr.workout-drag-card.selected {
+    background: rgba(249, 115, 22, 0.12);
+    border-left: 3px solid var(--primary);
+}
+
+/* Client drop targets */
+.client-drop-target {
+    background: var(--glass-bg-2);
+    border: 2px solid var(--glass-border-1);
+    border-radius: var(--radius-md);
+    padding: 0.75rem 1rem;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.client-drop-target:hover {
+    background: var(--glass-bg-3);
+}
+
+.client-drop-target.drag-over {
+    border-color: var(--primary);
+    background: rgba(249, 115, 22, 0.08);
+    box-shadow: 0 0 12px rgba(249, 115, 22, 0.15);
 }
 
 /* ============ TRAINER MOBILE RESPONSIVE ============ */
@@ -1773,6 +1938,36 @@ body:has(.trainer-layout) {
     body:has(.trainer-layout) {
         overflow-x: hidden;
         overflow-y: auto;
+    }
+
+    /* Utenti page: stack columns on mobile */
+    .trainer-utenti-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Allenamenti page: stack columns on mobile */
+    .trainer-workouts-dual-search,
+    .trainer-workouts-grid {
+        grid-template-columns: 1fr;
+    }
+
+    /* Corsi page: stack columns on mobile */
+    .trainer-courses-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .trainer-dual-search {
+        grid-template-columns: 1fr;
+    }
+
+    /* Make table horizontally scrollable */
+    .trainer-utenti-grid .staff-table-card {
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .trainer-utenti-grid .staff-table {
+        min-width: 400px;
     }
 }
 

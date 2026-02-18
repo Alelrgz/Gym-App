@@ -361,6 +361,8 @@ def run_migrations(engine):
         ("gems", "INTEGER DEFAULT 0"),
         ("nutritionist_id", "TEXT"),
         ("weight_goal", "DOUBLE PRECISION"),
+        ("current_split_id", "TEXT"),
+        ("split_expiry_date", "TEXT"),
     ])
 
     # Add all potentially missing columns to users table (PostgreSQL-safe with IF NOT EXISTS)

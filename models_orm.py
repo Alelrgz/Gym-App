@@ -143,6 +143,10 @@ class ClientProfileORM(Base):
     # Weight goal set by nutritionist
     weight_goal = Column(Float, nullable=True)  # Target weight in kg
 
+    # Current assigned split tracking
+    current_split_id = Column(String, nullable=True)  # WeeklySplitORM.id
+    split_expiry_date = Column(String, nullable=True)  # YYYY-MM-DD when the 4-week split ends
+
 
 class ClientDocumentORM(Base):
     """Stores client documents like medical certificates and signed waivers"""
