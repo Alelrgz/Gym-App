@@ -29,6 +29,10 @@ class UserORM(Base):
     stripe_account_id = Column(String, nullable=True)  # Connected Stripe account ID (acct_xxx)
     stripe_account_status = Column(String, nullable=True)  # pending, active, restricted
 
+    # Stripe Terminal (for gym owners with POS readers)
+    stripe_terminal_location_id = Column(String, nullable=True)  # Terminal Location ID (tml_xxx)
+    stripe_terminal_reader_id = Column(String, nullable=True)  # Primary reader ID (tmr_xxx)
+
     # Trainer pricing
     session_rate = Column(Float, nullable=True)  # Hourly rate for 1-on-1 sessions
 

@@ -193,6 +193,9 @@ app.include_router(crm_router)
 from route_modules.shower_routes import router as shower_router
 app.include_router(shower_router)
 
+from route_modules.terminal_routes import router as terminal_router
+app.include_router(terminal_router)
+
 
 def _safe_add_columns(engine, table_name, columns_list):
     """Add columns to a table using IF NOT EXISTS (PostgreSQL 9.6+) or fallback."""
@@ -378,6 +381,8 @@ def run_migrations(engine):
         ('session_rate', 'DOUBLE PRECISION'),
         ('stripe_account_id', 'TEXT'),
         ('stripe_account_status', 'TEXT'),
+        ('stripe_terminal_location_id', 'TEXT'),
+        ('stripe_terminal_reader_id', 'TEXT'),
         ('spotify_access_token', 'TEXT'),
         ('spotify_refresh_token', 'TEXT'),
         ('spotify_token_expires_at', 'TEXT'),

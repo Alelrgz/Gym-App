@@ -206,6 +206,79 @@
     </div>
     {% endcall %}
 
+    <!-- POS Terminal Setup -->
+    {% call card(classes="p-4 mb-5") %}
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">POS Terminal</h3>
+        <span id="terminal-status-badge" class="text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-400">
+            Checking...
+        </span>
+    </div>
+    <div id="terminal-setup-content">
+        <!-- Requires Connect -->
+        <div id="terminal-needs-connect" class="hidden">
+            <p class="text-sm text-gray-500">Set up Stripe payments first to enable POS terminal.</p>
+        </div>
+
+        <!-- Step 1: Create Location -->
+        <div id="terminal-no-location" class="hidden">
+            <p class="text-sm text-gray-400 mb-3">Set up your gym's address to register a POS reader.</p>
+            <div class="space-y-2 mb-3">
+                <input id="terminal-address-line1" type="text" placeholder="Address line 1"
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500">
+                <div class="grid grid-cols-2 gap-2">
+                    <input id="terminal-address-city" type="text" placeholder="City"
+                        class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500">
+                    <input id="terminal-address-postal" type="text" placeholder="Postal code"
+                        class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500">
+                </div>
+                <select id="terminal-address-country"
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white">
+                    <option value="IT">Italy</option>
+                    <option value="US">United States</option>
+                    <option value="GB">United Kingdom</option>
+                    <option value="DE">Germany</option>
+                    <option value="FR">France</option>
+                    <option value="ES">Spain</option>
+                </select>
+            </div>
+            <button onclick="setupTerminalLocation()"
+                class="w-full bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 py-2.5 rounded-xl font-semibold transition text-sm">
+                Create Terminal Location
+            </button>
+        </div>
+
+        <!-- Step 2: Register Reader -->
+        <div id="terminal-no-reader" class="hidden">
+            <p class="text-sm text-gray-400 mb-3">Enter the registration code shown on your reader's screen.</p>
+            <div class="space-y-2 mb-3">
+                <input id="terminal-reg-code" type="text" placeholder="e.g. blue-fox-red"
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500">
+                <input id="terminal-label" type="text" placeholder="Label (e.g. Front Desk)" value="Front Desk"
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500">
+            </div>
+            <button onclick="registerTerminalReader()"
+                class="w-full bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 py-2.5 rounded-xl font-semibold transition text-sm">
+                Register Reader
+            </button>
+        </div>
+
+        <!-- Step 3: Reader Registered -->
+        <div id="terminal-registered" class="hidden">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center">
+                    <i data-lucide="smartphone-nfc" class="w-5 h-5 text-green-400"></i>
+                </div>
+                <div>
+                    <p class="text-sm font-semibold text-green-400" id="terminal-reader-label">Reader</p>
+                    <p class="text-xs text-gray-400" id="terminal-reader-status">Online</p>
+                </div>
+            </div>
+            <p class="text-xs text-gray-500">POS terminal is ready. Staff can now accept card-present payments during client onboarding.</p>
+        </div>
+    </div>
+    {% endcall %}
+
     <!-- Shower System Settings -->
     {% call card(classes="p-4 mb-5") %}
     <div class="flex items-center justify-between mb-3">
@@ -1696,6 +1769,126 @@ async function openStripeDashboard() {
     } catch (error) {
         console.error('Error opening Stripe dashboard:', error);
         alert('Error: ' + error.message);
+    }
+}
+
+// --- POS TERMINAL FUNCTIONS ---
+
+async function loadTerminalStatus() {
+    const badge = document.getElementById('terminal-status-badge');
+    const needsConnect = document.getElementById('terminal-needs-connect');
+    const noLocation = document.getElementById('terminal-no-location');
+    const noReader = document.getElementById('terminal-no-reader');
+    const registered = document.getElementById('terminal-registered');
+
+    if (!badge) return;
+
+    // Hide all states
+    [needsConnect, noLocation, noReader, registered].forEach(el => el?.classList.add('hidden'));
+
+    // Check if Stripe Connect is active first
+    const connectBadge = document.getElementById('stripe-status-badge');
+    if (connectBadge && connectBadge.textContent.trim() !== 'Active') {
+        badge.textContent = 'Requires Payments';
+        badge.className = 'text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-400';
+        needsConnect?.classList.remove('hidden');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/terminal/readers', { credentials: 'include' });
+        if (!res.ok) throw new Error('Failed to check terminal');
+
+        const data = await res.json();
+
+        if (data.readers && data.readers.length > 0) {
+            const reader = data.readers[0];
+            badge.textContent = reader.status === 'online' ? 'Online' : 'Registered';
+            badge.className = reader.status === 'online'
+                ? 'text-xs px-2 py-1 rounded-full bg-green-500/20 text-green-400'
+                : 'text-xs px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400';
+            document.getElementById('terminal-reader-label').textContent = reader.label || 'Reader';
+            document.getElementById('terminal-reader-status').textContent =
+                `${reader.device_type || 'Reader'} — ${reader.status}`;
+            registered?.classList.remove('hidden');
+        } else {
+            // No readers - check if location exists by trying to create (it returns existing)
+            badge.textContent = 'Not Set Up';
+            badge.className = 'text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-400';
+            // Show register reader if we already have a location, otherwise show location setup
+            noLocation?.classList.remove('hidden');
+        }
+    } catch (error) {
+        console.error('Error loading terminal status:', error);
+        badge.textContent = 'Not Set Up';
+        badge.className = 'text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-400';
+        noLocation?.classList.remove('hidden');
+    }
+}
+
+async function setupTerminalLocation() {
+    const line1 = document.getElementById('terminal-address-line1')?.value.trim();
+    const city = document.getElementById('terminal-address-city')?.value.trim();
+    const postal = document.getElementById('terminal-address-postal')?.value.trim();
+    const country = document.getElementById('terminal-address-country')?.value;
+
+    if (!line1 || !city || !postal) {
+        showToast('Please fill in address, city, and postal code', 'error');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/terminal/create-location', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                address: { line1, city, postal_code: postal, country }
+            })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Failed to create location');
+        }
+
+        showToast('Terminal location created!', 'success');
+        // Show register reader step
+        document.getElementById('terminal-no-location')?.classList.add('hidden');
+        document.getElementById('terminal-no-reader')?.classList.remove('hidden');
+    } catch (error) {
+        console.error('Error creating terminal location:', error);
+        showToast('Error: ' + error.message, 'error');
+    }
+}
+
+async function registerTerminalReader() {
+    const code = document.getElementById('terminal-reg-code')?.value.trim();
+    const label = document.getElementById('terminal-label')?.value.trim() || 'Front Desk';
+
+    if (!code) {
+        showToast('Enter the registration code from the reader screen', 'error');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/terminal/register-reader', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ registration_code: code, label })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Failed to register reader');
+        }
+
+        showToast('POS reader registered!', 'success');
+        loadTerminalStatus();
+    } catch (error) {
+        console.error('Error registering reader:', error);
+        showToast('Error: ' + error.message, 'error');
     }
 }
 
@@ -3479,6 +3672,8 @@ if (currentMode === 'settings') {
     loadGymCode();
     loadGymSettings();
     loadStripeConnectStatus();
+    // Load terminal status after a short delay so Connect status is resolved first
+    setTimeout(loadTerminalStatus, 1000);
     loadShowerSettings();
 } else if (currentMode === 'crm') {
     loadPipeline();

@@ -828,7 +828,7 @@
             <!-- Payment Method -->
             <div id="payment-method-section">
                 <p class="text-xs text-gray-400 mb-3">Select payment method:</p>
-                <div class="grid grid-cols-3 gap-3 mb-4">
+                <div id="payment-grid" class="grid grid-cols-3 gap-3 mb-4">
                     <button onclick="selectPaymentMethod('cash')" id="pay-cash-btn"
                         class="p-4 rounded-xl border-2 border-white/20 hover:border-green-500/50 transition text-center">
                         <i data-lucide="banknote" class="w-6 h-6 block mb-1 mx-auto stroke-current"></i>
@@ -843,6 +843,11 @@
                         class="p-4 rounded-xl border-2 border-white/20 hover:border-purple-500/50 transition text-center">
                         <span class="block mb-1"><i data-lucide="camera" class="w-6 h-6"></i></span>
                         <span class="text-sm font-semibold text-white">QR Code</span>
+                    </button>
+                    <button onclick="selectPaymentMethod('terminal')" id="pay-terminal-btn"
+                        class="hidden p-4 rounded-xl border-2 border-white/20 hover:border-orange-500/50 transition text-center">
+                        <i data-lucide="smartphone-nfc" class="w-6 h-6 block mb-1 mx-auto stroke-current"></i>
+                        <span class="text-sm font-semibold text-white">POS</span>
                     </button>
                 </div>
 
@@ -886,6 +891,33 @@
                         </div>
                     </div>
                 </div>
+
+                <!-- Terminal/POS Payment (shown when terminal selected) -->
+                <div id="terminal-payment-form" class="hidden">
+                    <div class="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 text-center">
+                        <div id="pos-initial" class="py-2">
+                            <i data-lucide="smartphone-nfc" class="w-8 h-8 mx-auto mb-2 text-orange-400 stroke-current"></i>
+                            <p class="text-orange-400 font-semibold mb-1">POS Terminal Payment</p>
+                            <p class="text-xs text-gray-400">Payment will be processed on the POS reader when you click Complete Registration.</p>
+                        </div>
+                        <div id="pos-processing" class="hidden py-4">
+                            <i data-lucide="loader-2" class="w-6 h-6 inline-block animate-spin text-orange-400 stroke-current"></i>
+                            <p class="text-orange-400 font-semibold mt-2">Processing on terminal...</p>
+                            <p class="text-xs text-gray-400 mt-1">Ask the client to tap or insert their card</p>
+                            <div class="animate-pulse text-orange-400 text-sm mt-2">Waiting for payment...</div>
+                            <button onclick="cancelTerminalPayment()" class="mt-3 text-xs text-red-400 underline">Cancel Payment</button>
+                        </div>
+                        <div id="pos-success" class="hidden py-4">
+                            <span class="text-4xl block mb-2 text-green-400">&#10003;</span>
+                            <p class="text-green-400 font-semibold">Payment Received!</p>
+                            <p class="text-xs text-gray-400 mt-1">Completing registration...</p>
+                        </div>
+                        <div id="pos-error" class="hidden py-2">
+                            <p class="text-xs text-red-400" id="pos-error-msg">Terminal payment failed</p>
+                            <button onclick="retryTerminalPayment()" class="text-xs text-orange-400 underline mt-2">Try Again</button>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- No Payment Needed -->
@@ -922,7 +954,22 @@ let allTrainers = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadStaffData();
+    checkTerminalAvailability();
 });
+
+async function checkTerminalAvailability() {
+    try {
+        const res = await fetch('/api/terminal/readers', { credentials: 'include' });
+        if (res.ok) {
+            const data = await res.json();
+            if (data.readers && data.readers.length > 0) {
+                document.getElementById('pay-terminal-btn')?.classList.remove('hidden');
+                document.getElementById('payment-grid')?.classList.remove('grid-cols-3');
+                document.getElementById('payment-grid')?.classList.add('grid-cols-4');
+            }
+        }
+    } catch (e) { /* Terminal not available */ }
+}
 
 async function loadStaffData() {
     try {
@@ -2320,13 +2367,16 @@ function selectPaymentMethod(method) {
     const cashBtn = document.getElementById('pay-cash-btn');
     const cardBtn = document.getElementById('pay-card-btn');
     const qrBtn = document.getElementById('pay-qr-btn');
+    const terminalBtn = document.getElementById('pay-terminal-btn');
     const cardForm = document.getElementById('card-payment-form');
     const qrForm = document.getElementById('qr-payment-form');
+    const terminalForm = document.getElementById('terminal-payment-form');
 
     // Reset all button styles
     cashBtn.classList.remove('border-green-500', 'bg-green-500/10');
     cardBtn.classList.remove('border-blue-500', 'bg-blue-500/10');
     qrBtn.classList.remove('border-purple-500', 'bg-purple-500/10');
+    terminalBtn?.classList.remove('border-orange-500', 'bg-orange-500/10');
 
     // Update selected button style
     if (method === 'cash') {
@@ -2335,11 +2385,14 @@ function selectPaymentMethod(method) {
         cardBtn.classList.add('border-blue-500', 'bg-blue-500/10');
     } else if (method === 'qr') {
         qrBtn.classList.add('border-purple-500', 'bg-purple-500/10');
+    } else if (method === 'terminal') {
+        terminalBtn?.classList.add('border-orange-500', 'bg-orange-500/10');
     }
 
     // Show/hide payment forms
     cardForm.classList.add('hidden');
     qrForm.classList.add('hidden');
+    terminalForm?.classList.add('hidden');
 
     if (method === 'card') {
         cardForm.classList.remove('hidden');
@@ -2352,6 +2405,13 @@ function selectPaymentMethod(method) {
         document.getElementById('qr-display').classList.add('hidden');
         document.getElementById('qr-paid').classList.add('hidden');
         document.getElementById('qr-error').classList.add('hidden');
+    } else if (method === 'terminal') {
+        terminalForm?.classList.remove('hidden');
+        // Reset terminal form to initial state
+        document.getElementById('pos-initial').classList.remove('hidden');
+        document.getElementById('pos-processing').classList.add('hidden');
+        document.getElementById('pos-success').classList.add('hidden');
+        document.getElementById('pos-error').classList.add('hidden');
     }
 }
 
@@ -2512,6 +2572,178 @@ async function finalizeQrOnboarding(paymentIntentId) {
 function retryQrPayment() {
     stopPollingPayment();
     startQrPayment();
+}
+
+// --- POS TERMINAL PAYMENT ---
+let terminalPaymentIntentId = null;
+let terminalPollingInterval = null;
+
+async function startTerminalPayment() {
+    document.getElementById('pos-initial').classList.add('hidden');
+    document.getElementById('pos-processing').classList.remove('hidden');
+    document.getElementById('pos-success').classList.add('hidden');
+    document.getElementById('pos-error').classList.add('hidden');
+
+    try {
+        const res = await fetch('/api/terminal/process-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                plan_id: onboardingState.data.planId,
+                client_name: onboardingState.data.name,
+                coupon_code: onboardingState.data.couponCode || null
+            })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Failed to start terminal payment');
+        }
+
+        const data = await res.json();
+        terminalPaymentIntentId = data.payment_intent_id;
+
+        startTerminalPolling();
+    } catch (e) {
+        console.error('Terminal payment error:', e);
+        document.getElementById('pos-processing').classList.add('hidden');
+        document.getElementById('pos-error').classList.remove('hidden');
+        document.getElementById('pos-error-msg').textContent = e.message || 'Terminal payment failed';
+        // Re-enable complete button
+        const btn = document.getElementById('onboard-complete-btn');
+        btn.disabled = false;
+        btn.textContent = 'Complete Registration';
+    }
+}
+
+function startTerminalPolling() {
+    if (terminalPollingInterval) clearInterval(terminalPollingInterval);
+
+    terminalPollingInterval = setInterval(async () => {
+        if (!terminalPaymentIntentId) {
+            clearInterval(terminalPollingInterval);
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/terminal/payment-status/${terminalPaymentIntentId}`, {
+                credentials: 'include'
+            });
+            if (!res.ok) return;
+
+            const data = await res.json();
+            if (data.status === 'succeeded') {
+                clearInterval(terminalPollingInterval);
+                terminalPollingInterval = null;
+
+                document.getElementById('pos-processing').classList.add('hidden');
+                document.getElementById('pos-success').classList.remove('hidden');
+
+                await finalizeTerminalOnboarding(terminalPaymentIntentId);
+            } else if (data.status === 'canceled' || data.status === 'requires_payment_method') {
+                clearInterval(terminalPollingInterval);
+                terminalPollingInterval = null;
+                document.getElementById('pos-processing').classList.add('hidden');
+                document.getElementById('pos-error').classList.remove('hidden');
+                document.getElementById('pos-error-msg').textContent = 'Payment was declined or canceled';
+                const btn = document.getElementById('onboard-complete-btn');
+                btn.disabled = false;
+                btn.textContent = 'Complete Registration';
+            }
+        } catch (e) {
+            console.error('Terminal polling error:', e);
+        }
+    }, 2000);
+}
+
+function stopTerminalPolling() {
+    if (terminalPollingInterval) {
+        clearInterval(terminalPollingInterval);
+        terminalPollingInterval = null;
+    }
+    terminalPaymentIntentId = null;
+}
+
+async function finalizeTerminalOnboarding(paymentIntentId) {
+    const completeBtn = document.getElementById('onboard-complete-btn');
+    completeBtn.disabled = true;
+    completeBtn.textContent = 'Registering...';
+
+    try {
+        const payload = {
+            name: onboardingState.data.name,
+            phone: onboardingState.data.phone,
+            email: onboardingState.data.email || null,
+            date_of_birth: onboardingState.data.dateOfBirth || null,
+            username: onboardingState.data.username,
+            document_type: onboardingState.data.documentType,
+            plan_id: onboardingState.data.planId,
+            payment_method: 'terminal',
+            profile_photo: onboardingState.data.profilePhoto || null,
+            stripe_payment_intent_id: paymentIntentId
+        };
+
+        if (onboardingState.data.documentType === 'waiver') {
+            payload.document_data = signatureCanvas.toDataURL('image/png');
+            payload.waiver_text = document.getElementById('waiver-text-display').textContent;
+        } else {
+            const fileInput = document.getElementById('medical-file');
+            if (fileInput.files && fileInput.files[0]) {
+                payload.document_data = await fileToBase64(fileInput.files[0]);
+            }
+        }
+
+        const res = await fetch('/api/staff/onboard-client', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify(payload)
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            closeOnboardingWizard();
+            showTemporaryPasswordModal(data.name, data.username, data.temporary_password);
+            await loadStaffData();
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Registration failed', 'error');
+        }
+    } catch (error) {
+        console.error('Terminal onboarding error:', error);
+        showToast(error.message || 'Registration failed', 'error');
+    } finally {
+        completeBtn.disabled = false;
+        completeBtn.textContent = 'Complete Registration';
+    }
+}
+
+async function cancelTerminalPayment() {
+    if (!terminalPaymentIntentId) return;
+    try {
+        await fetch('/api/terminal/cancel-payment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ payment_intent_id: terminalPaymentIntentId })
+        });
+    } catch (e) { console.error('Cancel error:', e); }
+    stopTerminalPolling();
+    document.getElementById('pos-processing').classList.add('hidden');
+    document.getElementById('pos-initial').classList.remove('hidden');
+    const btn = document.getElementById('onboard-complete-btn');
+    btn.disabled = false;
+    btn.textContent = 'Complete Registration';
+}
+
+function retryTerminalPayment() {
+    stopTerminalPolling();
+    document.getElementById('pos-error').classList.add('hidden');
+    document.getElementById('pos-initial').classList.remove('hidden');
+    const btn = document.getElementById('onboard-complete-btn');
+    btn.disabled = false;
+    btn.textContent = 'Complete Registration';
 }
 
 // Document type selection
@@ -2891,6 +3123,14 @@ async function completeOnboarding() {
             completeBtn.textContent = 'Generating QR Code...';
             await startQrPayment();
             completeBtn.textContent = 'Waiting for QR Payment...';
+            return;
+        }
+
+        // If terminal payment, start terminal flow and return (auto-completes after payment)
+        if (onboardingState.data.paymentMethod === 'terminal') {
+            completeBtn.textContent = 'Processing on terminal...';
+            await startTerminalPayment();
+            completeBtn.textContent = 'Waiting for terminal payment...';
             return;
         }
 

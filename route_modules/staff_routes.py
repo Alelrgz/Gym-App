@@ -946,7 +946,7 @@ async def onboard_new_client(
                 db.add(new_subscription)
 
                 # Create payment record if payment was made
-                if payment_method in ("card", "cash", "qr") and plan.price > 0:
+                if payment_method in ("card", "cash", "qr", "terminal") and plan.price > 0:
                     payment_id = str(uuid.uuid4())
                     payment_record = PaymentORM(
                         id=payment_id,
@@ -955,7 +955,7 @@ async def onboard_new_client(
                         gym_id=user.gym_owner_id,
                         amount=plan.price,
                         currency=plan.currency or "usd",
-                        status="succeeded" if payment_method in ("card", "qr") else "recorded",
+                        status="succeeded" if payment_method in ("card", "qr", "terminal") else "recorded",
                         stripe_payment_intent_id=stripe_payment_intent_id,
                         description=f"Onboarding: {plan.name}",
                         payment_method=payment_method,
