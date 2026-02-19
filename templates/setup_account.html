@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Set Up Your Account - FitOS</title>
+    <title>Configurazione Account - FitOS</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -209,12 +209,12 @@
         </div>
 
         <!-- Title -->
-        <h1 class="text-2xl font-bold text-white text-center mb-2">Welcome to FitOS!</h1>
-        <p class="text-gray-400 text-center text-sm mb-6">Let's set up your personal account</p>
+        <h1 class="text-2xl font-bold text-white text-center mb-2">Benvenuto su FitOS!</h1>
+        <p class="text-gray-400 text-center text-sm mb-6">Configuriamo il tuo account personale</p>
 
         <!-- Info Box -->
         <div class="info-box">
-            <strong>Almost there!</strong> Please choose your username and password to complete your registration.
+            <strong>Ci siamo quasi!</strong> Scegli il tuo nome utente e la password per completare la registrazione.
         </div>
 
         <!-- Error Message -->
@@ -224,10 +224,10 @@
 
         <!-- Setup Form -->
         <form id="setup-form" action="/auth/setup-account" method="POST">
-            <label class="input-label">Choose your username</label>
+            <label class="input-label">Scegli il tuo nome utente</label>
             <div class="input-group">
                 <input type="text" id="new_username" name="new_username"
-                       placeholder="Username" required minlength="3"
+                       placeholder="Nome utente" required minlength="3"
                        value="{{ current_username }}">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
@@ -235,30 +235,30 @@
                 </svg>
             </div>
 
-            <label class="input-label">Create your password</label>
+            <label class="input-label">Crea la tua password</label>
             <div class="input-group">
                 <input type="password" id="new_password" name="new_password"
-                       placeholder="Min 12 characters" required minlength="12">
+                       placeholder="Minimo 12 caratteri" required minlength="12">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 </svg>
             </div>
 
-            <label class="input-label">Confirm your password</label>
+            <label class="input-label">Conferma la tua password</label>
             <div class="input-group">
                 <input type="password" id="confirm_password" name="confirm_password"
-                       placeholder="Confirm Password" required minlength="12">
+                       placeholder="Conferma password" required minlength="12">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <polyline points="20 6 9 17 4 12"/>
                 </svg>
             </div>
 
-            <button type="submit" class="btn-primary">Complete Setup</button>
+            <button type="submit" class="btn-primary">Completa Configurazione</button>
         </form>
 
         <p class="text-center text-gray-500 text-xs mt-4">
-            Your account details are secure and private.
+            I dettagli del tuo account sono sicuri e privati.
         </p>
     </div>
 
@@ -271,7 +271,7 @@
             if (password !== confirm) {
                 e.preventDefault();
                 const errorEl = document.getElementById('error-msg');
-                errorEl.textContent = 'Passwords do not match';
+                errorEl.textContent = 'Le password non corrispondono';
                 errorEl.style.display = 'block';
             }
         });

@@ -42,12 +42,12 @@
             <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=facilities' }}"
                class="staff-nav-item owner-sidebar-item {{ 'active' if mode == 'facilities' }}">
                 <i data-lucide="map-pin" class="w-[18px] h-[18px]"></i>
-                <span>Facilities</span>
+                <span>Strutture</span>
             </a>
             <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=settings' }}"
                class="staff-nav-item owner-sidebar-item {{ 'active' if mode == 'settings' }}">
                 <i data-lucide="settings" class="w-[18px] h-[18px]"></i>
-                <span>Settings</span>
+                <span>Impostazioni</span>
             </a>
         </nav>
 
@@ -56,7 +56,7 @@
         <div style="display:flex;flex-direction:column;gap:0.25rem;">
             <a href="/auth/logout" class="staff-nav-item" style="color:#f87171;">
                 <i data-lucide="log-out" class="w-[18px] h-[18px]"></i>
-                <span>Logout</span>
+                <span>Esci</span>
             </a>
         </div>
     </aside>
@@ -67,14 +67,14 @@
 <div class="p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
     <!-- Mobile header -->
     <div class="lg:hidden text-center mb-5">
-        <h1 class="text-2xl font-black tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent" id="gym-name-owner">My Gym</h1>
-        <p class="text-xs text-gray-500 uppercase tracking-widest mt-1">{{ 'Settings' if mode == 'settings' else ('CRM' if mode == 'crm' else ('Facilities' if mode == 'facilities' else 'Dashboard')) }}</p>
+        <h1 class="text-2xl font-black tracking-tight bg-gradient-to-r from-primary to-orange-400 bg-clip-text text-transparent" id="gym-name-owner">La Mia Palestra</h1>
+        <p class="text-xs text-gray-500 uppercase tracking-widest mt-1">{{ 'Impostazioni' if mode == 'settings' else ('CRM' if mode == 'crm' else ('Strutture' if mode == 'facilities' else 'Dashboard')) }}</p>
     </div>
     <!-- Desktop header -->
     <div class="hidden lg:flex justify-between items-start mb-6">
         <div>
-            <p class="label-uppercase mb-1">{{ 'Settings' if mode == 'settings' else ('CRM' if mode == 'crm' else ('Facilities' if mode == 'facilities' else 'Dashboard')) }}</p>
-            <h2 class="heading-page" id="desktop-gym-name">My Gym</h2>
+            <p class="label-uppercase mb-1">{{ 'Impostazioni' if mode == 'settings' else ('CRM' if mode == 'crm' else ('Strutture' if mode == 'facilities' else 'Dashboard')) }}</p>
+            <h2 class="heading-page" id="desktop-gym-name">La Mia Palestra</h2>
         </div>
         <div class="flex gap-3">
             <div data-action="showModal" data-target="notification-modal" class="w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center cursor-pointer">
@@ -88,7 +88,7 @@
 
     <!-- Gym Branding Card -->
     {% call card(classes="p-5 mb-5") %}
-    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Gym Branding</h3>
+    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Branding Palestra</h3>
 
     <!-- Gym Logo -->
     <div class="flex items-center gap-4 mb-5">
@@ -96,14 +96,14 @@
             <span id="gym-logo-placeholder">G</span>
         </div>
         <div class="flex-1">
-            <p class="text-sm text-white font-semibold mb-2">Gym Logo</p>
+            <p class="text-sm text-white font-semibold mb-2">Logo Palestra</p>
             <div class="flex gap-2">
                 <button onclick="document.getElementById('gym-logo-input').click()"
                     class="text-xs bg-primary/20 hover:bg-primary/30 text-primary px-3 py-2 rounded-lg transition">
-                    Upload Logo
+                    Carica Logo
                 </button>
                 <button onclick="deleteGymLogo()" id="delete-logo-btn" class="hidden text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 px-3 py-2 rounded-lg transition">
-                    Remove
+                    Elimina
                 </button>
             </div>
             <input type="file" id="gym-logo-input" accept="image/*" class="hidden" onchange="uploadGymLogo(this)">
@@ -112,7 +112,7 @@
 
     <!-- Gym Name (read-only display, edit via modal) -->
     <div>
-        <label class="text-xs text-gray-400 uppercase tracking-wider block mb-2">Gym Name</label>
+        <label class="text-xs text-gray-400 uppercase tracking-wider block mb-2">Nome Palestra</label>
         <div class="flex gap-2 items-center">
             <div id="gym-name-display" class="flex-1 bg-white/5 border border-white/10 rounded-xl p-3 text-white text-sm opacity-60">—</div>
             <button onclick="openGymNameModal()"
@@ -127,13 +127,13 @@
     <!-- Gym Code Card - Prominent -->
     {% call card(classes="p-5 mb-5") %}
     <div class="text-center">
-        <p class="text-xs text-gray-400 uppercase tracking-wider mb-2">Your Gym Code</p>
+        <p class="text-xs text-gray-400 uppercase tracking-wider mb-2">Il tuo Codice Palestra</p>
         <p class="text-4xl font-mono font-black text-primary tracking-widest mb-2" id="gym-code-display">------</p>
-        <p class="text-sm text-gray-500 mb-4">Share this code with trainers and clients</p>
+        <p class="text-sm text-gray-500 mb-4">Condividi questo codice con trainer e clienti</p>
         <button onclick="copyGymCode()" id="copy-gym-code-btn"
             class="bg-primary hover:bg-primary/80 text-white px-6 py-3 rounded-xl transition flex items-center gap-2 mx-auto font-bold">
             <span id="copy-icon"><i data-lucide="clipboard" class="w-4 h-4"></i></span>
-            <span id="copy-text">Copy Code</span>
+            <span id="copy-text">Copia Codice</span>
         </button>
     </div>
     {% endcall %}
@@ -143,12 +143,12 @@
     <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Account</h3>
     <div class="space-y-3">
         <div class="flex justify-between items-center">
-            <span class="text-gray-400">Role</span>
-            <span class="text-white font-semibold">Gym Owner</span>
+            <span class="text-gray-400">Ruolo</span>
+            <span class="text-white font-semibold">Proprietario Palestra</span>
         </div>
         <div class="flex justify-between items-center">
-            <span class="text-gray-400">Status</span>
-            <span class="text-green-400 font-semibold">Active</span>
+            <span class="text-gray-400">Stato</span>
+            <span class="text-green-400 font-semibold">Attivo</span>
         </div>
     </div>
     {% endcall %}
@@ -156,34 +156,34 @@
     <!-- Stripe Connect - Payment Setup -->
     {% call card(classes="p-4 mb-5") %}
     <div class="flex items-center justify-between mb-3">
-        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Payment Setup</h3>
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Configurazione Pagamenti</h3>
         <span id="stripe-status-badge" class="text-xs px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400">
-            Checking...
+            Verifica...
         </span>
     </div>
     <div id="stripe-connect-content">
         <!-- Not Connected State -->
         <div id="stripe-not-connected" class="hidden">
             <p class="text-sm text-gray-400 mb-4">
-                Connect your Stripe account to receive payments directly.
+                Connetti il tuo account Stripe per ricevere pagamenti direttamente.
             </p>
             <button onclick="startStripeConnect()"
                 class="w-full bg-[#635BFF] hover:bg-[#5851DB] text-white py-3 rounded-xl font-bold transition flex items-center justify-center gap-2">
                 <svg class="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                     <path d="M13.976 9.15c-2.172-.806-3.356-1.426-3.356-2.409 0-.831.683-1.305 1.901-1.305 2.227 0 4.515.858 6.09 1.631l.89-5.494C18.252.975 15.697 0 12.165 0 9.667 0 7.589.654 6.104 1.872 4.56 3.147 3.757 4.992 3.757 7.218c0 4.039 2.467 5.76 6.476 7.219 2.585.92 3.445 1.574 3.445 2.583 0 .98-.84 1.545-2.354 1.545-1.875 0-4.965-.921-6.99-2.109l-.9 5.555C5.175 22.99 8.385 24 11.714 24c2.641 0 4.843-.624 6.328-1.813 1.664-1.305 2.525-3.236 2.525-5.732 0-4.128-2.524-5.851-6.591-7.305z"/>
                 </svg>
-                Connect with Stripe
+                Connetti con Stripe
             </button>
         </div>
 
         <!-- Pending State -->
         <div id="stripe-pending" class="hidden">
             <p class="text-sm text-yellow-400 mb-3">
-                <i data-lucide="loader" class="w-4 h-4 inline-block align-middle stroke-current"></i> Setup incomplete. Complete the onboarding.
+                <i data-lucide="loader" class="w-4 h-4 inline-block align-middle stroke-current"></i> Configurazione incompleta. Completa la registrazione.
             </p>
             <button onclick="startStripeConnect()"
                 class="w-full bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 py-3 rounded-xl font-bold transition">
-                Continue Setup →
+                Continua Configurazione →
             </button>
         </div>
 
@@ -194,13 +194,13 @@
                     <span class="text-green-400 text-xl">✓</span>
                 </div>
                 <div>
-                    <p class="text-sm font-semibold text-green-400">Payments Enabled</p>
-                    <p class="text-xs text-gray-400">Subscriptions paid to your account</p>
+                    <p class="text-sm font-semibold text-green-400">Pagamenti Attivi</p>
+                    <p class="text-xs text-gray-400">I pagamenti degli abbonamenti arrivano sul tuo conto</p>
                 </div>
             </div>
             <button onclick="openStripeDashboard()"
                 class="w-full bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2">
-                <i data-lucide="dollar-sign" class="w-4 h-4 inline-block align-middle"></i> View Dashboard
+                <i data-lucide="dollar-sign" class="w-4 h-4 inline-block align-middle"></i> Vedi Dashboard
             </button>
         </div>
     </div>
@@ -209,57 +209,57 @@
     <!-- POS Terminal Setup -->
     {% call card(classes="p-4 mb-5") %}
     <div class="flex items-center justify-between mb-3">
-        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">POS Terminal</h3>
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Terminale POS</h3>
         <span id="terminal-status-badge" class="text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-400">
-            Checking...
+            Verifica...
         </span>
     </div>
     <div id="terminal-setup-content">
         <!-- Requires Connect -->
         <div id="terminal-needs-connect" class="hidden">
-            <p class="text-sm text-gray-500">Set up Stripe payments first to enable POS terminal.</p>
+            <p class="text-sm text-gray-500">Configura prima i pagamenti Stripe per abilitare il terminale POS.</p>
         </div>
 
         <!-- Step 1: Create Location -->
         <div id="terminal-no-location" class="hidden">
-            <p class="text-sm text-gray-400 mb-3">Set up your gym's address to register a POS reader.</p>
+            <p class="text-sm text-gray-400 mb-3">Inserisci l'indirizzo della palestra per registrare un lettore POS.</p>
             <div class="space-y-2 mb-3">
-                <input id="terminal-address-line1" type="text" placeholder="Address line 1"
+                <input id="terminal-address-line1" type="text" placeholder="Indirizzo"
                     class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500">
                 <div class="grid grid-cols-2 gap-2">
-                    <input id="terminal-address-city" type="text" placeholder="City"
+                    <input id="terminal-address-city" type="text" placeholder="Città"
                         class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500">
-                    <input id="terminal-address-postal" type="text" placeholder="Postal code"
+                    <input id="terminal-address-postal" type="text" placeholder="CAP"
                         class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500">
                 </div>
                 <select id="terminal-address-country"
                     class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white">
-                    <option value="IT">Italy</option>
-                    <option value="US">United States</option>
-                    <option value="GB">United Kingdom</option>
-                    <option value="DE">Germany</option>
-                    <option value="FR">France</option>
-                    <option value="ES">Spain</option>
+                    <option value="IT">Italia</option>
+                    <option value="US">Stati Uniti</option>
+                    <option value="GB">Regno Unito</option>
+                    <option value="DE">Germania</option>
+                    <option value="FR">Francia</option>
+                    <option value="ES">Spagna</option>
                 </select>
             </div>
             <button onclick="setupTerminalLocation()"
                 class="w-full bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 py-2.5 rounded-xl font-semibold transition text-sm">
-                Create Terminal Location
+                Crea Posizione Terminale
             </button>
         </div>
 
         <!-- Step 2: Register Reader -->
         <div id="terminal-no-reader" class="hidden">
-            <p class="text-sm text-gray-400 mb-3">Enter the registration code shown on your reader's screen.</p>
+            <p class="text-sm text-gray-400 mb-3">Inserisci il codice di registrazione mostrato sullo schermo del lettore.</p>
             <div class="space-y-2 mb-3">
-                <input id="terminal-reg-code" type="text" placeholder="e.g. blue-fox-red"
+                <input id="terminal-reg-code" type="text" placeholder="es. blue-fox-red"
                     class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500">
-                <input id="terminal-label" type="text" placeholder="Label (e.g. Front Desk)" value="Front Desk"
+                <input id="terminal-label" type="text" placeholder="Etichetta (es. Reception)" value="Reception"
                     class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500">
             </div>
             <button onclick="registerTerminalReader()"
                 class="w-full bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 py-2.5 rounded-xl font-semibold transition text-sm">
-                Register Reader
+                Registra Lettore
             </button>
         </div>
 
@@ -270,11 +270,11 @@
                     <i data-lucide="smartphone-nfc" class="w-5 h-5 text-green-400"></i>
                 </div>
                 <div>
-                    <p class="text-sm font-semibold text-green-400" id="terminal-reader-label">Reader</p>
+                    <p class="text-sm font-semibold text-green-400" id="terminal-reader-label">Lettore</p>
                     <p class="text-xs text-gray-400" id="terminal-reader-status">Online</p>
                 </div>
             </div>
-            <p class="text-xs text-gray-500">POS terminal is ready. Staff can now accept card-present payments during client onboarding.</p>
+            <p class="text-xs text-gray-500">Il terminale POS è pronto. Lo staff può ora accettare pagamenti con carta durante la registrazione dei clienti.</p>
         </div>
     </div>
     {% endcall %}
@@ -282,51 +282,51 @@
     <!-- Shower System Settings -->
     {% call card(classes="p-4 mb-5") %}
     <div class="flex items-center justify-between mb-3">
-        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Shower System</h3>
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Sistema Docce</h3>
         <i data-lucide="droplets" class="w-4 h-4 text-cyan-400"></i>
     </div>
 
     <div class="space-y-4">
         <div>
-            <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Timer Duration (minutes)</label>
+            <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Durata Timer (minuti)</label>
             <input type="number" id="shower-timer-input" min="1" max="30" value="8"
                 class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500/50 transition">
         </div>
 
         <div>
-            <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Daily Limit per Member</label>
+            <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Limite Giornaliero per Membro</label>
             <input type="number" id="shower-limit-input" min="1" max="20" value="3"
                 class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-cyan-500/50 transition">
         </div>
 
         <button onclick="saveShowerSettings()"
             class="w-full bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 py-2.5 rounded-xl font-bold transition text-sm">
-            Save Shower Settings
+            Salva Impostazioni Docce
         </button>
     </div>
 
     <!-- Device API Key -->
     <div class="mt-5 pt-4 border-t border-white/10">
-        <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Device API Key (for ESP32)</label>
+        <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Chiave API Dispositivo (per ESP32)</label>
         <div class="flex gap-2">
             <input type="text" id="device-api-key-display" readonly
                 class="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono opacity-60"
-                value="Not generated yet">
+                value="Non ancora generata">
             <button onclick="copyDeviceKey()" title="Copy" class="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition">
                 <i data-lucide="clipboard" class="w-4 h-4 text-gray-400"></i>
             </button>
         </div>
         <button onclick="generateDeviceKey()"
             class="mt-2 w-full bg-white/10 hover:bg-white/20 text-white py-2 rounded-xl font-semibold transition text-sm">
-            Generate New Key
+            Genera Nuova Chiave
         </button>
-        <p class="text-xs text-gray-500 mt-2">Regenerating the key will disconnect all currently configured ESP32 devices.</p>
+        <p class="text-xs text-gray-500 mt-2">Rigenerare la chiave disconnetterà tutti i dispositivi ESP32 attualmente configurati.</p>
     </div>
     {% endcall %}
 
     <!-- Logout Button -->
     <a href="/auth/logout" class="block w-full bg-red-500/20 hover:bg-red-500/30 text-red-400 text-center py-3 rounded-xl font-bold transition">
-        Logout
+        Esci
     </a>
 
     {% elif mode == 'crm' %}
@@ -338,31 +338,31 @@
     <div class="relative z-10">
         <div class="flex items-center justify-between mb-4">
             <div>
-                <p class="text-xs text-gray-400 uppercase tracking-wider">Retention Overview</p>
-                <h2 class="text-2xl font-bold mt-1">Client Health</h2>
+                <p class="text-xs text-gray-400 uppercase tracking-wider">Panoramica Fidelizzazione</p>
+                <h2 class="text-2xl font-bold mt-1">Salute Clienti</h2>
             </div>
             <select id="analytics-period" onchange="loadRetentionAnalytics()"
                 class="bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white outline-none">
-                <option value="week">Last 7 days</option>
-                <option value="month" selected>Last 30 days</option>
+                <option value="week">Ultimi 7 giorni</option>
+                <option value="month" selected>Ultimi 30 giorni</option>
             </select>
         </div>
         <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
             <div class="text-center p-3 bg-white/5 rounded-xl">
                 <p class="text-3xl font-bold text-green-400" id="engagement-rate">--%</p>
-                <p class="text-xs text-gray-400 mt-1">Engagement Rate</p>
+                <p class="text-xs text-gray-400 mt-1">Tasso di Coinvolgimento</p>
             </div>
             <div class="text-center p-3 bg-white/5 rounded-xl">
                 <p class="text-3xl font-bold text-yellow-400" id="at-risk-count">--</p>
-                <p class="text-xs text-gray-400 mt-1">At Risk</p>
+                <p class="text-xs text-gray-400 mt-1">A Rischio</p>
             </div>
             <div class="text-center p-3 bg-white/5 rounded-xl">
                 <p class="text-3xl font-bold text-red-400" id="churn-rate">--%</p>
-                <p class="text-xs text-gray-400 mt-1">Churn Rate</p>
+                <p class="text-xs text-gray-400 mt-1">Tasso Abbandono</p>
             </div>
             <div class="text-center p-3 bg-white/5 rounded-xl">
                 <p class="text-3xl font-bold text-blue-400" id="avg-health">--</p>
-                <p class="text-xs text-gray-400 mt-1">Avg Health Score</p>
+                <p class="text-xs text-gray-400 mt-1">Punteggio Salute Medio</p>
             </div>
         </div>
     </div>
@@ -370,27 +370,27 @@
 
     <!-- Client Pipeline / Funnel -->
     <div class="mb-5">
-        <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-3">Client Pipeline</h3>
+        <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-3">Pipeline Clienti</h3>
         <div class="grid grid-cols-4 gap-3">
             <div class="glass-card p-4 text-center border-t-4 border-green-400">
                 <p class="text-2xl font-bold text-green-400" id="pipeline-new">--</p>
-                <p class="text-xs text-gray-400 mt-1">New</p>
-                <p class="text-[10px] text-gray-500">&lt; 14 days</p>
+                <p class="text-xs text-gray-400 mt-1">Nuovi</p>
+                <p class="text-[10px] text-gray-500">&lt; 14 giorni</p>
             </div>
             <div class="glass-card p-4 text-center border-t-4 border-blue-400">
                 <p class="text-2xl font-bold text-blue-400" id="pipeline-active">--</p>
-                <p class="text-xs text-gray-400 mt-1">Active</p>
-                <p class="text-[10px] text-gray-500">Engaged</p>
+                <p class="text-xs text-gray-400 mt-1">Attivi</p>
+                <p class="text-[10px] text-gray-500">Coinvolti</p>
             </div>
             <div class="glass-card p-4 text-center border-t-4 border-yellow-400">
                 <p class="text-2xl font-bold text-yellow-400" id="pipeline-at-risk">--</p>
-                <p class="text-xs text-gray-400 mt-1">At Risk</p>
-                <p class="text-[10px] text-gray-500">5-14 days</p>
+                <p class="text-xs text-gray-400 mt-1">A Rischio</p>
+                <p class="text-[10px] text-gray-500">5-14 giorni</p>
             </div>
             <div class="glass-card p-4 text-center border-t-4 border-red-400">
                 <p class="text-2xl font-bold text-red-400" id="pipeline-churning">--</p>
-                <p class="text-xs text-gray-400 mt-1">Churning</p>
-                <p class="text-[10px] text-gray-500">&gt; 14 days</p>
+                <p class="text-xs text-gray-400 mt-1">In Abbandono</p>
+                <p class="text-[10px] text-gray-500">&gt; 14 giorni</p>
             </div>
         </div>
     </div>
@@ -398,12 +398,12 @@
     <!-- At-Risk Clients List -->
     <div class="mb-5">
         <div class="flex justify-between items-center mb-3">
-            <h3 class="text-sm font-bold text-white uppercase tracking-wider">At-Risk Clients</h3>
-            <span class="text-xs text-yellow-400"><i data-lucide="alert-triangle" class="w-3 h-3 inline-block align-middle"></i> Needs attention</span>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Clienti a Rischio</h3>
+            <span class="text-xs text-yellow-400"><i data-lucide="alert-triangle" class="w-3 h-3 inline-block align-middle"></i> Richiede attenzione</span>
         </div>
         <div id="at-risk-list" class="space-y-2 max-h-96 overflow-y-auto">
             <div class="glass-card p-3 text-center text-gray-400 text-sm">
-                Loading...
+                Caricamento...
             </div>
         </div>
     </div>
@@ -411,14 +411,14 @@
     <!-- Recent Interactions -->
     <div class="mb-5">
         <div class="flex justify-between items-center mb-3">
-            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Recent Activity</h3>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Attività Recenti</h3>
             <button onclick="loadInteractions()" class="text-xs bg-white/10 px-3 py-1.5 rounded-lg hover:bg-white/20 transition font-semibold">
-                ↻ Refresh
+                ↻ Aggiorna
             </button>
         </div>
         <div id="interactions-list" class="space-y-2 max-h-64 overflow-y-auto">
             <div class="glass-card p-3 text-center text-gray-400 text-sm">
-                Loading activity...
+                Caricamento attività...
             </div>
         </div>
     </div>
@@ -426,13 +426,13 @@
     <!-- Medical Certificates Overview -->
     <div class="mb-5">
         <div class="flex justify-between items-center mb-3">
-            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Medical Certificates</h3>
+            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Certificati Medici</h3>
             <button onclick="loadCertificatesOverview()" class="text-xs bg-white/10 px-3 py-1.5 rounded-lg hover:bg-white/20 transition font-semibold">
-                ↻ Refresh
+                ↻ Aggiorna
             </button>
         </div>
         <div id="certificates-overview" class="space-y-2 max-h-64 overflow-y-auto">
-            <div class="glass-card p-3 text-center text-gray-400 text-sm">Loading...</div>
+            <div class="glass-card p-3 text-center text-gray-400 text-sm">Caricamento...</div>
         </div>
     </div>
 
@@ -446,19 +446,19 @@
                 <i data-lucide="layers" class="w-4 h-4 text-teal-400"></i>
             </div>
             <div class="flex-1">
-                <h3 class="text-sm font-bold text-teal-400 uppercase tracking-wider">Activity Types</h3>
-                <p class="text-xs text-gray-500">Tennis, paddle, soccer, yoga & more</p>
+                <h3 class="text-sm font-bold text-teal-400 uppercase tracking-wider">Tipi di Attività</h3>
+                <p class="text-xs text-gray-500">Tennis, padel, calcio, yoga e altro</p>
             </div>
             <button onclick="openCreateActivityTypeModal()"
                 class="text-xs bg-teal-500/20 text-teal-400 px-3 py-1.5 rounded-lg hover:bg-teal-500/30 transition font-semibold">
-                + New
+                + Nuovo
             </button>
         </div>
         <div id="activity-types-grid" class="grid grid-cols-2 md:grid-cols-3 gap-3">
             <div class="glass-card p-4 text-center text-gray-500 text-sm col-span-full">
                 <i data-lucide="plus-circle" class="w-8 h-8 mx-auto mb-2 text-gray-600"></i>
-                <p>No activity types yet</p>
-                <p class="text-xs text-gray-600 mt-1">Click "+ New" to get started</p>
+                <p>Nessun tipo di attività</p>
+                <p class="text-xs text-gray-600 mt-1">Clicca "+ Nuovo" per iniziare</p>
             </div>
         </div>
     </section>
@@ -470,16 +470,16 @@
                 <i data-lucide="chevron-left" class="w-4 h-4 text-orange-400"></i>
             </button>
             <div class="flex-1">
-                <h3 class="text-sm font-bold text-orange-400 uppercase tracking-wider" id="facilities-section-title">Facilities</h3>
-                <p class="text-xs text-gray-500">Courts, fields & rooms</p>
+                <h3 class="text-sm font-bold text-orange-400 uppercase tracking-wider" id="facilities-section-title">Strutture</h3>
+                <p class="text-xs text-gray-500">Campi, sale e strutture</p>
             </div>
             <button onclick="openCreateFacilityModal()"
                 class="text-xs bg-orange-500/20 text-orange-400 px-3 py-1.5 rounded-lg hover:bg-orange-500/30 transition font-semibold">
-                + New
+                + Nuovo
             </button>
         </div>
         <div id="facilities-list" class="space-y-3">
-            <div class="glass-card p-4 text-center text-gray-500 text-sm">No facilities yet</div>
+            <div class="glass-card p-4 text-center text-gray-500 text-sm">Nessuna struttura</div>
         </div>
     </section>
 
@@ -490,8 +490,8 @@
                 <i data-lucide="chevron-left" class="w-4 h-4 text-purple-400"></i>
             </button>
             <div class="flex-1">
-                <h3 class="text-sm font-bold text-purple-400 uppercase tracking-wider" id="facility-avail-title">Set Availability</h3>
-                <p class="text-xs text-gray-500">Weekly schedule</p>
+                <h3 class="text-sm font-bold text-purple-400 uppercase tracking-wider" id="facility-avail-title">Imposta Disponibilità</h3>
+                <p class="text-xs text-gray-500">Orario settimanale</p>
             </div>
         </div>
         {% call card(classes="p-5 relative overflow-hidden") %}
@@ -501,7 +501,7 @@
             </div>
             <button onclick="saveFacilityAvailability()"
                 class="w-full mt-5 bg-primary text-white font-bold py-3 rounded-xl hover:bg-primary/80 transition">
-                Save Availability
+                Salva Disponibilità
             </button>
         </div>
         {% endcall %}
@@ -514,13 +514,13 @@
                 <i data-lucide="calendar-check" class="w-4 h-4 text-blue-400"></i>
             </div>
             <div>
-                <h3 class="text-sm font-bold text-blue-400 uppercase tracking-wider">Upcoming Bookings</h3>
-                <p class="text-xs text-gray-500">Client reservations</p>
+                <h3 class="text-sm font-bold text-blue-400 uppercase tracking-wider">Prenotazioni Imminenti</h3>
+                <p class="text-xs text-gray-500">Prenotazioni clienti</p>
             </div>
         </div>
         <div id="facility-bookings-list" class="space-y-2 max-h-96 overflow-y-auto">
             <div class="glass-card p-3 text-center text-gray-400 text-sm">
-                No upcoming bookings
+                Nessuna prenotazione imminente
             </div>
         </div>
     </section>
@@ -532,32 +532,32 @@
         onclick="if(event.target === this) hideModal('activity-type-modal')">
         <div class="glass-card p-6 rounded-2xl max-w-md w-full">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold" id="activity-type-modal-title">New Activity Type</h3>
+                <h3 class="text-xl font-bold" id="activity-type-modal-title">Nuovo Tipo di Attività</h3>
                 <button onclick="hideModal('activity-type-modal')" class="text-2xl text-gray-400 hover:text-white">&times;</button>
             </div>
             <form id="activity-type-form" class="space-y-4" onsubmit="event.preventDefault(); saveActivityType()">
                 <input type="hidden" id="activity-type-id">
                 <div>
-                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Name</label>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Nome</label>
                     <input type="text" id="activity-type-name" required
                         class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none"
-                        placeholder="e.g. Tennis, Paddle, Soccer">
+                        placeholder="es. Tennis, Padel, Calcio">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Emoji (optional)</label>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Emoji (opzionale)</label>
                     <input type="text" id="activity-type-emoji" maxlength="4"
                         class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none text-2xl"
                         placeholder="🎾">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Description (optional)</label>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Descrizione (opzionale)</label>
                     <input type="text" id="activity-type-description"
                         class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none"
-                        placeholder="Brief description">
+                        placeholder="Breve descrizione">
                 </div>
                 <div class="flex gap-3">
-                    <button type="submit" class="flex-1 bg-primary text-white font-bold py-3 rounded-xl hover:bg-primary/80 transition">Save</button>
-                    <button type="button" onclick="hideModal('activity-type-modal')" class="flex-1 bg-white/10 text-white font-bold py-3 rounded-xl hover:bg-white/20 transition">Cancel</button>
+                    <button type="submit" class="flex-1 bg-primary text-white font-bold py-3 rounded-xl hover:bg-primary/80 transition">Salva</button>
+                    <button type="button" onclick="hideModal('activity-type-modal')" class="flex-1 bg-white/10 text-white font-bold py-3 rounded-xl hover:bg-white/20 transition">Annulla</button>
                 </div>
             </form>
         </div>
@@ -568,40 +568,40 @@
         onclick="if(event.target === this) hideModal('facility-modal')">
         <div class="glass-card p-6 rounded-2xl max-w-md w-full">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-xl font-bold" id="facility-modal-title">New Facility</h3>
+                <h3 class="text-xl font-bold" id="facility-modal-title">Nuova Struttura</h3>
                 <button onclick="hideModal('facility-modal')" class="text-2xl text-gray-400 hover:text-white">&times;</button>
             </div>
             <form id="facility-form" class="space-y-4" onsubmit="event.preventDefault(); saveFacility()">
                 <input type="hidden" id="facility-id">
                 <input type="hidden" id="facility-activity-type-id">
                 <div>
-                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Name</label>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Nome</label>
                     <input type="text" id="facility-name" required
                         class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none"
-                        placeholder="e.g. Court 1, Room A">
+                        placeholder="es. Campo 1, Sala A">
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="text-xs text-gray-500 uppercase font-bold ml-1">Slot Duration (min)</label>
+                        <label class="text-xs text-gray-500 uppercase font-bold ml-1">Durata Slot (min)</label>
                         <input type="number" id="facility-slot-duration" value="60" min="15" step="15"
                             class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none">
                     </div>
                     <div>
-                        <label class="text-xs text-gray-500 uppercase font-bold ml-1">Price per Slot</label>
+                        <label class="text-xs text-gray-500 uppercase font-bold ml-1">Prezzo per Slot</label>
                         <input type="number" id="facility-price" step="0.01" min="0"
                             class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none"
-                            placeholder="0 = free">
+                            placeholder="0 = gratuito">
                     </div>
                 </div>
                 <div>
-                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Max Participants (optional)</label>
+                    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Max Partecipanti (opzionale)</label>
                     <input type="number" id="facility-max-participants" min="1"
                         class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none"
-                        placeholder="Leave empty for single booking">
+                        placeholder="Lascia vuoto per prenotazione singola">
                 </div>
                 <div class="flex gap-3">
-                    <button type="submit" class="flex-1 bg-primary text-white font-bold py-3 rounded-xl hover:bg-primary/80 transition">Save</button>
-                    <button type="button" onclick="hideModal('facility-modal')" class="flex-1 bg-white/10 text-white font-bold py-3 rounded-xl hover:bg-white/20 transition">Cancel</button>
+                    <button type="submit" class="flex-1 bg-primary text-white font-bold py-3 rounded-xl hover:bg-primary/80 transition">Salva</button>
+                    <button type="button" onclick="hideModal('facility-modal')" class="flex-1 bg-white/10 text-white font-bold py-3 rounded-xl hover:bg-white/20 transition">Annulla</button>
                 </div>
             </form>
         </div>
@@ -616,7 +616,7 @@
             <div class="w-7 h-7 rounded-lg bg-yellow-500/20 flex items-center justify-center">
                 <i data-lucide="alert-circle" class="w-4 h-4 text-yellow-400"></i>
             </div>
-            <h3 class="text-sm font-bold text-yellow-400 uppercase tracking-wider">Pending Staff Approvals</h3>
+            <h3 class="text-sm font-bold text-yellow-400 uppercase tracking-wider">Approvazioni Staff in Attesa</h3>
         </div>
         <div id="pending-trainers-list" class="space-y-3"></div>
     </div>
@@ -634,22 +634,22 @@
                         <i data-lucide="dollar-sign" class="w-4 h-4 text-green-400"></i>
                     </div>
                     <div>
-                        <h3 class="text-sm font-bold text-green-400 uppercase tracking-wider">Operations</h3>
-                        <p class="text-xs text-gray-500">Revenue & business metrics</p>
+                        <h3 class="text-sm font-bold text-green-400 uppercase tracking-wider">Operazioni</h3>
+                        <p class="text-xs text-gray-500">Ricavi e metriche aziendali</p>
                     </div>
                 </div>
                 {% call card(classes="p-5 relative overflow-hidden") %}
                 <div class="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent"></div>
                 <div class="relative z-10">
-                    <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Monthly Revenue</p>
+                    <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Ricavi Mensili</p>
                     <h1 class="text-4xl font-black text-green-400 mb-4" id="revenue-display">$0</h1>
                     <div class="space-y-2 text-sm">
                         <div class="flex justify-between">
-                            <span class="text-gray-400">Subscriptions</span>
+                            <span class="text-gray-400">Abbonamenti</span>
                             <span class="font-bold" id="active-subscriptions">0</span>
                         </div>
                         <div class="flex justify-between">
-                            <span class="text-gray-400">Active Clients</span>
+                            <span class="text-gray-400">Clienti Attivi</span>
                             <span class="font-bold" id="active-members">...</span>
                         </div>
                         <div class="flex justify-between">
@@ -668,33 +668,33 @@
                         <i data-lucide="package" class="w-4 h-4 text-purple-400"></i>
                     </div>
                     <div>
-                        <h3 class="text-sm font-bold text-purple-400 uppercase tracking-wider">Products</h3>
-                        <p class="text-xs text-gray-500">Plans & promotional offers</p>
+                        <h3 class="text-sm font-bold text-purple-400 uppercase tracking-wider">Prodotti</h3>
+                        <p class="text-xs text-gray-500">Piani e offerte promozionali</p>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- Plans -->
                     <div class="glass-card p-4 rounded-2xl">
                         <div class="flex justify-between items-center mb-3">
-                            <h4 class="text-sm font-bold text-white">Plans</h4>
+                            <h4 class="text-sm font-bold text-white">Piani</h4>
                             <button onclick="openCreatePlanModal()" class="text-xs bg-purple-500/20 text-purple-400 px-3 py-1.5 rounded-lg hover:bg-purple-500/30 transition font-semibold">
-                                + New
+                                + Nuovo
                             </button>
                         </div>
                         <div id="subscription-plans-list" class="space-y-2 max-h-72 overflow-y-auto">
-                            <div class="text-center text-gray-400 text-sm py-4">No plans yet</div>
+                            <div class="text-center text-gray-400 text-sm py-4">Nessun piano</div>
                         </div>
                     </div>
                     <!-- Offers -->
                     <div class="glass-card p-4 rounded-2xl">
                         <div class="flex justify-between items-center mb-3">
-                            <h4 class="text-sm font-bold text-white"><i data-lucide="gift" class="w-4 h-4 inline-block align-middle text-purple-400"></i> Offers</h4>
+                            <h4 class="text-sm font-bold text-white"><i data-lucide="gift" class="w-4 h-4 inline-block align-middle text-purple-400"></i> Offerte</h4>
                             <button onclick="openCreateOfferModal()" class="text-xs bg-purple-500/20 text-purple-400 px-3 py-1.5 rounded-lg hover:bg-purple-500/30 transition font-semibold">
-                                + Create
+                                + Crea
                             </button>
                         </div>
                         <div id="offers-list" class="space-y-2 max-h-72 overflow-y-auto">
-                            <div class="text-center text-gray-400 text-sm py-4">No offers yet</div>
+                            <div class="text-center text-gray-400 text-sm py-4">Nessuna offerta</div>
                         </div>
                     </div>
                 </div>
@@ -707,33 +707,33 @@
                         <i data-lucide="zap" class="w-4 h-4 text-blue-400"></i>
                     </div>
                     <div>
-                        <h3 class="text-sm font-bold text-blue-400 uppercase tracking-wider">Automation</h3>
-                        <p class="text-xs text-gray-500">Automated client outreach</p>
+                        <h3 class="text-sm font-bold text-blue-400 uppercase tracking-wider">Automazione</h3>
+                        <p class="text-xs text-gray-500">Comunicazione automatica ai clienti</p>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- Message Templates -->
                     <div class="glass-card p-4 rounded-2xl">
                         <div class="flex justify-between items-center mb-3">
-                            <h4 class="text-sm font-bold text-white">Message Templates</h4>
+                            <h4 class="text-sm font-bold text-white">Modelli Messaggi</h4>
                             <button onclick="openCreateTemplateModal()" class="text-xs bg-blue-500/20 text-blue-400 px-3 py-1.5 rounded-lg hover:bg-blue-500/30 transition font-semibold">
-                                + Create
+                                + Crea
                             </button>
                         </div>
                         <div id="templates-list" class="space-y-3 max-h-72 overflow-y-auto">
-                            <div class="text-center text-gray-400 text-sm py-4">Loading templates...</div>
+                            <div class="text-center text-gray-400 text-sm py-4">Caricamento modelli...</div>
                         </div>
                     </div>
                     <!-- Automation Activity Log -->
                     <div class="glass-card p-4 rounded-2xl">
                         <div class="flex justify-between items-center mb-3">
-                            <h4 class="text-sm font-bold text-white">Recent Activity</h4>
+                            <h4 class="text-sm font-bold text-white">Attività Recenti</h4>
                             <button onclick="manualTriggerCheck()" class="text-xs bg-blue-500/20 text-blue-400 px-3 py-1.5 rounded-lg hover:bg-blue-500/30 transition font-semibold">
-                                Run Check
+                                Esegui Controllo
                             </button>
                         </div>
                         <div id="message-log" class="space-y-2 max-h-72 overflow-y-auto">
-                            <div class="text-center text-gray-400 text-sm py-4">Loading activity...</div>
+                            <div class="text-center text-gray-400 text-sm py-4">Caricamento attività...</div>
                         </div>
                     </div>
                 </div>
@@ -752,17 +752,17 @@
                     </div>
                     <div>
                         <h3 class="text-sm font-bold text-orange-400 uppercase tracking-wider">Team</h3>
-                        <p class="text-xs text-gray-500">Your trainers & staff</p>
+                        <p class="text-xs text-gray-500">I tuoi trainer e staff</p>
                     </div>
                 </div>
                 <div class="glass-card p-4 rounded-2xl">
                     <div class="flex justify-end mb-3">
                         <button onclick="openTrainersModal()" class="text-xs text-orange-400 hover:text-orange-300 transition font-semibold">
-                            View All &rarr;
+                            Vedi Tutti &rarr;
                         </button>
                     </div>
                     <div id="dashboard-trainers-list" class="space-y-2 max-h-80 overflow-y-auto">
-                        <div class="text-center text-gray-400 text-sm py-4">Loading team...</div>
+                        <div class="text-center text-gray-400 text-sm py-4">Caricamento team...</div>
                     </div>
                 </div>
             </section>
@@ -774,8 +774,8 @@
                         <i data-lucide="activity" class="w-4 h-4 text-slate-400"></i>
                     </div>
                     <div>
-                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Live Feed</h3>
-                        <p class="text-xs text-gray-500">Recent gym activity</p>
+                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Feed Live</h3>
+                        <p class="text-xs text-gray-500">Attività recenti della palestra</p>
                     </div>
                 </div>
                 <div id="activity-feed" class="glass-card divide-y divide-white/5 flex-1 overflow-y-auto min-h-[200px]"></div>
@@ -792,64 +792,64 @@
 <!-- Create/Edit Plan Modal -->
 <div id="plan-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="glass-card p-6 rounded-2xl max-w-md w-full">
-        <h3 class="text-xl font-bold mb-4" id="plan-modal-title">Create Subscription Plan</h3>
+        <h3 class="text-xl font-bold mb-4" id="plan-modal-title">Crea Piano di Abbonamento</h3>
 
         <form id="plan-form" class="space-y-4">
             <input type="hidden" id="plan-id">
 
             <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Plan Name</label>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Nome Piano</label>
                 <input type="text" id="plan-name" required
                     class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
-                    placeholder="e.g., Basic, Premium, VIP">
+                    placeholder="es. Base, Premium, VIP">
             </div>
 
             <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Description</label>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Descrizione</label>
                 <textarea id="plan-description" rows="2"
                     class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
-                    placeholder="Brief description of this plan"></textarea>
+                    placeholder="Breve descrizione del piano"></textarea>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Price ($)</label>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Prezzo (€)</label>
                     <input type="number" id="plan-price" required step="0.01" min="0"
                         class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
                         placeholder="29.99">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Billing</label>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Fatturazione</label>
                     <select id="plan-interval"
                         class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition">
-                        <option value="month">Monthly</option>
-                        <option value="year">Yearly</option>
+                        <option value="month">Mensile</option>
+                        <option value="year">Annuale</option>
                     </select>
                 </div>
             </div>
 
             <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Free Trial (days)</label>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Periodo di Prova (giorni)</label>
                 <input type="number" id="plan-trial" min="0" value="0"
                     class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
                     placeholder="0">
             </div>
 
             <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Features (one per line)</label>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Caratteristiche (una per riga)</label>
                 <textarea id="plan-features" rows="3"
                     class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
-                    placeholder="Unlimited workouts&#10;Meal plans&#10;1-on-1 coaching"></textarea>
+                    placeholder="Allenamenti illimitati&#10;Piani alimentari&#10;Coaching 1-a-1"></textarea>
             </div>
 
             <div class="flex space-x-3 pt-2">
                 <button type="button" onclick="closePlanModal()"
                     class="flex-1 bg-white/10 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white/20 transition">
-                    Cancel
+                    Annulla
                 </button>
                 <button type="submit"
                     class="flex-1 bg-primary px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/80 transition">
-                    <span id="plan-submit-btn">Create Plan</span>
+                    <span id="plan-submit-btn">Crea Piano</span>
                 </button>
             </div>
         </form>
@@ -859,17 +859,17 @@
 <!-- Create/Edit Offer Modal -->
 <div id="offer-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <h3 class="text-xl font-bold mb-4" id="offer-modal-title">Create Promotional Offer</h3>
+        <h3 class="text-xl font-bold mb-4" id="offer-modal-title">Crea Offerta Promozionale</h3>
 
         <form id="offer-form" class="space-y-4">
             <input type="hidden" id="offer-id">
 
             <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Offer Title</label>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Titolo Offerta</label>
                 <div class="relative">
                     <input type="text" id="offer-title" required
                         class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 pr-10 text-sm text-white outline-none focus:border-green-500/50 transition"
-                        placeholder="e.g., New Year Special, Summer Sale">
+                        placeholder="es. Offerta Capodanno, Saldi Estivi">
                     <button type="button" onclick="toggleEmojiPicker('offer-title')"
                         class="absolute right-2 top-1/2 -translate-y-1/2 hover:scale-110 transition" title="Add emoji">
                         <i data-lucide="smile-plus" class="w-5 h-5 stroke-current text-gray-400"></i>
@@ -878,11 +878,11 @@
             </div>
 
             <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Description</label>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Descrizione</label>
                 <div class="relative">
                     <textarea id="offer-description" rows="2"
                         class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 pr-10 text-sm text-white outline-none focus:border-green-500/50 transition"
-                        placeholder="Describe the offer to attract clients"></textarea>
+                        placeholder="Descrivi l'offerta per attirare clienti"></textarea>
                     <button type="button" onclick="toggleEmojiPicker('offer-description')"
                         class="absolute right-2 top-2 hover:scale-110 transition" title="Add emoji">
                         <i data-lucide="smile-plus" class="w-5 h-5 stroke-current text-gray-400"></i>
@@ -891,25 +891,25 @@
             </div>
 
             <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Apply to Plan (optional)</label>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Applica al Piano (opzionale)</label>
                 <select id="offer-plan-id"
                     class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition">
-                    <option value="">All Plans</option>
+                    <option value="">Tutti i Piani</option>
                     <!-- Plans will be loaded dynamically -->
                 </select>
             </div>
 
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Discount Type</label>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Tipo Sconto</label>
                     <select id="offer-discount-type" required
                         class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition">
-                        <option value="percent">Percentage (%)</option>
-                        <option value="fixed">Fixed Amount (€)</option>
+                        <option value="percent">Percentuale (%)</option>
+                        <option value="fixed">Importo Fisso (€)</option>
                     </select>
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Discount Value</label>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Valore Sconto</label>
                     <input type="number" id="offer-discount-value" required step="0.01" min="0"
                         class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition"
                         placeholder="e.g., 20">
@@ -918,13 +918,13 @@
 
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Duration (months)</label>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Durata (mesi)</label>
                     <input type="number" id="offer-duration" min="1" value="1"
                         class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition"
                         placeholder="1">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Coupon Code (optional)</label>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Codice Coupon (opzionale)</label>
                     <input type="text" id="offer-coupon"
                         class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition uppercase"
                         placeholder="e.g., SUMMER50">
@@ -933,26 +933,26 @@
 
             <div class="grid grid-cols-2 gap-3">
                 <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Expires On (optional)</label>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Scade il (opzionale)</label>
                     <input type="date" id="offer-expires"
                         class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Max Uses (optional)</label>
+                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Limite Utilizzo (opzionale)</label>
                     <input type="number" id="offer-max-uses" min="1"
                         class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition"
-                        placeholder="Unlimited">
+                        placeholder="Illimitato">
                 </div>
             </div>
 
             <div class="flex gap-2 mt-6">
                 <button type="button" onclick="closeOfferModal()"
                     class="flex-1 bg-white/10 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white/20 transition">
-                    Cancel
+                    Annulla
                 </button>
                 <button type="submit"
                     class="flex-1 bg-green-500 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-500/80 transition">
-                    <span id="offer-submit-btn">Create Offer</span>
+                    <span id="offer-submit-btn">Crea Offerta</span>
                 </button>
             </div>
         </form>
@@ -964,7 +964,7 @@
     <div class="glass-card rounded-2xl max-w-lg w-full max-h-[80vh] flex flex-col">
         <!-- Header -->
         <div class="p-5 border-b border-white/10 flex justify-between items-center">
-            <h3 class="text-xl font-bold">Team Management</h3>
+            <h3 class="text-xl font-bold">Gestione Team</h3>
             <button onclick="closeTrainersModal()" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 transition flex items-center justify-center">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -978,7 +978,7 @@
             <div id="modal-pending-section" class="mb-5 hidden">
                 <h4 class="text-sm font-bold text-yellow-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                     <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
-                    Pending Approvals
+                    Approvazioni in Attesa
                 </h4>
                 <div id="modal-pending-trainers" class="space-y-2">
                     <!-- Pending trainers loaded here -->
@@ -987,20 +987,20 @@
 
             <!-- Active Trainers Section -->
             <div>
-                <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-3">Active Trainers</h4>
+                <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-3">Trainer Attivi</h4>
                 <div id="modal-approved-trainers" class="space-y-2">
-                    <div class="p-3 text-center text-gray-400 text-sm">Loading...</div>
+                    <div class="p-3 text-center text-gray-400 text-sm">Caricamento...</div>
                 </div>
             </div>
         </div>
 
         <!-- Footer with gym code -->
         <div class="p-4 border-t border-white/10 bg-white/5">
-            <p class="text-xs text-gray-400 text-center">Share your gym code to invite trainers</p>
+            <p class="text-xs text-gray-400 text-center">Condividi il codice palestra per invitare trainer</p>
             <div class="flex items-center justify-center gap-2 mt-2">
                 <code class="bg-black/30 px-3 py-1.5 rounded-lg text-primary font-mono text-sm" id="modal-gym-code">{{ gym_id[:8] if gym_id else '...' }}</code>
                 <button onclick="copyGymCode()" class="text-xs bg-primary/20 text-primary px-3 py-1.5 rounded-lg hover:bg-primary/30 transition">
-                    Copy
+                    Copia
                 </button>
             </div>
         </div>
@@ -1009,7 +1009,7 @@
 
 <!-- Emoji Picker Popup -->
 <div id="emoji-picker" class="fixed z-[60] hidden bg-[#1a1a1a] border border-white/20 rounded-xl shadow-2xl p-3 w-72">
-    <div class="text-xs text-gray-400 uppercase tracking-wider mb-2">Popular</div>
+    <div class="text-xs text-gray-400 uppercase tracking-wider mb-2">Popolari</div>
     <div class="grid grid-cols-8 gap-1 mb-3" id="emoji-popular">
         <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🎉</button>
         <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🎁</button>
@@ -1031,7 +1031,7 @@
         <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🎯</button>
         <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">❤️</button>
     </div>
-    <div class="text-xs text-gray-400 uppercase tracking-wider mb-2">Seasonal</div>
+    <div class="text-xs text-gray-400 uppercase tracking-wider mb-2">Stagionali</div>
     <div class="grid grid-cols-8 gap-1 mb-3">
         <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🎄</button>
         <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🎆</button>
@@ -1042,7 +1042,7 @@
         <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🎃</button>
         <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">💝</button>
     </div>
-    <div class="text-xs text-gray-400 uppercase tracking-wider mb-2">Other</div>
+    <div class="text-xs text-gray-400 uppercase tracking-wider mb-2">Altro</div>
     <div class="grid grid-cols-8 gap-1">
         <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">👍</button>
         <button type="button" class="emoji-btn text-xl p-1 hover:bg-white/10 rounded transition">🚀</button>
@@ -1058,17 +1058,17 @@
 <!-- Create/Edit Template Modal -->
 <div id="template-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="glass-card p-6 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
-        <h3 class="text-xl font-bold mb-4" id="template-modal-title">Create Automated Message</h3>
+        <h3 class="text-xl font-bold mb-4" id="template-modal-title">Crea Messaggio Automatico</h3>
 
         <form id="template-form" class="space-y-4" onsubmit="saveTemplate(event)">
             <input type="hidden" id="template-id">
 
             <!-- Template Name -->
             <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Template Name</label>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Nome Modello</label>
                 <input type="text" id="template-name" required
                     class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
-                    placeholder="e.g., Inactive Client Reminder">
+                    placeholder="es. Promemoria Cliente Inattivo">
             </div>
 
             <!-- Trigger Type -->
@@ -1076,66 +1076,66 @@
                 <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Trigger</label>
                 <select id="template-trigger" required onchange="updateTriggerConfig()"
                     class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition">
-                    <option value="missed_workout">Missed Workout (scheduled but not completed)</option>
-                    <option value="days_inactive">Days Inactive (no workouts in X days)</option>
-                    <option value="no_show_appointment">No-Show Appointment</option>
+                    <option value="missed_workout">Allenamento Mancato (programmato ma non completato)</option>
+                    <option value="days_inactive">Giorni Inattivo (nessun allenamento in X giorni)</option>
+                    <option value="no_show_appointment">Appuntamento Non Presentato</option>
                 </select>
             </div>
 
             <!-- Trigger Config (dynamic) -->
             <div id="trigger-config-section" class="hidden">
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Days Threshold</label>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Soglia Giorni</label>
                 <input type="number" id="trigger-days-threshold" min="1" value="5"
                     class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
                     placeholder="5">
-                <p class="text-xs text-gray-500 mt-1">Send message when client hasn't worked out for this many days</p>
+                <p class="text-xs text-gray-500 mt-1">Invia messaggio quando il cliente non si allena da questo numero di giorni</p>
             </div>
 
             <!-- Delivery Methods -->
             <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Delivery Methods</label>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Metodi di Consegna</label>
                 <div class="space-y-2">
                     <label class="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" id="delivery-in-app" checked class="rounded bg-black/20 border-white/20 text-primary focus:ring-primary/50">
-                        <span class="text-sm">In-App Notification</span>
+                        <span class="text-sm">Notifica In-App</span>
                     </label>
                     <label class="flex items-center gap-2 cursor-pointer opacity-50">
                         <input type="checkbox" id="delivery-email" disabled class="rounded bg-black/20 border-white/20">
-                        <span class="text-sm">Email (Coming Soon)</span>
+                        <span class="text-sm">Email (Prossimamente)</span>
                     </label>
                     <label class="flex items-center gap-2 cursor-pointer opacity-50">
                         <input type="checkbox" id="delivery-whatsapp" disabled class="rounded bg-black/20 border-white/20">
-                        <span class="text-sm">WhatsApp (Coming Soon)</span>
+                        <span class="text-sm">WhatsApp (Prossimamente)</span>
                     </label>
                 </div>
             </div>
 
             <!-- Message Template -->
             <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Message</label>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Messaggio</label>
                 <textarea id="template-message" rows="4" required
                     class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
-                    placeholder="Hey {client_name}, we noticed you missed your workout..."></textarea>
+                    placeholder="Ciao {client_name}, abbiamo notato che hai saltato il tuo allenamento..."></textarea>
                 <p class="text-xs text-gray-500 mt-1">
-                    Variables: <span class="text-primary">{client_name}</span>, <span class="text-primary">{days_inactive}</span>, <span class="text-primary">{workout_title}</span>, <span class="text-primary">{trainer_name}</span>
+                    Variabili: <span class="text-primary">{client_name}</span>, <span class="text-primary">{days_inactive}</span>, <span class="text-primary">{workout_title}</span>, <span class="text-primary">{trainer_name}</span>
                 </p>
             </div>
 
             <!-- Preview Button -->
             <button type="button" onclick="previewTemplate()"
                 class="w-full bg-white/10 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white/20 transition">
-                Preview Message
+                Anteprima Messaggio
             </button>
 
             <!-- Preview Output -->
             <div id="template-preview" class="hidden bg-black/30 rounded-lg p-3 border border-white/10">
-                <p class="text-xs text-gray-400 uppercase mb-2">Preview</p>
+                <p class="text-xs text-gray-400 uppercase mb-2">Anteprima</p>
                 <p id="preview-output" class="text-sm text-white"></p>
             </div>
 
             <!-- Enable Toggle -->
             <div class="flex items-center justify-between pt-2">
-                <span class="text-sm">Enable this template</span>
+                <span class="text-sm">Attiva questo modello</span>
                 <label class="relative inline-flex items-center cursor-pointer">
                     <input type="checkbox" id="template-enabled" checked class="sr-only peer">
                     <div class="w-11 h-6 bg-gray-700 peer-focus:ring-2 peer-focus:ring-primary/50 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
@@ -1146,11 +1146,11 @@
             <div class="flex space-x-3 pt-2">
                 <button type="button" onclick="closeTemplateModal()"
                     class="flex-1 bg-white/10 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white/20 transition">
-                    Cancel
+                    Annulla
                 </button>
                 <button type="submit"
                     class="flex-1 bg-primary px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/80 transition">
-                    <span id="template-submit-btn">Create Template</span>
+                    <span id="template-submit-btn">Crea Modello</span>
                 </button>
             </div>
         </form>
@@ -1233,7 +1233,7 @@ async function loadSubscriptionPlans() {
         });
 
         console.log('Plans response status:', response.status);
-        if (!response.ok) throw new Error('Failed to load plans');
+        if (!response.ok) throw new Error('Impossibile caricare i piani');
 
         const plans = await response.json();
         console.log('Plans loaded:', plans);
@@ -1252,7 +1252,7 @@ function displayPlans(plans) {
     if (!plans || plans.length === 0) {
         container.innerHTML = `
             <div class="glass-card p-3 text-center text-gray-400 text-sm">
-                No plans yet
+                Nessun piano
             </div>
         `;
         return;
@@ -1264,9 +1264,9 @@ function displayPlans(plans) {
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2">
                         <h4 class="font-bold text-sm truncate">${escapeHtml(plan.name)}</h4>
-                        ${!plan.is_active ? '<span class="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded">Off</span>' : ''}
+                        ${!plan.is_active ? '<span class="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded">Disattivo</span>' : ''}
                     </div>
-                    <p class="text-xs text-gray-400 mt-0.5">$${plan.price}/${plan.billing_interval === 'year' ? 'yr' : 'mo'} · ${plan.active_subscriptions || 0} subs</p>
+                    <p class="text-xs text-gray-400 mt-0.5">$${plan.price}/${plan.billing_interval === 'year' ? 'anno' : 'mese'} · ${plan.active_subscriptions || 0} abb.</p>
                 </div>
                 <div class="flex gap-1 flex-shrink-0">
                     <button onclick="editPlan('${plan.id}')" class="p-1.5 rounded hover:bg-white/10 transition text-gray-400 hover:text-white">
@@ -1301,8 +1301,8 @@ function updateRevenue(plans) {
 // Modal functions
 function openCreatePlanModal() {
     currentPlanId = null;
-    document.getElementById('plan-modal-title').textContent = 'Create Subscription Plan';
-    document.getElementById('plan-submit-btn').textContent = 'Create Plan';
+    document.getElementById('plan-modal-title').textContent = 'Crea Piano di Abbonamento';
+    document.getElementById('plan-submit-btn').textContent = 'Crea Piano';
     document.getElementById('plan-form').reset();
     document.getElementById('plan-id').value = '';
     document.getElementById('plan-modal').classList.remove('hidden');
@@ -1321,12 +1321,12 @@ async function editPlan(planId) {
         const plans = await response.json();
         const plan = plans.find(p => p.id === planId);
 
-        if (!plan) throw new Error('Plan not found');
+        if (!plan) throw new Error('Piano non trovato');
 
         currentPlanId = planId;
         document.getElementById('plan-id').value = planId;
-        document.getElementById('plan-modal-title').textContent = 'Edit Subscription Plan';
-        document.getElementById('plan-submit-btn').textContent = 'Update Plan';
+        document.getElementById('plan-modal-title').textContent = 'Modifica Piano di Abbonamento';
+        document.getElementById('plan-submit-btn').textContent = 'Aggiorna Piano';
         document.getElementById('plan-name').value = plan.name;
         document.getElementById('plan-description').value = plan.description || '';
         document.getElementById('plan-price').value = plan.price;
@@ -1336,12 +1336,12 @@ async function editPlan(planId) {
         document.getElementById('plan-modal').classList.remove('hidden');
     } catch (error) {
         console.error('Error loading plan:', error);
-        showToast('Failed to load plan details', 'error');
+        showToast('Impossibile caricare i dettagli del piano', 'error');
     }
 }
 
 async function deletePlan(planId, planName) {
-    if (!confirm(`Are you sure you want to delete the "${planName}" plan? This action cannot be undone.`)) {
+    if (!confirm(`Sei sicuro di voler eliminare il piano "${planName}"? Questa azione non può essere annullata.`)) {
         return;
     }
 
@@ -1353,10 +1353,10 @@ async function deletePlan(planId, planName) {
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to delete plan');
+            throw new Error(error.detail || 'Impossibile eliminare il piano');
         }
 
-        showToast('Plan deleted successfully', 'success');
+        showToast('Piano eliminato con successo', 'success');
         loadSubscriptionPlans();
     } catch (error) {
         console.error('Error deleting plan:', error);
@@ -1402,10 +1402,10 @@ if (planForm) {
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.detail || 'Failed to save plan');
+                throw new Error(error.detail || 'Impossibile salvare il piano');
             }
 
-            showToast(currentPlanId ? 'Plan updated successfully' : 'Plan created successfully', 'success');
+            showToast(currentPlanId ? 'Piano aggiornato con successo' : 'Piano creato con successo', 'success');
             closePlanModal();
             loadSubscriptionPlans();
         } catch (error) {
@@ -1436,7 +1436,7 @@ async function loadOffers() {
             credentials: 'include'
         });
 
-        if (!response.ok) throw new Error('Failed to load offers');
+        if (!response.ok) throw new Error('Impossibile caricare le offerte');
 
         const offers = await response.json();
         displayOffers(offers);
@@ -1452,7 +1452,7 @@ function displayOffers(offers) {
     if (!offers || offers.length === 0) {
         container.innerHTML = `
             <div class="glass-card p-3 text-center text-gray-400 text-sm">
-                No offers yet. Create offers to attract clients!
+                Nessuna offerta. Crea offerte per attirare clienti!
             </div>
         `;
         return;
@@ -1463,7 +1463,7 @@ function displayOffers(offers) {
             ? `${offer.discount_value}%`
             : `€${offer.discount_value}`;
         const statusColor = offer.is_active ? 'green' : 'yellow';
-        const statusText = offer.is_active ? 'Active' : 'Draft';
+        const statusText = offer.is_active ? 'Attivo' : 'Bozza';
         const expiryDate = offer.expires_at ? new Date(offer.expires_at).toLocaleDateString() : null;
 
         return `
@@ -1473,7 +1473,7 @@ function displayOffers(offers) {
                         <!-- Discount badge -->
                         <div class="flex-shrink-0 w-16 h-16 rounded-xl bg-gradient-to-br from-green-500/20 to-emerald-500/10 border border-green-500/20 flex flex-col items-center justify-center">
                             <span class="text-xl font-bold text-green-400">${discountText}</span>
-                            <span class="text-[10px] uppercase tracking-wider text-green-400/70">off</span>
+                            <span class="text-[10px] uppercase tracking-wider text-green-400/70">sconto</span>
                         </div>
 
                         <!-- Title and info -->
@@ -1484,8 +1484,8 @@ function displayOffers(offers) {
                             </div>
                             ${offer.description ? `<p class="text-xs text-gray-400 line-clamp-1 mb-1">${offer.description}</p>` : ''}
                             <div class="flex items-center gap-3 text-xs text-gray-500">
-                                <span>${offer.discount_duration_months} month${offer.discount_duration_months > 1 ? 's' : ''}</span>
-                                ${expiryDate ? `<span>· Until ${expiryDate}</span>` : ''}
+                                <span>${offer.discount_duration_months} mes${offer.discount_duration_months > 1 ? 'i' : 'e'}</span>
+                                ${expiryDate ? `<span>· Fino al ${expiryDate}</span>` : ''}
                                 ${offer.coupon_code ? `<span class="text-primary font-mono">${offer.coupon_code}</span>` : ''}
                             </div>
                         </div>
@@ -1495,26 +1495,26 @@ function displayOffers(offers) {
                 <!-- Actions -->
                 <div class="px-4 py-3 bg-white/[0.02] border-t border-white/5 flex items-center justify-between">
                     ${!offer.is_active ? `
-                        <span class="text-[10px] text-yellow-400/70"><i data-lucide="megaphone" class="w-3 h-3 inline-block align-middle"></i> Activating will notify all clients</span>
+                        <span class="text-[10px] text-yellow-400/70"><i data-lucide="megaphone" class="w-3 h-3 inline-block align-middle"></i> L'attivazione notificherà tutti i clienti</span>
                     ` : `
                         <span></span>
                     `}
                     <div class="flex items-center gap-2">
                         ${offer.is_active ? `
-                            <button onclick="toggleOffer('${offer.id}', false)" class="p-2 rounded-lg hover:bg-yellow-500/10 text-yellow-400 hover:text-yellow-300 transition" title="Pause">
+                            <button onclick="toggleOffer('${offer.id}', false)" class="p-2 rounded-lg hover:bg-yellow-500/10 text-yellow-400 hover:text-yellow-300 transition" title="Pausa">
                                 <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
                                 </svg>
                             </button>
                         ` : `
-                            <button onclick="toggleOffer('${offer.id}', true)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/20 hover:bg-green-500/30 text-green-400 text-xs font-semibold transition" title="Activate & Notify Clients">
+                            <button onclick="toggleOffer('${offer.id}', true)" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/20 hover:bg-green-500/30 text-green-400 text-xs font-semibold transition" title="Attiva e Notifica Clienti">
                                 <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"/>
                                 </svg>
-                                Activate
+                                Attiva
                             </button>
                         `}
-                        <button onclick="deleteOffer('${offer.id}', '${offer.title.replace(/'/g, "\\'")}')" class="p-2 rounded-lg hover:bg-red-500/10 text-red-400 hover:text-red-300 transition" title="Delete">
+                        <button onclick="deleteOffer('${offer.id}', '${offer.title.replace(/'/g, "\\'")}')" class="p-2 rounded-lg hover:bg-red-500/10 text-red-400 hover:text-red-300 transition" title="Elimina">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                             </svg>
@@ -1529,8 +1529,8 @@ function displayOffers(offers) {
 async function openCreateOfferModal() {
     currentOfferId = null;
     document.getElementById('offer-id').value = '';
-    document.getElementById('offer-modal-title').textContent = 'Create Promotional Offer';
-    document.getElementById('offer-submit-btn').textContent = 'Create Offer';
+    document.getElementById('offer-modal-title').textContent = 'Crea Offerta Promozionale';
+    document.getElementById('offer-submit-btn').textContent = 'Crea Offerta';
 
     // Reset form
     document.getElementById('offer-form').reset();
@@ -1552,7 +1552,7 @@ async function loadPlansForOfferDropdown() {
 
         if (response.ok) {
             availablePlansForOffer = await response.json();
-            select.innerHTML = '<option value="">All Plans</option>' +
+            select.innerHTML = '<option value="">Tutti i Piani</option>' +
                 availablePlansForOffer.map(p => `<option value="${p.id}">${p.name} - €${p.price}/${p.billing_interval}</option>`).join('');
         }
     } catch (e) {
@@ -1568,7 +1568,7 @@ function closeOfferModal() {
 async function toggleOffer(offerId, isActive) {
     // Confirm activation (since it notifies all clients)
     if (isActive) {
-        if (!confirm('Activate this offer?\n\nAll gym clients will receive a notification about this offer.')) {
+        if (!confirm('Attivare questa offerta?\n\nTutti i clienti della palestra riceveranno una notifica su questa offerta.')) {
             return;
         }
     }
@@ -1583,14 +1583,14 @@ async function toggleOffer(offerId, isActive) {
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to update offer');
+            throw new Error(error.detail || 'Impossibile aggiornare l\'offerta');
         }
 
         const result = await response.json();
         if (isActive && result.notifications_sent) {
-            showToast('Offer activated! Clients have been notified', 'success');
+            showToast('Offerta attivata! I clienti sono stati notificati', 'success');
         } else {
-            showToast(isActive ? 'Offer activated' : 'Offer paused', 'success');
+            showToast(isActive ? 'Offerta attivata' : 'Offerta in pausa', 'success');
         }
         loadOffers();
     } catch (error) {
@@ -1600,7 +1600,7 @@ async function toggleOffer(offerId, isActive) {
 }
 
 async function deleteOffer(offerId, offerTitle) {
-    if (!confirm(`Are you sure you want to delete the "${offerTitle}" offer?`)) {
+    if (!confirm(`Sei sicuro di voler eliminare l'offerta "${offerTitle}"?`)) {
         return;
     }
 
@@ -1612,10 +1612,10 @@ async function deleteOffer(offerId, offerTitle) {
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to delete offer');
+            throw new Error(error.detail || 'Impossibile eliminare l\'offerta');
         }
 
-        showToast('Offer deleted successfully', 'success');
+        showToast('Offerta eliminata con successo', 'success');
         loadOffers();
     } catch (error) {
         console.error('Error deleting offer:', error);
@@ -1651,10 +1651,10 @@ if (offerForm) {
 
             if (!response.ok) {
                 const error = await response.json();
-                throw new Error(error.detail || 'Failed to create offer');
+                throw new Error(error.detail || 'Impossibile creare l\'offerta');
             }
 
-            showToast('Offer created as draft. Activate to notify clients.', 'success');
+            showToast('Offerta creata come bozza. Attiva per notificare i clienti.', 'success');
             closeOfferModal();
             loadOffers();
         } catch (error) {
@@ -1689,7 +1689,7 @@ async function loadStripeConnectStatus() {
             credentials: 'include'
         });
 
-        if (!response.ok) throw new Error('Failed to check status');
+        if (!response.ok) throw new Error('Impossibile verificare lo stato');
 
         const data = await response.json();
 
@@ -1700,23 +1700,23 @@ async function loadStripeConnectStatus() {
 
         if (!data.connected) {
             // Not connected
-            badge.textContent = 'Not Set Up';
+            badge.textContent = 'Non Configurato';
             badge.className = 'text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-400';
             notConnected?.classList.remove('hidden');
         } else if (data.can_receive_payments) {
             // Fully connected
-            badge.textContent = 'Active';
+            badge.textContent = 'Attivo';
             badge.className = 'text-xs px-2 py-1 rounded-full bg-green-500/20 text-green-400';
             connected?.classList.remove('hidden');
         } else {
             // Pending verification
-            badge.textContent = 'Pending';
+            badge.textContent = 'In Attesa';
             badge.className = 'text-xs px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400';
             pending?.classList.remove('hidden');
         }
     } catch (error) {
         console.error('Error loading Stripe status:', error);
-        badge.textContent = 'Error';
+        badge.textContent = 'Errore';
         badge.className = 'text-xs px-2 py-1 rounded-full bg-red-500/20 text-red-400';
         notConnected?.classList.remove('hidden');
     }
@@ -1731,7 +1731,7 @@ async function startStripeConnect() {
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to start onboarding');
+            throw new Error(error.detail || 'Impossibile avviare la configurazione');
         }
 
         const data = await response.json();
@@ -1740,11 +1740,11 @@ async function startStripeConnect() {
             // Redirect to Stripe onboarding
             window.location.href = data.onboarding_url;
         } else {
-            alert('Failed to get onboarding link');
+            alert('Impossibile ottenere il link di registrazione');
         }
     } catch (error) {
         console.error('Error starting Stripe Connect:', error);
-        alert('Error: ' + error.message);
+        alert('Errore: ' + error.message);
     }
 }
 
@@ -1756,7 +1756,7 @@ async function openStripeDashboard() {
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to get dashboard link');
+            throw new Error(error.detail || 'Impossibile ottenere il link alla dashboard');
         }
 
         const data = await response.json();
@@ -1764,11 +1764,11 @@ async function openStripeDashboard() {
         if (data.url) {
             window.open(data.url, '_blank');
         } else {
-            alert('Failed to get dashboard link');
+            alert('Impossibile ottenere il link della dashboard');
         }
     } catch (error) {
         console.error('Error opening Stripe dashboard:', error);
-        alert('Error: ' + error.message);
+        alert('Errore: ' + error.message);
     }
 }
 
@@ -1788,8 +1788,8 @@ async function loadTerminalStatus() {
 
     // Check if Stripe Connect is active first
     const connectBadge = document.getElementById('stripe-status-badge');
-    if (connectBadge && connectBadge.textContent.trim() !== 'Active') {
-        badge.textContent = 'Requires Payments';
+    if (connectBadge && connectBadge.textContent.trim() !== 'Attivo') {
+        badge.textContent = 'Richiede Pagamenti';
         badge.className = 'text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-400';
         needsConnect?.classList.remove('hidden');
         return;
@@ -1797,30 +1797,30 @@ async function loadTerminalStatus() {
 
     try {
         const res = await fetch('/api/terminal/readers', { credentials: 'include' });
-        if (!res.ok) throw new Error('Failed to check terminal');
+        if (!res.ok) throw new Error('Impossibile verificare il terminale');
 
         const data = await res.json();
 
         if (data.readers && data.readers.length > 0) {
             const reader = data.readers[0];
-            badge.textContent = reader.status === 'online' ? 'Online' : 'Registered';
+            badge.textContent = reader.status === 'online' ? 'Online' : 'Registrato';
             badge.className = reader.status === 'online'
                 ? 'text-xs px-2 py-1 rounded-full bg-green-500/20 text-green-400'
                 : 'text-xs px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400';
-            document.getElementById('terminal-reader-label').textContent = reader.label || 'Reader';
+            document.getElementById('terminal-reader-label').textContent = reader.label || 'Lettore';
             document.getElementById('terminal-reader-status').textContent =
                 `${reader.device_type || 'Reader'} — ${reader.status}`;
             registered?.classList.remove('hidden');
         } else {
             // No readers - check if location exists by trying to create (it returns existing)
-            badge.textContent = 'Not Set Up';
+            badge.textContent = 'Non Configurato';
             badge.className = 'text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-400';
             // Show register reader if we already have a location, otherwise show location setup
             noLocation?.classList.remove('hidden');
         }
     } catch (error) {
         console.error('Error loading terminal status:', error);
-        badge.textContent = 'Not Set Up';
+        badge.textContent = 'Non Configurato';
         badge.className = 'text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-400';
         noLocation?.classList.remove('hidden');
     }
@@ -1833,7 +1833,7 @@ async function setupTerminalLocation() {
     const country = document.getElementById('terminal-address-country')?.value;
 
     if (!line1 || !city || !postal) {
-        showToast('Please fill in address, city, and postal code', 'error');
+        showToast('Compila indirizzo, città e CAP', 'error');
         return;
     }
 
@@ -1849,25 +1849,25 @@ async function setupTerminalLocation() {
 
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || 'Failed to create location');
+            throw new Error(err.detail || 'Impossibile creare la sede');
         }
 
-        showToast('Terminal location created!', 'success');
+        showToast('Posizione terminale creata!', 'success');
         // Show register reader step
         document.getElementById('terminal-no-location')?.classList.add('hidden');
         document.getElementById('terminal-no-reader')?.classList.remove('hidden');
     } catch (error) {
         console.error('Error creating terminal location:', error);
-        showToast('Error: ' + error.message, 'error');
+        showToast('Errore: ' + error.message, 'error');
     }
 }
 
 async function registerTerminalReader() {
     const code = document.getElementById('terminal-reg-code')?.value.trim();
-    const label = document.getElementById('terminal-label')?.value.trim() || 'Front Desk';
+    const label = document.getElementById('terminal-label')?.value.trim() || 'Reception';
 
     if (!code) {
-        showToast('Enter the registration code from the reader screen', 'error');
+        showToast('Inserisci il codice di registrazione dallo schermo del lettore', 'error');
         return;
     }
 
@@ -1881,14 +1881,14 @@ async function registerTerminalReader() {
 
         if (!res.ok) {
             const err = await res.json();
-            throw new Error(err.detail || 'Failed to register reader');
+            throw new Error(err.detail || 'Impossibile registrare il lettore');
         }
 
-        showToast('POS reader registered!', 'success');
+        showToast('Lettore POS registrato!', 'success');
         loadTerminalStatus();
     } catch (error) {
         console.error('Error registering reader:', error);
-        showToast('Error: ' + error.message, 'error');
+        showToast('Errore: ' + error.message, 'error');
     }
 }
 
@@ -1900,7 +1900,7 @@ async function loadGymCode() {
             credentials: 'include'
         });
 
-        if (!response.ok) throw new Error('Failed to load gym code');
+        if (!response.ok) throw new Error('Impossibile caricare il codice palestra');
 
         const data = await response.json();
         const gymCodeEl = document.getElementById('gym-code-display');
@@ -1967,8 +1967,8 @@ function closeGymNameModal() {
 async function confirmGymNameEdit() {
     const newName = document.getElementById('gym-name-new').value.trim();
     const password = document.getElementById('gym-name-password').value;
-    if (!newName) { if (typeof showToast === 'function') showToast('Enter a gym name', 'error'); return; }
-    if (!password) { if (typeof showToast === 'function') showToast('Enter your password', 'error'); return; }
+    if (!newName) { if (typeof showToast === 'function') showToast('Inserisci un nome per la palestra', 'error'); return; }
+    if (!password) { if (typeof showToast === 'function') showToast('Inserisci la tua password', 'error'); return; }
 
     try {
         const response = await fetch('/api/owner/gym-settings', {
@@ -1978,7 +1978,7 @@ async function confirmGymNameEdit() {
             body: JSON.stringify({ gym_name: newName, password: password })
         });
         if (response.ok) {
-            if (typeof showToast === 'function') showToast('Gym name saved!', 'success');
+            if (typeof showToast === 'function') showToast('Nome palestra salvato!', 'success');
             document.getElementById('gym-name-display').textContent = newName;
             const h1 = document.getElementById('gym-name-owner');
             const desktopName = document.getElementById('desktop-gym-name');
@@ -1987,11 +1987,11 @@ async function confirmGymNameEdit() {
             closeGymNameModal();
         } else {
             const data = await response.json();
-            if (typeof showToast === 'function') showToast(data.detail || 'Failed to save', 'error');
+            if (typeof showToast === 'function') showToast(data.detail || 'Impossibile salvare', 'error');
         }
     } catch (error) {
         console.error('Error saving gym name:', error);
-        if (typeof showToast === 'function') showToast('Failed to save gym name', 'error');
+        if (typeof showToast === 'function') showToast('Impossibile salvare il nome della palestra', 'error');
     }
 }
 
@@ -2023,11 +2023,11 @@ async function uploadGymLogo(input) {
                 const deleteBtn = document.getElementById('delete-logo-btn');
                 if (deleteBtn) deleteBtn.classList.remove('hidden');
             }
-            if (typeof showToast === 'function') showToast('Logo updated!', 'success');
+            if (typeof showToast === 'function') showToast('Logo aggiornato!', 'success');
         }
     } catch (error) {
         console.error('Error uploading logo:', error);
-        if (typeof showToast === 'function') showToast('Failed to upload logo', 'error');
+        if (typeof showToast === 'function') showToast('Impossibile caricare il logo', 'error');
     }
     input.value = '';
 }
@@ -2048,7 +2048,7 @@ async function deleteGymLogo() {
             }
             const deleteBtn = document.getElementById('delete-logo-btn');
             if (deleteBtn) deleteBtn.classList.add('hidden');
-            if (typeof showToast === 'function') showToast('Logo removed', 'success');
+            if (typeof showToast === 'function') showToast('Logo rimosso', 'success');
         }
     } catch (error) {
         console.error('Error deleting logo:', error);
@@ -2069,10 +2069,10 @@ function copyGymCode() {
             const origIcon = copyIcon.innerHTML;
             const origText = copyText.textContent;
             copyIcon.textContent = '✓';
-            copyText.textContent = 'Copied!';
+            copyText.textContent = 'Copiato!';
             setTimeout(() => { copyIcon.innerHTML = origIcon; copyText.textContent = origText; }, 2000);
         }
-        if (typeof showToast === 'function') showToast('Gym code copied to clipboard!', 'success');
+        if (typeof showToast === 'function') showToast('Codice palestra copiato negli appunti!', 'success');
     }
 
     // navigator.clipboard requires HTTPS; fallback for HTTP/LAN
@@ -2089,7 +2089,7 @@ function copyGymCode() {
         document.body.appendChild(ta);
         ta.select();
         try { document.execCommand('copy'); onCopySuccess(); }
-        catch(e) { if (typeof showToast === 'function') showToast('Failed to copy code', 'error'); }
+        catch(e) { if (typeof showToast === 'function') showToast('Impossibile copiare il codice', 'error'); }
         document.body.removeChild(ta);
     }
 }
@@ -2102,7 +2102,7 @@ async function loadPendingTrainers() {
             credentials: 'include'
         });
 
-        if (!response.ok) throw new Error('Failed to load pending trainers');
+        if (!response.ok) throw new Error('Impossibile caricare i trainer in attesa');
 
         const trainers = await response.json();
         displayPendingTrainers(trainers);
@@ -2161,13 +2161,13 @@ function displayPendingTrainers(trainers) {
                             <h4 class="font-bold text-white">${trainer.username}</h4>
                             <span class="text-xs px-2 py-0.5 rounded-full ${getRoleBadgeClass(trainer)}">${getRoleLabel(trainer)}</span>
                         </div>
-                        <p class="text-sm text-gray-400 truncate">${trainer.email || 'No email'}</p>
+                        <p class="text-sm text-gray-400 truncate">${trainer.email || 'Nessuna email'}</p>
                     </div>
 
                     <!-- Pending badge -->
                     <div class="flex items-center gap-1.5">
                         <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
-                        <span class="text-xs text-yellow-400">Pending</span>
+                        <span class="text-xs text-yellow-400">In Attesa</span>
                     </div>
                 </div>
 
@@ -2178,14 +2178,14 @@ function displayPendingTrainers(trainers) {
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                         </svg>
-                        Approve
+                        Approva
                     </button>
                     <button onclick="rejectTrainer('${trainer.id}', '${trainer.username}')"
                         class="flex-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 py-2.5 rounded-xl text-sm font-bold transition flex items-center justify-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                         </svg>
-                        Reject
+                        Rifiuta
                     </button>
                 </div>
             </div>
@@ -2209,8 +2209,8 @@ async function loadApprovedTrainers() {
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/>
                             </svg>
                         </div>
-                        <p class="text-gray-400 text-sm">No active trainers yet</p>
-                        <p class="text-gray-500 text-xs mt-1">Share your gym code to invite trainers</p>
+                        <p class="text-gray-400 text-sm">Nessun trainer attivo</p>
+                        <p class="text-gray-500 text-xs mt-1">Condividi il codice palestra per invitare trainer</p>
                     </div>
                 `;
             }
@@ -2226,7 +2226,7 @@ async function loadApprovedTrainers() {
         if (list) {
             list.innerHTML = `
                 <div class="glass-card p-3 text-center text-gray-400 text-sm">
-                    No active trainers yet
+                    Nessun trainer attivo
                 </div>
             `;
         }
@@ -2235,7 +2235,7 @@ async function loadApprovedTrainers() {
         if (dashList) {
             dashList.innerHTML = `
                 <div class="glass-card p-3 text-center text-gray-400 text-sm">
-                    No trainers yet
+                    Nessun trainer
                 </div>
             `;
         }
@@ -2273,16 +2273,16 @@ function displayApprovedTrainers(trainers) {
                             <h4 class="font-bold text-white">${trainer.username}</h4>
                             <div class="flex items-center gap-1.5">
                                 <span class="w-2 h-2 rounded-full bg-green-400"></span>
-                                <span class="text-xs text-green-400">Active</span>
+                                <span class="text-xs text-green-400">Attivo</span>
                             </div>
                         </div>
-                        <p class="text-sm text-gray-400 truncate">${trainer.email || 'No email'}</p>
+                        <p class="text-sm text-gray-400 truncate">${trainer.email || 'Nessuna email'}</p>
                     </div>
 
                     <!-- Client count -->
                     <div class="text-right pl-2">
                         <p class="text-xl font-bold text-primary">${clientCount}</p>
-                        <p class="text-xs text-gray-500">clients</p>
+                        <p class="text-xs text-gray-500">clienti</p>
                     </div>
                 </div>
             </div>
@@ -2298,7 +2298,7 @@ function displayDashboardTrainers(trainers) {
         list.innerHTML = `
             <div class="glass-card p-3 text-center text-gray-400 text-sm">
                 <p>No trainers yet</p>
-                <p class="text-xs mt-1">Share your gym code to invite trainers</p>
+                <p class="text-xs mt-1">Condividi il codice palestra per invitare trainer</p>
             </div>
         `;
         return;
@@ -2311,12 +2311,12 @@ function displayDashboardTrainers(trainers) {
     list.innerHTML = `
         <div class="glass-card p-3 mb-2">
             <div class="flex justify-between items-center text-sm">
-                <span class="text-gray-400">Total Staff</span>
+                <span class="text-gray-400">Staff Totale</span>
                 <span class="font-bold text-white">${trainers.length}</span>
             </div>
             <div class="flex justify-between items-center text-sm mt-1">
-                <span class="text-gray-400">Managing</span>
-                <span class="font-bold text-primary">${totalClients} clients</span>
+                <span class="text-gray-400">Gestisce</span>
+                <span class="font-bold text-primary">${totalClients} clienti</span>
             </div>
         </div>
         ${displayTrainers.map(trainer => {
@@ -2338,7 +2338,7 @@ function displayDashboardTrainers(trainers) {
         `}).join('')}
         ${trainers.length > 5 ? `
             <button onclick="openTrainersModal()" class="block w-full text-center text-xs text-primary hover:text-primary/80 transition mt-2">
-                +${trainers.length - 5} more trainers
+                +${trainers.length - 5} altri trainer
             </button>
         ` : ''}
     `;
@@ -2421,7 +2421,7 @@ function displayModalPendingTrainers(trainers) {
                         <h4 class="font-semibold text-white text-sm">${trainer.username}</h4>
                         <span class="text-[10px] px-1.5 py-0.5 rounded-full ${getRoleBadgeClass(trainer)}">${getRoleLabel(trainer)}</span>
                     </div>
-                    <p class="text-xs text-gray-400 truncate">${trainer.email || 'No email'}</p>
+                    <p class="text-xs text-gray-400 truncate">${trainer.email || 'Nessuna email'}</p>
                 </div>
                 <div class="flex gap-1.5">
                     <button onclick="approveTrainerFromModal('${trainer.id}')"
@@ -2450,7 +2450,7 @@ function displayModalApprovedTrainers(trainers) {
         container.innerHTML = `
             <div class="text-center text-gray-400 text-sm py-4">
                 <p>No active trainers yet</p>
-                <p class="text-xs mt-1">Share your gym code to invite trainers</p>
+                <p class="text-xs mt-1">Condividi il codice palestra per invitare trainer</p>
             </div>
         `;
         return;
@@ -2469,11 +2469,11 @@ function displayModalApprovedTrainers(trainers) {
                     <h4 class="font-semibold text-white text-sm">${trainer.username}</h4>
                     <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
                 </div>
-                <p class="text-xs text-gray-400 truncate">${trainer.email || 'No email'}</p>
+                <p class="text-xs text-gray-400 truncate">${trainer.email || 'Nessuna email'}</p>
             </div>
             <div class="text-right">
                 <p class="text-lg font-bold text-primary">${clientCount}</p>
-                <p class="text-[10px] text-gray-500">clients</p>
+                <p class="text-[10px] text-gray-500">clienti</p>
             </div>
         </div>
     `}).join('');
@@ -2488,11 +2488,11 @@ async function approveTrainerFromModal(trainerId) {
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to approve trainer');
+            throw new Error(error.detail || 'Impossibile approvare il trainer');
         }
 
         if (typeof showToast === 'function') {
-            showToast('Trainer approved!', 'success');
+            showToast('Trainer approvato!', 'success');
         }
         loadTrainersForModal();
         loadApprovedTrainers(); // Update dashboard
@@ -2506,7 +2506,7 @@ async function approveTrainerFromModal(trainerId) {
 }
 
 async function rejectTrainerFromModal(trainerId, username) {
-    if (!confirm(`Are you sure you want to reject ${username}?`)) {
+    if (!confirm(`Sei sicuro di voler rifiutare ${username}?`)) {
         return;
     }
 
@@ -2518,11 +2518,11 @@ async function rejectTrainerFromModal(trainerId, username) {
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to reject trainer');
+            throw new Error(error.detail || 'Impossibile rifiutare il trainer');
         }
 
         if (typeof showToast === 'function') {
-            showToast('Trainer rejected', 'success');
+            showToast('Trainer rifiutato', 'success');
         }
         loadTrainersForModal();
         loadPendingTrainers(); // Update dashboard pending section
@@ -2552,11 +2552,11 @@ async function approveTrainer(trainerId) {
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to approve trainer');
+            throw new Error(error.detail || 'Impossibile approvare il trainer');
         }
 
         if (typeof showToast === 'function') {
-            showToast('Trainer approved successfully!', 'success');
+            showToast('Trainer approvato con successo!', 'success');
         }
         loadPendingTrainers();
         loadApprovedTrainers(); // Update dashboard team overview
@@ -2569,7 +2569,7 @@ async function approveTrainer(trainerId) {
 }
 
 async function rejectTrainer(trainerId, username) {
-    if (!confirm(`Are you sure you want to reject ${username}? They will need to register again.`)) {
+    if (!confirm(`Sei sicuro di voler rifiutare ${username}? Dovrà registrarsi di nuovo.`)) {
         return;
     }
 
@@ -2581,11 +2581,11 @@ async function rejectTrainer(trainerId, username) {
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to reject trainer');
+            throw new Error(error.detail || 'Impossibile rifiutare il trainer');
         }
 
         if (typeof showToast === 'function') {
-            showToast('Trainer rejected', 'success');
+            showToast('Trainer rifiutato', 'success');
         }
         loadPendingTrainers();
     } catch (error) {
@@ -2605,14 +2605,14 @@ async function loadTemplates() {
         const response = await fetch('/api/owner/automated-messages', {
             credentials: 'include'
         });
-        if (!response.ok) throw new Error('Failed to load templates');
+        if (!response.ok) throw new Error('Impossibile caricare i modelli');
         const templates = await response.json();
         displayTemplates(templates);
     } catch (error) {
         console.error('Error loading templates:', error);
         const container = document.getElementById('templates-list');
         if (container) {
-            container.innerHTML = `<div class="glass-card p-3 text-center text-red-400 text-sm">Failed to load templates</div>`;
+            container.innerHTML = `<div class="glass-card p-3 text-center text-red-400 text-sm">Impossibile caricare i modelli</div>`;
         }
     }
 }
@@ -2624,16 +2624,16 @@ function displayTemplates(templates) {
     if (!templates || templates.length === 0) {
         container.innerHTML = `
             <div class="glass-card p-4 text-center text-gray-400 text-sm">
-                No automated messages configured. Create your first template to start engaging inactive clients.
+                Nessun messaggio automatico configurato. Crea il tuo primo modello per coinvolgere i clienti inattivi.
             </div>
         `;
         return;
     }
 
     const triggerLabels = {
-        'missed_workout': 'Missed Workout',
-        'days_inactive': 'Days Inactive',
-        'no_show_appointment': 'No-Show Appointment'
+        'missed_workout': 'Allenamento Mancato',
+        'days_inactive': 'Giorni Inattivo',
+        'no_show_appointment': 'Non Presentato'
     };
 
     container.innerHTML = templates.map(t => `
@@ -2643,20 +2643,20 @@ function displayTemplates(templates) {
                     <div class="flex items-center gap-2 flex-wrap">
                         <h4 class="font-bold">${escapeHtml(t.name)}</h4>
                         <span class="text-xs px-2 py-0.5 rounded-full ${t.is_enabled ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}">
-                            ${t.is_enabled ? 'Active' : 'Disabled'}
+                            ${t.is_enabled ? 'Attivo' : 'Disattivato'}
                         </span>
                     </div>
                     <p class="text-xs text-gray-400 mt-1">Trigger: ${triggerLabels[t.trigger_type] || t.trigger_type}${t.trigger_type === 'days_inactive' && t.trigger_config ? ` (${t.trigger_config.days_threshold} days)` : ''}</p>
                 </div>
                 <div class="flex gap-2 flex-shrink-0">
                     <button onclick="toggleTemplate('${t.id}')" class="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition">
-                        ${t.is_enabled ? 'Disable' : 'Enable'}
+                        ${t.is_enabled ? 'Disattiva' : 'Attiva'}
                     </button>
                     <button onclick="editTemplate('${t.id}')" class="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition">
-                        Edit
+                        Modifica
                     </button>
                     <button onclick="deleteTemplate('${t.id}', '${escapeHtml(t.name)}')" class="text-xs bg-red-500/20 text-red-400 px-2 py-1 rounded hover:bg-red-500/30 transition">
-                        Delete
+                        Elimina
                     </button>
                 </div>
             </div>
@@ -2681,8 +2681,8 @@ function escapeHtml(str) {
 
 function openCreateTemplateModal() {
     currentTemplateId = null;
-    document.getElementById('template-modal-title').textContent = 'Create Automated Message';
-    document.getElementById('template-submit-btn').textContent = 'Create Template';
+    document.getElementById('template-modal-title').textContent = 'Crea Messaggio Automatico';
+    document.getElementById('template-submit-btn').textContent = 'Crea Modello';
     document.getElementById('template-form').reset();
     document.getElementById('template-id').value = '';
     document.getElementById('template-preview').classList.add('hidden');
@@ -2764,10 +2764,10 @@ async function saveTemplate(event) {
 
         if (!response.ok) {
             const error = await response.json();
-            throw new Error(error.detail || 'Failed to save template');
+            throw new Error(error.detail || 'Impossibile salvare il modello');
         }
 
-        showToast(isEdit ? 'Template updated!' : 'Template created!', 'success');
+        showToast(isEdit ? 'Modello aggiornato!' : 'Modello creato!', 'success');
         closeTemplateModal();
         loadTemplates();
     } catch (error) {
@@ -2780,13 +2780,13 @@ async function editTemplate(templateId) {
         const response = await fetch(`/api/owner/automated-messages/${templateId}`, {
             credentials: 'include'
         });
-        if (!response.ok) throw new Error('Failed to load template');
+        if (!response.ok) throw new Error('Impossibile caricare il modello');
         const template = await response.json();
 
         currentTemplateId = templateId;
         document.getElementById('template-id').value = templateId;
-        document.getElementById('template-modal-title').textContent = 'Edit Automated Message';
-        document.getElementById('template-submit-btn').textContent = 'Save Changes';
+        document.getElementById('template-modal-title').textContent = 'Modifica Messaggio Automatico';
+        document.getElementById('template-submit-btn').textContent = 'Salva Modifiche';
 
         document.getElementById('template-name').value = template.name;
         document.getElementById('template-trigger').value = template.trigger_type;
@@ -2803,7 +2803,7 @@ async function editTemplate(templateId) {
         document.getElementById('template-preview').classList.add('hidden');
         document.getElementById('template-modal').classList.remove('hidden');
     } catch (error) {
-        showToast('Failed to load template', 'error');
+        showToast('Impossibile caricare il modello', 'error');
     }
 }
 
@@ -2813,28 +2813,28 @@ async function toggleTemplate(templateId) {
             method: 'POST',
             credentials: 'include'
         });
-        if (!response.ok) throw new Error('Failed to toggle template');
+        if (!response.ok) throw new Error('Impossibile attivare/disattivare il modello');
         const template = await response.json();
-        showToast(`Template ${template.is_enabled ? 'enabled' : 'disabled'}`, 'success');
+        showToast(`Modello ${template.is_enabled ? 'attivato' : 'disattivato'}`, 'success');
         loadTemplates();
     } catch (error) {
-        showToast('Failed to toggle template', 'error');
+        showToast('Impossibile cambiare stato del modello', 'error');
     }
 }
 
 async function deleteTemplate(templateId, templateName) {
-    if (!confirm(`Delete template "${templateName}"? This cannot be undone.`)) return;
+    if (!confirm(`Eliminare il modello "${templateName}"? Questa azione non può essere annullata.`)) return;
 
     try {
         const response = await fetch(`/api/owner/automated-messages/${templateId}`, {
             method: 'DELETE',
             credentials: 'include'
         });
-        if (!response.ok) throw new Error('Failed to delete template');
-        showToast('Template deleted', 'success');
+        if (!response.ok) throw new Error('Impossibile eliminare il modello');
+        showToast('Modello eliminato', 'success');
         loadTemplates();
     } catch (error) {
-        showToast('Failed to delete template', 'error');
+        showToast('Impossibile eliminare il modello', 'error');
     }
 }
 
@@ -2843,14 +2843,14 @@ async function loadMessageLog() {
         const response = await fetch('/api/owner/automated-messages/log?limit=20', {
             credentials: 'include'
         });
-        if (!response.ok) throw new Error('Failed to load message log');
+        if (!response.ok) throw new Error('Impossibile caricare il registro messaggi');
         const logs = await response.json();
         displayMessageLog(logs);
     } catch (error) {
         console.error('Error loading message log:', error);
         const container = document.getElementById('message-log');
         if (container) {
-            container.innerHTML = `<div class="glass-card p-3 text-center text-gray-400 text-sm">No recent activity</div>`;
+            container.innerHTML = `<div class="glass-card p-3 text-center text-gray-400 text-sm">Nessuna attività recente</div>`;
         }
     }
 }
@@ -2862,16 +2862,16 @@ function displayMessageLog(logs) {
     if (!logs || logs.length === 0) {
         container.innerHTML = `
             <div class="glass-card p-3 text-center text-gray-400 text-sm">
-                No automated messages sent yet.
+                Nessun messaggio automatico inviato.
             </div>
         `;
         return;
     }
 
     const triggerLabels = {
-        'missed_workout': 'Missed Workout',
-        'days_inactive': 'Inactive',
-        'no_show_appointment': 'No-Show'
+        'missed_workout': 'Allenamento Mancato',
+        'days_inactive': 'Inattivo',
+        'no_show_appointment': 'Non Presentato'
     };
 
     container.innerHTML = logs.map(log => `
@@ -2902,26 +2902,26 @@ function formatRelativeTime(isoString) {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
 
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffHours < 24) return `${diffHours}h ago`;
-    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffMins < 1) return 'Adesso';
+    if (diffMins < 60) return `${diffMins}m fa`;
+    if (diffHours < 24) return `${diffHours}h fa`;
+    if (diffDays < 7) return `${diffDays}g fa`;
     return date.toLocaleDateString();
 }
 
 async function manualTriggerCheck() {
     try {
-        showToast('Running trigger check...', 'info');
+        showToast('Esecuzione controllo trigger...', 'info');
         const response = await fetch('/api/owner/automated-messages/trigger-check', {
             method: 'POST',
             credentials: 'include'
         });
-        if (!response.ok) throw new Error('Failed to run trigger check');
+        if (!response.ok) throw new Error('Impossibile eseguire il controllo trigger');
         const result = await response.json();
-        showToast(`Check complete: ${result.messages_sent} messages sent`, 'success');
+        showToast(`Controllo completato: ${result.messages_sent} messaggi inviati`, 'success');
         loadMessageLog();
     } catch (error) {
-        showToast('Failed to run trigger check', 'error');
+        showToast('Impossibile eseguire il controllo trigger', 'error');
     }
 }
 
@@ -2932,7 +2932,7 @@ async function loadPipeline() {
         const response = await fetch('/api/owner/crm/pipeline', {
             credentials: 'include'
         });
-        if (!response.ok) throw new Error('Failed to load pipeline');
+        if (!response.ok) throw new Error('Impossibile caricare la pipeline');
         const data = await response.json();
         displayPipeline(data);
     } catch (error) {
@@ -2959,7 +2959,7 @@ async function loadRetentionAnalytics() {
         const response = await fetch(`/api/owner/crm/analytics?period=${period}`, {
             credentials: 'include'
         });
-        if (!response.ok) throw new Error('Failed to load analytics');
+        if (!response.ok) throw new Error('Impossibile caricare le analitiche');
         const data = await response.json();
         displayAnalytics(data);
     } catch (error) {
@@ -2984,7 +2984,7 @@ async function loadAtRiskClients() {
         const response = await fetch('/api/owner/crm/at-risk?limit=20', {
             credentials: 'include'
         });
-        if (!response.ok) throw new Error('Failed to load at-risk clients');
+        if (!response.ok) throw new Error('Impossibile caricare i clienti a rischio');
         const clients = await response.json();
         displayAtRiskClients(clients);
     } catch (error) {
@@ -3002,7 +3002,7 @@ function displayAtRiskClients(clients) {
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                 </svg>
-                No at-risk clients! Great retention.
+                Nessun cliente a rischio! Ottima fidelizzazione.
             </div>
         `;
         return;
@@ -3016,17 +3016,17 @@ function displayAtRiskClients(clients) {
             <div class="flex-1 min-w-0">
                 <p class="font-semibold text-sm truncate">${escapeHtml(client.name)}</p>
                 <p class="text-xs text-gray-400">
-                    ${client.days_inactive} days inactive ·
-                    ${client.trainer_name ? `Trainer: ${client.trainer_name}` : 'No trainer'}
+                    ${client.days_inactive} giorni inattivo ·
+                    ${client.trainer_name ? `Trainer: ${client.trainer_name}` : 'Nessun trainer'}
                 </p>
             </div>
             <div class="text-right flex-shrink-0">
                 <span class="text-xs px-2 py-1 rounded-full ${
                     client.days_inactive > 10 ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'
                 }">
-                    ${client.days_inactive > 10 ? 'Critical' : 'At Risk'}
+                    ${client.days_inactive > 10 ? 'Critico' : 'A Rischio'}
                 </span>
-                <p class="text-xs text-gray-500 mt-1">Health: ${client.health_score || 0}</p>
+                <p class="text-xs text-gray-500 mt-1">Salute: ${client.health_score || 0}</p>
             </div>
         </div>
     `).join('');
@@ -3038,7 +3038,7 @@ async function loadInteractions(clientId = null) {
         if (clientId) url += `&client_id=${clientId}`;
 
         const response = await fetch(url, { credentials: 'include' });
-        if (!response.ok) throw new Error('Failed to load interactions');
+        if (!response.ok) throw new Error('Impossibile caricare le interazioni');
         const interactions = await response.json();
         displayInteractions(interactions);
     } catch (error) {
@@ -3053,7 +3053,7 @@ function displayInteractions(interactions) {
     if (!interactions || interactions.length === 0) {
         container.innerHTML = `
             <div class="glass-card p-3 text-center text-gray-400 text-sm">
-                No recent activity
+                Nessuna attività recente
             </div>
         `;
         return;
@@ -3098,7 +3098,7 @@ async function loadCertificatesOverview() {
         const response = await fetch('/api/medical/certificates/overview', {
             credentials: 'include'
         });
-        if (!response.ok) throw new Error('Failed to load certificates');
+        if (!response.ok) throw new Error('Impossibile caricare i certificati');
         const data = await response.json();
         displayCertificatesOverview(data.clients);
     } catch (error) {
@@ -3113,23 +3113,23 @@ function displayCertificatesOverview(clients) {
     if (!clients || clients.length === 0) {
         container.innerHTML = `
             <div class="glass-card p-4 text-center text-gray-400 text-sm">
-                No clients found.
+                Nessun cliente trovato.
             </div>
         `;
         return;
     }
 
     const statusConfig = {
-        valid: { icon: '✓', bg: 'bg-green-500/20', border: 'border-green-500/30', text: 'text-green-400', label: 'Valid' },
-        expiring: { icon: 'alert-triangle', bg: 'bg-yellow-500/20', border: 'border-yellow-500/30', text: 'text-yellow-400', label: 'Expiring' },
-        expired: { icon: '✗', bg: 'bg-red-500/20', border: 'border-red-500/30', text: 'text-red-400', label: 'Expired' },
-        missing: { icon: '—', bg: 'bg-gray-500/20', border: 'border-gray-500/30', text: 'text-gray-400', label: 'Missing' }
+        valid: { icon: '✓', bg: 'bg-green-500/20', border: 'border-green-500/30', text: 'text-green-400', label: 'Valido' },
+        expiring: { icon: 'alert-triangle', bg: 'bg-yellow-500/20', border: 'border-yellow-500/30', text: 'text-yellow-400', label: 'In Scadenza' },
+        expired: { icon: '✗', bg: 'bg-red-500/20', border: 'border-red-500/30', text: 'text-red-400', label: 'Scaduto' },
+        missing: { icon: '—', bg: 'bg-gray-500/20', border: 'border-gray-500/30', text: 'text-gray-400', label: 'Mancante' }
     };
 
     container.innerHTML = clients.map(c => {
         const cfg = statusConfig[c.status] || statusConfig.missing;
         const expiryInfo = c.expiration_date ? new Date(c.expiration_date).toLocaleDateString() : '';
-        const viewBtn = c.file_url ? `<a href="${c.file_url}" target="_blank" class="text-xs ${cfg.text} hover:underline">View</a>` : '';
+        const viewBtn = c.file_url ? `<a href="${c.file_url}" target="_blank" class="text-xs ${cfg.text} hover:underline">Vedi</a>` : '';
 
         return `
             <div class="glass-card p-3 flex items-center gap-3">
@@ -3138,7 +3138,7 @@ function displayCertificatesOverview(clients) {
                 </div>
                 <div class="flex-1 min-w-0">
                     <p class="text-sm font-semibold truncate">${escapeHtml(c.name)}</p>
-                    <p class="text-xs text-gray-400">${expiryInfo ? `Expires: ${expiryInfo}` : 'No certificate'}</p>
+                    <p class="text-xs text-gray-400">${expiryInfo ? `Scade: ${expiryInfo}` : 'Nessun certificato'}</p>
                 </div>
                 <div class="flex items-center gap-2">
                     ${viewBtn}
@@ -3158,7 +3158,7 @@ async function loadActivityFeed() {
         });
 
         if (!response.ok) {
-            throw new Error('Failed to load activity feed');
+            throw new Error('Impossibile caricare il feed attivit\u00e0');
         }
 
         const activities = await response.json();
@@ -3169,7 +3169,7 @@ async function loadActivityFeed() {
         if (container) {
             container.innerHTML = `
                 <div class="p-4 text-center text-gray-400 text-sm">
-                    No recent activity
+                    Nessuna attività recente
                 </div>
             `;
         }
@@ -3183,8 +3183,8 @@ function displayActivityFeed(activities) {
     if (!activities || activities.length === 0) {
         container.innerHTML = `
             <div class="p-4 text-center text-gray-400 text-sm">
-                <p>No recent activity</p>
-                <p class="text-xs mt-1">Activity will appear here as clients use the gym</p>
+                <p>Nessuna attività recente</p>
+                <p class="text-xs mt-1">Le attività appariranno qui quando i clienti usano la palestra</p>
             </div>
         `;
         return;
@@ -3203,11 +3203,11 @@ function displayActivityFeed(activities) {
                 const diffDays = Math.floor(diffMs / 86400000);
 
                 if (diffMins < 60) {
-                    timeDisplay = diffMins <= 1 ? 'Just now' : `${diffMins}m ago`;
+                    timeDisplay = diffMins <= 1 ? 'Adesso' : `${diffMins}m fa`;
                 } else if (diffHours < 24) {
-                    timeDisplay = `${diffHours}h ago`;
+                    timeDisplay = `${diffHours}h fa`;
                 } else if (diffDays < 7) {
-                    timeDisplay = `${diffDays}d ago`;
+                    timeDisplay = `${diffDays}g fa`;
                 } else {
                     timeDisplay = date.toLocaleDateString();
                 }
@@ -3254,7 +3254,7 @@ async function loadShowerSettings() {
 
         if (timerEl) timerEl.value = data.shower_timer_minutes;
         if (limitEl) limitEl.value = data.shower_daily_limit;
-        if (keyEl) keyEl.value = data.device_api_key || 'Not generated yet';
+        if (keyEl) keyEl.value = data.device_api_key || 'Non ancora generata';
     } catch (err) {
         console.error('Error loading shower settings:', err);
     }
@@ -3264,8 +3264,8 @@ async function saveShowerSettings() {
     const timer = parseInt(document.getElementById('shower-timer-input').value);
     const limit = parseInt(document.getElementById('shower-limit-input').value);
 
-    if (isNaN(timer) || timer < 1 || timer > 30) { alert('Timer must be 1-30 minutes'); return; }
-    if (isNaN(limit) || limit < 1 || limit > 20) { alert('Limit must be 1-20 sessions'); return; }
+    if (isNaN(timer) || timer < 1 || timer > 30) { alert('Il timer deve essere tra 1-30 minuti'); return; }
+    if (isNaN(limit) || limit < 1 || limit > 20) { alert('Il limite deve essere tra 1-20 sessioni'); return; }
 
     try {
         const res = await fetch('/api/owner/shower-settings', {
@@ -3275,15 +3275,15 @@ async function saveShowerSettings() {
             body: JSON.stringify({ shower_timer_minutes: timer, shower_daily_limit: limit })
         });
 
-        if (!res.ok) throw new Error('Failed to save');
-        showToast('Shower settings saved!');
+        if (!res.ok) throw new Error('Impossibile salvare');
+        showToast('Impostazioni docce salvate!');
     } catch (err) {
-        alert('Error: ' + err.message);
+        alert('Errore: ' + err.message);
     }
 }
 
 async function generateDeviceKey() {
-    if (!confirm('Generate a new device API key? This will disconnect all ESP32 devices until reconfigured.')) return;
+    if (!confirm('Generare una nuova chiave API dispositivo? Questo disconnetterà tutti i dispositivi ESP32 fino alla riconfigurazione.')) return;
 
     try {
         const res = await fetch('/api/owner/generate-device-key', {
@@ -3294,24 +3294,24 @@ async function generateDeviceKey() {
         if (!res.ok) throw new Error(data.detail || 'Failed');
 
         document.getElementById('device-api-key-display').value = data.device_api_key;
-        showToast('New device key generated!');
+        showToast('Nuova chiave dispositivo generata!');
     } catch (err) {
-        alert('Error: ' + err.message);
+        alert('Errore: ' + err.message);
     }
 }
 
 function copyDeviceKey() {
     const key = document.getElementById('device-api-key-display').value;
-    if (key === 'Not generated yet') { alert('Generate a key first'); return; }
+    if (key === 'Non ancora generata') { alert('Genera prima una chiave'); return; }
     navigator.clipboard.writeText(key);
-    showToast('Device key copied!');
+    showToast('Chiave dispositivo copiata!');
 }
 
 // ========== FACILITY MANAGEMENT ==========
 
 let currentActivityTypeId = null;
 let currentFacilityId = null;
-const DAY_NAMES = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+const DAY_NAMES = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
 
 async function loadActivityTypes() {
     const container = document.getElementById('activity-types-grid');
@@ -3322,15 +3322,15 @@ async function loadActivityTypes() {
         if (!types.length) {
             container.innerHTML = `<div class="glass-card p-6 text-center text-gray-500 text-sm col-span-full">
                 <i data-lucide="plus-circle" class="w-10 h-10 mx-auto mb-3 text-gray-600"></i>
-                <p class="font-semibold text-gray-400">No activity types yet</p>
-                <p class="text-xs text-gray-600 mt-1">Create your first activity to start managing courts, fields & rooms</p>
+                <p class="font-semibold text-gray-400">Nessun tipo di attività</p>
+                <p class="text-xs text-gray-600 mt-1">Crea la tua prima attività per iniziare a gestire campi, sale e strutture</p>
             </div>`;
             lucide.createIcons();
             return;
         }
         container.innerHTML = types.map(t => {
             const count = t.facility_count || 0;
-            const countLabel = count === 0 ? 'No facilities' : count === 1 ? '1 facility' : count + ' facilities';
+            const countLabel = count === 0 ? 'Nessuna struttura' : count === 1 ? '1 struttura' : count + ' strutture';
             const countColor = count === 0 ? 'text-yellow-400' : 'text-teal-400';
             const escapedName = t.name.replace(/'/g, "\\'");
             const escapedDesc = (t.description || '').replace(/'/g, "\\'");
@@ -3348,15 +3348,15 @@ async function loadActivityTypes() {
                 </div>
                 <div class="mt-3 flex gap-2 opacity-0 group-hover:opacity-100 transition">
                     <button onclick="event.stopPropagation(); editActivityType('${t.id}', '${escapedName}', '${t.emoji || ''}', '${escapedDesc}')"
-                        class="text-xs text-gray-400 hover:text-white px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 transition">Edit</button>
+                        class="text-xs text-gray-400 hover:text-white px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 transition">Modifica</button>
                     <button onclick="event.stopPropagation(); deleteActivityType('${t.id}')"
-                        class="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition">Delete</button>
+                        class="text-xs text-red-400 hover:text-red-300 px-2 py-1 rounded-lg bg-red-500/10 hover:bg-red-500/20 transition">Elimina</button>
                 </div>
             </div>
         `}).join('');
         lucide.createIcons();
     } catch (e) {
-        container.innerHTML = '<div class="glass-card p-3 text-center text-red-400 text-sm">Failed to load</div>';
+        container.innerHTML = '<div class="glass-card p-3 text-center text-red-400 text-sm">Impossibile caricare</div>';
     }
 }
 
@@ -3365,7 +3365,7 @@ function openCreateActivityTypeModal() {
     document.getElementById('activity-type-name').value = '';
     document.getElementById('activity-type-emoji').value = '';
     document.getElementById('activity-type-description').value = '';
-    document.getElementById('activity-type-modal-title').innerText = 'New Activity Type';
+    document.getElementById('activity-type-modal-title').innerText = 'Nuovo Tipo di Attività';
     showModal('activity-type-modal');
 }
 
@@ -3374,7 +3374,7 @@ function editActivityType(id, name, emoji, description) {
     document.getElementById('activity-type-name').value = name;
     document.getElementById('activity-type-emoji').value = emoji;
     document.getElementById('activity-type-description').value = description;
-    document.getElementById('activity-type-modal-title').innerText = 'Edit Activity Type';
+    document.getElementById('activity-type-modal-title').innerText = 'Modifica Tipo di Attività';
     showModal('activity-type-modal');
 }
 
@@ -3386,7 +3386,7 @@ async function saveActivityType() {
         emoji: document.getElementById('activity-type-emoji').value || null,
         description: document.getElementById('activity-type-description').value || null
     };
-    if (!data.name) { alert('Name is required'); return; }
+    if (!data.name) { alert('Il nome è obbligatorio'); return; }
 
     const url = id ? `/api/owner/activity-types/${id}` : '/api/owner/activity-types';
     const method = id ? 'PUT' : 'POST';
@@ -3395,7 +3395,7 @@ async function saveActivityType() {
         if (res.ok) {
             const result = await res.json();
             hideModal('activity-type-modal');
-            showToast(isNew ? 'Activity type created! Now add your facilities.' : 'Activity type saved!');
+            showToast(isNew ? 'Tipo di attività creato! Ora aggiungi le strutture.' : 'Tipo di attività salvato!');
             if (isNew && result.id) {
                 // Auto-navigate to facilities for the new activity type
                 await loadActivityTypes();
@@ -3405,18 +3405,18 @@ async function saveActivityType() {
             }
         } else {
             const err = await res.json();
-            alert(err.detail || 'Failed to save');
+            alert(err.detail || 'Impossibile salvare');
         }
-    } catch (e) { alert('Error saving activity type'); }
+    } catch (e) { alert('Errore nel salvataggio del tipo di attività'); }
 }
 
 async function deleteActivityType(id) {
-    if (!confirm('Delete this activity type?')) return;
+    if (!confirm('Eliminare questo tipo di attività?')) return;
     try {
         await fetch(`/api/owner/activity-types/${id}`, { method: 'DELETE', credentials: 'include' });
         loadActivityTypes();
-        showToast('Activity type deleted');
-    } catch (e) { alert('Error deleting'); }
+        showToast('Tipo di attività eliminato');
+    } catch (e) { alert('Errore nell\'eliminazione'); }
 }
 
 async function selectActivityType(id, name) {
@@ -3443,12 +3443,12 @@ async function loadFacilities(activityTypeId) {
         const res = await fetch(`/api/owner/facilities/${activityTypeId}`, { credentials: 'include' });
         const facilities = await res.json();
         if (!facilities.length) {
-            container.innerHTML = '<div class="glass-card p-4 text-center text-gray-500 text-sm">No facilities yet. Click "+ New" to add one.</div>';
+            container.innerHTML = '<div class="glass-card p-4 text-center text-gray-500 text-sm">Nessuna struttura. Clicca "+ Nuovo" per aggiungerne una.</div>';
             return;
         }
         container.innerHTML = facilities.map(f => {
             const days = f.availability_days || 0;
-            const availLabel = days === 0 ? 'No availability set' : days + ' day' + (days > 1 ? 's' : '') + ' available';
+            const availLabel = days === 0 ? 'Nessuna disponibilità impostata' : days + ' giorn' + (days > 1 ? 'i' : 'o') + ' disponibil' + (days > 1 ? 'i' : 'e');
             const availColor = days === 0 ? 'text-yellow-400' : 'text-green-400';
             const availIcon = days === 0 ? 'alert-circle' : 'check-circle';
             return `
@@ -3459,17 +3459,17 @@ async function loadFacilities(activityTypeId) {
                     </div>
                     <div class="flex-1 min-w-0">
                         <p class="font-bold text-white">${f.name}</p>
-                        <p class="text-xs text-gray-400">${f.slot_duration}min slots${f.price_per_slot ? ' · $' + f.price_per_slot : ' · Free'}${f.max_participants ? ' · Max ' + f.max_participants : ''}</p>
+                        <p class="text-xs text-gray-400">${f.slot_duration}min slot${f.price_per_slot ? ' · €' + f.price_per_slot : ' · Gratuito'}${f.max_participants ? ' · Max ' + f.max_participants : ''}</p>
                         <p class="text-xs ${availColor} mt-1"><i data-lucide="${availIcon}" class="w-3 h-3 inline-block align-middle"></i> ${availLabel}</p>
                     </div>
                 </div>
                 <div class="flex gap-2 mt-3">
                     <button onclick="openFacilityAvailability('${f.id}', '${f.name.replace(/'/g, "\\'")}')"
                         class="flex-1 text-xs bg-purple-500/20 text-purple-400 px-3 py-2 rounded-lg hover:bg-purple-500/30 transition font-semibold text-center">
-                        <i data-lucide="clock" class="w-3 h-3 inline-block align-middle"></i> Set Availability
+                        <i data-lucide="clock" class="w-3 h-3 inline-block align-middle"></i> Imposta Disponibilità
                     </button>
                     <button onclick="editFacility('${f.id}', '${f.name.replace(/'/g, "\\'")}', ${f.slot_duration}, ${f.price_per_slot || 0}, ${f.max_participants || 0})"
-                        class="text-xs bg-white/10 text-white px-3 py-2 rounded-lg hover:bg-white/20 transition">Edit</button>
+                        class="text-xs bg-white/10 text-white px-3 py-2 rounded-lg hover:bg-white/20 transition">Modifica</button>
                     <button onclick="deleteFacility('${f.id}')"
                         class="text-xs text-red-400 hover:text-red-300 px-2 py-2 rounded-lg hover:bg-red-500/10 transition">
                         <i data-lucide="trash-2" class="w-3 h-3"></i>
@@ -3479,7 +3479,7 @@ async function loadFacilities(activityTypeId) {
         `}).join('');
         lucide.createIcons();
     } catch (e) {
-        container.innerHTML = '<div class="glass-card p-3 text-center text-red-400 text-sm">Failed to load</div>';
+        container.innerHTML = '<div class="glass-card p-3 text-center text-red-400 text-sm">Impossibile caricare</div>';
     }
 }
 
@@ -3489,7 +3489,7 @@ function openCreateFacilityModal() {
     document.getElementById('facility-slot-duration').value = '60';
     document.getElementById('facility-price').value = '';
     document.getElementById('facility-max-participants').value = '';
-    document.getElementById('facility-modal-title').innerText = 'New Facility';
+    document.getElementById('facility-modal-title').innerText = 'Nuova Struttura';
     showModal('facility-modal');
 }
 
@@ -3499,7 +3499,7 @@ function editFacility(id, name, duration, price, maxP) {
     document.getElementById('facility-slot-duration').value = duration;
     document.getElementById('facility-price').value = price || '';
     document.getElementById('facility-max-participants').value = maxP || '';
-    document.getElementById('facility-modal-title').innerText = 'Edit Facility';
+    document.getElementById('facility-modal-title').innerText = 'Modifica Struttura';
     showModal('facility-modal');
 }
 
@@ -3513,7 +3513,7 @@ async function saveFacility() {
         price_per_slot: parseFloat(document.getElementById('facility-price').value) || null,
         max_participants: parseInt(document.getElementById('facility-max-participants').value) || null
     };
-    if (!data.name) { alert('Name is required'); return; }
+    if (!data.name) { alert('Il nome è obbligatorio'); return; }
 
     const url = id ? `/api/owner/facilities/${id}` : '/api/owner/facilities';
     const method = id ? 'PUT' : 'POST';
@@ -3524,32 +3524,32 @@ async function saveFacility() {
             hideModal('facility-modal');
             await loadFacilities(currentActivityTypeId);
             if (isNew && result.id) {
-                showToast('Facility created! Set its availability now.');
+                showToast('Struttura creata! Imposta ora la disponibilità.');
                 openFacilityAvailability(result.id, data.name);
             } else {
-                showToast('Facility saved!');
+                showToast('Struttura salvata!');
             }
         } else {
             const err = await res.json();
-            alert(err.detail || 'Failed to save');
+            alert(err.detail || 'Impossibile salvare');
         }
-    } catch (e) { alert('Error saving facility'); }
+    } catch (e) { alert('Errore nel salvataggio della struttura'); }
 }
 
 async function deleteFacility(id) {
-    if (!confirm('Delete this facility?')) return;
+    if (!confirm('Eliminare questa struttura?')) return;
     try {
         await fetch(`/api/owner/facilities/${id}`, { method: 'DELETE', credentials: 'include' });
         loadFacilities(currentActivityTypeId);
-        showToast('Facility deleted');
-    } catch (e) { alert('Error deleting'); }
+        showToast('Struttura eliminata');
+    } catch (e) { alert('Errore nell\'eliminazione'); }
 }
 
 // ---- Availability ----
 
 async function openFacilityAvailability(facilityId, facilityName) {
     currentFacilityId = facilityId;
-    document.getElementById('facility-avail-title').innerText = facilityName + ' — Availability';
+    document.getElementById('facility-avail-title').innerText = facilityName + ' — Disponibilità';
     document.getElementById('facility-availability-section').classList.remove('hidden');
 
     // Build day grid
@@ -3562,7 +3562,7 @@ async function openFacilityAvailability(facilityId, facilityName) {
             </label>
             <div id="fday-times-${i}" class="hidden flex items-center gap-2">
                 <input type="time" id="fday-start-${i}" value="${i < 5 ? '09:00' : '10:00'}" class="bg-white/10 text-white text-sm rounded-lg px-2 py-1 border border-white/10 outline-none">
-                <span class="text-gray-400 text-xs">to</span>
+                <span class="text-gray-400 text-xs">a</span>
                 <input type="time" id="fday-end-${i}" value="${i < 5 ? '20:00' : '14:00'}" class="bg-white/10 text-white text-sm rounded-lg px-2 py-1 border border-white/10 outline-none">
             </div>
         </div>
@@ -3598,7 +3598,7 @@ function toggleFacilityDay(dayIndex) {
 }
 
 async function saveFacilityAvailability() {
-    if (!currentFacilityId) { showToast('No facility selected', 'error'); return; }
+    if (!currentFacilityId) { showToast('Nessuna struttura selezionata', 'error'); return; }
     const availability = [];
     for (let i = 0; i < 7; i++) {
         const cb = document.getElementById(`fday-${i}`);
@@ -3611,7 +3611,7 @@ async function saveFacilityAvailability() {
         }
     }
     if (!availability.length) {
-        if (!confirm('No days selected. This will clear all availability. Continue?')) return;
+        if (!confirm('Nessun giorno selezionato. Questo cancellerà tutta la disponibilità. Continuare?')) return;
     }
     const activityTypeId = currentActivityTypeId; // save before close clears it
     try {
@@ -3622,16 +3622,16 @@ async function saveFacilityAvailability() {
             body: JSON.stringify({ availability })
         });
         if (res.ok) {
-            showToast('Availability saved!');
+            showToast('Disponibilità salvata!');
             closeFacilityAvailability();
             if (activityTypeId) {
                 await loadFacilities(activityTypeId);
             }
         } else {
             const err = await res.json().catch(() => ({}));
-            showToast(err.detail || 'Failed to save availability', 'error');
+            showToast(err.detail || 'Impossibile salvare la disponibilità', 'error');
         }
-    } catch (e) { showToast('Error saving availability', 'error'); }
+    } catch (e) { showToast('Errore nel salvataggio della disponibilità', 'error'); }
 }
 
 // ---- Bookings ----
@@ -3645,7 +3645,7 @@ async function loadFacilityBookings() {
         const bookings = await res.json();
         if (!bookings.length) {
             container.innerHTML = `<div class="glass-card p-3 text-center text-gray-400 text-sm">
-                No upcoming bookings
+                Nessuna prenotazione imminente
             </div>`;
             return;
         }
@@ -3655,7 +3655,7 @@ async function loadFacilityBookings() {
                     <i data-lucide="calendar-check" class="w-5 h-5 ${b.status === 'confirmed' ? 'text-green-400' : 'text-gray-400'}"></i>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-bold text-white truncate">${b.title || 'Booking'}</p>
+                    <p class="text-sm font-bold text-white truncate">${b.title || 'Prenotazione'}</p>
                     <p class="text-xs text-gray-400">${b.date} · ${b.start_time} - ${b.end_time}${b.client_name ? ' · ' + b.client_name : ''}</p>
                 </div>
                 <span class="text-xs px-2 py-1 rounded-full flex-shrink-0 ${b.status === 'confirmed' ? 'bg-green-500/20 text-green-400' : 'bg-gray-500/20 text-gray-400'}">${b.status}</span>
@@ -3663,7 +3663,7 @@ async function loadFacilityBookings() {
         `).join('');
         lucide.createIcons();
     } catch (e) {
-        container.innerHTML = '<div class="glass-card p-3 text-center text-red-400 text-sm">Failed to load bookings</div>';
+        container.innerHTML = '<div class="glass-card p-3 text-center text-red-400 text-sm">Impossibile caricare le prenotazioni</div>';
     }
 }
 
@@ -3699,17 +3699,17 @@ if (currentMode === 'settings') {
 <!-- Gym Name Edit Modal (top-level so fixed positioning works) -->
 <div id="gym-name-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[80] hidden flex items-center justify-center px-4" onclick="if(event.target===this)closeGymNameModal()">
     <div class="bg-gray-900 border border-white/10 rounded-2xl p-6 w-full max-w-sm">
-        <h3 class="text-white font-bold text-lg mb-1">Change Gym Name</h3>
-        <p class="text-gray-400 text-xs mb-4">Enter the new name and your password to confirm</p>
-        <input type="text" id="gym-name-new" placeholder="New gym name"
+        <h3 class="text-white font-bold text-lg mb-1">Cambia Nome Palestra</h3>
+        <p class="text-gray-400 text-xs mb-4">Inserisci il nuovo nome e la tua password per confermare</p>
+        <input type="text" id="gym-name-new" placeholder="Nuovo nome palestra"
             class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white text-sm outline-none focus:border-primary/50 transition mb-3">
-        <input type="password" id="gym-name-password" placeholder="Your password"
+        <input type="password" id="gym-name-password" placeholder="La tua password"
             class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white text-sm outline-none focus:border-primary/50 transition mb-4">
         <div class="flex gap-2">
             <button onclick="closeGymNameModal()"
-                class="flex-1 py-3 rounded-xl bg-white/5 text-gray-400 text-sm font-semibold hover:bg-white/10 transition">Cancel</button>
+                class="flex-1 py-3 rounded-xl bg-white/5 text-gray-400 text-sm font-semibold hover:bg-white/10 transition">Annulla</button>
             <button onclick="confirmGymNameEdit()"
-                class="flex-1 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 text-white text-sm font-semibold active:scale-95 transition-transform">Confirm</button>
+                class="flex-1 py-3 rounded-xl bg-gradient-to-r from-orange-500 to-red-500 text-white text-sm font-semibold active:scale-95 transition-transform">Conferma</button>
         </div>
     </div>
 </div>

@@ -399,13 +399,13 @@
 <div id="trainer-schedule-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-bold text-white" id="trainer-modal-title">Trainer Schedule</h3>
+            <h3 class="text-lg font-bold text-white" id="trainer-modal-title">Orario Trainer</h3>
             <button onclick="closeTrainerModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
         </div>
 
         <!-- Availability -->
         <div class="mb-4">
-            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Weekly Availability</h4>
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Disponibilità Settimanale</h4>
             <div id="trainer-availability" class="space-y-2">
                 <p class="text-gray-400 text-sm">Loading...</p>
             </div>
@@ -413,7 +413,7 @@
 
         <!-- Today's Schedule -->
         <div>
-            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Today's Appointments</h4>
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-2">Appuntamenti di Oggi</h4>
             <div id="trainer-today-schedule" class="space-y-2">
                 <p class="text-gray-400 text-sm">Loading...</p>
             </div>
@@ -426,7 +426,7 @@
 <div id="member-profile-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
     <div class="glass-card p-6 rounded-2xl max-w-lg w-full max-h-[85vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-bold text-white">Member Profile</h3>
+            <h3 class="text-lg font-bold text-white">Profilo Membro</h3>
             <button onclick="closeMemberModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
         </div>
 
@@ -451,22 +451,22 @@
 
         <!-- Member Info -->
         <div class="glass-card p-4 mb-4">
-            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Member Info</h4>
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Info Membro</h4>
             <div class="space-y-2 text-sm">
                 <div class="flex justify-between">
-                    <span class="text-gray-400">Member Since</span>
+                    <span class="text-gray-400">Membro dal</span>
                     <span class="text-white" id="member-since">-</span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-gray-400">Assigned Trainer</span>
-                    <span class="text-white" id="member-trainer">None</span>
+                    <span class="text-gray-400">Trainer Assegnato</span>
+                    <span class="text-white" id="member-trainer">Nessuno</span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-gray-400">Last Check-in</span>
-                    <span class="text-white" id="member-last-checkin">Never</span>
+                    <span class="text-gray-400">Ultimo Check-in</span>
+                    <span class="text-white" id="member-last-checkin">Mai</span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-gray-400">Total Check-ins</span>
+                    <span class="text-gray-400">Check-in Totali</span>
                     <span class="text-white" id="member-total-checkins">0</span>
                 </div>
             </div>
@@ -475,22 +475,22 @@
         <!-- Subscription Info -->
         <div class="glass-card p-4 mb-4">
             <div class="flex justify-between items-center mb-3">
-                <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Subscription</h4>
+                <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Abbonamento</h4>
                 <button onclick="openSubscriptionManager()" class="text-xs text-primary hover:text-primary/80 font-semibold">
-                    Manage →
+                    Gestisci →
                 </button>
             </div>
             <div class="space-y-2 text-sm">
                 <div class="flex justify-between">
-                    <span class="text-gray-400">Plan</span>
+                    <span class="text-gray-400">Piano</span>
                     <span class="text-white" id="member-plan">-</span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-gray-400">Status</span>
+                    <span class="text-gray-400">Stato</span>
                     <span id="member-sub-status" class="text-green-400">-</span>
                 </div>
                 <div class="flex justify-between">
-                    <span class="text-gray-400">Expires</span>
+                    <span class="text-gray-400">Scadenza</span>
                     <span class="text-white" id="member-sub-expires">-</span>
                 </div>
             </div>
@@ -499,11 +499,11 @@
                 <div class="flex gap-2">
                     <button onclick="openPlanSelector()" id="assign-plan-btn"
                         class="flex-1 bg-primary/20 hover:bg-primary/30 text-primary py-2 rounded-lg text-xs font-semibold transition">
-                        Assign Plan
+                        Assegna Piano
                     </button>
                     <button onclick="cancelMemberSubscription()" id="cancel-sub-btn"
                         class="flex-1 bg-red-500/20 hover:bg-red-500/30 text-red-400 py-2 rounded-lg text-xs font-semibold transition hidden">
-                        Cancel
+                        Annulla
                     </button>
                 </div>
             </div>
@@ -511,9 +511,9 @@
 
         <!-- Medical Certificate -->
         <div class="glass-card p-4 mb-4">
-            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Medical Certificate</h4>
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Certificato Medico</h4>
             <div id="member-certificate" class="space-y-2">
-                <p class="text-gray-500 text-sm">No certificate uploaded</p>
+                <p class="text-gray-500 text-sm">Nessun certificato caricato</p>
             </div>
         </div>
 
@@ -531,7 +531,7 @@
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
                 </svg>
-                Message
+                Messaggio
             </button>
         </div>
 
@@ -543,7 +543,7 @@
                     <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                     <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                 </svg>
-                Reset Password
+                Reimposta Password
             </button>
             <button onclick="openChangeUsername()"
                 class="flex-1 bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 py-3 rounded-xl font-semibold transition flex items-center justify-center gap-2 text-sm">
@@ -551,7 +551,7 @@
                     <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                     <circle cx="12" cy="7" r="4"/>
                 </svg>
-                Change Username
+                Cambia Username
             </button>
         </div>
     </div>
@@ -561,7 +561,7 @@
 <div id="plan-selector-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4">
     <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-bold text-white">Select Subscription Plan</h3>
+            <h3 class="text-lg font-bold text-white">Seleziona Piano di Abbonamento</h3>
             <button onclick="closePlanSelector()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
         </div>
 
@@ -572,14 +572,14 @@
         <!-- Plans List -->
         <div id="plans-list" class="space-y-3">
             <div class="text-center py-6">
-                <p class="text-gray-400 text-sm">Loading plans...</p>
+                <p class="text-gray-400 text-sm">Caricamento piani...</p>
             </div>
         </div>
 
         <!-- Manual Entry Option -->
         <div class="mt-4 pt-4 border-t border-white/10">
             <p class="text-xs text-gray-500 text-center">
-                Plans are created by the gym owner in Settings → Subscriptions
+                I piani vengono creati dal proprietario in Impostazioni → Abbonamenti
             </p>
         </div>
     </div>
@@ -590,11 +590,11 @@
 <div id="temp-password-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[80] hidden flex items-center justify-center p-4">
     <div class="glass-card p-6 rounded-2xl max-w-md w-full text-center">
         <div class="text-4xl mb-4">&#10003;</div>
-        <h3 class="text-lg font-bold text-white mb-2">Client Registered Successfully!</h3>
-        <p class="text-gray-400 text-sm mb-4">Share these credentials with the client:</p>
+        <h3 class="text-lg font-bold text-white mb-2">Cliente Registrato con Successo!</h3>
+        <p class="text-gray-400 text-sm mb-4">Condividi queste credenziali con il cliente:</p>
         <div class="bg-white/5 border border-white/10 rounded-xl p-4 mb-4 text-left">
             <div class="mb-3">
-                <span class="text-gray-400 text-xs uppercase">Name</span>
+                <span class="text-gray-400 text-xs uppercase">Nome</span>
                 <p id="temp-pw-name" class="text-white font-medium"></p>
             </div>
             <div class="mb-3">
@@ -602,7 +602,7 @@
                 <p id="temp-pw-username" class="text-white font-mono font-medium"></p>
             </div>
             <div>
-                <span class="text-gray-400 text-xs uppercase">Temporary Password</span>
+                <span class="text-gray-400 text-xs uppercase">Password Temporanea</span>
                 <div class="flex items-center gap-2 mt-1">
                     <p id="temp-pw-password" class="text-green-400 font-mono font-bold text-lg"></p>
                     <button onclick="copyTempPassword()" class="text-gray-400 hover:text-white p-1" title="Copy password">
@@ -611,8 +611,8 @@
                 </div>
             </div>
         </div>
-        <p class="text-yellow-400 text-xs mb-4">The client must change this password on first login.</p>
-        <button onclick="closeTempPasswordModal()" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors">Done</button>
+        <p class="text-yellow-400 text-xs mb-4">Il cliente deve cambiare questa password al primo accesso.</p>
+        <button onclick="closeTempPasswordModal()" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors">Fatto</button>
     </div>
 </div>
 
@@ -620,7 +620,7 @@
     <div class="glass-card p-6 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
         <!-- Header -->
         <div class="flex justify-between items-center mb-6">
-            <h3 class="text-lg font-bold text-white">New Client Registration</h3>
+            <h3 class="text-lg font-bold text-white">Registrazione Nuovo Cliente</h3>
             <button onclick="closeOnboardingWizard()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
         </div>
 
@@ -654,26 +654,26 @@
 
         <!-- Step 1: Basic Info -->
         <div id="onboard-step-1" class="onboard-step-content">
-            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Client Information</h4>
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Informazioni Cliente</h4>
             <div class="space-y-4">
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1">Full Name *</label>
-                    <input type="text" id="onboard-name" placeholder="Enter full name"
+                    <label class="block text-xs text-gray-400 mb-1">Nome Completo *</label>
+                    <input type="text" id="onboard-name" placeholder="Inserisci nome completo"
                         class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition">
                 </div>
                 <div>
-                    <label class="block text-xs text-gray-400 mb-1">Phone Number *</label>
+                    <label class="block text-xs text-gray-400 mb-1">Numero di Telefono *</label>
                     <input type="tel" id="onboard-phone" placeholder="+1 234 567 8900"
                         class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition">
                 </div>
                 <div class="grid grid-cols-2 gap-3">
                     <div>
-                        <label class="block text-xs text-gray-400 mb-1">Email (optional)</label>
+                        <label class="block text-xs text-gray-400 mb-1">Email (opzionale)</label>
                         <input type="email" id="onboard-email" placeholder="email@example.com"
                             class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition">
                     </div>
                     <div>
-                        <label class="block text-xs text-gray-400 mb-1">Date of Birth *</label>
+                        <label class="block text-xs text-gray-400 mb-1">Data di Nascita *</label>
                         <input type="date" id="onboard-dob"
                             class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition">
                     </div>
@@ -685,23 +685,23 @@
                             class="w-full bg-black/30 border border-white/10 rounded-xl px-4 py-3 text-white placeholder-gray-500 outline-none focus:border-primary/50 transition">
                     </div>
                 </div>
-                <p class="text-xs text-gray-500">* A temporary password will be auto-generated. Client must change it on first login.</p>
+                <p class="text-xs text-gray-500">* Una password temporanea verrà generata automaticamente. Il cliente dovrà cambiarla al primo accesso.</p>
             </div>
         </div>
 
         <!-- Step 2: Documents -->
         <div id="onboard-step-2" class="onboard-step-content hidden">
-            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Documentation</h4>
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Documentazione</h4>
 
             <!-- Document Type Selector -->
             <div class="flex gap-2 mb-4">
                 <button onclick="selectDocType('waiver')" id="doc-type-waiver"
                     class="flex-1 py-3 rounded-xl text-sm font-semibold transition bg-primary/20 text-primary border border-primary/30">
-                    Sign Waiver
+                    Firma Liberatoria
                 </button>
                 <button onclick="selectDocType('medical')" id="doc-type-medical"
                     class="flex-1 py-3 rounded-xl text-sm font-semibold transition bg-white/5 text-white/60 border border-white/10 hover:bg-white/10">
-                    Upload Medical Certificate
+                    Carica Certificato Medico
                 </button>
             </div>
 
@@ -710,24 +710,24 @@
                 <div class="bg-white/5 rounded-xl p-4 mb-4 max-h-40 overflow-y-auto">
                     <p id="waiver-text-display" class="text-xs text-gray-300 whitespace-pre-line">Loading waiver...</p>
                 </div>
-                <p class="text-xs text-gray-400 mb-2">Client signature (use finger, stylus, or mouse):</p>
+                <p class="text-xs text-gray-400 mb-2">Firma del cliente (usa dito, penna o mouse):</p>
                 <div class="bg-white rounded-xl p-2 mb-2 relative">
                     <canvas id="signature-canvas" width="400" height="180" class="w-full cursor-crosshair rounded-lg" style="touch-action: none; min-height: 160px;"></canvas>
                     <div id="signature-placeholder" class="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <span class="text-gray-300 text-sm">Sign here</span>
+                        <span class="text-gray-300 text-sm">Firma qui</span>
                     </div>
                 </div>
                 <button onclick="clearSignature()" class="text-xs text-red-400 hover:text-red-300 transition flex items-center gap-1">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/>
                     </svg>
-                    Clear Signature
+                    Cancella Firma
                 </button>
             </div>
 
             <!-- Medical Certificate Section -->
             <div id="medical-section" class="hidden">
-                <p class="text-xs text-gray-400 mb-2">Upload medical certificate (photo or PDF):</p>
+                <p class="text-xs text-gray-400 mb-2">Carica certificato medico (foto o PDF):</p>
                 <label class="block w-full cursor-pointer">
                     <div class="border-2 border-dashed border-white/20 rounded-xl p-6 text-center hover:border-primary/50 transition">
                         <svg class="w-10 h-10 mx-auto text-gray-400 mb-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -735,7 +735,7 @@
                             <polyline points="17 8 12 3 7 8"/>
                             <line x1="12" y1="3" x2="12" y2="15"/>
                         </svg>
-                        <p class="text-sm text-gray-400">Click to upload or drag & drop</p>
+                        <p class="text-sm text-gray-400">Clicca per caricare o trascina</p>
                         <p class="text-xs text-gray-500 mt-1">JPG, PNG, PDF (max 10MB)</p>
                     </div>
                     <input type="file" id="medical-file" accept="image/*,.pdf" class="hidden" onchange="previewMedicalFile(this)">
@@ -752,20 +752,20 @@
 
         <!-- Step 3: Select Plan -->
         <div id="onboard-step-3" class="onboard-step-content hidden">
-            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Select Subscription Plan</h4>
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Seleziona Piano di Abbonamento</h4>
             <div id="onboard-plans-list" class="space-y-3 max-h-64 overflow-y-auto">
-                <p class="text-gray-400 text-sm text-center py-4">Loading plans...</p>
+                <p class="text-gray-400 text-sm text-center py-4">Caricamento piani...</p>
             </div>
             <div class="mt-4 pt-4 border-t border-white/10">
                 <button onclick="skipPlanSelection()" class="text-xs text-gray-400 hover:text-white transition">
-                    Skip - register without subscription
+                    Salta - registra senza abbonamento
                 </button>
             </div>
         </div>
 
         <!-- Step 4: Profile Photo -->
         <div id="onboard-step-4" class="onboard-step-content hidden">
-            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Profile Photo</h4>
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Foto Profilo</h4>
             <div class="flex flex-col items-center">
                 <!-- Photo Preview -->
                 <div id="onboard-photo-preview" class="w-32 h-32 rounded-full bg-white/10 border-2 border-dashed border-white/20 flex items-center justify-center mb-4 overflow-hidden relative">
@@ -773,7 +773,7 @@
                         <svg class="w-10 h-10 text-gray-500 mx-auto mb-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                         </svg>
-                        <span class="text-xs text-gray-500">No photo</span>
+                        <span class="text-xs text-gray-500">Nessuna foto</span>
                     </div>
                     <img id="onboard-photo-img" src="" alt="Profile" class="w-full h-full object-cover hidden">
                 </div>
@@ -785,29 +785,29 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z"/>
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z"/>
                         </svg>
-                        Take or Upload Photo
+                        Scatta o Carica Foto
                     </div>
                     <input type="file" id="onboard-photo-input" accept="image/*" capture="user" class="hidden" onchange="previewOnboardPhoto(this)">
                 </label>
 
                 <!-- Remove Button -->
                 <button id="onboard-photo-remove-btn" onclick="removeOnboardPhoto()" class="text-xs text-red-400 hover:text-red-300 transition hidden">
-                    Remove photo
+                    Rimuovi foto
                 </button>
 
-                <p class="text-xs text-gray-500 mt-3 text-center">Optional - client can also set their photo later from the app</p>
+                <p class="text-xs text-gray-500 mt-3 text-center">Opzionale - il cliente può anche impostare la foto successivamente dall'app</p>
             </div>
         </div>
 
         <!-- Step 5: Payment -->
         <div id="onboard-step-5" class="onboard-step-content hidden">
-            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Payment & Summary</h4>
+            <h4 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Pagamento e Riepilogo</h4>
 
             <!-- Summary -->
             <div class="bg-white/5 rounded-xl p-4 mb-4">
                 <div class="space-y-2 text-sm">
                     <div class="flex justify-between">
-                        <span class="text-gray-400">Client</span>
+                        <span class="text-gray-400">Cliente</span>
                         <span class="text-white font-semibold" id="summary-client-name">-</span>
                     </div>
                     <div class="flex justify-between">
@@ -815,11 +815,11 @@
                         <span class="text-white" id="summary-username">-</span>
                     </div>
                     <div class="flex justify-between">
-                        <span class="text-gray-400">Plan</span>
-                        <span class="text-white" id="summary-plan">No plan selected</span>
+                        <span class="text-gray-400">Piano</span>
+                        <span class="text-white" id="summary-plan">Nessun piano selezionato</span>
                     </div>
                     <div class="flex justify-between pt-2 border-t border-white/10">
-                        <span class="text-gray-400">Amount Due</span>
+                        <span class="text-gray-400">Importo Dovuto</span>
                         <span class="text-primary font-bold text-lg" id="summary-amount">-</span>
                     </div>
                 </div>
@@ -827,17 +827,17 @@
 
             <!-- Payment Method -->
             <div id="payment-method-section">
-                <p class="text-xs text-gray-400 mb-3">Select payment method:</p>
+                <p class="text-xs text-gray-400 mb-3">Seleziona metodo di pagamento:</p>
                 <div id="payment-grid" class="grid grid-cols-3 gap-3 mb-4">
                     <button onclick="selectPaymentMethod('cash')" id="pay-cash-btn"
                         class="p-4 rounded-xl border-2 border-white/20 hover:border-green-500/50 transition text-center">
                         <i data-lucide="banknote" class="w-6 h-6 block mb-1 mx-auto stroke-current"></i>
-                        <span class="text-sm font-semibold text-white">Cash</span>
+                        <span class="text-sm font-semibold text-white">Contanti</span>
                     </button>
                     <button onclick="selectPaymentMethod('card')" id="pay-card-btn"
                         class="p-4 rounded-xl border-2 border-white/20 hover:border-blue-500/50 transition text-center">
                         <i data-lucide="credit-card" class="w-6 h-6 block mb-1"></i>
-                        <span class="text-sm font-semibold text-white">Card</span>
+                        <span class="text-sm font-semibold text-white">Carta</span>
                     </button>
                     <button onclick="selectPaymentMethod('qr')" id="pay-qr-btn"
                         class="p-4 rounded-xl border-2 border-white/20 hover:border-purple-500/50 transition text-center">
@@ -853,12 +853,12 @@
 
                 <!-- Stripe Card Form (shown when card selected) -->
                 <div id="card-payment-form" class="hidden">
-                    <p class="text-sm text-gray-400 mb-3">Enter card details:</p>
+                    <p class="text-sm text-gray-400 mb-3">Inserisci i dati della carta:</p>
                     <div class="mb-3 rounded-xl border-2 border-gray-400" style="background: #ffffff; padding: 24px 20px; min-height: 80px;">
                         <div id="stripe-card-element" style="min-height: 32px; line-height: 32px;"></div>
                     </div>
                     <div id="onboard-card-errors" class="text-red-400 text-xs mb-2 hidden"></div>
-                    <p class="text-xs text-gray-500">Test card: 4242 4242 4242 4242, any future date, any CVC</p>
+                    <p class="text-xs text-gray-500">Carta di test: 4242 4242 4242 4242, qualsiasi data futura, qualsiasi CVC</p>
                 </div>
 
                 <!-- QR Code Payment (shown when QR selected) -->
@@ -866,28 +866,28 @@
                     <div class="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 text-center">
                         <div id="qr-initial" class="py-2">
                             <span class="block mb-2"><i data-lucide="camera" class="w-8 h-8"></i></span>
-                            <p class="text-purple-400 font-semibold mb-1">QR Code Payment</p>
-                            <p class="text-xs text-gray-400">A QR code will be generated when you click Complete Registration.</p>
-                            <p class="text-xs text-gray-400 mt-1">The client scans it with their phone to pay.</p>
+                            <p class="text-purple-400 font-semibold mb-1">Pagamento QR Code</p>
+                            <p class="text-xs text-gray-400">Un QR code verrà generato quando clicchi Completa Registrazione.</p>
+                            <p class="text-xs text-gray-400 mt-1">Il cliente lo scansiona con il telefono per pagare.</p>
                         </div>
                         <div id="qr-loading" class="hidden py-4">
                             <i data-lucide="loader-2" class="w-6 h-6 inline-block animate-spin stroke-current"></i>
-                            <p class="text-xs text-gray-400 mt-2">Generating QR code...</p>
+                            <p class="text-xs text-gray-400 mt-2">Generazione QR code...</p>
                         </div>
                         <div id="qr-display" class="hidden py-2">
-                            <p class="text-purple-400 font-semibold mb-3">Scan to Pay</p>
+                            <p class="text-purple-400 font-semibold mb-3">Scansiona per Pagare</p>
                             <div id="qr-code-container" class="bg-white rounded-xl p-4 inline-block mx-auto mb-3"></div>
-                            <p class="text-xs text-gray-400 mt-2">Waiting for payment...</p>
-                            <div class="animate-pulse text-purple-400 text-sm mt-1" id="qr-polling-indicator">Checking payment status...</div>
+                            <p class="text-xs text-gray-400 mt-2">In attesa del pagamento...</p>
+                            <div class="animate-pulse text-purple-400 text-sm mt-1" id="qr-polling-indicator">Verifica stato pagamento...</div>
                         </div>
                         <div id="qr-paid" class="hidden py-4">
                             <span class="text-4xl block mb-2 text-green-400">&#10003;</span>
-                            <p class="text-green-400 font-semibold">Payment Received!</p>
-                            <p class="text-xs text-gray-400 mt-1">Completing registration...</p>
+                            <p class="text-green-400 font-semibold">Pagamento Ricevuto!</p>
+                            <p class="text-xs text-gray-400 mt-1">Completamento registrazione...</p>
                         </div>
                         <div id="qr-error" class="hidden py-2">
-                            <p class="text-xs text-red-400" id="qr-error-msg">Payment setup failed</p>
-                            <button onclick="retryQrPayment()" class="text-xs text-purple-400 underline mt-2">Try Again</button>
+                            <p class="text-xs text-red-400" id="qr-error-msg">Configurazione pagamento fallita</p>
+                            <button onclick="retryQrPayment()" class="text-xs text-purple-400 underline mt-2">Riprova</button>
                         </div>
                     </div>
                 </div>
@@ -897,24 +897,24 @@
                     <div class="bg-orange-500/10 border border-orange-500/30 rounded-xl p-4 text-center">
                         <div id="pos-initial" class="py-2">
                             <i data-lucide="smartphone-nfc" class="w-8 h-8 mx-auto mb-2 text-orange-400 stroke-current"></i>
-                            <p class="text-orange-400 font-semibold mb-1">POS Terminal Payment</p>
-                            <p class="text-xs text-gray-400">Payment will be processed on the POS reader when you click Complete Registration.</p>
+                            <p class="text-orange-400 font-semibold mb-1">Pagamento Terminale POS</p>
+                            <p class="text-xs text-gray-400">Il pagamento verrà elaborato sul lettore POS quando clicchi Completa Registrazione.</p>
                         </div>
                         <div id="pos-processing" class="hidden py-4">
                             <i data-lucide="loader-2" class="w-6 h-6 inline-block animate-spin text-orange-400 stroke-current"></i>
-                            <p class="text-orange-400 font-semibold mt-2">Processing on terminal...</p>
-                            <p class="text-xs text-gray-400 mt-1">Ask the client to tap or insert their card</p>
-                            <div class="animate-pulse text-orange-400 text-sm mt-2">Waiting for payment...</div>
-                            <button onclick="cancelTerminalPayment()" class="mt-3 text-xs text-red-400 underline">Cancel Payment</button>
+                            <p class="text-orange-400 font-semibold mt-2">Elaborazione sul terminale...</p>
+                            <p class="text-xs text-gray-400 mt-1">Chiedi al cliente di avvicinare o inserire la carta</p>
+                            <div class="animate-pulse text-orange-400 text-sm mt-2">In attesa del pagamento...</div>
+                            <button onclick="cancelTerminalPayment()" class="mt-3 text-xs text-red-400 underline">Annulla Pagamento</button>
                         </div>
                         <div id="pos-success" class="hidden py-4">
                             <span class="text-4xl block mb-2 text-green-400">&#10003;</span>
-                            <p class="text-green-400 font-semibold">Payment Received!</p>
-                            <p class="text-xs text-gray-400 mt-1">Completing registration...</p>
+                            <p class="text-green-400 font-semibold">Pagamento Ricevuto!</p>
+                            <p class="text-xs text-gray-400 mt-1">Completamento registrazione...</p>
                         </div>
                         <div id="pos-error" class="hidden py-2">
-                            <p class="text-xs text-red-400" id="pos-error-msg">Terminal payment failed</p>
-                            <button onclick="retryTerminalPayment()" class="text-xs text-orange-400 underline mt-2">Try Again</button>
+                            <p class="text-xs text-red-400" id="pos-error-msg">Pagamento terminale fallito</p>
+                            <button onclick="retryTerminalPayment()" class="text-xs text-orange-400 underline mt-2">Riprova</button>
                         </div>
                     </div>
                 </div>
@@ -924,8 +924,8 @@
             <div id="no-payment-section" class="hidden">
                 <div class="bg-green-500/10 border border-green-500/30 rounded-xl p-4 text-center">
                     <span class="text-2xl block mb-2">✓</span>
-                    <p class="text-green-400 font-semibold">No payment required</p>
-                    <p class="text-xs text-gray-400 mt-1">Client will be registered without subscription</p>
+                    <p class="text-green-400 font-semibold">Nessun pagamento necessario</p>
+                    <p class="text-xs text-gray-400 mt-1">Il cliente verrà registrato senza abbonamento</p>
                 </div>
             </div>
         </div>
@@ -934,15 +934,15 @@
         <div class="flex gap-3 mt-6">
             <button onclick="onboardPrevStep()" id="onboard-prev-btn"
                 class="flex-1 bg-white/10 hover:bg-white/20 text-white py-3 rounded-xl font-semibold transition hidden">
-                Back
+                Indietro
             </button>
             <button onclick="onboardNextStep()" id="onboard-next-btn"
                 class="flex-1 bg-primary hover:bg-primary/80 text-white py-3 rounded-xl font-semibold transition">
-                Next
+                Avanti
             </button>
             <button onclick="completeOnboarding()" id="onboard-complete-btn"
                 class="flex-1 bg-green-500 hover:bg-green-600 text-white py-3 rounded-xl font-semibold transition hidden">
-                Complete Registration
+                Completa Registrazione
             </button>
         </div>
     </div>
@@ -1042,7 +1042,7 @@ async function loadTrainers() {
             if (allTrainers.length === 0) {
                 listEl.innerHTML = `
                     <div class="glass-card p-3 text-center">
-                        <p class="text-gray-400 text-sm">No trainers yet</p>
+                        <p class="text-gray-400 text-sm">Nessun trainer</p>
                     </div>
                 `;
                 return;
@@ -1077,8 +1077,8 @@ async function loadTrainers() {
 }
 
 function getRoleLabel(trainer) {
-    if (trainer.sub_role === 'nutritionist') return 'Nutritionist';
-    if (trainer.sub_role === 'both') return 'Trainer & Nutritionist';
+    if (trainer.sub_role === 'nutritionist') return 'Nutrizionista';
+    if (trainer.sub_role === 'both') return 'Trainer & Nutrizionista';
     return 'Personal Trainer';
 }
 
@@ -1197,7 +1197,7 @@ function showScannedMember(memberId, label) {
         `;
         if (typeof lucide !== 'undefined') lucide.createIcons();
     } else {
-        resultsDiv.innerHTML = '<p class="text-red-400 text-sm text-center py-2">Member not found in system</p>';
+        resultsDiv.innerHTML = '<p class="text-red-400 text-sm text-center py-2">Membro non trovato nel sistema</p>';
     }
     resultsDiv.classList.remove('hidden');
 }
@@ -1238,11 +1238,11 @@ async function searchMember() {
                     showScannedMember(userId, 'Access Verified');
                 } else {
                     const err = await res.json();
-                    showToast(err.detail || 'Access code expired', 'error');
+                    showToast(err.detail || 'Codice di accesso scaduto', 'error');
                     resultsDiv.classList.add('hidden');
                 }
             } catch (e) {
-                showToast('Failed to verify access code', 'error');
+                showToast('Impossibile verificare il codice di accesso', 'error');
             }
         }
         return;
@@ -1262,7 +1262,7 @@ async function searchMember() {
     );
 
     if (filtered.length === 0) {
-        resultsDiv.innerHTML = '<p class="text-gray-400 text-sm text-center py-2">No members found</p>';
+        resultsDiv.innerHTML = '<p class="text-gray-400 text-sm text-center py-2">Nessun membro trovato</p>';
     } else {
         resultsDiv.innerHTML = filtered.slice(0, 5).map(member => `
             <div class="glass-card p-3 flex items-center justify-between">
@@ -1293,17 +1293,17 @@ async function checkInMember(memberId) {
         });
 
         if (res.ok) {
-            showToast('Member checked in successfully!', 'success');
+            showToast('Check-in del membro effettuato!', 'success');
             await loadCheckinStats();
             document.getElementById('checkin-search').value = '';
             document.getElementById('search-results').classList.add('hidden');
         } else {
             const err = await res.json();
-            showToast(err.detail || 'Check-in failed', 'error');
+            showToast(err.detail || 'Check-in fallito', 'error');
         }
     } catch (error) {
         console.error('Check-in error:', error);
-        showToast('Check-in failed', 'error');
+        showToast('Check-in fallito', 'error');
     }
 }
 
@@ -1334,7 +1334,7 @@ async function loadCheckinStats() {
                 } else {
                     listEl.innerHTML = `
                         <div class="glass-card p-3 text-center">
-                            <p class="text-gray-400 text-sm">No check-ins yet today</p>
+                            <p class="text-gray-400 text-sm">Nessun check-in oggi</p>
                         </div>
                     `;
                 }
@@ -1360,7 +1360,7 @@ async function loadTodaysAppointments() {
             if (appointments.length === 0) {
                 listEl.innerHTML = `
                     <div class="glass-card p-3 text-center">
-                        <p class="text-gray-400 text-sm">No appointments today</p>
+                        <p class="text-gray-400 text-sm">Nessun appuntamento oggi</p>
                     </div>
                 `;
             } else {
@@ -1369,7 +1369,7 @@ async function loadTodaysAppointments() {
                         <div class="flex items-center justify-between">
                             <div class="min-w-0 flex-1">
                                 <p class="text-white font-medium text-sm truncate">${appt.client_name}</p>
-                                <p class="text-xs text-gray-400 truncate">with ${appt.trainer_name}</p>
+                                <p class="text-xs text-gray-400 truncate">con ${appt.trainer_name}</p>
                             </div>
                             <div class="text-right flex-shrink-0 ml-2">
                                 <p class="text-primary font-semibold text-sm">${appt.time}</p>
@@ -1418,7 +1418,7 @@ async function viewTrainerSchedule(trainerId, trainerName) {
                     </div>
                 `).join('');
             } else {
-                availEl.innerHTML = '<p class="text-gray-500 text-sm">No availability set</p>';
+                availEl.innerHTML = '<p class="text-gray-500 text-sm">Nessuna disponibilità impostata</p>';
             }
 
             // Display today's appointments
@@ -1436,12 +1436,12 @@ async function viewTrainerSchedule(trainerId, trainerName) {
                     </div>
                 `).join('');
             } else {
-                schedEl.innerHTML = '<p class="text-gray-500 text-sm">No appointments today</p>';
+                schedEl.innerHTML = '<p class="text-gray-500 text-sm">Nessun appuntamento oggi</p>';
             }
         }
     } catch (error) {
         console.error('Error loading trainer schedule:', error);
-        availEl.innerHTML = '<p class="text-red-400 text-sm">Error loading availability</p>';
+        availEl.innerHTML = '<p class="text-red-400 text-sm">Errore nel caricamento disponibilità</p>';
     }
 }
 
@@ -1467,7 +1467,7 @@ async function openMemberProfile(memberId) {
             currentMemberData = data;
             renderMemberProfile(data);
         } else {
-            showToast('Failed to load member profile', 'error');
+            showToast('Impossibile caricare il profilo membro', 'error');
             closeMemberModal();
         }
     } catch (error) {
@@ -1485,24 +1485,24 @@ function renderMemberProfile(data) {
 
     // Basic info
     document.getElementById('member-name').textContent = data.name || data.username;
-    document.getElementById('member-email').textContent = data.email || 'No email';
+    document.getElementById('member-email').textContent = data.email || 'Nessuna email';
 
     // Status badge
     const statusBadge = document.getElementById('member-status-badge');
     if (data.checked_in_today) {
         statusBadge.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-green-500/20 text-green-400 text-sm font-semibold';
-        statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-green-400"></span> Checked In Today';
+        statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-green-400"></span> Check-in effettuato oggi';
     } else if (data.status === 'active') {
         statusBadge.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-blue-500/20 text-blue-400 text-sm font-semibold';
-        statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-blue-400"></span> Active Member';
+        statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-blue-400"></span> Membro Attivo';
     } else {
         statusBadge.className = 'inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-gray-500/20 text-gray-400 text-sm font-semibold';
-        statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-gray-400"></span> Inactive';
+        statusBadge.innerHTML = '<span class="w-2 h-2 rounded-full bg-gray-400"></span> Inattivo';
     }
 
     // Member info
-    document.getElementById('member-since').textContent = data.member_since || 'Unknown';
-    document.getElementById('member-trainer').textContent = data.trainer_name || 'None assigned';
+    document.getElementById('member-since').textContent = data.member_since || 'Sconosciuto';
+    document.getElementById('member-trainer').textContent = data.trainer_name || 'Nessuno assegnato';
     document.getElementById('member-total-checkins').textContent = data.total_checkins || 0;
 
     // Format last check-in
@@ -1515,23 +1515,23 @@ function renderMemberProfile(data) {
             document.getElementById('member-last-checkin').textContent = lastCheckin;
         }
     } else {
-        document.getElementById('member-last-checkin').textContent = 'Never';
+        document.getElementById('member-last-checkin').textContent = 'Mai';
     }
 
     // Subscription info
     const sub = data.subscription || {};
-    document.getElementById('member-plan').textContent = sub.plan || 'No active plan';
+    document.getElementById('member-plan').textContent = sub.plan || 'Nessun piano attivo';
 
     const subStatusEl = document.getElementById('member-sub-status');
     if (sub.status === 'active') {
         subStatusEl.className = 'text-green-400';
-        subStatusEl.textContent = 'Active';
+        subStatusEl.textContent = 'Attivo';
     } else if (sub.status === 'trialing') {
         subStatusEl.className = 'text-yellow-400';
-        subStatusEl.textContent = 'Trial';
+        subStatusEl.textContent = 'Prova';
     } else {
         subStatusEl.className = 'text-gray-400';
-        subStatusEl.textContent = sub.status || 'Inactive';
+        subStatusEl.textContent = sub.status || 'Inattivo';
     }
 
     document.getElementById('member-sub-expires').textContent = sub.expires || '-';
@@ -1543,10 +1543,10 @@ function renderMemberProfile(data) {
 
     actionsEl.classList.remove('hidden');
     if (sub.status === 'active' || sub.status === 'trialing') {
-        assignBtn.textContent = 'Change Plan';
+        assignBtn.textContent = 'Cambia Piano';
         cancelBtn.classList.remove('hidden');
     } else {
-        assignBtn.textContent = 'Assign Plan';
+        assignBtn.textContent = 'Assegna Piano';
         cancelBtn.classList.add('hidden');
     }
 
@@ -1559,7 +1559,7 @@ function renderMemberProfile(data) {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                 <polyline points="20 6 9 17 4 12"/>
             </svg>
-            Already Checked In
+            Check-in Effettuato
         `;
     } else {
         checkinBtn.disabled = false;
@@ -1600,7 +1600,7 @@ function renderMemberProfile(data) {
             </div>
         `;
     } else {
-        certEl.innerHTML = '<p class="text-gray-500 text-sm">No certificate uploaded</p>';
+        certEl.innerHTML = '<p class="text-gray-500 text-sm">Nessun certificato caricato</p>';
     }
 }
 
@@ -1621,17 +1621,17 @@ async function checkInMemberFromModal() {
         });
 
         if (res.ok) {
-            showToast(`${currentMemberData.name || currentMemberData.username} checked in!`, 'success');
+            showToast(`${currentMemberData.name || currentMemberData.username} - check-in effettuato!`, 'success');
             currentMemberData.checked_in_today = true;
             renderMemberProfile(currentMemberData);
             await loadCheckinStats();
         } else {
             const err = await res.json();
-            showToast(err.detail || 'Check-in failed', 'error');
+            showToast(err.detail || 'Check-in fallito', 'error');
         }
     } catch (error) {
         console.error('Check-in error:', error);
-        showToast('Check-in failed', 'error');
+        showToast('Check-in fallito', 'error');
     }
 }
 
@@ -1654,7 +1654,7 @@ document.getElementById('member-profile-modal')?.addEventListener('click', (e) =
 async function resetMemberPassword() {
     if (!currentMemberData) return;
     const name = currentMemberData.name || currentMemberData.username;
-    if (!confirm(`Reset password for ${name}? A temporary password will be generated.`)) return;
+    if (!confirm(`Reimposta password per ${name}? Verrà generata una password temporanea.`)) return;
 
     try {
         const res = await fetch('/api/staff/reset-member-password', {
@@ -1681,19 +1681,19 @@ async function resetMemberPassword() {
                             <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
                         </svg>
                     </div>
-                    <h3 class="text-lg font-bold text-white mb-2">Password Reset</h3>
-                    <p class="text-gray-400 text-sm mb-4">Temporary password for <strong class="text-white">${name}</strong></p>
+                    <h3 class="text-lg font-bold text-white mb-2">Reimposta Password</h3>
+                    <p class="text-gray-400 text-sm mb-4">Password temporanea per <strong class="text-white">${name}</strong></p>
                     <div class="bg-black/40 border border-yellow-500/30 rounded-xl p-4 mb-4">
                         <p class="text-yellow-400 font-mono text-lg select-all" id="temp-pw-display">${tempPw}</p>
                     </div>
                     <button onclick="navigator.clipboard.writeText('${tempPw}'); this.textContent='Copied!'; setTimeout(()=>this.textContent='Copy Password',1500)"
                         class="w-full bg-yellow-500/20 hover:bg-yellow-500/30 text-yellow-400 py-2 rounded-xl font-semibold transition mb-3 text-sm">
-                        Copy Password
+                        Copia Password
                     </button>
-                    <p class="text-gray-500 text-xs mb-4">The member will be asked to change it on first login.</p>
+                    <p class="text-gray-500 text-xs mb-4">Il membro dovrà cambiarla al primo accesso.</p>
                     <button onclick="document.getElementById('temp-password-overlay')?.remove()"
                         class="w-full bg-white/10 hover:bg-white/20 text-white py-2 rounded-xl font-semibold transition text-sm">
-                        Close
+                        Chiudi
                     </button>
                 </div>
             `;
@@ -1701,22 +1701,22 @@ async function resetMemberPassword() {
             overlay.addEventListener('click', (e) => { if (e.target === overlay) overlay.remove(); });
         } else {
             const err = await res.json();
-            showToast(err.detail || 'Failed to reset password');
+            showToast(err.detail || 'Impossibile reimpostare la password');
         }
     } catch (error) {
         console.error('Error resetting password:', error);
-        showToast('Failed to reset password');
+        showToast('Impossibile reimpostare la password');
     }
 }
 
 async function openChangeUsername() {
     if (!currentMemberData) return;
     const currentUsername = currentMemberData.username;
-    const newUsername = prompt(`Enter new username for ${currentMemberData.name || currentUsername}:`, currentUsername);
+    const newUsername = prompt(`Inserisci nuovo username per ${currentMemberData.name || currentUsername}:`, currentUsername);
     if (!newUsername || newUsername === currentUsername) return;
 
     if (newUsername.length < 3) {
-        showToast('Username must be at least 3 characters');
+        showToast('L\'username deve avere almeno 3 caratteri');
         return;
     }
 
@@ -1729,16 +1729,16 @@ async function openChangeUsername() {
         });
 
         if (res.ok) {
-            showToast('Username changed successfully');
+            showToast('Username cambiato con successo');
             currentMemberData.username = newUsername;
             openMemberProfile(currentMemberData.id);
         } else {
             const err = await res.json();
-            showToast(err.detail || 'Failed to change username');
+            showToast(err.detail || 'Impossibile cambiare username');
         }
     } catch (error) {
         console.error('Error changing username:', error);
-        showToast('Failed to change username');
+        showToast('Impossibile cambiare username');
     }
 }
 
@@ -1766,10 +1766,10 @@ function openSubscriptionManager() {
     // Show appropriate buttons based on subscription status
     const sub = currentMemberData?.subscription || {};
     if (sub.status === 'active' || sub.status === 'trialing') {
-        assignBtn.textContent = 'Change Plan';
+        assignBtn.textContent = 'Cambia Piano';
         cancelBtn.classList.remove('hidden');
     } else {
-        assignBtn.textContent = 'Assign Plan';
+        assignBtn.textContent = 'Assegna Piano';
         cancelBtn.classList.add('hidden');
     }
 }
@@ -1796,8 +1796,8 @@ function showPlanSelectorModal() {
     if (availablePlans.length === 0) {
         listEl.innerHTML = `
             <div class="text-center py-8">
-                <p class="text-gray-400">No subscription plans available.</p>
-                <p class="text-xs text-gray-500 mt-2">Ask the gym owner to create plans first.</p>
+                <p class="text-gray-400">Nessun piano di abbonamento disponibile.</p>
+                <p class="text-xs text-gray-500 mt-2">Chiedi al proprietario di creare i piani prima.</p>
             </div>
         `;
     } else {
@@ -1855,18 +1855,18 @@ async function selectPlan(planId, planName) {
             await openMemberProfile(currentMemberData.id);
         } else {
             const err = await res.json();
-            showToast(err.detail || 'Failed to update subscription', 'error');
+            showToast(err.detail || 'Impossibile aggiornare l\'abbonamento', 'error');
         }
     } catch (error) {
         console.error('Subscription error:', error);
-        showToast('Failed to update subscription', 'error');
+        showToast('Impossibile aggiornare l\'abbonamento', 'error');
     }
 }
 
 async function cancelMemberSubscription() {
     if (!currentMemberData) return;
 
-    if (!confirm(`Cancel subscription for ${currentMemberData.name || currentMemberData.username}?`)) {
+    if (!confirm(`Annullare l'abbonamento per ${currentMemberData.name || currentMemberData.username}?`)) {
         return;
     }
 
@@ -1880,17 +1880,17 @@ async function cancelMemberSubscription() {
 
         if (res.ok) {
             const data = await res.json();
-            showToast(data.message || 'Subscription canceled', 'success');
+            showToast(data.message || 'Abbonamento annullato', 'success');
 
             // Refresh member profile
             await openMemberProfile(currentMemberData.id);
         } else {
             const err = await res.json();
-            showToast(err.detail || 'Failed to cancel subscription', 'error');
+            showToast(err.detail || 'Impossibile annullare l\'abbonamento', 'error');
         }
     } catch (error) {
         console.error('Cancel error:', error);
-        showToast('Failed to cancel subscription', 'error');
+        showToast('Impossibile annullare l\'abbonamento', 'error');
     }
 }
 
@@ -2242,9 +2242,9 @@ function validateOnboardStep(step) {
         const phone = document.getElementById('onboard-phone').value.trim();
         const username = document.getElementById('onboard-username').value.trim();
 
-        if (!name) { showToast('Name is required', 'error'); return false; }
-        if (!phone) { showToast('Phone is required', 'error'); return false; }
-        if (!username) { showToast('Username is required', 'error'); return false; }
+        if (!name) { showToast('Il nome è obbligatorio', 'error'); return false; }
+        if (!phone) { showToast('Il telefono è obbligatorio', 'error'); return false; }
+        if (!username) { showToast('L\'username è obbligatorio', 'error'); return false; }
         return true;
     }
 
@@ -2252,14 +2252,14 @@ function validateOnboardStep(step) {
         if (onboardingState.data.documentType === 'waiver') {
             // Check if signature exists
             if (!hasSignature()) {
-                showToast('Please have the client sign the waiver', 'error');
+                showToast('Fai firmare la liberatoria al cliente', 'error');
                 return false;
             }
         } else {
             // Check if file uploaded
             const fileInput = document.getElementById('medical-file');
             if (!fileInput.files || !fileInput.files[0]) {
-                showToast('Please upload the medical certificate', 'error');
+                showToast('Carica il certificato medico', 'error');
                 return false;
             }
         }
@@ -2306,8 +2306,8 @@ function loadOnboardingPlans() {
     if (availablePlans.length === 0) {
         listEl.innerHTML = `
             <div class="text-center py-6">
-                <p class="text-gray-400">No subscription plans available.</p>
-                <p class="text-xs text-gray-500 mt-2">Client can be registered without a plan.</p>
+                <p class="text-gray-400">Nessun piano di abbonamento disponibile.</p>
+                <p class="text-xs text-gray-500 mt-2">Il cliente può essere registrato senza un piano.</p>
             </div>
         `;
         return;
@@ -2354,7 +2354,7 @@ function updateOnboardingSummary() {
         document.getElementById('payment-method-section').classList.remove('hidden');
         document.getElementById('no-payment-section').classList.add('hidden');
     } else {
-        document.getElementById('summary-plan').textContent = 'No plan selected';
+        document.getElementById('summary-plan').textContent = 'Nessun piano selezionato';
         document.getElementById('summary-amount').textContent = '-';
         document.getElementById('payment-method-section').classList.add('hidden');
         document.getElementById('no-payment-section').classList.remove('hidden');
@@ -2518,7 +2518,7 @@ function stopPollingPayment() {
 async function finalizeQrOnboarding(paymentIntentId) {
     const completeBtn = document.getElementById('onboard-complete-btn');
     completeBtn.disabled = true;
-    completeBtn.textContent = 'Registering...';
+    completeBtn.textContent = 'Registrazione...';
 
     try {
         const payload = {
@@ -2558,14 +2558,14 @@ async function finalizeQrOnboarding(paymentIntentId) {
             await loadStaffData();
         } else {
             const err = await res.json();
-            showToast(err.detail || 'Registration failed', 'error');
+            showToast(err.detail || 'Registrazione fallita', 'error');
         }
     } catch (error) {
         console.error('QR onboarding error:', error);
-        showToast(error.message || 'Registration failed', 'error');
+        showToast(error.message || 'Registrazione fallita', 'error');
     } finally {
         completeBtn.disabled = false;
-        completeBtn.textContent = 'Complete Registration';
+        completeBtn.textContent = 'Completa Registrazione';
     }
 }
 
@@ -2613,7 +2613,7 @@ async function startTerminalPayment() {
         // Re-enable complete button
         const btn = document.getElementById('onboard-complete-btn');
         btn.disabled = false;
-        btn.textContent = 'Complete Registration';
+        btn.textContent = 'Completa Registrazione';
     }
 }
 
@@ -2646,10 +2646,10 @@ function startTerminalPolling() {
                 terminalPollingInterval = null;
                 document.getElementById('pos-processing').classList.add('hidden');
                 document.getElementById('pos-error').classList.remove('hidden');
-                document.getElementById('pos-error-msg').textContent = 'Payment was declined or canceled';
+                document.getElementById('pos-error-msg').textContent = 'Pagamento rifiutato o annullato';
                 const btn = document.getElementById('onboard-complete-btn');
                 btn.disabled = false;
-                btn.textContent = 'Complete Registration';
+                btn.textContent = 'Completa Registrazione';
             }
         } catch (e) {
             console.error('Terminal polling error:', e);
@@ -2668,7 +2668,7 @@ function stopTerminalPolling() {
 async function finalizeTerminalOnboarding(paymentIntentId) {
     const completeBtn = document.getElementById('onboard-complete-btn');
     completeBtn.disabled = true;
-    completeBtn.textContent = 'Registering...';
+    completeBtn.textContent = 'Registrazione...';
 
     try {
         const payload = {
@@ -2708,14 +2708,14 @@ async function finalizeTerminalOnboarding(paymentIntentId) {
             await loadStaffData();
         } else {
             const err = await res.json();
-            showToast(err.detail || 'Registration failed', 'error');
+            showToast(err.detail || 'Registrazione fallita', 'error');
         }
     } catch (error) {
         console.error('Terminal onboarding error:', error);
-        showToast(error.message || 'Registration failed', 'error');
+        showToast(error.message || 'Registrazione fallita', 'error');
     } finally {
         completeBtn.disabled = false;
-        completeBtn.textContent = 'Complete Registration';
+        completeBtn.textContent = 'Completa Registrazione';
     }
 }
 
@@ -2734,7 +2734,7 @@ async function cancelTerminalPayment() {
     document.getElementById('pos-initial').classList.remove('hidden');
     const btn = document.getElementById('onboard-complete-btn');
     btn.disabled = false;
-    btn.textContent = 'Complete Registration';
+    btn.textContent = 'Completa Registrazione';
 }
 
 function retryTerminalPayment() {
@@ -2743,7 +2743,7 @@ function retryTerminalPayment() {
     document.getElementById('pos-initial').classList.remove('hidden');
     const btn = document.getElementById('onboard-complete-btn');
     btn.disabled = false;
-    btn.textContent = 'Complete Registration';
+    btn.textContent = 'Completa Registrazione';
 }
 
 // Document type selection
@@ -2984,14 +2984,14 @@ async function initStripeElements() {
         const res = await fetch('/api/stripe/publishable-key', { credentials: 'include' });
         if (!res.ok) {
             console.error('Could not get Stripe publishable key');
-            showToast('Card payments not available', 'error');
+            showToast('Pagamenti con carta non disponibili', 'error');
             return;
         }
         const { publishable_key } = await res.json();
 
         if (!publishable_key || publishable_key.startsWith('your_')) {
             console.error('Stripe not configured');
-            showToast('Card payments not configured', 'error');
+            showToast('Pagamenti con carta non configurati', 'error');
             return;
         }
 
@@ -3038,7 +3038,7 @@ async function initStripeElements() {
         console.log('Stripe card element mounted successfully');
     } catch (e) {
         console.error('Error initializing Stripe:', e);
-        showToast('Failed to initialize card payment', 'error');
+        showToast('Impossibile inizializzare il pagamento con carta', 'error');
     }
 }
 
@@ -3096,7 +3096,7 @@ async function processCardPayment() {
 async function completeOnboarding() {
     // Validate payment method if plan selected
     if (onboardingState.data.planId && !onboardingState.data.paymentMethod) {
-        showToast('Please select a payment method', 'error');
+        showToast('Seleziona un metodo di pagamento', 'error');
         return;
     }
 
@@ -3107,7 +3107,7 @@ async function completeOnboarding() {
     try {
         // If card payment, process payment first
         if (onboardingState.data.paymentMethod === 'card') {
-            completeBtn.textContent = 'Processing payment...';
+            completeBtn.textContent = 'Elaborazione pagamento...';
 
             // Create payment intent
             await createPaymentIntent();
@@ -3120,21 +3120,21 @@ async function completeOnboarding() {
 
         // If QR payment, start QR flow and return (auto-completes after payment)
         if (onboardingState.data.paymentMethod === 'qr') {
-            completeBtn.textContent = 'Generating QR Code...';
+            completeBtn.textContent = 'Generazione QR Code...';
             await startQrPayment();
-            completeBtn.textContent = 'Waiting for QR Payment...';
+            completeBtn.textContent = 'In attesa del pagamento QR...';
             return;
         }
 
         // If terminal payment, start terminal flow and return (auto-completes after payment)
         if (onboardingState.data.paymentMethod === 'terminal') {
-            completeBtn.textContent = 'Processing on terminal...';
+            completeBtn.textContent = 'Elaborazione sul terminale...';
             await startTerminalPayment();
-            completeBtn.textContent = 'Waiting for terminal payment...';
+            completeBtn.textContent = 'In attesa del pagamento terminale...';
             return;
         }
 
-        completeBtn.textContent = 'Registering...';
+        completeBtn.textContent = 'Registrazione...';
 
         // Prepare data
         const payload = {
@@ -3176,14 +3176,14 @@ async function completeOnboarding() {
             await loadStaffData();
         } else {
             const err = await res.json();
-            showToast(err.detail || 'Registration failed', 'error');
+            showToast(err.detail || 'Registrazione fallita', 'error');
         }
     } catch (error) {
         console.error('Onboarding error:', error);
-        showToast(error.message || 'Registration failed', 'error');
+        showToast(error.message || 'Registrazione fallita', 'error');
     } finally {
         completeBtn.disabled = false;
-        completeBtn.textContent = 'Complete Registration';
+        completeBtn.textContent = 'Completa Registrazione';
     }
 }
 
@@ -3201,9 +3201,9 @@ function closeTempPasswordModal() {
 function copyTempPassword() {
     const pw = document.getElementById('temp-pw-password').textContent;
     navigator.clipboard.writeText(pw).then(() => {
-        showToast('Password copied to clipboard', 'success');
+        showToast('Password copiata negli appunti', 'success');
     }).catch(() => {
-        showToast('Failed to copy', 'error');
+        showToast('Impossibile copiare', 'error');
     });
 }
 
@@ -3220,7 +3220,7 @@ function previewOnboardPhoto(input) {
     if (input.files && input.files[0]) {
         const file = input.files[0];
         if (file.size > 5 * 1024 * 1024) {
-            showToast('Photo must be under 5MB', 'error');
+            showToast('La foto deve essere sotto 5MB', 'error');
             input.value = '';
             return;
         }
@@ -3272,7 +3272,7 @@ window.openGymMembersModal = function() {
     ];
 
     if (people.length === 0) {
-        showToast('No gym members found', 'error');
+        showToast('Nessun membro della palestra trovato', 'error');
         return;
     }
 
@@ -3288,11 +3288,11 @@ window.openGymMembersModal = function() {
 
     modal.innerHTML = `
         <div class="flex items-center justify-between p-4 border-b border-white/10">
-            <h3 class="font-bold text-white text-lg">New Message</h3>
+            <h3 class="font-bold text-white text-lg">Nuovo Messaggio</h3>
             <button onclick="document.getElementById('member-picker-modal').classList.add('hidden')" class="text-gray-400 hover:text-white text-2xl">&times;</button>
         </div>
         <div class="p-4">
-            <input type="text" id="member-picker-search" placeholder="Search..."
+            <input type="text" id="member-picker-search" placeholder="Cerca..."
                 class="w-full bg-white/10 border border-white/20 rounded-xl px-4 py-3 text-white placeholder-gray-500 focus:border-primary outline-none mb-3"
                 oninput="filterMemberPicker()">
         </div>

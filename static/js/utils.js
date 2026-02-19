@@ -62,7 +62,7 @@ export function showClientModal(name, plan, status) {
     assignDiv.id = 'assign-workout-container';
     assignDiv.className = "bg-white/5 p-4 rounded-xl mt-4";
     assignDiv.innerHTML = `
-        <p class="text-xs text-gray-400 uppercase mb-2">Assign Workout</p>
+        <p class="text-xs text-gray-400 uppercase mb-2">Assegna Allenamento</p>
         <div class="flex space-x-2">
             <select id="workout-select" class="flex-1 bg-black/30 text-white text-sm rounded-lg px-3 py-2 border border-white/10 outline-none focus:border-primary">
                 <option value="Push">Push Day</option>
@@ -70,7 +70,7 @@ export function showClientModal(name, plan, status) {
                 <option value="Legs">Leg Day</option>
                 <option value="Cardio">Cardio</option>
             </select>
-            <button data-action="assignWorkout" data-client="${name}" class="bg-primary text-white font-bold px-4 py-2 rounded-lg text-sm tap-effect">Assign</button>
+            <button data-action="assignWorkout" data-client="${name}" class="bg-primary text-white font-bold px-4 py-2 rounded-lg text-sm tap-effect">Assegna</button>
         </div>
     `;
 
@@ -87,28 +87,28 @@ export function quickAction(action) {
         input.type = 'file';
         input.accept = 'image/*';
         input.onchange = e => {
-            showToast('Analyzing meal... 🍎');
-            setTimeout(() => showToast('Logged: Avocado Toast (350 kcal)'), 1500);
+            showToast('Analisi del pasto... 🍎');
+            setTimeout(() => showToast('Registrato: Avocado Toast (350 kcal)'), 1500);
         };
         input.click();
     } else if (action === 'search') {
-        const food = prompt("Search for food:");
-        if (food) showToast(`Found: ${food} (Loading details...)`);
+        const food = prompt("Cerca cibo:");
+        if (food) showToast(`Trovato: ${food} (Caricamento dettagli...)`);
     } else if (action === 'copy') {
-        showToast('Copied yesterday\'s meals 📋');
+        showToast('Pasti di ieri copiati 📋');
     }
 }
 
 // Physique Photos
 export function addPhoto() {
-    const url = prompt("Enter photo URL:");
+    const url = prompt("Inserisci URL foto:");
     if (url) {
         const gallery = document.getElementById('photo-gallery');
         const img = document.createElement('img');
         img.src = url;
         img.className = "w-24 h-32 object-cover rounded-xl border border-white/10 flex-shrink-0 slide-up";
         gallery.prepend(img);
-        showToast('Physique update saved! 📸');
+        showToast('Aggiornamento fisico salvato! 📸');
     }
 }
 
@@ -123,7 +123,7 @@ export function addWater() {
         // Mock target 2500
         const pct = 100 - ((cur / 2500) * 100);
         wave.style.top = Math.max(0, pct) + '%';
-        showToast('Hydration recorded! 💧');
+        showToast('Idratazione registrata! 💧');
     }
 }
 
@@ -139,7 +139,7 @@ export function toggleQuest(el) {
 
         // Celebration
         const reward = el.querySelector('.text-yellow-500').innerText;
-        showToast(`Quest Complete! ${reward} 🔶`);
+        showToast(`Missione Completata! ${reward} 🔶`);
 
         // Update gems (mock)
         const gemEl = document.getElementById('gem-count');
