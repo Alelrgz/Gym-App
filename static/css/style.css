@@ -1809,18 +1809,97 @@ body:has(.trainer-layout) {
 }
 
 /* Trainer Allenamenti page */
-.trainer-workouts-dual-search {
-    display: grid;
-    grid-template-columns: 1.2fr 1fr;
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
 .trainer-workouts-grid {
     display: grid;
-    grid-template-columns: 1.2fr 1fr;
+    grid-template-columns: 1fr 1.2fr 1fr;
     gap: 1.5rem;
     align-items: start;
+}
+
+.allenamenti-column {
+    background: var(--glass-bg-1);
+    border: 1px solid var(--glass-border-1);
+    border-radius: var(--radius-xl);
+    padding: 1rem;
+    max-height: calc(100vh - 260px);
+    overflow-y: auto;
+}
+
+
+.allenamenti-col-header {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.75rem;
+}
+
+.allenamenti-ex-row {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.45rem 0.65rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    border: 1px solid transparent;
+}
+.allenamenti-ex-row:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.08);
+}
+.allenamenti-ex-row.selected-ex {
+    background: rgba(var(--primary-rgb), 0.1);
+    border-color: rgba(var(--primary-rgb), 0.3);
+}
+.allenamenti-ex-muscle {
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.35);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Accordion expand per exercise row */
+.allenamenti-ex-item {
+    margin-bottom: 2px;
+}
+.allenamenti-ex-expand {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.36s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.allenamenti-ex-expand.open {
+    max-height: 560px;
+    overflow-y: auto;
+}
+.allenamenti-ex-expand-inner {
+    background: rgba(255,255,255,0.025);
+    border-top: 1px solid rgba(255,255,255,0.07);
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    padding: 0.6rem 0.65rem 0.65rem;
+    margin-bottom: 0.15rem;
+}
+.allenamenti-ex-row .allenamenti-ex-chevron {
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+}
+.allenamenti-ex-row.selected-ex .allenamenti-ex-chevron {
+    transform: rotate(180deg);
+}
+
+/* Exercise drag-to-workout */
+.allenamenti-ex-row[draggable="true"] {
+    cursor: grab;
+}
+.allenamenti-ex-row.ex-dragging {
+    opacity: 0.4;
+}
+.workout-drag-card.ex-drop-hover {
+    background: rgba(var(--primary-rgb), 0.12) !important;
+    outline: 1px dashed rgba(var(--primary-rgb), 0.5);
+    outline-offset: -2px;
 }
 
 .trainer-tab-bar {
@@ -1876,6 +1955,29 @@ tr.workout-drag-card.dragging {
 tr.workout-drag-card.selected {
     background: rgba(249, 115, 22, 0.12);
     border-left: 3px solid var(--primary);
+}
+
+/* Workout/split accordion chevron */
+.workout-card-chevron {
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+}
+/* Expand row */
+tr.workout-expand-tr td {
+    padding: 0 !important;
+    border: none !important;
+}
+.workout-expand-inner {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid transparent;
+}
+.workout-expand-inner.open {
+    max-height: 600px;
+    border-bottom-color: rgba(255,255,255,0.06);
+    overflow-y: auto;
 }
 
 /* Client drop targets */
@@ -1946,9 +2048,11 @@ tr.workout-drag-card.selected {
     }
 
     /* Allenamenti page: stack columns on mobile */
-    .trainer-workouts-dual-search,
     .trainer-workouts-grid {
         grid-template-columns: 1fr;
+    }
+    .allenamenti-column {
+        max-height: 50vh;
     }
 
     /* Corsi page: stack columns on mobile */

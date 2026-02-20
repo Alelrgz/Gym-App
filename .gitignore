@@ -43,3 +43,22 @@ nul
 # SQLite temp files
 *.db-shm
 *.db-wal
+
+# Local dev scripts & secrets
+cookies.txt
+start_server.bat
+start_spotify.ps1
+check_user_password.py
+quick_test_auth.py
+
+# User uploads
+static/uploads/
+
+# JS backup files
+static/js/*backup*
+
+# Android Gradle
+android-app/.gradle/
+android-app/gradlew
+android-app/gradlew.bat
+android-app/gradle/wrapper/gradle-wrapper.jar

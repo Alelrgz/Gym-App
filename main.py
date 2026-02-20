@@ -864,9 +864,11 @@ async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "cli
 
     # Determine which template to render based on role
     # If role is default (client) but token says otherwise, trust token
+    username = None
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         token_role = payload.get("role")
+        username = payload.get("sub")
         if token_role and role == "client":
             role = token_role
     except Exception:
@@ -884,6 +886,27 @@ async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "cli
     elif role == "nutritionist":
         template_name = "nutritionist.html"
 
+    # Pre-load trainer name for client home to avoid loading flash
+    server_trainer_name = None
+    server_trainer_picture = None
+    if role == "client" and username and template_name == "client.html":
+        try:
+            from database import get_db_session
+            from models_orm import UserORM as _UserORM, ClientProfileORM
+            _db = get_db_session()
+            client_user = _db.query(_UserORM).filter(_UserORM.username == username).first()
+            if client_user:
+                client_profile = _db.query(ClientProfileORM).filter(ClientProfileORM.id == client_user.id).first()
+                if client_profile and client_profile.trainer_id:
+                    trainer = _db.query(_UserORM).filter(_UserORM.id == client_profile.trainer_id).first()
+                    if trainer:
+                        server_trainer_name = trainer.username
+                        server_trainer_picture = trainer.profile_picture
+            _db.close()
+        except Exception as e:
+            logger.warning(f"Failed to pre-load trainer name: {e}")
+
+    logger.info(f"server_trainer_name={server_trainer_name} for username={username}")
     context = {
         "request": request,
         "gym_id": gym_id,
@@ -892,7 +915,9 @@ async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "cli
         "token": token,
         "cache_buster": str(int(time.time())),  # Use timestamp directly
         "static_build": False,
-        "stripe_publishable_key": os.getenv("STRIPE_PUBLISHABLE_KEY", "")
+        "stripe_publishable_key": os.getenv("STRIPE_PUBLISHABLE_KEY", ""),
+        "server_trainer_name": server_trainer_name,
+        "server_trainer_picture": server_trainer_picture,
     }
     logger.info(f"Rendering {template_name} with cache_buster={context['cache_buster']}")
     return templates.TemplateResponse(template_name, context)

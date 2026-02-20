@@ -325,6 +325,13 @@ class UserService:
                         assigned_split_name = split_orm.name
                     split_expiry = profile.split_expiry_date
 
+                # Count upcoming workout assignments
+                upcoming_workouts = db.query(ClientScheduleORM).filter(
+                    ClientScheduleORM.client_id == c.id,
+                    ClientScheduleORM.type == "workout",
+                    ClientScheduleORM.date >= today.isoformat(),
+                ).count()
+
                 clients.append({
                     "id": c.id,
                     "name": profile.name if profile and profile.name else c.username,
@@ -335,6 +342,7 @@ class UserService:
                     "profile_picture": c.profile_picture,
                     "assigned_split": assigned_split_name,
                     "plan_expiry": split_expiry,
+                    "upcoming_workouts": upcoming_workouts,
                 })
             
             # --- FETCH MY WORKOUT (TRAINER) ---

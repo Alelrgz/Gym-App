@@ -1913,12 +1913,28 @@ let per100gData = null; // Store per-100g values for recalculation
 async function openCameraScanner() {
     const modal = document.getElementById('camera-scanner-modal');
     if (!modal) {
-        // Fallback to old behavior if modal doesn't exist
         quickActionFallback();
         return;
     }
 
-    // Reset to photo capture mode
+    // Request camera permission before opening the modal
+    try {
+        const testStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        // Permission granted — stop the test stream, the real one will be started by startCamera()
+        testStream.getTracks().forEach(t => t.stop());
+    } catch (err) {
+        if (err.name === 'NotAllowedError') {
+            showToast('Permesso fotocamera negato. Consenti l\'accesso alla fotocamera nelle impostazioni del browser.', 'error');
+        } else if (err.name === 'NotFoundError') {
+            showToast('Nessuna fotocamera trovata su questo dispositivo.', 'error');
+        } else {
+            showToast('Impossibile accedere alla fotocamera: ' + err.message, 'error');
+        }
+        quickActionFallback();
+        return;
+    }
+
+    // Permission granted — now open the modal and start the real stream
     currentScanMode = 'photo';
     scannedFoodData = null;
     showCaptureMode();
@@ -2689,6 +2705,8 @@ function switchTrendView(view) {
     const trendBadge = document.getElementById('weight-trend-badge');
     const weightStatsRow = document.getElementById('weight-stats-row');
     const strengthStatsRow = document.getElementById('strength-stats-row');
+    const metricTabs = document.getElementById('body-metric-tabs');
+    const periodSelector = document.getElementById('chart-period-selector');
 
     if (view === 'weight') {
         weightBtn.className = 'text-[10px] px-3 py-1 rounded-md bg-blue-500/20 text-blue-400 font-bold transition';
@@ -2697,6 +2715,8 @@ function switchTrendView(view) {
         if (weightUpdateBtn) weightUpdateBtn.classList.remove('hidden');
         if (weightStatsRow) weightStatsRow.classList.remove('hidden');
         if (strengthStatsRow) strengthStatsRow.classList.add('hidden');
+        if (metricTabs) metricTabs.classList.remove('hidden');
+        if (periodSelector) periodSelector.classList.remove('hidden');
         // Render weight chart
         if (cachedWeightData) {
             renderWeightChart(cachedWeightData.data, cachedWeightData.stats);
@@ -2708,6 +2728,8 @@ function switchTrendView(view) {
         if (weightUpdateBtn) weightUpdateBtn.classList.add('hidden');
         if (weightStatsRow) weightStatsRow.classList.add('hidden');
         if (strengthStatsRow) strengthStatsRow.classList.remove('hidden');
+        if (metricTabs) metricTabs.classList.add('hidden');
+        if (periodSelector) periodSelector.classList.add('hidden');
         // Render strength chart
         if (cachedStrengthData) {
             renderStrengthChart(cachedStrengthData);
@@ -2778,11 +2800,11 @@ window.switchBodyMetric = function(metric) {
         const btn = document.getElementById(`body-metric-${m}`);
         if (btn) {
             if (m === metric) {
-                btn.className = `text-[10px] px-3 py-1 rounded-lg bg-blue-500/20 text-blue-400 font-bold transition`;
-                btn.style.backgroundColor = config.color + '33';
+                btn.className = `text-[10px] px-3 py-1 rounded-md bg-white/10 font-semibold transition`;
+                btn.style.backgroundColor = '';
                 btn.style.color = config.color;
             } else {
-                btn.className = 'text-[10px] px-3 py-1 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition';
+                btn.className = 'text-[10px] px-3 py-1 rounded-md text-gray-500 hover:text-gray-300 transition';
                 btn.style.backgroundColor = '';
                 btn.style.color = '';
             }
@@ -2814,9 +2836,9 @@ async function loadWeightChart(period = 'month') {
         const btn = document.getElementById(`weight-period-${p}`);
         if (btn) {
             if (p === period) {
-                btn.className = 'text-[10px] px-2 py-1 rounded-lg bg-blue-500/20 text-blue-400 font-bold';
+                btn.className = 'text-[10px] px-2.5 py-1 rounded-md bg-white/10 text-white font-semibold transition';
             } else {
-                btn.className = 'text-[10px] px-2 py-1 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition';
+                btn.className = 'text-[10px] px-2.5 py-1 rounded-md text-gray-500 hover:text-gray-300 transition';
             }
         }
     });
