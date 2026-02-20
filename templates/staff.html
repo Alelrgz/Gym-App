@@ -905,7 +905,11 @@
                             <p class="text-orange-400 font-semibold mt-2">Elaborazione sul terminale...</p>
                             <p class="text-xs text-gray-400 mt-1">Chiedi al cliente di avvicinare o inserire la carta</p>
                             <div class="animate-pulse text-orange-400 text-sm mt-2">In attesa del pagamento...</div>
-                            <button onclick="cancelTerminalPayment()" class="mt-3 text-xs text-red-400 underline">Annulla Pagamento</button>
+                            <!-- Sandbox only: simulate a card tap without physical hardware -->
+                            <button id="pos-simulate-btn" onclick="simulateCardTap()" class="hidden mt-3 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/30 px-4 py-1.5 rounded-lg text-xs font-semibold transition">
+                                Simula Carta (Sandbox)
+                            </button>
+                            <button onclick="cancelTerminalPayment()" class="mt-2 text-xs text-red-400 underline">Annulla Pagamento</button>
                         </div>
                         <div id="pos-success" class="hidden py-4">
                             <span class="text-4xl block mb-2 text-green-400">&#10003;</span>
@@ -2412,6 +2416,7 @@ function selectPaymentMethod(method) {
         document.getElementById('pos-processing').classList.add('hidden');
         document.getElementById('pos-success').classList.add('hidden');
         document.getElementById('pos-error').classList.add('hidden');
+        document.getElementById('pos-simulate-btn')?.classList.add('hidden');
     }
 }
 
@@ -2604,6 +2609,11 @@ async function startTerminalPayment() {
         const data = await res.json();
         terminalPaymentIntentId = data.payment_intent_id;
 
+        // Show sandbox simulate button if in test mode
+        if (data.is_test_mode) {
+            document.getElementById('pos-simulate-btn')?.classList.remove('hidden');
+        }
+
         startTerminalPolling();
     } catch (e) {
         console.error('Terminal payment error:', e);
@@ -2663,6 +2673,27 @@ function stopTerminalPolling() {
         terminalPollingInterval = null;
     }
     terminalPaymentIntentId = null;
+}
+
+async function simulateCardTap() {
+    const btn = document.getElementById('pos-simulate-btn');
+    if (btn) { btn.disabled = true; btn.textContent = 'Invio simulazione...'; }
+    try {
+        const res = await fetch('/api/terminal/simulate-payment', {
+            method: 'POST',
+            credentials: 'include'
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Errore simulazione');
+        }
+        // Polling will pick up the succeeded status automatically
+        if (btn) btn.textContent = 'Simulazione inviata!';
+    } catch (e) {
+        console.error('Simulate card error:', e);
+        showToast(e.message || 'Errore simulazione carta', 'error');
+        if (btn) { btn.disabled = false; btn.textContent = 'Simula Carta (Sandbox)'; }
+    }
 }
 
 async function finalizeTerminalOnboarding(paymentIntentId) {

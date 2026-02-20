@@ -210,9 +210,12 @@
     {% call card(classes="p-4 mb-5") %}
     <div class="flex items-center justify-between mb-3">
         <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Terminale POS</h3>
-        <span id="terminal-status-badge" class="text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-400">
-            Verifica...
-        </span>
+        <div class="flex items-center gap-2">
+            <span id="terminal-sandbox-badge" class="hidden text-xs px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400">Sandbox</span>
+            <span id="terminal-status-badge" class="text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-400">
+                Verifica...
+            </span>
+        </div>
     </div>
     <div id="terminal-setup-content">
         <!-- Requires Connect -->
@@ -232,15 +235,19 @@
                     <input id="terminal-address-postal" type="text" placeholder="CAP"
                         class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500">
                 </div>
-                <select id="terminal-address-country"
-                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white">
-                    <option value="IT">Italia</option>
-                    <option value="US">Stati Uniti</option>
-                    <option value="GB">Regno Unito</option>
-                    <option value="DE">Germania</option>
-                    <option value="FR">Francia</option>
-                    <option value="ES">Spagna</option>
-                </select>
+                <div class="grid grid-cols-2 gap-2">
+                    <select id="terminal-address-country"
+                        class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white">
+                        <option value="IT">Italia</option>
+                        <option value="US">Stati Uniti</option>
+                        <option value="GB">Regno Unito</option>
+                        <option value="DE">Germania</option>
+                        <option value="FR">Francia</option>
+                        <option value="ES">Spagna</option>
+                    </select>
+                    <input id="terminal-address-state" type="text" placeholder="Provincia (es. MI)"
+                        class="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500">
+                </div>
             </div>
             <button onclick="setupTerminalLocation()"
                 class="w-full bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 py-2.5 rounded-xl font-semibold transition text-sm">
@@ -250,17 +257,51 @@
 
         <!-- Step 2: Register Reader -->
         <div id="terminal-no-reader" class="hidden">
-            <p class="text-sm text-gray-400 mb-3">Inserisci il codice di registrazione mostrato sullo schermo del lettore.</p>
-            <div class="space-y-2 mb-3">
-                <input id="terminal-reg-code" type="text" placeholder="es. blue-fox-red"
-                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500">
-                <input id="terminal-label" type="text" placeholder="Etichetta (es. Reception)" value="Reception"
-                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500">
+            <!-- Tab switcher -->
+            <div class="flex gap-1 mb-3 bg-white/5 rounded-lg p-1">
+                <button onclick="setReaderTab('code')" id="tab-code"
+                    class="flex-1 text-xs py-1.5 rounded-md font-semibold transition bg-white/10 text-white">
+                    Codice Lettore
+                </button>
+                <button onclick="setReaderTab('id')" id="tab-id"
+                    class="flex-1 text-xs py-1.5 rounded-md font-semibold transition text-gray-400">
+                    ID Esistente
+                </button>
             </div>
-            <button onclick="registerTerminalReader()"
-                class="w-full bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 py-2.5 rounded-xl font-semibold transition text-sm">
-                Registra Lettore
-            </button>
+
+            <!-- Code tab (default) -->
+            <div id="reader-tab-code">
+                <p class="text-xs text-gray-500 mb-2">Codice mostrato sullo schermo del lettore alla prima accensione.</p>
+                <div class="space-y-2 mb-3">
+                    <input id="terminal-reg-code" type="text" placeholder="es. blue-fox-red"
+                        class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500">
+                    <input id="terminal-label" type="text" placeholder="Etichetta (es. Reception)" value="Reception"
+                        class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500">
+                </div>
+                <button onclick="registerTerminalReader()"
+                    class="w-full bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 py-2.5 rounded-xl font-semibold transition text-sm mb-2">
+                    Registra Lettore
+                </button>
+                <!-- Sandbox only: create a simulated reader with one click -->
+                <button id="terminal-simulated-btn" onclick="registerSimulatedReader()" class="hidden
+                    w-full bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-400 border border-yellow-500/30
+                    py-2 rounded-xl font-semibold transition text-xs">
+                    Usa Lettore Simulato (Sandbox)
+                </button>
+            </div>
+
+            <!-- ID tab: for readers already registered on Stripe dashboard -->
+            <div id="reader-tab-id" class="hidden">
+                <p class="text-xs text-gray-500 mb-2">Hai già un lettore su Stripe? Incolla l'ID dalla dashboard Stripe → Terminal → Readers.</p>
+                <div class="space-y-2 mb-3">
+                    <input id="terminal-reader-id" type="text" placeholder="tmr_Fxxxxxxxxxxxxxxxxx"
+                        class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder-gray-500 font-mono">
+                </div>
+                <button onclick="importExistingReader()"
+                    class="w-full bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 py-2.5 rounded-xl font-semibold transition text-sm">
+                    Collega Lettore Esistente
+                </button>
+            </div>
         </div>
 
         <!-- Step 3: Reader Registered -->
@@ -1776,6 +1817,7 @@ async function openStripeDashboard() {
 
 async function loadTerminalStatus() {
     const badge = document.getElementById('terminal-status-badge');
+    const sandboxBadge = document.getElementById('terminal-sandbox-badge');
     const needsConnect = document.getElementById('terminal-needs-connect');
     const noLocation = document.getElementById('terminal-no-location');
     const noReader = document.getElementById('terminal-no-reader');
@@ -1786,13 +1828,29 @@ async function loadTerminalStatus() {
     // Hide all states
     [needsConnect, noLocation, noReader, registered].forEach(el => el?.classList.add('hidden'));
 
-    // Check if Stripe Connect is active first
-    const connectBadge = document.getElementById('stripe-status-badge');
-    if (connectBadge && connectBadge.textContent.trim() !== 'Attivo') {
-        badge.textContent = 'Richiede Pagamenti';
-        badge.className = 'text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-400';
-        needsConnect?.classList.remove('hidden');
-        return;
+    // Check test mode first
+    let isTestMode = false;
+    try {
+        const tmRes = await fetch('/api/terminal/test-mode', { credentials: 'include' });
+        if (tmRes.ok) {
+            const tmData = await tmRes.json();
+            isTestMode = tmData.is_test_mode;
+        }
+    } catch (_) {}
+
+    if (isTestMode) {
+        sandboxBadge?.classList.remove('hidden');
+        // In test mode, skip the Connect check
+    } else {
+        sandboxBadge?.classList.add('hidden');
+        // Check if Stripe Connect is active first
+        const connectBadge = document.getElementById('stripe-status-badge');
+        if (connectBadge && connectBadge.textContent.trim() !== 'Attivo') {
+            badge.textContent = 'Richiede Pagamenti';
+            badge.className = 'text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-400';
+            needsConnect?.classList.remove('hidden');
+            return;
+        }
     }
 
     try {
@@ -1809,14 +1867,18 @@ async function loadTerminalStatus() {
                 : 'text-xs px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-400';
             document.getElementById('terminal-reader-label').textContent = reader.label || 'Lettore';
             document.getElementById('terminal-reader-status').textContent =
-                `${reader.device_type || 'Reader'} — ${reader.status}`;
+                isTestMode
+                    ? `Simulato — ${reader.status}`
+                    : `${reader.device_type || 'Reader'} — ${reader.status}`;
             registered?.classList.remove('hidden');
         } else {
-            // No readers - check if location exists by trying to create (it returns existing)
             badge.textContent = 'Non Configurato';
             badge.className = 'text-xs px-2 py-1 rounded-full bg-gray-500/20 text-gray-400';
-            // Show register reader if we already have a location, otherwise show location setup
             noLocation?.classList.remove('hidden');
+        }
+        // Show sandbox simulated reader button if applicable
+        if (isTestMode) {
+            document.getElementById('terminal-simulated-btn')?.classList.remove('hidden');
         }
     } catch (error) {
         console.error('Error loading terminal status:', error);
@@ -1831,20 +1893,22 @@ async function setupTerminalLocation() {
     const city = document.getElementById('terminal-address-city')?.value.trim();
     const postal = document.getElementById('terminal-address-postal')?.value.trim();
     const country = document.getElementById('terminal-address-country')?.value;
+    const state = document.getElementById('terminal-address-state')?.value.trim();
 
     if (!line1 || !city || !postal) {
         showToast('Compila indirizzo, città e CAP', 'error');
         return;
     }
 
+    const addrPayload = { line1, city, postal_code: postal, country };
+    if (state) addrPayload.state = state;
+
     try {
         const res = await fetch('/api/terminal/create-location', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({
-                address: { line1, city, postal_code: postal, country }
-            })
+            body: JSON.stringify({ address: addrPayload })
         });
 
         if (!res.ok) {
@@ -1856,10 +1920,21 @@ async function setupTerminalLocation() {
         // Show register reader step
         document.getElementById('terminal-no-location')?.classList.add('hidden');
         document.getElementById('terminal-no-reader')?.classList.remove('hidden');
+        _showSimulatedReaderBtnIfTestMode();
     } catch (error) {
         console.error('Error creating terminal location:', error);
         showToast('Errore: ' + error.message, 'error');
     }
+}
+
+async function _showSimulatedReaderBtnIfTestMode() {
+    try {
+        const res = await fetch('/api/terminal/test-mode', { credentials: 'include' });
+        if (res.ok) {
+            const d = await res.json();
+            document.getElementById('terminal-simulated-btn')?.classList.toggle('hidden', !d.is_test_mode);
+        }
+    } catch (_) {}
 }
 
 async function registerTerminalReader() {
@@ -1888,6 +1963,76 @@ async function registerTerminalReader() {
         loadTerminalStatus();
     } catch (error) {
         console.error('Error registering reader:', error);
+        showToast('Errore: ' + error.message, 'error');
+    }
+}
+
+function setReaderTab(tab) {
+    const codeTab = document.getElementById('reader-tab-code');
+    const idTab = document.getElementById('reader-tab-id');
+    const btnCode = document.getElementById('tab-code');
+    const btnId = document.getElementById('tab-id');
+    if (tab === 'code') {
+        codeTab?.classList.remove('hidden');
+        idTab?.classList.add('hidden');
+        btnCode?.classList.add('bg-white/10', 'text-white');
+        btnCode?.classList.remove('text-gray-400');
+        btnId?.classList.remove('bg-white/10', 'text-white');
+        btnId?.classList.add('text-gray-400');
+    } else {
+        idTab?.classList.remove('hidden');
+        codeTab?.classList.add('hidden');
+        btnId?.classList.add('bg-white/10', 'text-white');
+        btnId?.classList.remove('text-gray-400');
+        btnCode?.classList.remove('bg-white/10', 'text-white');
+        btnCode?.classList.add('text-gray-400');
+    }
+}
+
+async function importExistingReader() {
+    const readerId = document.getElementById('terminal-reader-id')?.value.trim();
+    if (!readerId || !readerId.startsWith('tmr_')) {
+        showToast('Inserisci un ID lettore valido (inizia con tmr_)', 'error');
+        return;
+    }
+    try {
+        const res = await fetch('/api/terminal/import-reader', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ reader_id: readerId })
+        });
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Impossibile collegare il lettore');
+        }
+        showToast('Lettore collegato!', 'success');
+        loadTerminalStatus();
+    } catch (error) {
+        console.error('Error importing reader:', error);
+        showToast('Errore: ' + error.message, 'error');
+    }
+}
+
+async function registerSimulatedReader() {
+    const label = document.getElementById('terminal-label')?.value.trim() || 'Reception (Simulato)';
+    try {
+        const res = await fetch('/api/terminal/register-reader', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ registration_code: 'simulated', label })
+        });
+
+        if (!res.ok) {
+            const err = await res.json();
+            throw new Error(err.detail || 'Impossibile creare il lettore simulato');
+        }
+
+        showToast('Lettore simulato creato!', 'success');
+        loadTerminalStatus();
+    } catch (error) {
+        console.error('Error creating simulated reader:', error);
         showToast('Errore: ' + error.message, 'error');
     }
 }
