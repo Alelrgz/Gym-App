@@ -355,6 +355,11 @@ class SubscriptionPlanORM(Base):
     trial_period_days = Column(Integer, default=0)  # Free trial days
     billing_interval = Column(String, default="month")  # month, year
 
+    # Billing type & installment billing
+    billing_type = Column(String, default="annual")  # "monthly" or "annual"
+    annual_price = Column(Float, nullable=True)  # Total annual price (for annual plans)
+    installment_count = Column(Integer, default=1)  # Number of installments (1,2,3,4,6,12)
+
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
     updated_at = Column(String, default=lambda: datetime.utcnow().isoformat())
 

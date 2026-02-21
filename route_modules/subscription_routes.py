@@ -28,7 +28,7 @@ async def create_subscription_plan(
     """Create a new subscription plan (owner only)."""
     try:
         logger.info(f"CREATE PLAN: Request received from user {user.username} (role: {user.role})")
-        logger.info(f"CREATE PLAN: Plan data - name: {plan_data.name}, price: {plan_data.price}")
+        logger.info(f"CREATE PLAN: Plan data - name: {plan_data.name}, billing_type: {plan_data.billing_type}, annual_price: {plan_data.annual_price}, monthly_price: {plan_data.monthly_price}, installments: {plan_data.installment_count}")
 
         if user.role != "owner":
             logger.warning(f"CREATE PLAN: Access denied - user {user.username} is not an owner")

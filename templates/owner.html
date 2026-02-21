@@ -923,20 +923,68 @@
                     placeholder="Breve descrizione del piano"></textarea>
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Prezzo (€)</label>
-                    <input type="number" id="plan-price" required step="0.01" min="0"
-                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
-                        placeholder="29.99">
+            <!-- Billing type toggle -->
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Tipo di Fatturazione</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" id="btn-billing-monthly"
+                        onclick="setBillingType('monthly')"
+                        class="px-3 py-2 rounded-lg text-sm font-semibold border transition text-center
+                               bg-black/20 border-white/10 text-gray-400 hover:border-white/30">
+                        Mensile
+                    </button>
+                    <button type="button" id="btn-billing-annual"
+                        onclick="setBillingType('annual')"
+                        class="px-3 py-2 rounded-lg text-sm font-semibold border transition text-center
+                               bg-primary/20 border-primary/50 text-primary">
+                        Annuale
+                    </button>
                 </div>
-                <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Fatturazione</label>
-                    <select id="plan-interval"
-                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition">
-                        <option value="month">Mensile</option>
-                        <option value="year">Annuale</option>
-                    </select>
+                <input type="hidden" id="plan-billing-type" value="annual">
+            </div>
+
+            <!-- Monthly price (shown for monthly) -->
+            <div id="monthly-price-section" class="hidden">
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Prezzo Mensile (€)</label>
+                <input type="number" id="plan-monthly-price" step="0.01" min="0"
+                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                    placeholder="49.90">
+            </div>
+
+            <!-- Annual price + installments (shown for annual) -->
+            <div id="annual-price-section">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Prezzo Annuale (€)</label>
+                        <input type="number" id="plan-annual-price" step="0.01" min="0"
+                            class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                            placeholder="600.00" oninput="updateInstallmentPreview()">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Rate</label>
+                        <select id="plan-installments"
+                            class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                            onchange="updateInstallmentPreview()">
+                            <option value="1">1 (pagamento unico)</option>
+                            <option value="2">2 rate</option>
+                            <option value="3">3 rate</option>
+                            <option value="4">4 rate</option>
+                            <option value="6">6 rate</option>
+                            <option value="12" selected>12 rate (mensile)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Installment preview -->
+                <div id="installment-preview" class="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3 text-sm hidden mt-3">
+                    <div class="flex justify-between text-gray-300">
+                        <span>Importo per rata:</span>
+                        <span class="font-bold text-white" id="per-installment-amount">--</span>
+                    </div>
+                    <div class="flex justify-between text-gray-400 text-xs mt-1">
+                        <span>Frequenza pagamento:</span>
+                        <span id="payment-frequency">--</span>
+                    </div>
                 </div>
             </div>
 
@@ -1378,7 +1426,7 @@ function displayPlans(plans) {
                         <h4 class="font-bold text-sm truncate">${escapeHtml(plan.name)}</h4>
                         ${!plan.is_active ? '<span class="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded">Disattivo</span>' : ''}
                     </div>
-                    <p class="text-xs text-gray-400 mt-0.5">$${plan.price}/${plan.billing_interval === 'year' ? 'anno' : 'mese'} · ${plan.active_subscriptions || 0} abb.</p>
+                    <p class="text-xs text-gray-400 mt-0.5">${plan.billing_type === 'monthly' ? `€${plan.price}/mese` : `€${plan.annual_price || plan.price}/anno${plan.installment_count > 1 ? ` (${plan.installment_count} rate da €${plan.price})` : ''}`} · ${plan.active_subscriptions || 0} abb.</p>
                 </div>
                 <div class="flex gap-1 flex-shrink-0">
                     <button onclick="editPlan('${plan.id}')" class="p-1.5 rounded hover:bg-white/10 transition text-gray-400 hover:text-white">
@@ -1406,8 +1454,39 @@ function updateRevenue(plans) {
     const totalMRR = plans.reduce((sum, plan) => sum + (plan.monthly_revenue || 0), 0);
     const totalSubs = plans.reduce((sum, plan) => sum + (plan.active_subscriptions || 0), 0);
 
-    revenueEl.textContent = `$${totalMRR.toFixed(0)}`;
+    revenueEl.textContent = `€${totalMRR.toFixed(0)}`;
     subsEl.textContent = totalSubs;
+}
+
+// Billing type toggle
+function setBillingType(type) {
+    document.getElementById('plan-billing-type').value = type;
+    const btnMonthly = document.getElementById('btn-billing-monthly');
+    const btnAnnual = document.getElementById('btn-billing-annual');
+    const monthlySection = document.getElementById('monthly-price-section');
+    const annualSection = document.getElementById('annual-price-section');
+    const monthlyInput = document.getElementById('plan-monthly-price');
+    const annualInput = document.getElementById('plan-annual-price');
+
+    // Reset both button styles first
+    const activeClass = 'bg-primary/20 border-primary/50 text-primary';
+    const inactiveClass = 'bg-black/20 border-white/10 text-gray-400 hover:border-white/30';
+
+    if (type === 'monthly') {
+        btnMonthly.className = `px-3 py-2 rounded-lg text-sm font-semibold border transition text-center ${activeClass}`;
+        btnAnnual.className = `px-3 py-2 rounded-lg text-sm font-semibold border transition text-center ${inactiveClass}`;
+        monthlySection.classList.remove('hidden');
+        annualSection.classList.add('hidden');
+        monthlyInput.required = true;
+        annualInput.required = false;
+    } else {
+        btnAnnual.className = `px-3 py-2 rounded-lg text-sm font-semibold border transition text-center ${activeClass}`;
+        btnMonthly.className = `px-3 py-2 rounded-lg text-sm font-semibold border transition text-center ${inactiveClass}`;
+        annualSection.classList.remove('hidden');
+        monthlySection.classList.add('hidden');
+        annualInput.required = true;
+        monthlyInput.required = false;
+    }
 }
 
 // Modal functions
@@ -1417,12 +1496,38 @@ function openCreatePlanModal() {
     document.getElementById('plan-submit-btn').textContent = 'Crea Piano';
     document.getElementById('plan-form').reset();
     document.getElementById('plan-id').value = '';
+    setBillingType('annual');
     document.getElementById('plan-modal').classList.remove('hidden');
 }
 
 function closePlanModal() {
     document.getElementById('plan-modal').classList.add('hidden');
     currentPlanId = null;
+}
+
+function updateInstallmentPreview() {
+    const annualPrice = parseFloat(document.getElementById('plan-annual-price').value);
+    const installments = parseInt(document.getElementById('plan-installments').value);
+    const preview = document.getElementById('installment-preview');
+
+    if (!annualPrice || !installments) {
+        preview.classList.add('hidden');
+        return;
+    }
+
+    const perInstallment = (annualPrice / installments).toFixed(2);
+    const frequencyMap = {
+        1: 'Annuale (pagamento unico)',
+        2: 'Ogni 6 mesi',
+        3: 'Ogni 4 mesi',
+        4: 'Trimestrale',
+        6: 'Bimestrale',
+        12: 'Mensile'
+    };
+
+    document.getElementById('per-installment-amount').textContent = `€${perInstallment}`;
+    document.getElementById('payment-frequency').textContent = frequencyMap[installments];
+    preview.classList.remove('hidden');
 }
 
 async function editPlan(planId) {
@@ -1441,8 +1546,17 @@ async function editPlan(planId) {
         document.getElementById('plan-submit-btn').textContent = 'Aggiorna Piano';
         document.getElementById('plan-name').value = plan.name;
         document.getElementById('plan-description').value = plan.description || '';
-        document.getElementById('plan-price').value = plan.price;
-        document.getElementById('plan-interval').value = plan.billing_interval;
+
+        const bt = plan.billing_type || 'annual';
+        setBillingType(bt);
+        if (bt === 'monthly') {
+            document.getElementById('plan-monthly-price').value = plan.price;
+        } else {
+            document.getElementById('plan-annual-price').value = plan.annual_price || plan.price;
+            document.getElementById('plan-installments').value = plan.installment_count || 1;
+            updateInstallmentPreview();
+        }
+
         document.getElementById('plan-trial').value = plan.trial_period_days || 0;
         document.getElementById('plan-features').value = plan.features ? plan.features.join('\n') : '';
         document.getElementById('plan-modal').classList.remove('hidden');
@@ -1477,24 +1591,50 @@ async function deletePlan(planId, planName) {
 }
 
 // Handle form submission
+let planFormSubmitting = false;
 const planForm = document.getElementById('plan-form');
 if (planForm) {
     planForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (planFormSubmitting) return;
+        planFormSubmitting = true;
+        const submitBtn = document.getElementById('plan-submit-btn');
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Salvando...';
 
         const features = document.getElementById('plan-features').value
             .split('\n')
             .map(f => f.trim())
             .filter(f => f.length > 0);
 
+        const billingType = document.getElementById('plan-billing-type').value;
         const planData = {
             name: document.getElementById('plan-name').value,
             description: document.getElementById('plan-description').value,
-            price: parseFloat(document.getElementById('plan-price').value),
+            billing_type: billingType,
             features: features,
-            trial_period_days: parseInt(document.getElementById('plan-trial').value) || 0,
-            billing_interval: document.getElementById('plan-interval').value
+            trial_period_days: parseInt(document.getElementById('plan-trial').value) || 0
         };
+
+        if (billingType === 'monthly') {
+            const mp = parseFloat(document.getElementById('plan-monthly-price').value);
+            if (!mp || mp <= 0) {
+                showToast('Inserisci un prezzo mensile valido', 'error');
+                return;
+            }
+            planData.monthly_price = mp;
+        } else {
+            const ap = parseFloat(document.getElementById('plan-annual-price').value);
+            if (!ap || ap <= 0) {
+                showToast('Inserisci un prezzo annuale valido', 'error');
+                return;
+            }
+            planData.annual_price = ap;
+            planData.installment_count = parseInt(document.getElementById('plan-installments').value);
+        }
+
+        console.log('Submitting plan:', JSON.stringify(planData));
 
         try {
             const url = currentPlanId
@@ -1513,8 +1653,15 @@ if (planForm) {
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Impossibile salvare il piano');
+                const errorText = await response.text();
+                console.error('Plan save error:', response.status, errorText);
+                try {
+                    const error = JSON.parse(errorText);
+                    throw new Error(error.detail || 'Impossibile salvare il piano');
+                } catch(e) {
+                    if (e.message.includes('Impossibile')) throw e;
+                    throw new Error(`Errore server (${response.status})`);
+                }
             }
 
             showToast(currentPlanId ? 'Piano aggiornato con successo' : 'Piano creato con successo', 'success');
@@ -1523,6 +1670,10 @@ if (planForm) {
         } catch (error) {
             console.error('Error saving plan:', error);
             showToast(error.message, 'error');
+        } finally {
+            planFormSubmitting = false;
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
         }
     });
 }

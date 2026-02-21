@@ -5911,7 +5911,6 @@ async function loadGymMembersList() {
         if (!response.ok) throw new Error('Impossibile caricare i membri');
 
         gymMembers = await response.json();
-        console.log('GYM MEMBERS API RESPONSE:', JSON.stringify(gymMembers[0]));
 
         if (gymMembers.length === 0) {
             list.innerHTML = `

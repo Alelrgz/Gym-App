@@ -30,6 +30,21 @@ def is_stripe_configured():
 class SubscriptionService:
     """Service for managing subscriptions, plans, and payments."""
 
+    # Installment count -> (Stripe interval, interval_count)
+    INSTALLMENT_MAP = {
+        12: ("month", 1),
+        6:  ("month", 2),
+        4:  ("month", 3),
+        3:  ("month", 4),
+        2:  ("month", 6),
+        1:  ("year",  1),
+    }
+
+    @staticmethod
+    def _compute_stripe_interval(installment_count: int):
+        """Return (interval, interval_count) for Stripe Price based on installments."""
+        return SubscriptionService.INSTALLMENT_MAP.get(installment_count, ("month", 1))
+
     # --- SUBSCRIPTION PLANS (Trainer/Owner Management) ---
 
     def create_plan(self, gym_id: str, plan_data: CreateSubscriptionPlanRequest) -> dict:
@@ -39,38 +54,61 @@ class SubscriptionService:
             stripe_product_id = None
             stripe_price_id = None
 
+            billing_type = plan_data.billing_type or "annual"
+
+            if billing_type == "monthly":
+                # Monthly plan: simple recurring month-to-month
+                per_payment_price = round(plan_data.monthly_price, 2)
+                interval = "month"
+                interval_count = 1
+                annual_price_val = None
+                installment_count = 1
+            else:
+                # Annual plan: with optional installments
+                installment_count = plan_data.installment_count
+                per_payment_price = round(plan_data.annual_price / installment_count, 2)
+                annual_price_val = plan_data.annual_price
+                interval, interval_count = self._compute_stripe_interval(installment_count)
+
             # Only create Stripe objects if Stripe is configured
             if is_stripe_configured():
                 try:
                     # Create Stripe Product
+                    metadata = {"gym_id": gym_id, "billing_type": billing_type}
+                    if billing_type == "annual":
+                        metadata["annual_price"] = str(plan_data.annual_price)
+                        metadata["installment_count"] = str(installment_count)
+                    else:
+                        metadata["monthly_price"] = str(per_payment_price)
+
                     stripe_product = stripe.Product.create(
                         name=f"{plan_data.name}",
                         description=plan_data.description or "",
-                        metadata={"gym_id": gym_id}
+                        metadata=metadata
                     )
 
-                    # Create Stripe Price
+                    # Create Stripe Price with correct recurring interval
+                    recurring_params = {
+                        "interval": interval,
+                        "interval_count": interval_count,
+                    }
+
                     stripe_price = stripe.Price.create(
                         product=stripe_product.id,
-                        unit_amount=int(plan_data.price * 100),  # Convert dollars to cents
-                        currency="usd",
-                        recurring={
-                            "interval": plan_data.billing_interval,  # month or year
-                            "trial_period_days": plan_data.trial_period_days if plan_data.trial_period_days > 0 else None
-                        }
+                        unit_amount=int(per_payment_price * 100),  # Convert to cents
+                        currency="eur",
+                        recurring=recurring_params
                     )
 
                     stripe_product_id = stripe_product.id
                     stripe_price_id = stripe_price.id
-                    logger.info(f"Created Stripe product and price for plan")
+                    logger.info(f"Created Stripe product and price for {billing_type} plan")
                 except stripe.StripeError as e:
                     logger.warning(f"Stripe error (using test mode): {e}")
-                    # Continue without Stripe - use test mode
                     stripe_product_id = f"test_prod_{uuid.uuid4().hex[:8]}"
                     stripe_price_id = f"test_price_{uuid.uuid4().hex[:8]}"
             else:
                 logger.info("Stripe not configured - creating plan in test mode")
-                # Use test IDs
                 stripe_product_id = f"test_prod_{uuid.uuid4().hex[:8]}"
                 stripe_price_id = f"test_price_{uuid.uuid4().hex[:8]}"
 
@@ -81,13 +119,16 @@ class SubscriptionService:
                 gym_id=gym_id,
                 name=plan_data.name,
                 description=plan_data.description,
-                price=plan_data.price,
-                currency="usd",
+                price=per_payment_price,
+                currency="eur",
                 stripe_price_id=stripe_price_id,
                 stripe_product_id=stripe_product_id,
                 features_json=json.dumps(plan_data.features) if plan_data.features else "[]",
                 trial_period_days=plan_data.trial_period_days,
-                billing_interval=plan_data.billing_interval,
+                billing_interval=interval,
+                billing_type=billing_type,
+                annual_price=annual_price_val,
+                installment_count=installment_count,
                 is_active=True
             )
 
@@ -133,18 +174,29 @@ class SubscriptionService:
                     ClientSubscriptionORM.status.in_(["active", "trialing"])
                 ).count()
 
+                bt = getattr(plan, 'billing_type', None) or "annual"
+                if bt == "monthly":
+                    monthly_rev = active_subs * plan.price
+                    annual = plan.price * 12
+                else:
+                    annual = plan.annual_price or (plan.price * 12 if plan.billing_interval == "month" else plan.price)
+                    monthly_rev = active_subs * annual / 12
+
                 result.append({
                     "id": plan.id,
                     "name": plan.name,
                     "description": plan.description,
                     "price": plan.price,
-                    "currency": plan.currency,
+                    "currency": plan.currency or "eur",
                     "features": json.loads(plan.features_json) if plan.features_json else [],
                     "is_active": plan.is_active,
                     "trial_period_days": plan.trial_period_days,
                     "billing_interval": plan.billing_interval,
+                    "billing_type": bt,
+                    "annual_price": annual if bt == "annual" else None,
+                    "installment_count": plan.installment_count or 1,
                     "active_subscriptions": active_subs,
-                    "monthly_revenue": active_subs * plan.price if plan.billing_interval == "month" else (active_subs * plan.price / 12),
+                    "monthly_revenue": monthly_rev,
                     "created_at": plan.created_at
                 })
 
@@ -188,6 +240,47 @@ class SubscriptionService:
                 plan.is_active = plan_data.is_active
             if plan_data.trial_period_days is not None:
                 plan.trial_period_days = plan_data.trial_period_days
+
+            # Handle billing type change
+            if plan_data.billing_type is not None:
+                plan.billing_type = plan_data.billing_type
+
+            current_bt = getattr(plan, 'billing_type', None) or "annual"
+
+            # Handle price/installment changes
+            price_changed = False
+            if current_bt == "monthly" and plan_data.monthly_price is not None:
+                new_price = round(plan_data.monthly_price, 2)
+                interval, interval_count = "month", 1
+                plan.annual_price = None
+                plan.installment_count = 1
+                plan.price = new_price
+                plan.billing_interval = interval
+                price_changed = True
+            elif current_bt == "annual" and (plan_data.annual_price is not None or plan_data.installment_count is not None):
+                new_annual = plan_data.annual_price if plan_data.annual_price is not None else (plan.annual_price or plan.price)
+                new_count = plan_data.installment_count if plan_data.installment_count is not None else (plan.installment_count or 1)
+                new_price = round(new_annual / new_count, 2)
+                interval, interval_count = self._compute_stripe_interval(new_count)
+                plan.annual_price = new_annual
+                plan.installment_count = new_count
+                plan.price = new_price
+                plan.billing_interval = interval
+                price_changed = True
+
+            if price_changed:
+                # Create new Stripe Price (Prices are immutable in Stripe)
+                if is_stripe_configured() and plan.stripe_product_id and not plan.stripe_product_id.startswith("test_"):
+                    try:
+                        new_stripe_price = stripe.Price.create(
+                            product=plan.stripe_product_id,
+                            unit_amount=int(plan.price * 100),
+                            currency=plan.currency or "eur",
+                            recurring={"interval": plan.billing_interval, "interval_count": interval_count},
+                        )
+                        plan.stripe_price_id = new_stripe_price.id
+                    except stripe.StripeError as e:
+                        logger.warning(f"Stripe error updating price (continuing): {e}")
 
             plan.updated_at = datetime.utcnow().isoformat()
 
@@ -326,6 +419,15 @@ class SubscriptionService:
                 sub_params["coupon"] = stripe_coupon_id
                 logger.info(f"Applying Stripe coupon {stripe_coupon_id} to subscription")
 
+            # For annual installment plans (>1 installment), auto-cancel after 12 months
+            # Monthly plans run indefinitely (no cancel_at)
+            plan_billing_type = getattr(plan, 'billing_type', None) or "annual"
+            if plan_billing_type == "annual" and plan.installment_count and plan.installment_count > 1:
+                import time
+                cancel_at = int(time.time()) + (365 * 24 * 60 * 60)
+                sub_params["cancel_at"] = cancel_at
+                logger.info(f"Installment plan: {plan.installment_count} payments, auto-cancel in 12 months")
+
             # If gym has a connected account, route payments to them
             if gym_stripe_account:
                 # Use application_fee_percent to take a platform fee (optional)
@@ -408,6 +510,9 @@ class SubscriptionService:
                     "id": plan.id,
                     "name": plan.name,
                     "price": plan.price,
+                    "billing_type": getattr(plan, 'billing_type', None) or "annual",
+                    "annual_price": plan.annual_price,
+                    "installment_count": plan.installment_count or 1,
                     "billing_interval": plan.billing_interval
                 },
                 "current_period_start": subscription.current_period_start,
