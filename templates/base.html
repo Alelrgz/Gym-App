@@ -89,6 +89,11 @@
                     <i data-lucide="home" class="w-5 h-5"></i>
                     <span>Home</span>
                 </a>
+                <a href="#workouts" onclick="if(typeof switchSection==='function'){switchSection('workouts');updateBottomNav(this);return false;}"
+                    class="bottom-nav-item" data-section="workouts">
+                    <i data-lucide="dumbbell" class="w-5 h-5"></i>
+                    <span>Allenamenti</span>
+                </a>
                 <a href="#schedule" onclick="if(typeof switchSection==='function'){switchSection('schedule');updateBottomNav(this);return false;}"
                     class="bottom-nav-item" data-section="schedule">
                     <i data-lucide="calendar" class="w-5 h-5"></i>

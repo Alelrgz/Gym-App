@@ -127,60 +127,93 @@
                 </div>
             </div>
 
+            <!-- Mobile Panel Tabs for Utenti (hidden on desktop) -->
+            <div class="trainer-panel-tabs" id="utenti-panel-tabs">
+                <button class="trainer-panel-tab active" onclick="switchTrainerPanel('utenti-panel-tabs','utenti-panel-clients')">Clienti</button>
+                <button class="trainer-panel-tab" onclick="switchTrainerPanel('utenti-panel-tabs','utenti-panel-agenda')">Agenda</button>
+            </div>
+
             <!-- Two Column Layout -->
             <div class="trainer-utenti-grid">
-                <!-- LEFT: Client Table -->
-                <div class="staff-table-card">
-                    <table class="staff-table">
-                        <thead>
-                            <tr>
-                                <th style="width:40px;"><input type="checkbox" style="opacity:0.3;"></th>
-                                <th>Clienti</th>
-                                <th>Scheda</th>
-                                <th>Scadenza</th>
-                            </tr>
-                        </thead>
-                        <tbody id="trainer-clients-table-body">
-                            <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:160px;"></div></td><td><div class="staff-skeleton" style="width:100px;"></div></td><td><div class="staff-skeleton" style="width:80px;"></div></td></tr>
-                            <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:130px;"></div></td><td><div class="staff-skeleton" style="width:110px;"></div></td><td><div class="staff-skeleton" style="width:90px;"></div></td></tr>
-                            <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:150px;"></div></td><td><div class="staff-skeleton" style="width:90px;"></div></td><td><div class="staff-skeleton" style="width:70px;"></div></td></tr>
-                            <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:140px;"></div></td><td><div class="staff-skeleton" style="width:100px;"></div></td><td><div class="staff-skeleton" style="width:85px;"></div></td></tr>
-                        </tbody>
-                    </table>
+                <!-- LEFT: Client Table (desktop) -->
+                <div class="trainer-panel-content" id="utenti-panel-clients">
+                    <div class="staff-table-card staff-desktop-only">
+                        <table class="staff-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:40px;"><input type="checkbox" style="opacity:0.3;"></th>
+                                    <th>Clienti</th>
+                                    <th>Scheda</th>
+                                    <th>Scadenza</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trainer-clients-table-body">
+                                <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:160px;"></div></td><td><div class="staff-skeleton" style="width:100px;"></div></td><td><div class="staff-skeleton" style="width:80px;"></div></td></tr>
+                                <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:130px;"></div></td><td><div class="staff-skeleton" style="width:110px;"></div></td><td><div class="staff-skeleton" style="width:90px;"></div></td></tr>
+                                <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:150px;"></div></td><td><div class="staff-skeleton" style="width:90px;"></div></td><td><div class="staff-skeleton" style="width:70px;"></div></td></tr>
+                                <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:140px;"></div></td><td><div class="staff-skeleton" style="width:100px;"></div></td><td><div class="staff-skeleton" style="width:85px;"></div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Client Cards (mobile) -->
+                    <div class="staff-mobile-only" id="trainer-clients-mobile-list">
+                        <div class="staff-mobile-card" style="pointer-events:none;opacity:0.5;">
+                            <div class="staff-skeleton" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;"></div>
+                            <div style="flex:1;">
+                                <div class="staff-skeleton" style="width:120px;height:14px;border-radius:4px;margin-bottom:6px;"></div>
+                                <div class="staff-skeleton" style="width:80px;height:10px;border-radius:4px;"></div>
+                            </div>
+                        </div>
+                        <div class="staff-mobile-card" style="pointer-events:none;opacity:0.5;">
+                            <div class="staff-skeleton" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;"></div>
+                            <div style="flex:1;">
+                                <div class="staff-skeleton" style="width:140px;height:14px;border-radius:4px;margin-bottom:6px;"></div>
+                                <div class="staff-skeleton" style="width:90px;height:10px;border-radius:4px;"></div>
+                            </div>
+                        </div>
+                        <div class="staff-mobile-card" style="pointer-events:none;opacity:0.5;">
+                            <div class="staff-skeleton" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;"></div>
+                            <div style="flex:1;">
+                                <div class="staff-skeleton" style="width:100px;height:14px;border-radius:4px;margin-bottom:6px;"></div>
+                                <div class="staff-skeleton" style="width:70px;height:10px;border-radius:4px;"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- RIGHT: Appointments + My Workout -->
-                <div style="display:flex;flex-direction:column;gap:1.5rem;">
+                <div class="trainer-panel-content" id="utenti-panel-agenda" style="display:flex;flex-direction:column;gap:1.5rem;">
                     <!-- Appointments Widget -->
-                    <div class="glass-card p-4 rounded-2xl">
+                    <div class="glass-card" style="padding:1rem;border-radius:var(--radius-xl);">
                         <div style="display:flex;justify-content:center;align-items:center;gap:0.75rem;margin-bottom:1rem;">
-                            <button onclick="changeWeek(-1)" class="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 text-sm">&lt;</button>
-                            <span class="text-sm font-semibold text-white" id="d-week-range-label">...</span>
-                            <button onclick="changeWeek(1)" class="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 text-sm">&gt;</button>
+                            <button onclick="changeWeek(-1)" style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.05);border:none;color:rgba(255,255,255,0.5);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">&lt;</button>
+                            <span style="font-size:0.85rem;font-weight:600;color:white;" id="d-week-range-label">...</span>
+                            <button onclick="changeWeek(1)" style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.05);border:none;color:rgba(255,255,255,0.5);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">&gt;</button>
                         </div>
                         <!-- Day tabs -->
-                        <div class="grid grid-cols-7 gap-1 mb-4" id="d-calendar-strip"></div>
+                        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:1rem;" id="d-calendar-strip"></div>
                         <!-- Events for selected day -->
-                        <div id="d-schedule-container" class="space-y-2 mb-3"></div>
+                        <div id="d-schedule-container" style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:0.75rem;"></div>
                     </div>
 
                     <!-- My Workout Card -->
-                    <div id="trainer-my-workout" style="flex:1;display:flex;flex-direction:column;">
-                        <div class="glass-card rounded-2xl" style="flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden;">
+                    <div id="trainer-my-workout" style="display:flex;flex-direction:column;">
+                        <div class="glass-card" style="display:flex;flex-direction:column;position:relative;overflow:hidden;border-radius:var(--radius-xl);">
                             <!-- Content (always visible, blurred when empty) -->
-                            <div id="my-workout-content" style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:1.25rem;">
-                                <p class="text-xs text-white/40 uppercase tracking-wider font-semibold mb-3">Il mio allenamento</p>
-                                <div class="flex justify-between items-end">
+                            <div id="my-workout-content" style="display:flex;flex-direction:column;justify-content:center;padding:1.25rem;">
+                                <p style="font-size:0.7rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;font-weight:600;margin-bottom:0.75rem;">Il mio allenamento</p>
+                                <div style="display:flex;justify-content:space-between;align-items:flex-end;">
                                     <div>
-                                        <h3 class="text-xl font-black text-white mb-1" id="my-workout-title">Allenamento</h3>
+                                        <h3 style="font-size:1.15rem;font-weight:900;color:white;margin-bottom:0.25rem;" id="my-workout-title">Allenamento</h3>
                                     </div>
-                                    <div class="text-right text-xs text-white/50 space-y-0.5">
+                                    <div style="text-align:right;font-size:0.75rem;color:rgba(255,255,255,0.5);line-height:1.6;">
                                         <p id="my-workout-duration">-- min</p>
                                         <p id="my-workout-exercises">-- esercizi</p>
                                         <p id="my-workout-difficulty">--</p>
                                     </div>
                                 </div>
-                                <button id="my-workout-cta" class="w-full mt-4 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl transition text-sm">
+                                <button id="my-workout-cta" style="width:100%;margin-top:1rem;padding:0.75rem;background:var(--primary);border:none;border-radius:var(--radius-md);color:white;font-weight:700;font-size:0.85rem;cursor:pointer;transition:background 0.2s;">
                                     Avvia Allenamento
                                 </button>
                             </div>
@@ -223,25 +256,32 @@
                         <span class="staff-stat-label">Scaduti</span>
                     </div>
                 </div>
-                <button onclick="openCreateWorkoutModal()" class="staff-btn-action staff-btn-primary" style="border-radius:9999px;padding:0.6rem 1.5rem;">
-                    + Crea allenamento
-                </button>
+                <!-- Create workout button moved inside Allenamenti column -->
+            </div>
+
+            <!-- Mobile Panel Tabs (hidden on desktop, flex on mobile) -->
+            <div class="trainer-panel-tabs" id="workouts-panel-tabs">
+                <button class="trainer-panel-tab active" onclick="switchTrainerPanel('workouts-panel-tabs','workouts-panel-exercises')">Esercizi</button>
+                <button class="trainer-panel-tab" onclick="switchTrainerPanel('workouts-panel-tabs','workouts-panel-workouts')">Allenamenti</button>
+                <button class="trainer-panel-tab" onclick="switchTrainerPanel('workouts-panel-tabs','workouts-panel-clients')">Clienti</button>
             </div>
 
             <!-- Three Column Grid -->
             <div class="trainer-workouts-grid">
 
                 <!-- COL 1: Exercise Library (accordion rows) -->
-                <div class="allenamenti-column" id="allenamenti-ex-column">
-                    <p class="allenamenti-col-header">Esercizi</p>
-                    <div class="staff-search-bar" style="margin-bottom:0.75rem;">
-                        <i data-lucide="search" class="w-4 h-4 search-icon"></i>
-                        <input type="text" id="allenamenti-ex-search" placeholder="Cerca esercizi" oninput="filterAllenamentiExercises()">
+                <div class="allenamenti-column trainer-panel-content" id="workouts-panel-exercises">
+                    <div class="allenamenti-sticky-header">
+                        <p class="allenamenti-col-header">Esercizi</p>
+                        <div class="staff-search-bar" style="margin-bottom:0.75rem;">
+                            <i data-lucide="search" class="w-4 h-4 search-icon"></i>
+                            <input type="text" id="allenamenti-ex-search" placeholder="Cerca esercizi" oninput="filterAllenamentiExercises()">
+                        </div>
+                        <button onclick="showModal('create-exercise-modal')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:0.4rem;padding:0.45rem 0;margin-bottom:0.65rem;background:rgba(255,255,255,0.05);border:1px dashed rgba(255,255,255,0.15);border-radius:8px;color:rgba(255,255,255,0.45);font-size:0.78rem;cursor:pointer;transition:all 0.18s;" onmouseover="this.style.background='rgba(255,255,255,0.09)';this.style.color='rgba(255,255,255,0.7)'" onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.color='rgba(255,255,255,0.45)'">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                            Aggiungi esercizio
+                        </button>
                     </div>
-                    <button onclick="showModal('create-exercise-modal')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:0.4rem;padding:0.45rem 0;margin-bottom:0.65rem;background:rgba(255,255,255,0.05);border:1px dashed rgba(255,255,255,0.15);border-radius:8px;color:rgba(255,255,255,0.45);font-size:0.78rem;cursor:pointer;transition:all 0.18s;" onmouseover="this.style.background='rgba(255,255,255,0.09)';this.style.color='rgba(255,255,255,0.7)'" onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.color='rgba(255,255,255,0.45)'">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                        Aggiungi esercizio
-                    </button>
                     <div id="allenamenti-exercise-list">
                         <div class="staff-skeleton" style="width:100%;height:32px;border-radius:6px;margin-bottom:0.4rem;"></div>
                         <div class="staff-skeleton" style="width:85%;height:32px;border-radius:6px;margin-bottom:0.4rem;"></div>
@@ -252,7 +292,7 @@
                 </div>
 
                 <!-- COL 2: Workouts / Splits -->
-                <div class="allenamenti-column">
+                <div class="allenamenti-column trainer-panel-content" id="workouts-panel-workouts">
                     <p class="allenamenti-col-header">Allenamenti</p>
                     <div class="staff-search-bar" style="margin-bottom:0.75rem;">
                         <i data-lucide="search" class="w-4 h-4 search-icon"></i>
@@ -266,6 +306,10 @@
 
                     <!-- Workout List -->
                     <div id="workouts-tab" class="trainer-tab-content">
+                        <button onclick="openCreateWorkoutModal()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:0.4rem;padding:0.45rem 0;margin-bottom:0.65rem;background:rgba(255,255,255,0.05);border:1px dashed rgba(255,255,255,0.15);border-radius:8px;color:rgba(255,255,255,0.45);font-size:0.78rem;cursor:pointer;transition:all 0.18s;" onmouseover="this.style.background='rgba(255,255,255,0.09)';this.style.color='rgba(255,255,255,0.7)'" onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.color='rgba(255,255,255,0.45)'">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                            Crea allenamento
+                        </button>
                         <div class="staff-table-card" style="margin-bottom:0;">
                             <table class="staff-table">
                                 <thead>
@@ -308,7 +352,7 @@
                 </div>
 
                 <!-- COL 3: Client Drop Targets -->
-                <div class="allenamenti-column">
+                <div class="allenamenti-column trainer-panel-content" id="workouts-panel-clients">
                     <p class="allenamenti-col-header">Clienti</p>
                     <div class="staff-search-bar" style="margin-bottom:0.75rem;">
                         <i data-lucide="search" class="w-4 h-4 search-icon"></i>
@@ -491,11 +535,18 @@
             <!-- Hidden elements for backward compatibility -->
             <span id="avg-engagement" class="hidden">-</span>
 
+            <!-- Mobile Panel Tabs (hidden on desktop, flex on mobile) -->
+            <div class="trainer-panel-tabs" id="courses-panel-tabs">
+                <button class="trainer-panel-tab active" onclick="switchTrainerPanel('courses-panel-tabs','courses-panel-list')">Corsi</button>
+                <button class="trainer-panel-tab" onclick="switchTrainerPanel('courses-panel-tabs','courses-panel-participants')">Partecipanti</button>
+                <button class="trainer-panel-tab" onclick="switchTrainerPanel('courses-panel-tabs','courses-panel-exercises')">Esercizi</button>
+            </div>
+
             <!-- Three Column Grid -->
             <div class="trainer-courses-grid">
 
                 <!-- LEFT: Courses (Tabs: I miei corsi / Corsi condivisi) -->
-                <div>
+                <div class="trainer-panel-content" id="courses-panel-list">
                     <div class="trainer-tab-bar">
                         <button class="trainer-tab active" data-tab="own-courses-tab" onclick="switchCourseTab('own-courses-tab')">I miei corsi</button>
                         <button class="trainer-tab" data-tab="shared-courses-tab" onclick="switchCourseTab('shared-courses-tab')">Corsi condivisi</button>
@@ -517,7 +568,7 @@
                 </div>
 
                 <!-- MIDDLE: Partecipanti -->
-                <div>
+                <div class="trainer-panel-content" id="courses-panel-participants">
                     <div style="padding:0.65rem 1rem;font-size:0.75rem;font-weight:600;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--glass-border-1);margin-bottom:1rem;">
                         Partecipanti
                     </div>
@@ -530,7 +581,7 @@
                 </div>
 
                 <!-- RIGHT: Exercise Library -->
-                <div>
+                <div class="trainer-panel-content" id="courses-panel-exercises">
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:0.65rem 1rem;border-bottom:1px solid var(--glass-border-1);margin-bottom:1rem;">
                         <span style="font-size:0.75rem;font-weight:600;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;">Libreria Esercizi</span>
                         <button onclick="openCourseExerciseModal()" style="font-size:0.7rem;font-weight:600;color:var(--primary);background:none;border:none;cursor:pointer;">+ Nuovo</button>
@@ -847,6 +898,29 @@ let workoutsInitialized = false;
 let workoutsPendingInit = false;
 let coursesInitialized = false;
 let settingsInitialized = false;
+
+function switchTrainerPanel(tabGroupId, panelId) {
+    // Update tab active state
+    const tabGroup = document.getElementById(tabGroupId);
+    if (tabGroup) {
+        tabGroup.querySelectorAll('.trainer-panel-tab').forEach(btn => btn.classList.remove('active'));
+        // Find the button that targets this panel
+        tabGroup.querySelectorAll('.trainer-panel-tab').forEach(btn => {
+            if (btn.getAttribute('onclick').includes(panelId)) btn.classList.add('active');
+        });
+    }
+    // Find the parent grid (next sibling of the tab bar)
+    const grid = tabGroup ? tabGroup.nextElementSibling : null;
+    if (grid) {
+        grid.querySelectorAll('.trainer-panel-content').forEach(panel => {
+            if (panel.id === panelId) {
+                panel.classList.remove('trainer-panel-hidden');
+            } else {
+                panel.classList.add('trainer-panel-hidden');
+            }
+        });
+    }
+}
 
 function switchSection(sectionId) {
     // Close any open modals (e.g. course detail)

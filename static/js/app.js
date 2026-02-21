@@ -718,18 +718,22 @@ function renderClientList(clients) {
         return;
     }
 
-    clients.forEach(c => {
-        const tr = document.createElement('tr');
-        tr.style.cursor = 'pointer';
-        tr.onclick = function () {
-            showClientModal(c.name, c.plan, c.status, c.id, c.is_premium);
-        };
+    // Also populate mobile card list
+    const mobileList = document.getElementById('trainer-clients-mobile-list');
 
+    if (clients.length === 0) {
+        if (mobileList) mobileList.innerHTML = '<div style="text-align:center;padding:2rem;color:rgba(255,255,255,0.3);font-size:0.85rem;">Nessun cliente trovato</div>';
+        return;
+    }
+
+    if (mobileList) mobileList.innerHTML = '';
+
+    clients.forEach(c => {
         const avatarUrl = c.profile_picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.name}`;
         const initials = c.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
         // Format expiry date
-        let expiryDisplay = '\u2014';
+        let expiryDisplay = '';
         if (c.plan_expiry) {
             try {
                 const d = new Date(c.plan_expiry);
@@ -738,6 +742,13 @@ function renderClientList(clients) {
                 expiryDisplay = c.plan_expiry;
             }
         }
+
+        // Desktop table row
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.onclick = function () {
+            showClientModal(c.name, c.plan, c.status, c.id, c.is_premium);
+        };
 
         tr.innerHTML = `
             <td><input type="checkbox" style="opacity:0.3;" onclick="event.stopPropagation();"></td>
@@ -752,9 +763,32 @@ function renderClientList(clients) {
                 </div>
             </td>
             <td>${c.assigned_split || '\u2014'}</td>
-            <td>${expiryDisplay}</td>
+            <td>${expiryDisplay || '\u2014'}</td>
         `;
         tbody.appendChild(tr);
+
+        // Mobile card
+        if (mobileList) {
+            const card = document.createElement('div');
+            card.className = 'staff-mobile-card';
+            card.onclick = function() {
+                showClientModal(c.name, c.plan, c.status, c.id, c.is_premium);
+            };
+            card.innerHTML = `
+                <div class="staff-mobile-card-avatar" style="overflow:hidden;">
+                    <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.parentElement.textContent='${initials}';">
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div class="staff-mobile-card-name">${c.name}</div>
+                    <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);display:flex;gap:0.75rem;margin-top:2px;">
+                        <span>${c.assigned_split || 'Nessuna scheda'}</span>
+                        ${expiryDisplay ? `<span>${expiryDisplay}</span>` : ''}
+                    </div>
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.2)" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            `;
+            mobileList.appendChild(card);
+        }
     });
 }
 
