@@ -771,17 +771,23 @@ select option {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 2px;
+    gap: 4px;
     flex: 1;
-    padding: 6px 0;
+    padding: 8px 0;
     color: rgba(255, 255, 255, 0.35);
     text-decoration: none;
     transition: color 0.2s ease;
     -webkit-tap-highlight-color: transparent;
 }
 
+.bottom-nav-item i,
+.bottom-nav-item svg {
+    width: 26px;
+    height: 26px;
+}
+
 .bottom-nav-item span {
-    font-size: 10px;
+    font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.3px;
 }
@@ -798,7 +804,6 @@ select option {
 /* Quick Action FAB in bottom nav */
 .quick-action-fab {
     -webkit-tap-highlight-color: transparent;
-    border: 3px solid rgba(0,0,0,0.95);
     outline: none;
 }
 

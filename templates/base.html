@@ -60,8 +60,8 @@
     {% if mode != 'workout' %}
     <!-- Bottom Navigation Bar (mobile only) -->
     <nav class="fixed bottom-0 left-0 right-0 z-[65] lg:hidden">
-        <div class="bg-black/95 backdrop-blur-xl border-t border-white/10">
-            <div class="flex justify-around items-center h-16 px-2 max-w-lg mx-auto">
+        <div class="bg-black/95 backdrop-blur-xl border-t border-white/10 rounded-t-3xl">
+            <div class="flex justify-around items-center h-24 px-4 max-w-lg mx-auto">
                 {% if role == 'owner' %}
                 <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner' }}"
                     class="bottom-nav-item {% if mode in ['dashboard', none] %}active{% endif %}">
@@ -130,26 +130,28 @@
                 <!-- Client -->
                 <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
                     class="bottom-nav-item {% if not mode or mode == 'home' %}active{% endif %}">
-                    <i data-lucide="home" class="w-5 h-5"></i>
+                    <i data-lucide="home"></i>
                     <span>Home</span>
                 </a>
                 <a href="{{ 'client_progress.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=progress' }}"
                     class="bottom-nav-item {% if mode == 'progress' %}active{% endif %}">
-                    <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
-                    <span>Statistiche</span>
+                    <i data-lucide="bar-chart-3"></i>
+                    <span>Stats</span>
                 </a>
                 <!-- Center Quick Action Button -->
-                <button id="fab-btn" onclick="toggleQuickActions()" class="quick-action-fab -mt-6 w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-lg shadow-orange-500/30 active:scale-90 transition-all duration-200">
-                    <i data-lucide="plus" class="w-6 h-6 text-white"></i>
-                </button>
+                <div class="flex-1 flex items-center justify-center">
+                    <button id="fab-btn" onclick="toggleQuickActions()" class="quick-action-fab w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30 active:scale-90 transition-all duration-200">
+                        <i data-lucide="plus" class="w-7 h-7 text-white"></i>
+                    </button>
+                </div>
                 <a href="{{ 'client_leaderboard.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=leaderboard' }}"
                     class="bottom-nav-item {% if mode == 'leaderboard' %}active{% endif %}">
-                    <i data-lucide="trophy" class="w-5 h-5"></i>
+                    <i data-lucide="trophy"></i>
                     <span>Classifica</span>
                 </a>
                 <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=client_dashboard' }}"
                     class="bottom-nav-item {% if mode == 'client_dashboard' %}active{% endif %}">
-                    <i data-lucide="circle-user" class="w-5 h-5"></i>
+                    <i data-lucide="circle-user"></i>
                     <span>Profilo</span>
                 </a>
                 {% endif %}
@@ -162,7 +164,7 @@
     <!-- Quick Action Sheet (Client only) -->
     {% if role == 'client' %}
     <div id="quick-action-overlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 hidden opacity-0 transition-opacity duration-200" onclick="toggleQuickActions()"></div>
-    <div id="quick-action-sheet" class="fixed bottom-20 left-1/2 -translate-x-1/2 z-[61] hidden opacity-0 translate-y-4 transition-all duration-200">
+    <div id="quick-action-sheet" class="fixed bottom-28 left-1/2 -translate-x-1/2 z-[61] hidden opacity-0 translate-y-4 transition-all duration-200">
         <div class="bg-gray-900/95 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-2xl shadow-black/50">
             <div class="grid grid-cols-4 gap-1" style="width: 280px;">
                 <button onclick="qaAction('scan')" class="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl hover:bg-white/10 active:bg-white/15 transition tap-effect">
