@@ -859,87 +859,115 @@ function renderFriendHealthBars(data) {
 </script>
 
 {% elif mode == "progress" %}
-<div class="p-6 pt-10 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent z-10">
-    <div class="flex items-center space-x-3">
-        <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
-            class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect">←</a>
-        <h2 class="font-bold text-xl">La Mia Nutrizione</h2>
+<div id="progress-top-bar" class="fixed top-0 left-0 right-0 px-4 pb-3 flex justify-between items-center z-30 transition-all duration-200" style="padding-top: max(env(safe-area-inset-top, 0px), 2.5rem);">
+    <div class="flex items-center">
+        <img src="/static/fitos-logo.svg" class="h-7 object-contain">
     </div>
-    <div class="flex space-x-2">
-        <div onclick="openBookingChoiceForMyTrainer()" class="relative w-10 h-10 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center tap-effect cursor-pointer" title="Prenota Sessione">
+    <div class="flex items-center space-x-2">
+        <div onclick="openBookingChoiceForMyTrainer()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer" title="Prenota Sessione">
             <i data-lucide="calendar" class="w-5 h-5"></i>
-        </div>
-        <div onclick="openClientChatModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer">
-            <i data-lucide="message-circle" class="w-5 h-5"></i>
         </div>
         <div data-action="showModal" data-target="notification-modal"
             class="notification-bell w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect relative">
             <i data-lucide="bell" class="w-5 h-5"></i>
             <span class="notification-badge hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
         </div>
+        <div onclick="openClientChatModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer">
+            <i data-lucide="send" class="w-5 h-5"></i>
+        </div>
     </div>
 </div>
-<div class="flex-1 p-4 space-y-4">
+<script>
+(function(){
+    const bar = document.getElementById('progress-top-bar');
+    if (!bar) return;
+    let scrolled = false;
+    window.addEventListener('scroll', function(){
+        if(window.scrollY > 10 && !scrolled){
+            scrolled = true;
+            bar.style.backgroundColor = 'rgba(17,24,39,0.85)';
+            bar.style.backdropFilter = 'blur(12px)';
+            bar.style.webkitBackdropFilter = 'blur(12px)';
+            bar.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+        } else if(window.scrollY <= 10 && scrolled){
+            scrolled = false;
+            bar.style.backgroundColor = '';
+            bar.style.backdropFilter = '';
+            bar.style.webkitBackdropFilter = '';
+            bar.style.borderBottom = '';
+        }
+    });
+})();
+</script>
+<div class="flex-1 p-4 space-y-4" style="padding-top: calc(max(env(safe-area-inset-top, 0px), 2.5rem) + 3.5rem);">
 
     <!-- Stats Carousel -->
     <div class="relative">
         <div id="stats-carousel" class="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide -mx-4 px-4 gap-3" style="scroll-behavior: smooth;">
             <!-- Slide 1: Diet + Macros Combined -->
             <div class="snap-center flex-shrink-0 w-full">
-                {% call card(classes="p-4 relative overflow-hidden h-[137px]") %}
-                <div class="absolute top-0 right-0 w-32 h-32 bg-green-500/10 blur-3xl rounded-full -mr-8 -mt-8"></div>
-                <div class="flex items-center gap-4 relative z-10 h-full">
-                    <!-- Diet Score - Large Circle -->
-                    <div class="flex items-center gap-3 flex-shrink-0">
-                        <div class="w-20 h-20 relative flex items-center justify-center">
-                            <svg class="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
-                                <circle cx="40" cy="40" r="34" stroke="rgba(255,255,255,0.1)" stroke-width="6" fill="none" />
-                                <circle cx="40" cy="40" r="34" stroke="#4ADE80" stroke-width="6" fill="none" stroke-dasharray="213.6"
-                                    stroke-dashoffset="42" stroke-linecap="round" id="diet-progress-ring" />
-                            </svg>
-                            <i data-lucide="leaf" class="w-5 h-5 absolute"></i>
+                {% call card(classes="p-4 relative overflow-hidden") %}
+                <div class="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 blur-3xl rounded-full -mr-8 -mt-8"></div>
+                <div class="relative z-10">
+                    <div class="flex items-center gap-4">
+                        <!-- Diet Score - Orange Circle -->
+                        <div class="flex items-center gap-3 flex-shrink-0">
+                            <div class="w-20 h-20 relative flex items-center justify-center">
+                                <svg class="w-full h-full transform -rotate-90" viewBox="0 0 80 80">
+                                    <circle cx="40" cy="40" r="34" stroke="rgba(255,255,255,0.1)" stroke-width="6" fill="none" />
+                                    <circle cx="40" cy="40" r="34" stroke="#f97316" stroke-width="6" fill="none" stroke-dasharray="213.6"
+                                        stroke-dashoffset="42" stroke-linecap="round" id="diet-progress-ring" />
+                                </svg>
+                                <i data-lucide="utensils" class="w-5 h-5 absolute text-orange-400"></i>
+                            </div>
+                            <div>
+                                <p class="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Dieta</p>
+                                <p class="text-3xl font-black text-white leading-none"><span id="health-score">...</span><span class="text-xl text-orange-400">%</span></p>
+                                <p class="text-[10px] text-orange-400 font-bold" id="diet-status">Continua cosi!</p>
+                                <div class="mt-1 inline-flex items-center bg-white/10 rounded-full px-2 py-0.5">
+                                    <span class="text-[9px] text-white font-medium" id="hero-cals-current">--</span>
+                                    <span class="text-[9px] text-gray-400 mx-0.5">/</span>
+                                    <span class="text-[9px] text-gray-400" id="hero-cals-target">--</span>
+                                    <span class="text-[9px] text-gray-400 ml-0.5">kgcal</span>
+                                </div>
+                            </div>
                         </div>
-                        <div>
-                            <p class="text-[10px] text-gray-400 uppercase tracking-wider">Dieta</p>
-                            <p class="text-3xl font-black text-white leading-none"><span id="health-score">...</span><span class="text-xl text-green-400">%</span></p>
-                            <p class="text-[10px] text-green-400 font-bold" id="diet-status">Continua così!</p>
-                            <div class="mt-1 inline-flex items-center bg-white/10 rounded-full px-2 py-0.5">
-                                <span class="text-[9px] text-white font-medium" id="hero-cals-current">--</span>
-                                <span class="text-[9px] text-gray-400 mx-0.5">/</span>
-                                <span class="text-[9px] text-gray-400" id="hero-cals-target">--</span>
-                                <span class="text-[9px] text-gray-400 ml-0.5">kcal</span>
+                        <!-- Divider -->
+                        <div class="w-px h-16 bg-white/10 flex-shrink-0"></div>
+                        <!-- Macros: Carbs (orange), Grassi (blue), Pro (pink) -->
+                        <div class="flex-1 flex items-center justify-evenly">
+                            <div class="text-center">
+                                <div id="hero-ring-carbs" class="w-11 h-11 mx-auto rounded-full flex items-center justify-center" style="background: conic-gradient(#f97316 0%, #333 0%);">
+                                    <div class="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center">
+                                        <span class="text-[10px] font-bold text-orange-400" id="hero-val-carbs">0g</span>
+                                    </div>
+                                </div>
+                                <p class="text-[9px] text-gray-400 font-medium mt-1">Carbs</p>
+                            </div>
+                            <div class="text-center">
+                                <div id="hero-ring-fat" class="w-11 h-11 mx-auto rounded-full flex items-center justify-center" style="background: conic-gradient(#60A5FA 0%, #333 0%);">
+                                    <div class="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center">
+                                        <span class="text-[10px] font-bold text-blue-400" id="hero-val-fat">0g</span>
+                                    </div>
+                                </div>
+                                <p class="text-[9px] text-gray-400 font-medium mt-1">Grassi</p>
+                            </div>
+                            <div class="text-center">
+                                <div id="hero-ring-protein" class="w-11 h-11 mx-auto rounded-full flex items-center justify-center" style="background: conic-gradient(#F472B6 0%, #333 0%);">
+                                    <div class="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center">
+                                        <span class="text-[10px] font-bold text-pink-400" id="hero-val-protein">0g</span>
+                                    </div>
+                                </div>
+                                <p class="text-[9px] text-gray-400 font-medium mt-1">Pro</p>
                             </div>
                         </div>
                     </div>
-                    <!-- Divider -->
-                    <div class="w-px h-16 bg-white/10 flex-shrink-0"></div>
-                    <!-- Macros - Horizontal Layout -->
-                    <div class="flex-1 flex items-center justify-evenly">
-                        <div class="text-center">
-                            <div id="hero-ring-protein" class="w-11 h-11 mx-auto rounded-full flex items-center justify-center" style="background: conic-gradient(#4ADE80 0%, #333 0%);">
-                                <div class="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center">
-                                    <span class="text-[10px] font-bold text-green-400" id="hero-val-protein">0g</span>
-                                </div>
-                            </div>
-                            <p class="text-[9px] text-gray-400 font-medium mt-1">Pro</p>
+                    <!-- VAI A DIETA Button -->
+                    <a href="{{ '/?gym_id=' + gym_id + '&role=client&mode=progress' }}" class="block mt-4">
+                        <div class="w-full py-3.5 bg-orange-500 hover:bg-orange-400 text-white text-center font-bold uppercase tracking-wider rounded-xl transition tap-effect text-sm">
+                            VAI A DIETA
                         </div>
-                        <div class="text-center">
-                            <div id="hero-ring-carbs" class="w-11 h-11 mx-auto rounded-full flex items-center justify-center" style="background: conic-gradient(#60A5FA 0%, #333 0%);">
-                                <div class="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center">
-                                    <span class="text-[10px] font-bold text-blue-400" id="hero-val-carbs">0g</span>
-                                </div>
-                            </div>
-                            <p class="text-[9px] text-gray-400 font-medium mt-1">Carb</p>
-                        </div>
-                        <div class="text-center">
-                            <div id="hero-ring-fat" class="w-11 h-11 mx-auto rounded-full flex items-center justify-center" style="background: conic-gradient(#F472B6 0%, #333 0%);">
-                                <div class="w-8 h-8 rounded-full bg-gray-900 flex items-center justify-center">
-                                    <span class="text-[10px] font-bold text-pink-400" id="hero-val-fat">0g</span>
-                                </div>
-                            </div>
-                            <p class="text-[9px] text-gray-400 font-medium mt-1">Fat</p>
-                        </div>
-                    </div>
+                    </a>
                 </div>
                 {% endcall %}
             </div>
@@ -981,41 +1009,29 @@ function renderFriendHealthBars(data) {
     <!-- Quick Actions -->
     <div class="flex space-x-3 overflow-x-auto pb-2 -mx-1 px-1">
         <button onclick="openManualMealModal()"
-            class="flex-shrink-0 bg-white/5 border border-white/10 backdrop-blur-sm px-4 py-3 rounded-2xl flex items-center space-x-2 tap-effect hover:bg-white/10 transition">
-            <i data-lucide="pencil" class="w-4 h-4"></i> <span class="text-xs font-medium text-white/90">Aggiungi Pasto</span>
+            class="flex-shrink-0 bg-transparent border-2 border-orange-500 px-4 py-3 rounded-full flex items-center space-x-2 tap-effect hover:bg-orange-500/10 transition">
+            <i data-lucide="pencil" class="w-4 h-4 text-orange-400"></i> <span class="text-xs font-bold text-orange-400 uppercase tracking-wider">Aggiungi Pasto</span>
         </button>
         <button data-action="quickAction" data-type="scan"
-            class="flex-shrink-0 bg-white/5 border border-white/10 backdrop-blur-sm px-4 py-3 rounded-2xl flex items-center space-x-2 tap-effect hover:bg-white/10 transition">
-            <i data-lucide="camera" class="w-4 h-4"></i> <span class="text-xs font-medium text-white/90">Scansiona Pasto</span>
+            class="flex-shrink-0 bg-transparent border-2 border-orange-500 px-4 py-3 rounded-full flex items-center space-x-2 tap-effect hover:bg-orange-500/10 transition">
+            <i data-lucide="camera" class="w-4 h-4 text-orange-400"></i> <span class="text-xs font-bold text-orange-400 uppercase tracking-wider">Scansiona Pasto</span>
         </button>
         <button data-action="quickAction" data-type="search"
-            class="flex-shrink-0 bg-white/5 border border-white/10 backdrop-blur-sm px-4 py-3 rounded-2xl flex items-center space-x-2 tap-effect hover:bg-white/10 transition">
-            <i data-lucide="search" class="w-4 h-4"></i> <span class="text-xs font-medium text-white/90">Cerca</span>
+            class="flex-shrink-0 bg-transparent border-2 border-orange-500 px-4 py-3 rounded-full flex items-center space-x-2 tap-effect hover:bg-orange-500/10 transition">
+            <i data-lucide="search" class="w-4 h-4 text-orange-400"></i> <span class="text-xs font-bold text-orange-400 uppercase tracking-wider">Cerca</span>
         </button>
         <button data-action="quickAction" data-type="copy"
-            class="flex-shrink-0 bg-white/5 border border-white/10 backdrop-blur-sm px-4 py-3 rounded-2xl flex items-center space-x-2 tap-effect hover:bg-white/10 transition">
-            <i data-lucide="clipboard" class="w-4 h-4"></i> <span class="text-xs font-medium text-white/90">Copia Ieri</span>
+            class="flex-shrink-0 bg-transparent border-2 border-orange-500 px-4 py-3 rounded-full flex items-center space-x-2 tap-effect hover:bg-orange-500/10 transition">
+            <i data-lucide="clipboard" class="w-4 h-4 text-orange-400"></i> <span class="text-xs font-bold text-orange-400 uppercase tracking-wider">Copia Ieri</span>
         </button>
     </div>
 
-    <!-- Bento Grid: Hydration & Weekly -->
+    <!-- Bento Grid: Consistency & Hydration -->
     <div class="bento-grid">
-        <!-- Hydration Wave -->
-        {% call card(classes="wave-container h-40 flex flex-col justify-between p-4 relative tap-effect") %}
-        <div class="relative z-10">
-            <p class="text-xs text-white/70 uppercase font-bold">Idratazione</p>
-            <p class="text-2xl font-black text-white mt-1" id="hydro-val">...</p>
-        </div>
-        <div class="wave" id="hydro-wave" style="top: 50%;"></div>
-        <button data-action="addWater"
-            class="absolute bottom-3 right-3 z-20 w-8 h-8 bg-white/20 rounded-full flex items-center justify-center text-white hover:bg-white/30 transition">+</button>
-        {% endcall %}
-
-        <!-- Weekly Consistency -->
+        <!-- Weekly Consistency (LEFT) -->
         {% call card(classes="p-4 flex flex-col justify-between") %}
         <div class="flex justify-between items-center">
             <p class="text-xs text-gray-400 uppercase font-bold">Costanza</p>
-            <p class="text-[10px] text-gray-500">Questa Settimana</p>
         </div>
         <div class="flex items-end justify-between h-16 mt-2 space-x-1" id="weekly-chart">
             <!-- Bars injected by JS -->
@@ -1030,7 +1046,48 @@ function renderFriendHealthBars(data) {
             <span class="text-[8px] text-gray-500">D</span>
         </div>
         {% endcall %}
+
+        <!-- Hydration Wave (RIGHT) -->
+        {% call card(classes="wave-container h-40 flex flex-col justify-between p-4 relative") %}
+        <div class="relative z-10">
+            <p class="text-xs text-white/70 uppercase font-bold">Idratazione</p>
+            <p class="text-3xl font-black text-white mt-1" id="hydro-val">...</p>
+        </div>
+        <div class="wave" id="hydro-wave" style="top: 50%;"></div>
+        <button data-action="addWater"
+            class="absolute bottom-3 left-3 right-3 z-20 bg-white/20 backdrop-blur-sm rounded-xl py-2.5 text-white text-xs font-bold uppercase tracking-wider text-center hover:bg-white/30 transition tap-effect">BEVI</button>
+        {% endcall %}
     </div>
+
+    <!-- Week Calendar Strip -->
+    <div class="glass-card p-3 rounded-2xl">
+        <div class="flex justify-between items-center" id="week-days-container">
+        </div>
+    </div>
+    <script>
+    (function(){
+        const container = document.getElementById('week-days-container');
+        if (!container) return;
+        const dayLabels = ['LUN','MAR','MER','GIO','VEN','SAB','DOM'];
+        const now = new Date();
+        const todayDow = now.getDay();
+        const mondayOffset = todayDow === 0 ? -6 : 1 - todayDow;
+        const monday = new Date(now);
+        monday.setDate(now.getDate() + mondayOffset);
+        for (let i = 0; i < 7; i++) {
+            const d = new Date(monday);
+            d.setDate(monday.getDate() + i);
+            const isToday = d.toDateString() === now.toDateString();
+            const dayEl = document.createElement('div');
+            dayEl.className = 'flex flex-col items-center flex-1';
+            dayEl.innerHTML = `
+                <span class="text-[9px] uppercase tracking-wider ${isToday ? 'text-orange-400 font-bold' : 'text-gray-500'} mb-1">${dayLabels[i]}</span>
+                <span class="w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold ${isToday ? 'bg-orange-500 text-white' : 'text-gray-400'}">${d.getDate()}</span>
+            `;
+            container.appendChild(dayEl);
+        }
+    })();
+    </script>
 
     <!-- Weight/Strength Trend Section -->
     <div>
@@ -2963,11 +3020,11 @@ async function selectFitnessGoal(goal) {
     </div>
     <div class="flex items-center space-x-2">
         <!-- Access QR Button -->
-        <div onclick="openAccessQrModal()" class="relative w-10 h-10 rounded-full bg-green-500/20 border border-green-500/30 flex items-center justify-center tap-effect cursor-pointer" title="Accesso Palestra">
-            <i data-lucide="qr-code" class="w-5 h-5 text-green-400"></i>
+        <div onclick="openAccessQrModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer" title="Accesso Palestra">
+            <i data-lucide="qr-code" class="w-5 h-5"></i>
         </div>
         <!-- Booking Icon -->
-        <div onclick="openBookingChoiceForMyTrainer()" class="relative w-10 h-10 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center tap-effect cursor-pointer" title="Prenota Sessione">
+        <div onclick="openBookingChoiceForMyTrainer()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer" title="Prenota Sessione">
             <i data-lucide="calendar" class="w-5 h-5"></i>
         </div>
         <!-- Notifications Icon with Badge -->
@@ -2978,7 +3035,7 @@ async function selectFitnessGoal(goal) {
         </div>
         <!-- Messages Icon with Badge -->
         <div onclick="openClientChatModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer">
-            <i data-lucide="message-circle" class="w-5 h-5"></i>
+            <i data-lucide="send" class="w-5 h-5"></i>
             <span id="unread-messages-badge" class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center hidden">0</span>
         </div>
     </div>
@@ -3005,9 +3062,43 @@ async function selectFitnessGoal(goal) {
 })();
 </script>
 <div class="flex-1 p-4 space-y-4" style="padding-top: calc(max(env(safe-area-inset-top, 0px), 2.5rem) + 3.5rem);">
+    <!-- Today's Workout Card -->
+    <div class="slide-up">
+        <div class="rounded-2xl p-6 relative overflow-hidden tap-effect" style="background: linear-gradient(135deg, #e8461e 0%, #f15a24 50%, #f97316 100%);">
+            <div class="flex justify-between items-start mb-4">
+                <span class="text-[11px] font-bold uppercase tracking-wider text-white/70">Allenamento di Oggi</span>
+                <a href="{{ 'workout.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=workout' }}" class="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center tap-effect">
+                    <i data-lucide="pencil" class="w-4 h-4 text-white/80"></i>
+                </a>
+            </div>
+            <h3 class="text-3xl font-black uppercase mb-3 text-white leading-tight" id="workout-title">...</h3>
+            <p class="text-sm text-white/70 mb-6">
+                &bull; <span id="workout-duration"></span> &bull; <span id="workout-difficulty"></span>
+            </p>
+            <div class="border-t border-white/20 pt-5" id="workout-button-container">
+                <div class="flex gap-3">
+                    <a href="{{ 'workout.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=workout' }}" id="workout-main-btn"
+                        class="flex-1 py-3.5 bg-white/20 hover:bg-white/30 text-white text-center font-bold uppercase rounded-xl transition-all text-sm tracking-wide backdrop-blur-sm">
+                        AVVIA ALLENAMENTO
+                    </a>
+                    <button onclick="event.preventDefault(); event.stopPropagation(); openCoopModal()" id="coop-badge-btn"
+                        class="px-5 py-3.5 bg-white/10 border border-white/20 rounded-xl flex items-center justify-center gap-2 tap-effect hover:bg-white/20 transition-all"
+                        title="Inizia un allenamento CO-OP con un amico">
+                        <i data-lucide="users" class="w-5 h-5 text-white"></i>
+                        <span class="text-sm font-bold uppercase tracking-wide text-white">CO-OP</span>
+                    </button>
+                </div>
+                <!-- CO-OP completed indicator (hidden by default, shown if was CO-OP workout) -->
+                <div id="coop-completed-badge" class="hidden absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg">
+                    CO-OP
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Streak Card with Gems -->
     <a href="{{ 'client_calendar.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=calendar' }}"
-        class="block slide-up">
+        class="block slide-up" style="animation-delay: 0.1s;">
         {% call card(classes="p-5 flex justify-between items-center relative overflow-hidden tap-effect") %}
         <div class="absolute top-0 right-0 w-32 h-32 bg-orange-500/30 blur-3xl rounded-full -mr-10 -mt-10 animate-pulse"></div>
         <div class="absolute bottom-0 left-0 w-24 h-24 bg-red-500/20 blur-2xl rounded-full -ml-8 -mb-8"></div>
@@ -3016,13 +3107,13 @@ async function selectFitnessGoal(goal) {
                 <div class="flame-animate"><i data-lucide="flame" class="w-8 h-8"></i></div>
                 <div>
                     <h1 class="text-4xl font-black bg-gradient-to-r from-orange-400 via-red-400 to-orange-500 bg-clip-text text-transparent" id="client-streak">0</h1>
-                    <p class="text-orange-400 font-bold uppercase tracking-wider text-[10px]">Giorni di Serie</p>
+                    <p class="text-orange-400 font-bold uppercase tracking-wider text-[10px]">Settimane di Serie</p>
                 </div>
             </div>
             <div class="h-10 w-px bg-white/10"></div>
             <div>
                 <p class="text-gray-400 text-[10px] mb-0.5">Prossimo Obiettivo</p>
-                <p class="font-bold text-lg" id="client-next-goal">4 Settimane</p>
+                <p class="font-bold text-lg uppercase" id="client-next-goal">4 Settimane</p>
             </div>
         </div>
         <!-- Gems Badge -->
@@ -3035,81 +3126,68 @@ async function selectFitnessGoal(goal) {
         {% endcall %}
     </a>
 
-    <!-- Today's Plan -->
-    <div class="slide-up" style="animation-delay: 0.1s;">
-        {% call card(classes="p-5 relative overflow-hidden group tap-effect") %}
-        <div class="absolute inset-0 bg-gradient-to-br from-red-500/20 to-orange-500/10 group-hover:from-red-500/30 group-hover:to-orange-500/20 transition-all duration-300"></div>
-        <div class="relative z-10">
-            <div class="flex justify-between items-start mb-3">
-                <span class="bg-gradient-to-r from-red-500/30 to-orange-500/30 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Piano di Oggi</span>
-                <i data-lucide="dumbbell" class="w-5 h-5"></i>
-            </div>
-            <h3 class="text-2xl font-black italic uppercase mb-1" id="workout-title">...</h3>
-            <p class="text-sm text-gray-300 mb-4"><span id="workout-duration"></span> • <span id="workout-difficulty"></span></p>
-            <div class="relative" id="workout-button-container">
-                <a href="{{ 'workout.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=workout' }}" id="workout-main-btn"
-                    class="block w-full py-3 bg-gradient-to-r from-red-500 to-orange-500 text-white text-center font-bold rounded-xl hover:from-red-400 hover:to-orange-400 transition-all shadow-lg shadow-red-500/25">
-                    INIZIA SESSIONE
-                </a>
-                <!-- CO-OP Badge (overlays on the right side) -->
-                <button onclick="event.preventDefault(); event.stopPropagation(); openCoopModal()" id="coop-badge-btn"
-                    class="absolute right-2 top-1/2 -translate-y-1/2 w-10 h-10 bg-purple-500/30 hover:bg-purple-500/50 rounded-lg flex items-center justify-center transition-all tap-effect border border-purple-500/50"
-                    title="Inizia un allenamento CO-OP con un amico">
-                    <i data-lucide="users" class="w-5 h-5"></i>
-                </button>
-                <!-- CO-OP completed indicator (hidden by default, shown if was CO-OP workout) -->
-                <div id="coop-completed-badge" class="hidden absolute -top-2 -right-2 bg-gradient-to-r from-purple-500 to-pink-500 text-white text-[10px] font-bold px-2 py-0.5 rounded-full shadow-lg">
-                    CO-OP
+    <!-- Photo + Meals Section -->
+    <div class="slide-up grid grid-cols-2 gap-3" style="animation-delay: 0.15s;">
+        <!-- Left: Latest Physique Photo + Progressi -->
+        <a href="{{ '/?gym_id=' + gym_id + '&role=client&mode=progress' }}" class="block">
+            <div id="home-physique-card" class="rounded-2xl overflow-hidden relative tap-effect" style="aspect-ratio: 3/4;">
+                <!-- Photo gets injected by JS, or placeholder shows -->
+                <div id="home-physique-photo" class="w-full h-full bg-white/5 flex items-center justify-center">
+                    <i data-lucide="camera" class="w-8 h-8 text-white/20"></i>
+                </div>
+                <div id="home-physique-date" class="absolute top-3 left-0 right-0 text-center hidden">
+                    <span class="bg-black/50 backdrop-blur-sm text-white text-xs font-bold px-3 py-1.5 rounded-full"></span>
+                </div>
+                <!-- PROGRESSI button inside card at bottom -->
+                <div class="absolute bottom-3 left-3 right-3">
+                    <div class="py-2.5 rounded-xl border border-orange-500/50 text-orange-400 text-xs font-bold uppercase tracking-wider text-center backdrop-blur-sm bg-black/30">
+                        Progressi
+                    </div>
                 </div>
             </div>
-        </div>
-        {% endcall %}
+        </a>
+        <!-- Right: Today's Meals + Dieta -->
+        <a href="{{ '/?gym_id=' + gym_id + '&role=client&mode=progress' }}" class="block">
+            <div class="glass-card rounded-2xl p-3 flex flex-col relative overflow-hidden" style="aspect-ratio: 3/4;">
+                <p class="text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-3">Pasti del Giorno</p>
+                <div id="home-meals-list" class="flex-1 space-y-3 overflow-hidden">
+                    <div class="flex items-start gap-2">
+                        <div class="w-0.5 rounded-full bg-white/10 flex-shrink-0 mt-1" style="min-height:28px;"></div>
+                        <div>
+                            <p class="text-xs text-white/30">Nessun pasto registrato</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- DIETA button inside card at bottom -->
+                <div class="mt-auto pt-2">
+                    <div class="py-2.5 rounded-xl bg-white/5 border border-white/10 text-orange-400 text-xs font-bold uppercase tracking-wider text-center">
+                        Dieta
+                    </div>
+                </div>
+            </div>
+        </a>
     </div>
-
-    <!-- Diet Tracker -->
-    <a href="{{ 'client_progress.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=progress' }}"
-        class="block slide-up" style="animation-delay: 0.15s;">
-        {% call card(classes="p-4 flex items-center justify-between tap-effect hover:bg-white/5 transition") %}
-        <div class="flex items-center gap-4">
-            <div class="w-12 h-12 rounded-xl bg-green-500/20 flex items-center justify-center">
-                <i data-lucide="leaf" class="w-6 h-6"></i>
-            </div>
-            <div>
-                <p class="font-bold text-white">Diario Alimentare</p>
-                <p class="text-xs text-gray-400">Registra pasti e macro</p>
-            </div>
-        </div>
-        <span class="text-white/40 text-lg">→</span>
-        {% endcall %}
-    </a>
 
     <!-- Trainer & Appointments Section -->
     <div class="slide-up" style="animation-delay: 0.15s;">
-        <div class="flex justify-between items-center mb-3">
-            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider ml-1">Il Mio Trainer</h3>
-            <button onclick="openAllTrainersModal()" class="text-xs text-orange-400 hover:text-orange-300 transition tap-effect">
-                Vedi altri →
-            </button>
-        </div>
-
         <div id="trainer-section" class="space-y-3">
             <!-- Trainer Card -->
             <div onclick="openTrainerProfileModal()" class="glass-card p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition tap-effect">
                 <div class="flex items-center space-x-3">
-                    <div id="trainer-avatar" class="w-12 h-12 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center overflow-hidden">
-                        <i data-lucide="user" class="w-5 h-5"></i>
+                    <div id="trainer-avatar" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
+                        <i data-lucide="user" class="w-5 h-5 text-white/50"></i>
                     </div>
                     <div>
+                        <p class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Il Mio Trainer</p>
                         <p class="font-bold text-white" id="trainer-name">{{ server_trainer_name or '' }}</p>
-                        <p class="text-xs text-gray-400">Personal Trainer</p>
                     </div>
                 </div>
                 <div class="flex gap-2" onclick="event.stopPropagation()">
-                    <button onclick="openClientChatModal()" class="bg-white/10 px-3 py-2 rounded-lg text-sm font-bold hover:bg-white/20 transition tap-effect" title="Message Trainer">
+                    <button onclick="openClientChatModal()" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition tap-effect" title="Messaggio">
                         <i data-lucide="message-circle" class="w-5 h-5"></i>
                     </button>
-                    <button onclick="openBookingChoiceForMyTrainer()" class="bg-orange-500 px-4 py-2 rounded-lg text-sm font-bold hover:bg-orange-400 transition tap-effect">
-                        Prenota Sessione
+                    <button onclick="openBookingChoiceForMyTrainer()" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition tap-effect" title="Prenota Sessione">
+                        <i data-lucide="calendar" class="w-5 h-5"></i>
                     </button>
                 </div>
             </div>

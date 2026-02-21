@@ -868,6 +868,9 @@ async function init() {
                 user = await userRes.json();
                 console.log("Client Data Received:", user);
 
+                // Store global user ID for QR and cache keys
+                if (user.id) window.currentUserId = user.id;
+
                 const setTxt = (id, val) => {
                     const el = document.getElementById(id);
                     if (el) {
@@ -987,6 +990,54 @@ async function init() {
                     setTxt('workout-duration', "0 min");
                     setTxt('workout-difficulty', "Relax");
                 }
+
+                // --- HOME PAGE: Latest physique photo ---
+                const homePhotoEl = document.getElementById('home-physique-photo');
+                const homeDateEl = document.getElementById('home-physique-date');
+                if (homePhotoEl) {
+                    try {
+                        const photoRes = await fetch('/api/physique/photos');
+                        if (photoRes.ok) {
+                            const photoData = await photoRes.json();
+                            if (photoData.photos && photoData.photos.length > 0) {
+                                const latest = photoData.photos[0];
+                                homePhotoEl.innerHTML = `<img src="${latest.photo_url}" class="w-full h-full object-cover" alt="Progress">`;
+                                if (homeDateEl && latest.photo_date) {
+                                    const d = new Date(latest.photo_date);
+                                    const formatted = d.toLocaleDateString('it-IT', { day: 'numeric', month: 'short', year: 'numeric' });
+                                    homeDateEl.querySelector('span').textContent = formatted;
+                                    homeDateEl.classList.remove('hidden');
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        console.log('Could not load home physique photo:', e);
+                    }
+                }
+
+                // --- HOME PAGE: Today's meals preview ---
+                const homeMealsList = document.getElementById('home-meals-list');
+                if (homeMealsList && user.progress && user.progress.diet_log) {
+                    const allMeals = [];
+                    for (const [group, items] of Object.entries(user.progress.diet_log)) {
+                        items.forEach(item => allMeals.push(item));
+                    }
+                    if (allMeals.length > 0) {
+                        homeMealsList.innerHTML = '';
+                        allMeals.slice(0, 3).forEach(item => {
+                            const div = document.createElement('div');
+                            div.className = 'flex items-start gap-2';
+                            div.innerHTML = `
+                                <div class="w-1 rounded-full bg-orange-500 flex-shrink-0 mt-0.5" style="min-height:36px;"></div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-bold text-white truncate">${item.meal}</p>
+                                    <p class="text-[10px] text-gray-400">&bull; ${item.cals}kcal</p>
+                                </div>
+                            `;
+                            homeMealsList.appendChild(div);
+                        });
+                    }
+                }
             } catch (e) {
                 console.error("Error fetching client data:", e);
                 alert("Client Data Error: " + e.message);
@@ -1080,9 +1131,9 @@ async function init() {
                             if (heroValEl) heroValEl.innerText = `${displayVal}g`;
                         }
                     };
-                    updateRing('ring-protein', m.protein.current, m.protein.target, '#4ADE80');
-                    updateRing('ring-carbs', m.carbs.current, m.carbs.target, '#60A5FA');
-                    updateRing('ring-fat', m.fat.current, m.fat.target, '#F472B6');
+                    updateRing('ring-protein', m.protein.current, m.protein.target, '#F472B6');
+                    updateRing('ring-carbs', m.carbs.current, m.carbs.target, '#f97316');
+                    updateRing('ring-fat', m.fat.current, m.fat.target, '#60A5FA');
                 }
 
                 // Grouped Diet Log
@@ -1096,8 +1147,22 @@ async function init() {
                         listDiv.className = "space-y-2";
                         items.forEach(item => {
                             const div = document.createElement('div');
-                            div.className = "glass-card p-3 flex justify-between items-center";
-                            div.innerHTML = `<div><p class="text-sm font-bold text-white">${item.meal}</p><p class="text-[10px] text-gray-400">${item.time}</p></div><span class="text-xs font-mono text-green-400">${item.cals}</span>`;
+                            div.className = "glass-card p-3 flex items-stretch gap-3";
+                            const macroHtml = (item.fat !== undefined || item.carbs !== undefined || item.protein !== undefined)
+                                ? `<div class="flex flex-col items-end gap-0.5 flex-shrink-0">
+                                    ${item.fat !== undefined ? `<span class="text-[9px] text-blue-400 font-medium">${item.fat}g grassi</span>` : ''}
+                                    ${item.carbs !== undefined ? `<span class="text-[9px] text-orange-400 font-medium">${item.carbs}g carbs</span>` : ''}
+                                    ${item.protein !== undefined ? `<span class="text-[9px] text-pink-400 font-medium">${item.protein}g pro</span>` : ''}
+                                  </div>` : '';
+                            div.innerHTML = `
+                                <div class="w-1 rounded-full bg-orange-500 flex-shrink-0"></div>
+                                <div class="flex-1 flex justify-between items-center">
+                                    <div>
+                                        <p class="text-sm font-bold text-white">${item.meal}</p>
+                                        <p class="text-[10px] text-gray-400">&bull; ${item.cals}kgcal</p>
+                                    </div>
+                                    ${macroHtml}
+                                </div>`;
                             listDiv.appendChild(div);
                         });
                         groupDiv.appendChild(listDiv);
