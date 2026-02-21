@@ -813,6 +813,7 @@ async def onboard_new_client(
     stripe_payment_intent_id = data.get("stripe_payment_intent_id")  # From card payment
 
     # Validation
+    logger.info(f"Onboard attempt: name={name!r} phone={phone!r} username={username!r} email={email!r} plan_id={plan_id} payment_method={payment_method}")
     if not name:
         raise HTTPException(status_code=400, detail="Name is required")
     if not phone:

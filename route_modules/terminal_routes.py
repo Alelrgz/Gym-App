@@ -20,7 +20,7 @@ logger = logging.getLogger("gym_app")
 router = APIRouter(prefix="/api/terminal", tags=["terminal"])
 
 # Simulated reader registration code (Stripe test mode only)
-_SIMULATED_REG_CODE = "simulated-wisepos-e"
+_SIMULATED_REG_CODE = "simulated-wpe"
 
 
 def get_db():

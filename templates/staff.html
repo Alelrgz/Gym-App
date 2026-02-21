@@ -612,7 +612,19 @@
             </div>
         </div>
         <p class="text-yellow-400 text-xs mb-4">Il cliente deve cambiare questa password al primo accesso.</p>
-        <button onclick="closeTempPasswordModal()" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors">Fatto</button>
+        <div class="flex gap-2 mb-3">
+            <a id="temp-pw-whatsapp" target="_blank" rel="noopener"
+                class="flex-1 flex items-center justify-center gap-2 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl font-medium transition-colors text-sm">
+                <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.121.553 4.114 1.519 5.845L.525 23.473l5.779-.99A11.93 11.93 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.82c-1.978 0-3.856-.53-5.508-1.49l-.395-.234-3.43.588.613-3.35-.257-.41A9.78 9.78 0 012.18 12c0-5.422 4.398-9.82 9.82-9.82 5.422 0 9.82 4.398 9.82 9.82 0 5.422-4.398 9.82-9.82 9.82z"/></svg>
+                Invia su WhatsApp
+            </a>
+            <a id="temp-pw-sms" target="_blank" rel="noopener"
+                class="flex-1 flex items-center justify-center gap-2 py-2.5 bg-blue-500 hover:bg-blue-600 text-white rounded-xl font-medium transition-colors text-sm">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"/></svg>
+                Invia SMS
+            </a>
+        </div>
+        <button onclick="closeTempPasswordModal()" class="w-full py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl font-medium transition-colors">Fatto</button>
     </div>
 </div>
 
@@ -839,13 +851,8 @@
                         <i data-lucide="credit-card" class="w-6 h-6 block mb-1"></i>
                         <span class="text-sm font-semibold text-white">Carta</span>
                     </button>
-                    <button onclick="selectPaymentMethod('qr')" id="pay-qr-btn"
-                        class="p-4 rounded-xl border-2 border-white/20 hover:border-purple-500/50 transition text-center">
-                        <span class="block mb-1"><i data-lucide="camera" class="w-6 h-6"></i></span>
-                        <span class="text-sm font-semibold text-white">QR Code</span>
-                    </button>
                     <button onclick="selectPaymentMethod('terminal')" id="pay-terminal-btn"
-                        class="hidden p-4 rounded-xl border-2 border-white/20 hover:border-orange-500/50 transition text-center">
+                        class="p-4 rounded-xl border-2 border-white/20 hover:border-orange-500/50 transition text-center">
                         <i data-lucide="smartphone-nfc" class="w-6 h-6 block mb-1 mx-auto stroke-current"></i>
                         <span class="text-sm font-semibold text-white">POS</span>
                     </button>
@@ -859,37 +866,6 @@
                     </div>
                     <div id="onboard-card-errors" class="text-red-400 text-xs mb-2 hidden"></div>
                     <p class="text-xs text-gray-500">Carta di test: 4242 4242 4242 4242, qualsiasi data futura, qualsiasi CVC</p>
-                </div>
-
-                <!-- QR Code Payment (shown when QR selected) -->
-                <div id="qr-payment-form" class="hidden">
-                    <div class="bg-purple-500/10 border border-purple-500/30 rounded-xl p-4 text-center">
-                        <div id="qr-initial" class="py-2">
-                            <span class="block mb-2"><i data-lucide="camera" class="w-8 h-8"></i></span>
-                            <p class="text-purple-400 font-semibold mb-1">Pagamento QR Code</p>
-                            <p class="text-xs text-gray-400">Un QR code verrà generato quando clicchi Completa Registrazione.</p>
-                            <p class="text-xs text-gray-400 mt-1">Il cliente lo scansiona con il telefono per pagare.</p>
-                        </div>
-                        <div id="qr-loading" class="hidden py-4">
-                            <i data-lucide="loader-2" class="w-6 h-6 inline-block animate-spin stroke-current"></i>
-                            <p class="text-xs text-gray-400 mt-2">Generazione QR code...</p>
-                        </div>
-                        <div id="qr-display" class="hidden py-2">
-                            <p class="text-purple-400 font-semibold mb-3">Scansiona per Pagare</p>
-                            <div id="qr-code-container" class="bg-white rounded-xl p-4 inline-block mx-auto mb-3"></div>
-                            <p class="text-xs text-gray-400 mt-2">In attesa del pagamento...</p>
-                            <div class="animate-pulse text-purple-400 text-sm mt-1" id="qr-polling-indicator">Verifica stato pagamento...</div>
-                        </div>
-                        <div id="qr-paid" class="hidden py-4">
-                            <span class="text-4xl block mb-2 text-green-400">&#10003;</span>
-                            <p class="text-green-400 font-semibold">Pagamento Ricevuto!</p>
-                            <p class="text-xs text-gray-400 mt-1">Completamento registrazione...</p>
-                        </div>
-                        <div id="qr-error" class="hidden py-2">
-                            <p class="text-xs text-red-400" id="qr-error-msg">Configurazione pagamento fallita</p>
-                            <button onclick="retryQrPayment()" class="text-xs text-purple-400 underline mt-2">Riprova</button>
-                        </div>
-                    </div>
                 </div>
 
                 <!-- Terminal/POS Payment (shown when terminal selected) -->
@@ -916,9 +892,11 @@
                             <p class="text-green-400 font-semibold">Pagamento Ricevuto!</p>
                             <p class="text-xs text-gray-400 mt-1">Completamento registrazione...</p>
                         </div>
-                        <div id="pos-error" class="hidden py-2">
-                            <p class="text-xs text-red-400" id="pos-error-msg">Pagamento terminale fallito</p>
-                            <button onclick="retryTerminalPayment()" class="text-xs text-orange-400 underline mt-2">Riprova</button>
+                        <div id="pos-error" class="hidden py-3">
+                            <span class="text-2xl block mb-1 text-red-400">&#10007;</span>
+                            <p class="text-red-400 font-semibold text-sm" id="pos-error-msg">Pagamento terminale fallito</p>
+                            <p class="text-xs text-gray-400 mt-1">Usa "Indietro" per correggere i dati e riprovare.</p>
+                            <button onclick="retryTerminalPayment()" class="text-xs text-orange-400 underline mt-2">Riprova Pagamento</button>
                         </div>
                     </div>
                 </div>
@@ -966,13 +944,19 @@ async function checkTerminalAvailability() {
         const res = await fetch('/api/terminal/readers', { credentials: 'include' });
         if (res.ok) {
             const data = await res.json();
-            if (data.readers && data.readers.length > 0) {
-                document.getElementById('pay-terminal-btn')?.classList.remove('hidden');
+            if (!data.readers || data.readers.length === 0) {
+                // No reader configured — hide POS button and keep 2-column grid
+                document.getElementById('pay-terminal-btn')?.classList.add('hidden');
                 document.getElementById('payment-grid')?.classList.remove('grid-cols-3');
-                document.getElementById('payment-grid')?.classList.add('grid-cols-4');
+                document.getElementById('payment-grid')?.classList.add('grid-cols-2');
             }
         }
-    } catch (e) { /* Terminal not available */ }
+    } catch (e) {
+        // Terminal not available — hide POS button
+        document.getElementById('pay-terminal-btn')?.classList.add('hidden');
+        document.getElementById('payment-grid')?.classList.remove('grid-cols-3');
+        document.getElementById('payment-grid')?.classList.add('grid-cols-2');
+    }
 }
 
 async function loadStaffData() {
@@ -2181,7 +2165,7 @@ function openOnboardingWizard() {
 }
 
 function closeOnboardingWizard() {
-    stopPollingPayment();
+    stopTerminalPolling();
     document.getElementById('onboarding-wizard-modal').classList.add('hidden');
 }
 
@@ -2370,16 +2354,13 @@ function selectPaymentMethod(method) {
 
     const cashBtn = document.getElementById('pay-cash-btn');
     const cardBtn = document.getElementById('pay-card-btn');
-    const qrBtn = document.getElementById('pay-qr-btn');
     const terminalBtn = document.getElementById('pay-terminal-btn');
     const cardForm = document.getElementById('card-payment-form');
-    const qrForm = document.getElementById('qr-payment-form');
     const terminalForm = document.getElementById('terminal-payment-form');
 
     // Reset all button styles
     cashBtn.classList.remove('border-green-500', 'bg-green-500/10');
     cardBtn.classList.remove('border-blue-500', 'bg-blue-500/10');
-    qrBtn.classList.remove('border-purple-500', 'bg-purple-500/10');
     terminalBtn?.classList.remove('border-orange-500', 'bg-orange-500/10');
 
     // Update selected button style
@@ -2387,28 +2368,17 @@ function selectPaymentMethod(method) {
         cashBtn.classList.add('border-green-500', 'bg-green-500/10');
     } else if (method === 'card') {
         cardBtn.classList.add('border-blue-500', 'bg-blue-500/10');
-    } else if (method === 'qr') {
-        qrBtn.classList.add('border-purple-500', 'bg-purple-500/10');
     } else if (method === 'terminal') {
         terminalBtn?.classList.add('border-orange-500', 'bg-orange-500/10');
     }
 
     // Show/hide payment forms
     cardForm.classList.add('hidden');
-    qrForm.classList.add('hidden');
     terminalForm?.classList.add('hidden');
 
     if (method === 'card') {
         cardForm.classList.remove('hidden');
         initStripeElements();
-    } else if (method === 'qr') {
-        qrForm.classList.remove('hidden');
-        // Reset QR form to initial state
-        document.getElementById('qr-initial').classList.remove('hidden');
-        document.getElementById('qr-loading').classList.add('hidden');
-        document.getElementById('qr-display').classList.add('hidden');
-        document.getElementById('qr-paid').classList.add('hidden');
-        document.getElementById('qr-error').classList.add('hidden');
     } else if (method === 'terminal') {
         terminalForm?.classList.remove('hidden');
         // Reset terminal form to initial state
@@ -2420,165 +2390,6 @@ function selectPaymentMethod(method) {
     }
 }
 
-// --- QR CODE PAYMENT ---
-let qrCheckoutSessionId = null;
-let qrPollingInterval = null;
-
-async function startQrPayment() {
-    const initialEl = document.getElementById('qr-initial');
-    const loadingEl = document.getElementById('qr-loading');
-    const displayEl = document.getElementById('qr-display');
-    const paidEl = document.getElementById('qr-paid');
-    const errorEl = document.getElementById('qr-error');
-    const errorMsg = document.getElementById('qr-error-msg');
-
-    initialEl.classList.add('hidden');
-    loadingEl.classList.remove('hidden');
-    displayEl.classList.add('hidden');
-    paidEl.classList.add('hidden');
-    errorEl.classList.add('hidden');
-
-    try {
-        const res = await fetch('/api/staff/onboarding-checkout-session', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({
-                plan_id: onboardingState.data.planId,
-                client_name: onboardingState.data.name
-            })
-        });
-
-        if (!res.ok) {
-            const err = await res.json();
-            throw new Error(err.detail || 'Failed to create checkout session');
-        }
-
-        const data = await res.json();
-        qrCheckoutSessionId = data.session_id;
-
-        // Generate QR code
-        const container = document.getElementById('qr-code-container');
-        container.innerHTML = '';
-        new QRCode(container, {
-            text: data.checkout_url,
-            width: 200,
-            height: 200,
-            colorDark: '#000000',
-            colorLight: '#ffffff',
-            correctLevel: QRCode.CorrectLevel.M
-        });
-
-        loadingEl.classList.add('hidden');
-        displayEl.classList.remove('hidden');
-
-        startPollingPayment();
-    } catch (e) {
-        console.error('QR payment error:', e);
-        loadingEl.classList.add('hidden');
-        errorEl.classList.remove('hidden');
-        errorMsg.textContent = e.message || 'Payment setup failed';
-    }
-}
-
-function startPollingPayment() {
-    if (qrPollingInterval) clearInterval(qrPollingInterval);
-
-    qrPollingInterval = setInterval(async () => {
-        if (!qrCheckoutSessionId) {
-            clearInterval(qrPollingInterval);
-            return;
-        }
-
-        try {
-            const res = await fetch(`/api/staff/checkout-session-status/${qrCheckoutSessionId}`, {
-                credentials: 'include'
-            });
-            if (!res.ok) return;
-
-            const data = await res.json();
-            if (data.status === 'paid') {
-                clearInterval(qrPollingInterval);
-                qrPollingInterval = null;
-
-                document.getElementById('qr-display').classList.add('hidden');
-                document.getElementById('qr-paid').classList.remove('hidden');
-
-                await finalizeQrOnboarding(data.payment_intent_id);
-            }
-        } catch (e) {
-            console.error('Polling error:', e);
-        }
-    }, 3000);
-}
-
-function stopPollingPayment() {
-    if (qrPollingInterval) {
-        clearInterval(qrPollingInterval);
-        qrPollingInterval = null;
-    }
-    qrCheckoutSessionId = null;
-}
-
-async function finalizeQrOnboarding(paymentIntentId) {
-    const completeBtn = document.getElementById('onboard-complete-btn');
-    completeBtn.disabled = true;
-    completeBtn.textContent = 'Registrazione...';
-
-    try {
-        const payload = {
-            name: onboardingState.data.name,
-            phone: onboardingState.data.phone,
-            email: onboardingState.data.email || null,
-            date_of_birth: onboardingState.data.dateOfBirth || null,
-            username: onboardingState.data.username,
-            document_type: onboardingState.data.documentType,
-            plan_id: onboardingState.data.planId,
-            payment_method: 'qr',
-            profile_photo: onboardingState.data.profilePhoto || null,
-            stripe_payment_intent_id: paymentIntentId
-        };
-
-        if (onboardingState.data.documentType === 'waiver') {
-            payload.document_data = signatureCanvas.toDataURL('image/png');
-            payload.waiver_text = document.getElementById('waiver-text-display').textContent;
-        } else {
-            const fileInput = document.getElementById('medical-file');
-            if (fileInput.files && fileInput.files[0]) {
-                payload.document_data = await fileToBase64(fileInput.files[0]);
-            }
-        }
-
-        const res = await fetch('/api/staff/onboard-client', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify(payload)
-        });
-
-        if (res.ok) {
-            const data = await res.json();
-            closeOnboardingWizard();
-            showTemporaryPasswordModal(data.name, data.username, data.temporary_password);
-            await loadStaffData();
-        } else {
-            const err = await res.json();
-            showToast(err.detail || 'Registrazione fallita', 'error');
-        }
-    } catch (error) {
-        console.error('QR onboarding error:', error);
-        showToast(error.message || 'Registrazione fallita', 'error');
-    } finally {
-        completeBtn.disabled = false;
-        completeBtn.textContent = 'Completa Registrazione';
-    }
-}
-
-function retryQrPayment() {
-    stopPollingPayment();
-    startQrPayment();
-}
-
 // --- POS TERMINAL PAYMENT ---
 let terminalPaymentIntentId = null;
 let terminalPollingInterval = null;
@@ -2588,6 +2399,9 @@ async function startTerminalPayment() {
     document.getElementById('pos-processing').classList.remove('hidden');
     document.getElementById('pos-success').classList.add('hidden');
     document.getElementById('pos-error').classList.add('hidden');
+    // Reset simulate button for new payment
+    const simBtn = document.getElementById('pos-simulate-btn');
+    if (simBtn) { simBtn.disabled = false; simBtn.textContent = 'Simula Carta (Sandbox)'; simBtn.classList.add('hidden'); }
 
     try {
         const res = await fetch('/api/terminal/process-payment', {
@@ -2650,13 +2464,17 @@ function startTerminalPolling() {
                 document.getElementById('pos-processing').classList.add('hidden');
                 document.getElementById('pos-success').classList.remove('hidden');
 
+                // Brief delay so user sees "Pagamento Ricevuto!" before modal closes
+                await new Promise(r => setTimeout(r, 1000));
                 await finalizeTerminalOnboarding(terminalPaymentIntentId);
-            } else if (data.status === 'canceled' || data.status === 'requires_payment_method') {
+            } else if (data.status === 'requires_payment_method' || data.status === 'requires_confirmation') {
+                // Normal — reader is waiting for card tap, keep polling
+            } else if (data.status === 'canceled') {
                 clearInterval(terminalPollingInterval);
                 terminalPollingInterval = null;
                 document.getElementById('pos-processing').classList.add('hidden');
                 document.getElementById('pos-error').classList.remove('hidden');
-                document.getElementById('pos-error-msg').textContent = 'Pagamento rifiutato o annullato';
+                document.getElementById('pos-error-msg').textContent = 'Pagamento annullato';
                 const btn = document.getElementById('onboard-complete-btn');
                 btn.disabled = false;
                 btn.textContent = 'Completa Registrazione';
@@ -2735,15 +2553,21 @@ async function finalizeTerminalOnboarding(paymentIntentId) {
         if (res.ok) {
             const data = await res.json();
             closeOnboardingWizard();
-            showTemporaryPasswordModal(data.name, data.username, data.temporary_password);
+            showTemporaryPasswordModal(data.name, data.username, data.temporary_password, onboardingState.data.phone);
             await loadStaffData();
         } else {
             const err = await res.json();
-            showToast(err.detail || 'Registrazione fallita', 'error');
+            const errorMsg = err.detail || 'Registrazione fallita';
+            document.getElementById('pos-success')?.classList.add('hidden');
+            document.getElementById('pos-error')?.classList.remove('hidden');
+            document.getElementById('pos-error-msg').textContent = errorMsg;
         }
     } catch (error) {
         console.error('Terminal onboarding error:', error);
-        showToast(error.message || 'Registrazione fallita', 'error');
+        const errorMsg = error.message || 'Registrazione fallita';
+        document.getElementById('pos-success')?.classList.add('hidden');
+        document.getElementById('pos-error')?.classList.remove('hidden');
+        document.getElementById('pos-error-msg').textContent = errorMsg;
     } finally {
         completeBtn.disabled = false;
         completeBtn.textContent = 'Completa Registrazione';
@@ -3149,14 +2973,6 @@ async function completeOnboarding() {
             console.log('Payment successful:', paymentIntent.id);
         }
 
-        // If QR payment, start QR flow and return (auto-completes after payment)
-        if (onboardingState.data.paymentMethod === 'qr') {
-            completeBtn.textContent = 'Generazione QR Code...';
-            await startQrPayment();
-            completeBtn.textContent = 'In attesa del pagamento QR...';
-            return;
-        }
-
         // If terminal payment, start terminal flow and return (auto-completes after payment)
         if (onboardingState.data.paymentMethod === 'terminal') {
             completeBtn.textContent = 'Elaborazione sul terminale...';
@@ -3203,7 +3019,7 @@ async function completeOnboarding() {
         if (res.ok) {
             const data = await res.json();
             closeOnboardingWizard();
-            showTemporaryPasswordModal(data.name, data.username, data.temporary_password);
+            showTemporaryPasswordModal(data.name, data.username, data.temporary_password, onboardingState.data.phone);
             await loadStaffData();
         } else {
             const err = await res.json();
@@ -3218,10 +3034,35 @@ async function completeOnboarding() {
     }
 }
 
-function showTemporaryPasswordModal(name, username, password) {
+function showTemporaryPasswordModal(name, username, password, phone) {
     document.getElementById('temp-pw-name').textContent = name;
     document.getElementById('temp-pw-username').textContent = username;
     document.getElementById('temp-pw-password').textContent = password;
+
+    const msg = `Ciao ${name}! Ecco le tue credenziali per l'app della palestra:\n\nUsername: ${username}\nPassword: ${password}\n\nRicorda di cambiare la password al primo accesso.`;
+
+    const waBtn = document.getElementById('temp-pw-whatsapp');
+    const smsBtn = document.getElementById('temp-pw-sms');
+
+    if (phone) {
+        // Clean phone: digits only, prepend 39 (Italy) if no country code
+        let cleanPhone = phone.replace(/[^0-9+]/g, '');
+        if (cleanPhone.startsWith('+')) {
+            cleanPhone = cleanPhone.substring(1);
+        } else if (cleanPhone.startsWith('0')) {
+            cleanPhone = '39' + cleanPhone.substring(1);
+        } else if (!cleanPhone.startsWith('39')) {
+            cleanPhone = '39' + cleanPhone;
+        }
+        waBtn.href = `https://wa.me/${cleanPhone}?text=${encodeURIComponent(msg)}`;
+        smsBtn.href = `sms:${phone}?body=${encodeURIComponent(msg)}`;
+        waBtn.classList.remove('hidden');
+        smsBtn.classList.remove('hidden');
+    } else {
+        waBtn.classList.add('hidden');
+        smsBtn.classList.add('hidden');
+    }
+
     document.getElementById('temp-password-modal').classList.remove('hidden');
 }
 
