@@ -66,6 +66,8 @@ def _run_early_migrations():
                     ('session_rate', 'DOUBLE PRECISION'),
                     ('stripe_account_id', 'TEXT'),
                     ('stripe_account_status', 'TEXT'),
+                    ('stripe_terminal_location_id', 'TEXT'),
+                    ('stripe_terminal_reader_id', 'TEXT'),
                     ('spotify_access_token', 'TEXT'),
                     ('spotify_refresh_token', 'TEXT'),
                     ('spotify_token_expires_at', 'TEXT'),

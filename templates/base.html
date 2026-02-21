@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 
 <head>
     <meta charset="UTF-8">
@@ -8,7 +8,7 @@
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
     <meta http-equiv="Pragma" content="no-cache">
     <meta http-equiv="Expires" content="0">
-    <meta name="description" content="FitOS - Complete gym management platform for trainers, staff, and clients">
+    <meta name="description" content="FitOS - Piattaforma completa per la gestione della palestra per trainer, staff e clienti">
     <meta name="theme-color" content="#111827">
     <title>FitOS</title>
     <script src="https://cdn.tailwindcss.com"></script>
@@ -76,12 +76,12 @@
                 <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=facilities' }}"
                     class="bottom-nav-item {% if mode == 'facilities' %}active{% endif %}">
                     <i data-lucide="map-pin" class="w-5 h-5"></i>
-                    <span>Facilities</span>
+                    <span>Strutture</span>
                 </a>
                 <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner&mode=settings' }}"
                     class="bottom-nav-item {% if mode == 'settings' %}active{% endif %}">
                     <i data-lucide="circle-user" class="w-5 h-5"></i>
-                    <span>Profile</span>
+                    <span>Profilo</span>
                 </a>
                 {% elif role == 'trainer' %}
                 <a href="#dashboard" onclick="if(typeof switchSection==='function'){switchSection('dashboard');updateBottomNav(this);return false;}"
@@ -89,20 +89,25 @@
                     <i data-lucide="home" class="w-5 h-5"></i>
                     <span>Home</span>
                 </a>
+                <a href="#workouts" onclick="if(typeof switchSection==='function'){switchSection('workouts');updateBottomNav(this);return false;}"
+                    class="bottom-nav-item" data-section="workouts">
+                    <i data-lucide="dumbbell" class="w-5 h-5"></i>
+                    <span>Allenamenti</span>
+                </a>
                 <a href="#schedule" onclick="if(typeof switchSection==='function'){switchSection('schedule');updateBottomNav(this);return false;}"
                     class="bottom-nav-item" data-section="schedule">
                     <i data-lucide="calendar" class="w-5 h-5"></i>
-                    <span>Schedule</span>
+                    <span>Programma</span>
                 </a>
                 <a href="#courses" onclick="if(typeof switchSection==='function'){switchSection('courses');updateBottomNav(this);return false;}"
                     class="bottom-nav-item" data-section="courses">
                     <i data-lucide="book-open" class="w-5 h-5"></i>
-                    <span>Courses</span>
+                    <span>Corsi</span>
                 </a>
                 <a href="#settings" onclick="if(typeof switchSection==='function'){switchSection('settings');updateBottomNav(this);return false;}"
                     class="bottom-nav-item" data-section="settings">
                     <i data-lucide="circle-user" class="w-5 h-5"></i>
-                    <span>Profile</span>
+                    <span>Profilo</span>
                 </a>
                 {% elif role == 'staff' %}
                 <a href="{{ 'staff.html' if static_build else '/?gym_id=' + gym_id + '&role=staff' }}"
@@ -113,13 +118,13 @@
                 <a href="#" onclick="event.preventDefault(); openConversationsModal();"
                     class="bottom-nav-item relative">
                     <i data-lucide="message-circle" class="w-5 h-5"></i>
-                    <span>Messages</span>
+                    <span>Messaggi</span>
                     <span id="unread-messages-badge-mobile" class="hidden absolute top-0 right-1/2 -translate-y-1 translate-x-3 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full text-center leading-4">0</span>
                 </a>
                 <a href="{{ 'staff.html' if static_build else '/?gym_id=' + gym_id + '&role=staff&mode=settings' }}"
                     class="bottom-nav-item {% if mode == 'settings' %}active{% endif %}">
                     <i data-lucide="circle-user" class="w-5 h-5"></i>
-                    <span>Profile</span>
+                    <span>Profilo</span>
                 </a>
                 {% else %}
                 <!-- Client -->
@@ -131,7 +136,7 @@
                 <a href="{{ 'client_progress.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=progress' }}"
                     class="bottom-nav-item {% if mode == 'progress' %}active{% endif %}">
                     <i data-lucide="bar-chart-3" class="w-5 h-5"></i>
-                    <span>Stats</span>
+                    <span>Statistiche</span>
                 </a>
                 <!-- Center Quick Action Button -->
                 <button id="fab-btn" onclick="toggleQuickActions()" class="quick-action-fab -mt-6 w-12 h-12 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-lg shadow-orange-500/30 active:scale-90 transition-all duration-200">
@@ -140,12 +145,12 @@
                 <a href="{{ 'client_leaderboard.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=leaderboard' }}"
                     class="bottom-nav-item {% if mode == 'leaderboard' %}active{% endif %}">
                     <i data-lucide="trophy" class="w-5 h-5"></i>
-                    <span>Ranks</span>
+                    <span>Classifica</span>
                 </a>
                 <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=client_dashboard' }}"
                     class="bottom-nav-item {% if mode == 'client_dashboard' %}active{% endif %}">
                     <i data-lucide="circle-user" class="w-5 h-5"></i>
-                    <span>Profile</span>
+                    <span>Profilo</span>
                 </a>
                 {% endif %}
             </div>
@@ -164,25 +169,25 @@
                     <div class="w-11 h-11 rounded-full bg-orange-500/20 flex items-center justify-center flex-shrink-0">
                         <i data-lucide="qr-code" class="w-5 h-5 text-orange-400"></i>
                     </div>
-                    <span class="text-[11px] font-medium text-white/80 whitespace-nowrap">My QR</span>
+                    <span class="text-[11px] font-medium text-white/80 whitespace-nowrap">Il mio QR</span>
                 </button>
                 <button onclick="qaAction('meal')" class="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl hover:bg-white/10 active:bg-white/15 transition tap-effect">
                     <div class="w-11 h-11 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
                         <i data-lucide="utensils" class="w-5 h-5 text-green-400"></i>
                     </div>
-                    <span class="text-[11px] font-medium text-white/80 whitespace-nowrap">Log Meal</span>
+                    <span class="text-[11px] font-medium text-white/80 whitespace-nowrap">Registra Pasto</span>
                 </button>
                 <button onclick="qaAction('photo')" class="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl hover:bg-white/10 active:bg-white/15 transition tap-effect">
                     <div class="w-11 h-11 rounded-full bg-blue-500/20 flex items-center justify-center flex-shrink-0">
                         <i data-lucide="image" class="w-5 h-5 text-blue-400"></i>
                     </div>
-                    <span class="text-[11px] font-medium text-white/80 whitespace-nowrap">Photo</span>
+                    <span class="text-[11px] font-medium text-white/80 whitespace-nowrap">Foto</span>
                 </button>
                 <button onclick="qaAction('weight')" class="flex flex-col items-center gap-1.5 py-3 px-2 rounded-xl hover:bg-white/10 active:bg-white/15 transition tap-effect">
                     <div class="w-11 h-11 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0">
                         <i data-lucide="scale" class="w-5 h-5 text-purple-400"></i>
                     </div>
-                    <span class="text-[11px] font-medium text-white/80 whitespace-nowrap">Weight</span>
+                    <span class="text-[11px] font-medium text-white/80 whitespace-nowrap">Peso</span>
                 </button>
             </div>
         </div>
@@ -191,20 +196,20 @@
     <div id="qa-weight-modal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-[70] hidden flex items-end justify-center">
         <div class="bg-gray-900 border-t border-white/10 rounded-t-2xl w-full max-w-md p-5 pb-8 animate-slide-up">
             <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-bold text-white">Log Weight</h3>
+                <h3 class="text-lg font-bold text-white">Registra Peso</h3>
                 <button onclick="document.getElementById('qa-weight-modal').classList.add('hidden')" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"><i data-lucide="x" class="w-4 h-4"></i></button>
             </div>
             <div class="flex gap-3 mb-4">
                 <div class="flex-1">
-                    <label class="text-xs text-white/50 mb-1 block">Weight (kg)</label>
+                    <label class="text-xs text-white/50 mb-1 block">Peso (kg)</label>
                     <input type="number" id="qa-weight-input" step="0.1" min="20" max="300" placeholder="75.0" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-lg focus:border-orange-500 outline-none">
                 </div>
                 <div class="flex-1">
-                    <label class="text-xs text-white/50 mb-1 block">Body Fat % (opt)</label>
+                    <label class="text-xs text-white/50 mb-1 block">Massa Grassa % (opz)</label>
                     <input type="number" id="qa-bf-input" step="0.1" min="1" max="70" placeholder="15" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-white text-lg focus:border-orange-500 outline-none">
                 </div>
             </div>
-            <button onclick="qaSubmitWeight()" class="w-full py-3 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl text-white font-semibold active:scale-95 transition-transform">Save</button>
+            <button onclick="qaSubmitWeight()" class="w-full py-3 bg-gradient-to-r from-orange-500 to-red-500 rounded-xl text-white font-semibold active:scale-95 transition-transform">Salva</button>
         </div>
     </div>
     <!-- Hidden file inputs for camera quick actions (use opacity:0 + absolute instead of display:none so mobile browsers can trigger camera) -->
@@ -276,7 +281,7 @@
             const file = e.target.files[0];
             if (!file) return;
             e.target.value = '';
-            showToast('Analyzing meal...');
+            showToast('Analisi del pasto...');
             try {
                 const fd = new FormData();
                 fd.append('file', file, 'meal.jpg');
@@ -286,18 +291,18 @@
                 });
                 const data = await res.json();
                 if (data.food_name) {
-                    showToast(data.food_name + ' — ' + (data.calories || 0) + ' kcal logged!', 'success');
+                    showToast(data.food_name + ' — ' + (data.calories || 0) + ' kcal registrate!', 'success');
                     await fetch('/api/client/diet/log', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ food_name: data.food_name, calories: data.calories || 0, protein: data.protein || 0, carbs: data.carbs || 0, fat: data.fat || 0, serving_size: data.serving_size || '1 serving', meal_type: 'snack' })
                     });
                 } else {
-                    showToast('Could not identify meal', 'error');
+                    showToast('Impossibile identificare il pasto', 'error');
                 }
             } catch (err) {
                 console.error(err);
-                showToast('Scan failed', 'error');
+                showToast('Scansione fallita', 'error');
             }
         });
 
@@ -306,22 +311,22 @@
             const file = e.target.files[0];
             if (!file) return;
             e.target.value = '';
-            showToast('Uploading photo...');
+            showToast('Caricamento foto...');
             try {
                 const fd = new FormData();
                 fd.append('file', file, 'physique.jpg');
-                fd.append('title', 'Quick Photo');
+                fd.append('title', 'Foto Rapida');
                 fd.append('photo_date', new Date().toISOString().split('T')[0]);
                 const res = await fetch('/api/physique/photo', {
                     method: 'POST',
                     body: fd
                 });
                 const data = await res.json();
-                if (data.success) showToast('Progress photo saved!', 'success');
-                else showToast(data.detail || 'Upload failed', 'error');
+                if (data.success) showToast('Foto progressi salvata!', 'success');
+                else showToast(data.detail || 'Caricamento fallito', 'error');
             } catch (err) {
                 console.error(err);
-                showToast('Upload failed', 'error');
+                showToast('Caricamento fallito', 'error');
             }
         });
 
@@ -329,7 +334,7 @@
         async function qaSubmitWeight() {
             const w = parseFloat(document.getElementById('qa-weight-input').value);
             const bf = document.getElementById('qa-bf-input').value ? parseFloat(document.getElementById('qa-bf-input').value) : null;
-            if (!w || w < 20 || w > 300) { showToast('Enter a valid weight (20-300 kg)', 'error'); return; }
+            if (!w || w < 20 || w > 300) { showToast('Inserisci un peso valido (20-300 kg)', 'error'); return; }
             const payload = { weight: w };
             if (bf !== null && bf >= 1 && bf <= 70) payload.body_fat_pct = bf;
             try {
@@ -339,12 +344,12 @@
                     body: JSON.stringify(payload)
                 });
                 if (res.ok) {
-                    showToast('Weight saved!', 'success');
+                    showToast('Peso salvato!', 'success');
                     document.getElementById('qa-weight-modal').classList.add('hidden');
                     document.getElementById('qa-weight-input').value = '';
                     document.getElementById('qa-bf-input').value = '';
-                } else { showToast('Failed to save', 'error'); }
-            } catch (err) { showToast('Failed to save', 'error'); }
+                } else { showToast('Salvataggio fallito', 'error'); }
+            } catch (err) { showToast('Salvataggio fallito', 'error'); }
         }
     </script>
 
@@ -378,7 +383,7 @@
                     list.innerHTML = `
                         <div class="text-center text-gray-400 py-8">
                             <span class="mb-2 block">${icon('bell', 32)}</span>
-                            <p class="text-sm">No notifications yet</p>
+                            <p class="text-sm">Nessuna notifica</p>
                         </div>
                     `;
                     return;
@@ -406,7 +411,7 @@
                 console.error('Error loading notifications:', e);
                 list.innerHTML = `
                     <div class="text-center text-red-400 py-4">
-                        <p class="text-sm">Failed to load notifications</p>
+                        <p class="text-sm">Impossibile caricare le notifiche</p>
                     </div>
                 `;
             }
@@ -422,10 +427,10 @@
             const diffHours = Math.floor(diffMs / 3600000);
             const diffDays = Math.floor(diffMs / 86400000);
 
-            if (diffMins < 1) return 'Just now';
-            if (diffMins < 60) return `${diffMins}m ago`;
-            if (diffHours < 24) return `${diffHours}h ago`;
-            if (diffDays < 7) return `${diffDays}d ago`;
+            if (diffMins < 1) return 'Adesso';
+            if (diffMins < 60) return `${diffMins} min fa`;
+            if (diffHours < 24) return `${diffHours} ore fa`;
+            if (diffDays < 7) return `${diffDays} giorni fa`;
             return date.toLocaleDateString();
         }
 
@@ -481,17 +486,17 @@
 
             const trainerId = globalSelectedTrainerId || (typeof selectedTrainerId !== 'undefined' ? selectedTrainerId : null);
             if (!trainerId) {
-                sessionTypeSelect.innerHTML = '<option value="" disabled selected>No trainer selected</option>';
+                sessionTypeSelect.innerHTML = '<option value="" disabled selected>Nessun trainer selezionato</option>';
                 return;
             }
 
-            sessionTypeSelect.innerHTML = '<option value="" disabled selected>Loading...</option>';
+            sessionTypeSelect.innerHTML = '<option value="" disabled selected>Caricamento...</option>';
 
             try {
                 const response = await fetch(`/api/client/trainer/${trainerId}/session-types`, { credentials: 'include' });
                 if (response.ok) {
                     const specialties = await response.json();
-                    sessionTypeSelect.innerHTML = '<option value="" disabled selected>Choose session type...</option>';
+                    sessionTypeSelect.innerHTML = '<option value="" disabled selected>Scegli tipo di sessione...</option>';
                     if (specialties && specialties.length > 0) {
                         specialties.forEach(specialty => {
                             const option = document.createElement('option');
@@ -501,14 +506,14 @@
                             sessionTypeSelect.appendChild(option);
                         });
                     } else {
-                        sessionTypeSelect.innerHTML = '<option value="general" selected>General Training</option>';
+                        sessionTypeSelect.innerHTML = '<option value="general" selected>Allenamento Generale</option>';
                     }
                 } else {
-                    sessionTypeSelect.innerHTML = '<option value="general" selected>General Training</option>';
+                    sessionTypeSelect.innerHTML = '<option value="general" selected>Allenamento Generale</option>';
                 }
             } catch (error) {
                 console.error('Error loading trainer specialties:', error);
-                sessionTypeSelect.innerHTML = '<option value="general" selected>General Training</option>';
+                sessionTypeSelect.innerHTML = '<option value="general" selected>Allenamento Generale</option>';
             }
         }
 
@@ -522,7 +527,7 @@
                     }
                 }
             } catch (e) {
-                console.log('Could not load trainer ID for booking');
+                console.log('Impossibile caricare ID trainer per la prenotazione');
             }
         }
 
@@ -530,7 +535,7 @@
         if (typeof openBookingModal === 'undefined') {
             window.openBookingModal = async function() {
                 const trainerId = globalSelectedTrainerId || (typeof selectedTrainerId !== 'undefined' ? selectedTrainerId : null);
-                if (!trainerId) { showToast('No trainer assigned', 'error'); return; }
+                if (!trainerId) { showToast('Nessun trainer assegnato', 'error'); return; }
                 globalSelectedTrainerId = trainerId;
 
                 globalSelectedDate = null;
@@ -605,7 +610,7 @@
                 try {
                     const response = await fetch(`/api/client/trainers/${trainerId}/available-slots?date=${globalSelectedDate}`, { credentials: 'include' });
                     loadingEl.classList.add('hidden');
-                    if (!response.ok) throw new Error('Failed to load available slots');
+                    if (!response.ok) throw new Error('Impossibile caricare gli orari disponibili');
                     const slots = await response.json();
                     if (slots.length === 0) { noSlotsMsg.classList.remove('hidden'); return; }
                     slotsList.innerHTML = slots.map(slot => `
@@ -693,17 +698,17 @@
 
         if (typeof confirmBooking === 'undefined') {
             window.confirmBooking = async function() {
-                if (!globalSelectedTime) { showToast('Please select a time slot', 'error'); return; }
+                if (!globalSelectedTime) { showToast('Seleziona un orario', 'error'); return; }
 
                 const duration = parseInt(document.getElementById('booking-duration').value) || 60;
                 const notes = document.getElementById('appointment-notes').value;
                 const trainerId = globalSelectedTrainerId;
                 const hasPaid = globalBookingTrainerRate && globalBookingTrainerRate > 0;
 
-                if (hasPaid && !globalBookingPaymentMethod) { showToast('Please select a payment method', 'error'); return; }
+                if (hasPaid && !globalBookingPaymentMethod) { showToast('Seleziona un metodo di pagamento', 'error'); return; }
 
                 const btn = document.getElementById('confirm-booking-btn');
-                btn.disabled = true; btn.textContent = 'Processing...';
+                btn.disabled = true; btn.textContent = 'Elaborazione...';
 
                 try {
                     if (hasPaid && globalBookingPaymentMethod === 'card') {
@@ -711,7 +716,7 @@
                             method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
                             body: JSON.stringify({ trainer_id: trainerId, date: globalSelectedDate, start_time: globalSelectedTime, duration, notes })
                         });
-                        if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Failed to create checkout'); }
+                        if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Impossibile creare il checkout'); }
                         const { checkout_url } = await res.json();
                         window.location.href = checkout_url;
                         return;
@@ -727,16 +732,16 @@
                             stripe_payment_intent_id: null
                         })
                     });
-                    if (!response.ok) { const error = await response.json(); throw new Error(error.detail || 'Failed to book'); }
+                    if (!response.ok) { const error = await response.json(); throw new Error(error.detail || 'Prenotazione fallita'); }
 
-                    showToast('Appointment booked successfully!', 'success');
+                    showToast('Appuntamento prenotato con successo!', 'success');
                     closeBookingModal();
                     if (typeof loadAppointments === 'function') loadAppointments();
                 } catch (error) {
                     console.error('Error booking:', error);
                     showToast(error.message, 'error');
                 } finally {
-                    btn.disabled = false; btn.textContent = 'Book Appointment';
+                    btn.disabled = false; btn.textContent = 'Prenota Appuntamento';
                 }
             };
         }
@@ -752,11 +757,11 @@
     {% if mode != 'workout' %}
     <div class="text-center py-3 mb-16 lg:mb-0">
         <div class="flex items-center justify-center gap-3 text-xs text-gray-600">
-            <a href="/terms" class="hover:text-gray-400 transition">Terms</a>
+            <a href="/terms" class="hover:text-gray-400 transition">Termini</a>
             <span>·</span>
             <a href="/privacy" class="hover:text-gray-400 transition">Privacy</a>
             <span>·</span>
-            <a href="/cookies" class="hover:text-gray-400 transition">Cookies</a>
+            <a href="/cookies" class="hover:text-gray-400 transition">Cookie</a>
         </div>
     </div>
     {% endif %}

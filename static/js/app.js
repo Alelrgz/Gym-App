@@ -95,14 +95,14 @@ async function saveTrainerBio() {
         });
 
         if (response.ok) {
-            showToast('Bio saved successfully!', 'success');
+            showToast('Bio salvata con successo!', 'success');
         } else {
             const error = await response.json();
-            showToast(error.detail || 'Failed to save bio', 'error');
+            showToast(error.detail || 'Impossibile salvare la bio', 'error');
         }
     } catch (error) {
         console.error('Error saving bio:', error);
-        showToast('Failed to save bio', 'error');
+        showToast('Impossibile salvare la bio', 'error');
     }
 }
 window.saveTrainerBio = saveTrainerBio;
@@ -184,14 +184,14 @@ async function saveSpecialties() {
         });
 
         if (response.ok) {
-            showToast('Specialties updated!', 'success');
+            showToast('Specializzazioni aggiornate!', 'success');
         } else {
             const error = await response.json();
-            showToast(error.detail || 'Failed to save specialties', 'error');
+            showToast(error.detail || 'Impossibile salvare le specializzazioni', 'error');
         }
     } catch (error) {
         console.error('Error saving specialties:', error);
-        showToast('Failed to save specialties', 'error');
+        showToast('Impossibile salvare le specializzazioni', 'error');
     }
 }
 
@@ -286,10 +286,10 @@ if (role === 'client') {
         document.body.innerHTML = `
             <div class="flex flex-col items-center justify-center min-h-screen bg-black text-white p-8 text-center">
                 <div class="mb-4">${icon('smartphone', 48)}</div>
-                <h1 class="text-2xl font-bold mb-2">Mobile App Only</h1>
+                <h1 class="text-2xl font-bold mb-2">Solo App Mobile</h1>
                 <p class="text-gray-400 max-w-md">
-                    The Client experience is designed for your phone.
-                    Please download the app or log in from a mobile device.
+                    L'esperienza Cliente è progettata per il tuo telefono.
+                    Scarica l'app o accedi da un dispositivo mobile.
                 </p>
             </div>
         `;
@@ -372,7 +372,7 @@ window.showDayDetails = (dateStr, dayEvents, titleId, listId, isTrainer) => {
     const listEl = document.getElementById(listId);
 
     const dateObj = new Date(dateStr);
-    titleEl.innerText = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    titleEl.innerText = dateObj.toLocaleDateString('it-IT', { weekday: 'long', month: 'long', day: 'numeric' });
     listEl.innerHTML = '';
 
     if (isTrainer) {
@@ -382,7 +382,7 @@ window.showDayDetails = (dateStr, dayEvents, titleId, listId, isTrainer) => {
             addBtn.onclick = () => {
                 // Open Assign Modal
                 document.getElementById('assign-date').value = dateStr;
-                document.getElementById('assign-modal-date').innerText = `Assigning for ${new Date(dateStr).toLocaleDateString()}`;
+                document.getElementById('assign-modal-date').innerText = `Assegnazione per ${new Date(dateStr).toLocaleDateString('it-IT')}`;
                 // We need client ID. Currently showDayDetails doesn't receive it directly but we can assume it's the currently viewed client.
                 // Let's store client ID in a global var or data attribute when opening client modal.
                 // For now, let's assume we can get it from the client modal's data or similar.
@@ -399,7 +399,7 @@ window.showDayDetails = (dateStr, dayEvents, titleId, listId, isTrainer) => {
     }
 
     if (dayEvents.length === 0) {
-        listEl.innerHTML = '<p class="text-sm text-gray-500 italic">No events scheduled.</p>';
+        listEl.innerHTML = '<p class="text-sm text-gray-500 italic">Nessun evento programmato.</p>';
         return;
     }
 
@@ -440,12 +440,12 @@ window.showDayDetails = (dateStr, dayEvents, titleId, listId, isTrainer) => {
                 <div>
                     <p class="text-sm font-bold text-white">${e.title}</p>
                     <p class="text-[10px] text-gray-400">
-                        ${isCourseEvent ? `Group Course • ${e.time || ''}` : ((e.details && (e.details.startsWith('[') || e.details.startsWith('{'))) ? 'Workout Data Saved' : (e.details || e.subtitle || ''))}
+                        ${isCourseEvent ? `Corso di Gruppo • ${e.time || ''}` : ((e.details && (e.details.startsWith('[') || e.details.startsWith('{'))) ? 'Dati Allenamento Salvati' : (e.details || e.subtitle || ''))}
                     </p>
                 </div>
             </div>
             <div class="flex items-center">
-                <span class="text-xs font-bold ${statusColor}">${e.completed ? 'COMPLETED' : 'SCHEDULED'}</span>
+                <span class="text-xs font-bold ${statusColor}">${e.completed ? 'COMPLETATO' : 'PROGRAMMATO'}</span>
                 ${courseActions}
             </div>
         `;
@@ -459,7 +459,7 @@ window.renderCalendar = (month, year, events, gridId, titleId, detailTitleId, de
 
     const firstDay = new Date(year, month, 1).getDay();
     const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const monthNames = ["Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno", "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"];
 
     document.getElementById(titleId).innerText = `${monthNames[month]} ${year}`;
     calendarGrid.innerHTML = '';
@@ -548,10 +548,10 @@ window.renderCalendar = (month, year, events, gridId, titleId, detailTitleId, de
 // --- SCHEDULE EVENT EDIT/DELETE ---
 window.editScheduleEvent = async (eventId, currentDate, currentTime, title) => {
     // Show a simple prompt to edit date/time
-    const newDate = prompt(`Edit date for "${title}":`, currentDate);
+    const newDate = prompt(`Modifica data per "${title}":`, currentDate);
     if (!newDate) return;
 
-    const newTime = prompt(`Edit time for "${title}":`, currentTime || '9:00 AM');
+    const newTime = prompt(`Modifica orario per "${title}":`, currentTime || '9:00 AM');
     if (!newTime) return;
 
     try {
@@ -563,21 +563,21 @@ window.editScheduleEvent = async (eventId, currentDate, currentTime, title) => {
         });
 
         if (res.ok) {
-            showToast('Schedule updated!');
+            showToast('Programma aggiornato!');
             // Refresh the page or re-fetch trainer data
             init();
         } else {
             const err = await res.json();
-            showToast(err.detail || 'Failed to update schedule');
+            showToast(err.detail || 'Impossibile aggiornare il programma');
         }
     } catch (e) {
         console.error('Error updating schedule:', e);
-        showToast('Failed to update schedule');
+        showToast('Impossibile aggiornare il programma');
     }
 };
 
 window.deleteScheduleEvent = async (eventId, title) => {
-    if (!confirm(`Remove "${title}" from your schedule?`)) return;
+    if (!confirm(`Rimuovere "${title}" dal tuo programma?`)) return;
 
     try {
         const res = await fetch(`${apiBase}/api/trainer/events/${eventId}`, {
@@ -586,15 +586,15 @@ window.deleteScheduleEvent = async (eventId, title) => {
         });
 
         if (res.ok) {
-            showToast('Removed from schedule');
+            showToast('Rimosso dal programma');
             // Refresh
             init();
         } else {
-            showToast('Failed to remove from schedule');
+            showToast('Impossibile rimuovere dal programma');
         }
     } catch (e) {
         console.error('Error deleting schedule:', e);
-        showToast('Failed to remove from schedule');
+        showToast('Impossibile rimuovere dal programma');
     }
 };
 
@@ -653,7 +653,7 @@ window.openTrainerCalendar = async (explicitClientId) => {
         }
     } catch (e) {
         console.error("Error opening trainer calendar:", e);
-        showToast("Error loading schedule: " + e.message);
+        showToast("Errore nel caricamento del programma: " + e.message);
     }
 };
 
@@ -684,7 +684,7 @@ window.togglePremium = async (clientId, currentState, event) => {
         }
     } catch (e) {
         console.error("Toggle Premium Error:", e);
-        showToast("Error updating status");
+        showToast("Errore nell'aggiornamento dello stato");
     }
 };
 
@@ -718,18 +718,22 @@ function renderClientList(clients) {
         return;
     }
 
-    clients.forEach(c => {
-        const tr = document.createElement('tr');
-        tr.style.cursor = 'pointer';
-        tr.onclick = function () {
-            showClientModal(c.name, c.plan, c.status, c.id, c.is_premium);
-        };
+    // Also populate mobile card list
+    const mobileList = document.getElementById('trainer-clients-mobile-list');
 
+    if (clients.length === 0) {
+        if (mobileList) mobileList.innerHTML = '<div style="text-align:center;padding:2rem;color:rgba(255,255,255,0.3);font-size:0.85rem;">Nessun cliente trovato</div>';
+        return;
+    }
+
+    if (mobileList) mobileList.innerHTML = '';
+
+    clients.forEach(c => {
         const avatarUrl = c.profile_picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.name}`;
         const initials = c.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
         // Format expiry date
-        let expiryDisplay = '\u2014';
+        let expiryDisplay = '';
         if (c.plan_expiry) {
             try {
                 const d = new Date(c.plan_expiry);
@@ -738,6 +742,13 @@ function renderClientList(clients) {
                 expiryDisplay = c.plan_expiry;
             }
         }
+
+        // Desktop table row
+        const tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.onclick = function () {
+            showClientModal(c.name, c.plan, c.status, c.id, c.is_premium);
+        };
 
         tr.innerHTML = `
             <td><input type="checkbox" style="opacity:0.3;" onclick="event.stopPropagation();"></td>
@@ -752,9 +763,32 @@ function renderClientList(clients) {
                 </div>
             </td>
             <td>${c.assigned_split || '\u2014'}</td>
-            <td>${expiryDisplay}</td>
+            <td>${expiryDisplay || '\u2014'}</td>
         `;
         tbody.appendChild(tr);
+
+        // Mobile card
+        if (mobileList) {
+            const card = document.createElement('div');
+            card.className = 'staff-mobile-card';
+            card.onclick = function() {
+                showClientModal(c.name, c.plan, c.status, c.id, c.is_premium);
+            };
+            card.innerHTML = `
+                <div class="staff-mobile-card-avatar" style="overflow:hidden;">
+                    <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.parentElement.textContent='${initials}';">
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div class="staff-mobile-card-name">${c.name}</div>
+                    <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);display:flex;gap:0.75rem;margin-top:2px;">
+                        <span>${c.assigned_split || 'Nessuna scheda'}</span>
+                        ${expiryDisplay ? `<span>${expiryDisplay}</span>` : ''}
+                    </div>
+                </div>
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.2)" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></svg>
+            `;
+            mobileList.appendChild(card);
+        }
     });
 }
 
@@ -857,7 +891,7 @@ async function init() {
                 // Calculate next goal for day streak (milestones: 3, 7, 14, 21, 30, 60, 90, 180, 365 days)
                 const dayMilestones = [3, 7, 14, 21, 30, 60, 90, 180, 365];
                 const nextDayGoal = dayMilestones.find(m => m > user.streak) || (user.streak + 30);
-                setTxt('client-next-goal', `${nextDayGoal} Days`);
+                setTxt('client-next-goal', `${nextDayGoal} Giorni`);
 
                 setTxt('gem-count', user.gems);
                 setTxt('health-score', user.health_score);
@@ -884,19 +918,19 @@ async function init() {
                 if (dietStatus) {
                     const score = user.health_score || 0;
                     if (score >= 90) {
-                        dietStatus.textContent = 'Excellent! Top 5%';
+                        dietStatus.textContent = 'Eccellente! Top 5%';
                         dietStatus.className = 'text-xs text-green-400 font-bold mt-1';
                     } else if (score >= 75) {
-                        dietStatus.textContent = 'Great progress!';
+                        dietStatus.textContent = 'Ottimi progressi!';
                         dietStatus.className = 'text-xs text-green-400 font-bold mt-1';
                     } else if (score >= 50) {
-                        dietStatus.textContent = 'Keep going!';
+                        dietStatus.textContent = 'Continua così!';
                         dietStatus.className = 'text-xs text-yellow-400 font-bold mt-1';
                     } else if (score >= 25) {
-                        dietStatus.textContent = 'Room to improve';
+                        dietStatus.textContent = 'Margine di miglioramento';
                         dietStatus.className = 'text-xs text-orange-400 font-bold mt-1';
                     } else {
-                        dietStatus.textContent = 'Let\'s get started!';
+                        dietStatus.textContent = 'Iniziamo!';
                         dietStatus.className = 'text-xs text-red-400 font-bold mt-1';
                     }
                 }
@@ -913,7 +947,7 @@ async function init() {
                         const coopCompletedBadge = document.getElementById('coop-completed-badge');
 
                         if (startBtn) {
-                            startBtn.innerText = "COMPLETED ✓";
+                            startBtn.innerText = "COMPLETATO ✓";
                             startBtn.className = "block w-full py-3 bg-green-500 text-white text-center font-bold rounded-xl hover:bg-green-600 transition";
                             // Append view=completed to existing href
                             if (startBtn.href.includes('?')) {
@@ -950,7 +984,7 @@ async function init() {
                     }
                 } else {
                     console.warn("No todays_workout found in user data");
-                    setTxt('workout-title', "Rest Day");
+                    setTxt('workout-title', "Giorno di Riposo");
                     setTxt('workout-duration', "0 min");
                     setTxt('workout-difficulty', "Relax");
                 }
@@ -1008,7 +1042,7 @@ async function init() {
                             innerBar.classList.add('bg-white/20');
                             innerBar.style.height = '3px';
                             innerBar.style.borderRadius = '2px';
-                            innerBar.title = 'No data';
+                            innerBar.title = 'Nessun dato';
                         }
 
                         bar.appendChild(innerBar);
@@ -1022,7 +1056,7 @@ async function init() {
                     const calsRemainingEl = document.getElementById('cals-remaining');
                     if (calsRemainingEl) {
                         const calsLeft = Math.round(m.calories.target - m.calories.current);
-                        calsRemainingEl.innerText = `${calsLeft} kcal left`;
+                        calsRemainingEl.innerText = `${calsLeft} kcal rimaste`;
                     }
                     // Also update hero carousel calories tag
                     const heroCurrent = document.getElementById('hero-cals-current');
@@ -1219,7 +1253,7 @@ async function init() {
                         if (document.getElementById('workout-library')) {
                             fetchAndRenderWorkouts();
                         }
-                        showToast(`Switched to ${trainerSelector.options[trainerSelector.selectedIndex].text}`);
+                        showToast(`Passato a ${trainerSelector.options[trainerSelector.selectedIndex].text}`);
                     });
                 }
             }
@@ -1243,13 +1277,13 @@ async function init() {
                         exercisesSection.style.maxHeight = exercisesSection.scrollHeight + 500 + 'px';
                         exercisesSection.style.opacity = '1';
                         if (exercisesChevron) exercisesChevron.style.transform = 'rotate(180deg)';
-                        if (label) label.textContent = 'Hide Exercises';
+                        if (label) label.textContent = 'Nascondi Esercizi';
                     } else {
                         // Closing
                         exercisesSection.style.maxHeight = '0';
                         exercisesSection.style.opacity = '0';
                         if (exercisesChevron) exercisesChevron.style.transform = 'rotate(0deg)';
-                        if (label) label.textContent = 'Show Exercises';
+                        if (label) label.textContent = 'Mostra Esercizi';
                     }
                 });
             }
@@ -1271,13 +1305,13 @@ async function init() {
                     // Create Button (Centered)
                     const createBtn = document.createElement('div');
                     createBtn.className = "flex justify-center mb-4";
-                    createBtn.innerHTML = `<button data-action="openCreateWorkout" class="w-auto px-8 py-3 bg-white/10 rounded-xl hover:bg-white/20 transition flex items-center justify-center gap-2 font-bold text-sm border border-white/5 shadow-lg"><span>+</span> Create Personal Workout</button>`;
+                    createBtn.innerHTML = `<button data-action="openCreateWorkout" class="w-auto px-8 py-3 bg-white/10 rounded-xl hover:bg-white/20 transition flex items-center justify-center gap-2 font-bold text-sm border border-white/5 shadow-lg"><span>+</span> Crea Allenamento Personale</button>`;
                     container.appendChild(createBtn);
 
                     if (data.workouts.length === 0) {
                         const emptyDiv = document.createElement('div');
                         emptyDiv.className = "glass-card p-4 text-center text-gray-500 italic";
-                        emptyDiv.innerText = "No personal workouts created yet.";
+                        emptyDiv.innerText = "Nessun allenamento personale creato.";
                         container.appendChild(emptyDiv);
                     } else {
                         data.workouts.forEach(w => {
@@ -1288,18 +1322,18 @@ async function init() {
                                 <div class="absolute inset-0 bg-primary opacity-5 group-hover:opacity-10 transition"></div>
                                 <div class="relative z-10">
                                     <div class="flex justify-between items-start mb-4">
-                                        <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Workout</span>
+                                        <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Allenamento</span>
                                         <span class="text-xl">${icon('dumbbell', 20)}</span>
                                     </div>
                                     <h3 class="text-2xl font-black italic uppercase mb-1 text-white">${w.title}</h3>
                                     <p class="text-sm text-gray-300 mb-4">${w.duration} • ${w.difficulty}</p>
                                     <div class="flex gap-2 mb-2">
-                                         <button onclick='openEditWorkout(JSON.parse(decodeURIComponent("${encodeURIComponent(JSON.stringify(w))}")))' class="flex-1 py-3 bg-white/10 text-white text-center font-bold rounded-xl hover:bg-white/20 transition">EDIT</button>
-                                         <a href="/?gym_id=${gymId}&role=client&mode=workout&view=preview&workout_id=${w.id}" class="flex-1 py-3 bg-white text-black text-center font-bold rounded-xl hover:bg-gray-200 transition">PREVIEW</a>
+                                         <button onclick='openEditWorkout(JSON.parse(decodeURIComponent("${encodeURIComponent(JSON.stringify(w))}")))' class="flex-1 py-3 bg-white/10 text-white text-center font-bold rounded-xl hover:bg-white/20 transition">MODIFICA</button>
+                                         <a href="/?gym_id=${gymId}&role=client&mode=workout&view=preview&workout_id=${w.id}" class="flex-1 py-3 bg-white text-black text-center font-bold rounded-xl hover:bg-gray-200 transition">ANTEPRIMA</a>
                                     </div>
                                     <button onclick='window.assignWorkoutToSelf("${w.id}", "${w.title.replace(/'/g, "\\'")}")' 
                                         class="w-full py-2 bg-green-600/20 hover:bg-green-600 text-green-400 hover:text-white text-sm font-bold rounded-lg transition border border-green-500/30">
-                                        ${icon('calendar', 14)} Assign to Me (Today)
+                                        ${icon('calendar', 14)} Assegna a Me (Oggi)
                                     </button>
                                 </div>
                             `;
@@ -1321,13 +1355,13 @@ async function init() {
                     // Create Button (Centered)
                     const createBtn = document.createElement('div');
                     createBtn.className = "flex justify-center mb-4";
-                    createBtn.innerHTML = `<button data-action="openCreateSplit" class="w-auto px-8 py-3 bg-white/10 rounded-xl hover:bg-white/20 transition flex items-center justify-center gap-2 font-bold text-sm border border-white/5 shadow-lg"><span>+</span> Create Personal Split</button>`;
+                    createBtn.innerHTML = `<button data-action="openCreateSplit" class="w-auto px-8 py-3 bg-white/10 rounded-xl hover:bg-white/20 transition flex items-center justify-center gap-2 font-bold text-sm border border-white/5 shadow-lg"><span>+</span> Crea Scheda Personale</button>`;
                     container.appendChild(createBtn);
 
                     if (data.splits.length === 0) {
                         const emptyDiv = document.createElement('div');
                         emptyDiv.className = "glass-card p-4 text-center text-gray-500 italic";
-                        emptyDiv.innerText = "No personal splits created yet.";
+                        emptyDiv.innerText = "Nessuna scheda personale creata.";
                         container.appendChild(emptyDiv);
                     } else {
                         data.splits.forEach(s => {
@@ -1341,7 +1375,7 @@ async function init() {
                                          </div>
                                          <div>
                                              <h3 class="font-bold text-white text-lg leading-tight">${s.name}</h3>
-                                             <p class="text-xs text-gray-500">${s.description || 'No description'}</p>
+                                             <p class="text-xs text-gray-500">${s.description || 'Nessuna descrizione'}</p>
                                          </div>
                                      </div>
                                      
@@ -1359,7 +1393,7 @@ async function init() {
 
                                 <button onclick='window.assignSplitToSelf("${s.id}", "${s.name.replace(/'/g, "\\'")}")'
                                     class="w-full mt-3 py-2 bg-white/5 hover:bg-purple-600 hover:text-white text-gray-400 text-sm font-bold rounded-lg transition border border-white/10 group-hover:border-purple-500/50">
-                                    ${icon('calendar', 14)} Assign to Me (This Week)
+                                    ${icon('calendar', 14)} Assegna a Me (Questa Settimana)
                                 </button>
                             `;
                             container.appendChild(card);
@@ -1414,9 +1448,9 @@ async function init() {
             const userCount = leaderboard.users.length;
             const advanceCount = Math.min(leaderboard.league.advance_count, userCount);
             if (leaderboard.league.current_tier.level < 5) {
-                setTxt('league-subtitle', `Top ${advanceCount} advance to the next league`);
+                setTxt('league-subtitle', `I primi ${advanceCount} avanzano alla lega successiva`);
             } else {
-                setTxt('league-subtitle', 'You reached the highest league!');
+                setTxt('league-subtitle', 'Hai raggiunto la lega piu alta!');
             }
 
             // Countdown timer
@@ -1656,7 +1690,7 @@ function renderLeaderboardList(users) {
                     <img src="${avatarUrl}" class="w-full h-full object-cover" />
                 </div>
                 <div>
-                    <p class="font-bold text-sm ${isUser ? 'text-lime-300' : 'text-white'}">${u.name}${isUser ? ' (You)' : ''}</p>
+                    <p class="font-bold text-sm ${isUser ? 'text-lime-300' : 'text-white'}">${u.name}${isUser ? ' (Tu)' : ''}</p>
                     <div class="flex items-center gap-1 text-[10px] text-gray-400">
                         <span class="text-orange-400">${icon('flame', 12)}</span> <span>${u.streak}</span>
                     </div>
@@ -1794,7 +1828,7 @@ async function toggleQuest(el) {
             const gemContainer = document.querySelector('[data-target="shop-modal"]');
 
             // Celebration toast
-            showToast(`Quest Complete! ${rewardText} 🔶`);
+            showToast(`Missione Completata! ${rewardText} 🔶`);
 
             // Animate flying gems to counter
             if (gemContainer && gemEl) {
@@ -1843,7 +1877,7 @@ async function toggleQuest(el) {
         }
     } catch (error) {
         console.error('Error toggling quest:', error);
-        showToast('Failed to update quest');
+        showToast('Impossibile aggiornare la missione');
         el.classList.remove('animating');
     }
 }
@@ -1854,7 +1888,7 @@ function addWater() {
     if (el && wave) {
         let cur = parseInt(el.innerText);
         if (cur + 250 > 10000) {
-            showToast('Daily limit reached! (10000ml)', 'error');
+            showToast('Limite giornaliero raggiunto! (10000ml)', 'error');
             return;
         }
         cur += 250;
@@ -1862,7 +1896,7 @@ function addWater() {
         // Mock target 2500
         const pct = 100 - ((cur / 2500) * 100);
         wave.style.top = Math.max(0, pct) + '%';
-        showToast('Hydration recorded!', 'success');
+        showToast('Idratazione registrata!', 'success');
     }
 }
 
@@ -1894,10 +1928,10 @@ function quickAction(action) {
         // Open live camera scanner
         openCameraScanner();
     } else if (action === 'search') {
-        const food = prompt("Search for food:");
-        if (food) showToast(`Found: ${food} (Loading details...)`);
+        const food = prompt("Cerca cibo:");
+        if (food) showToast(`Trovato: ${food} (Caricamento dettagli...)`);
     } else if (action === 'copy') {
-        showToast('Copied yesterday\'s meals');
+        showToast('Pasti di ieri copiati');
     }
 }
 
@@ -1914,12 +1948,28 @@ let per100gData = null; // Store per-100g values for recalculation
 async function openCameraScanner() {
     const modal = document.getElementById('camera-scanner-modal');
     if (!modal) {
-        // Fallback to old behavior if modal doesn't exist
         quickActionFallback();
         return;
     }
 
-    // Reset to photo capture mode
+    // Request camera permission before opening the modal
+    try {
+        const testStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+        // Permission granted — stop the test stream, the real one will be started by startCamera()
+        testStream.getTracks().forEach(t => t.stop());
+    } catch (err) {
+        if (err.name === 'NotAllowedError') {
+            showToast('Permesso fotocamera negato. Consenti l\'accesso alla fotocamera nelle impostazioni del browser.', 'error');
+        } else if (err.name === 'NotFoundError') {
+            showToast('Nessuna fotocamera trovata su questo dispositivo.', 'error');
+        } else {
+            showToast('Impossibile accedere alla fotocamera: ' + err.message, 'error');
+        }
+        quickActionFallback();
+        return;
+    }
+
+    // Permission granted — now open the modal and start the real stream
     currentScanMode = 'photo';
     scannedFoodData = null;
     showCaptureMode();
@@ -2106,14 +2156,14 @@ function showResultsEditView(food, source = 'AI Vision') {
     if (modeTabs) modeTabs.classList.add('hidden');
 
     // Populate edit fields
-    document.getElementById('result-food-name').textContent = food.name || 'Scanned Food';
+    document.getElementById('result-food-name').textContent = food.name || 'Cibo Scansionato';
     document.getElementById('edit-food-name').value = food.name || '';
     document.getElementById('edit-calories').value = food.cals || 0;
     document.getElementById('edit-protein').value = food.protein || 0;
     document.getElementById('edit-carbs').value = food.carbs || 0;
     document.getElementById('edit-fat').value = food.fat || 0;
     document.getElementById('edit-portion').value = food.portion_size || '';
-    document.getElementById('result-source').textContent = `Source: ${source}`;
+    document.getElementById('result-source').textContent = `Fonte: ${source}`;
 
     // Set up portion change listener for auto-recalculation
     const portionInput = document.getElementById('edit-portion');
@@ -2153,7 +2203,7 @@ function recalculateMacrosFromPortion() {
 function startBarcodeScanner() {
     if (barcodeScanning) return;
     if (typeof Quagga === 'undefined') {
-        showToast('Barcode scanner not available');
+        showToast('Scanner codice a barre non disponibile');
         setScanMode('photo');
         return;
     }
@@ -2190,7 +2240,7 @@ function startBarcodeScanner() {
     }, function(err) {
         if (err) {
             console.error('Quagga init error:', err);
-            showToast('Could not start barcode scanner');
+            showToast('Impossibile avviare lo scanner codice a barre');
             barcodeScanning = false;
             setScanMode('photo');
             return;
@@ -2233,13 +2283,13 @@ async function onBarcodeDetected(result) {
     const barcodeView = document.getElementById('barcode-scanner-view');
     const barcodeControls = document.getElementById('barcode-controls');
 
-    if (loadingText) loadingText.textContent = 'Looking up product...';
+    if (loadingText) loadingText.textContent = 'Ricerca prodotto...';
     if (loading) loading.classList.remove('hidden');
     if (previewView) previewView.classList.remove('hidden');
     if (barcodeView) barcodeView.classList.add('hidden');
     if (barcodeControls) barcodeControls.classList.add('hidden');
 
-    showToast(`Barcode: ${code}`);
+    showToast(`Codice a barre: ${code}`);
 
     try {
         const res = await fetch(`${apiBase}/api/client/diet/barcode/${code}`, {
@@ -2254,10 +2304,10 @@ async function onBarcodeDetected(result) {
         if (previewView) previewView.classList.add('hidden');
 
         if (data.status === 'success') {
-            showToast(`Found: ${data.data.name}`);
+            showToast(`Trovato: ${data.data.name}`);
             showResultsEditView(data.data, 'Open Food Facts (Barcode)');
         } else {
-            showToast('Product not found. Try photo mode.');
+            showToast('Prodotto non trovato. Prova la modalita foto.');
             currentScanMode = 'photo';
             updateScanModeTabs();
             showCaptureMode();
@@ -2267,7 +2317,7 @@ async function onBarcodeDetected(result) {
         console.error('Barcode lookup error:', err);
         if (loading) loading.classList.add('hidden');
         if (previewView) previewView.classList.add('hidden');
-        showToast('Error looking up barcode');
+        showToast('Errore nella ricerca del codice a barre');
         currentScanMode = 'photo';
         updateScanModeTabs();
         showCaptureMode();
@@ -2298,13 +2348,13 @@ async function startCamera() {
     } catch (err) {
         console.error('Camera access error:', err.name, err.message);
         if (err.name === 'NotAllowedError') {
-            showToast('Camera permission denied. Please allow camera access in your browser settings.');
+            showToast('Permesso fotocamera negato. Consenti l\'accesso alla fotocamera nelle impostazioni del browser.');
         } else if (err.name === 'NotFoundError') {
-            showToast('No camera found on this device.');
+            showToast('Nessuna fotocamera trovata su questo dispositivo.');
         } else if (err.name === 'NotReadableError') {
-            showToast('Camera is in use by another app.');
+            showToast('La fotocamera e in uso da un\'altra app.');
         } else {
-            showToast('Could not access camera: ' + err.message);
+            showToast('Impossibile accedere alla fotocamera: ' + err.message);
         }
         closeCameraScanner();
         // Fallback to file picker
@@ -2363,7 +2413,7 @@ async function retakePhoto() {
 // Step 3: User confirms and wants to analyze
 async function analyzePhoto() {
     if (!capturedImageBlob) {
-        showToast('No photo captured');
+        showToast('Nessuna foto scattata');
         return;
     }
 
@@ -2378,7 +2428,7 @@ async function analyzePhoto() {
         await analyzeMealImage(capturedImageBlob);
     } catch (err) {
         console.error('Analysis error:', err);
-        showToast('Failed to analyze photo');
+        showToast('Impossibile analizzare la foto');
     } finally {
         if (loading) loading.classList.add('hidden');
         if (analyzeBtn) analyzeBtn.disabled = false;
@@ -2413,9 +2463,9 @@ async function analyzeMealImage(imageBlob) {
     formData.append('file', imageBlob, 'meal.jpg');
 
     const loadingText = document.getElementById('loading-text');
-    if (loadingText) loadingText.textContent = 'Analyzing meal...';
+    if (loadingText) loadingText.textContent = 'Analisi del pasto...';
 
-    showToast('Analyzing meal...');
+    showToast('Analisi del pasto...');
 
     try {
         const res = await fetch(`${apiBase}/api/client/diet/scan`, {
@@ -2443,7 +2493,7 @@ async function analyzeMealImage(imageBlob) {
         }
     } catch (err) {
         console.error(err);
-        showToast('Error analyzing meal', 'error');
+        showToast('Errore nell\'analisi del pasto', 'error');
         // Go back to capture mode on error
         showCaptureMode();
         startCamera();
@@ -2481,16 +2531,16 @@ async function logScannedMeal() {
         });
 
         if (logRes.ok) {
-            showToast('Meal logged successfully!', 'success');
+            showToast('Pasto registrato con successo!', 'success');
             // Close modal and refresh data
             closeCameraScanner();
             init();
         } else {
-            showToast('Failed to log meal', 'error');
+            showToast('Impossibile registrare il pasto', 'error');
         }
     } catch (err) {
         console.error(err);
-        showToast('Failed to log meal', 'error');
+        showToast('Impossibile registrare il pasto', 'error');
     }
 }
 
@@ -2554,12 +2604,12 @@ async function saveWeight() {
     const bodyFat = bodyFatInput?.value ? parseFloat(bodyFatInput.value) : null;
 
     if (!weight || weight < 20 || weight > 300) {
-        showToast('Please enter a valid weight (20-300 kg)', 'error');
+        showToast('Inserisci un peso valido (20-300 kg)', 'error');
         return;
     }
 
     if (bodyFat !== null && (bodyFat < 1 || bodyFat > 70)) {
-        showToast('Please enter a valid body fat % (1-70)', 'error');
+        showToast('Inserisci una percentuale di grasso corporeo valida (1-70)', 'error');
         return;
     }
 
@@ -2583,15 +2633,15 @@ async function saveWeight() {
             currentClientWeight = weight;
             updateWeightDisplay(weight);
             closeWeightModal();
-            showToast('Body stats updated!', 'success');
+            showToast('Statistiche aggiornate!', 'success');
             // Reload the weight chart
             loadWeightChart(currentWeightPeriod);
         } else {
-            showToast('Failed to update stats', 'error');
+            showToast('Impossibile aggiornare le statistiche', 'error');
         }
     } catch (error) {
         console.error('Error updating stats:', error);
-        showToast('Failed to update stats', 'error');
+        showToast('Impossibile aggiornare le statistiche', 'error');
     }
 }
 
@@ -2690,14 +2740,18 @@ function switchTrendView(view) {
     const trendBadge = document.getElementById('weight-trend-badge');
     const weightStatsRow = document.getElementById('weight-stats-row');
     const strengthStatsRow = document.getElementById('strength-stats-row');
+    const metricTabs = document.getElementById('body-metric-tabs');
+    const periodSelector = document.getElementById('chart-period-selector');
 
     if (view === 'weight') {
         weightBtn.className = 'text-[10px] px-3 py-1 rounded-md bg-blue-500/20 text-blue-400 font-bold transition';
         strengthBtn.className = 'text-[10px] px-3 py-1 rounded-md text-gray-400 hover:text-white transition';
-        title.textContent = 'Weight Trend';
+        title.textContent = 'Andamento Peso';
         if (weightUpdateBtn) weightUpdateBtn.classList.remove('hidden');
         if (weightStatsRow) weightStatsRow.classList.remove('hidden');
         if (strengthStatsRow) strengthStatsRow.classList.add('hidden');
+        if (metricTabs) metricTabs.classList.remove('hidden');
+        if (periodSelector) periodSelector.classList.remove('hidden');
         // Render weight chart
         if (cachedWeightData) {
             renderWeightChart(cachedWeightData.data, cachedWeightData.stats);
@@ -2705,10 +2759,12 @@ function switchTrendView(view) {
     } else {
         weightBtn.className = 'text-[10px] px-3 py-1 rounded-md text-gray-400 hover:text-white transition';
         strengthBtn.className = 'text-[10px] px-3 py-1 rounded-md bg-green-500/20 text-green-400 font-bold transition';
-        title.textContent = 'Strength Progress';
+        title.textContent = 'Progresso Forza';
         if (weightUpdateBtn) weightUpdateBtn.classList.add('hidden');
         if (weightStatsRow) weightStatsRow.classList.add('hidden');
         if (strengthStatsRow) strengthStatsRow.classList.remove('hidden');
+        if (metricTabs) metricTabs.classList.add('hidden');
+        if (periodSelector) periodSelector.classList.add('hidden');
         // Render strength chart
         if (cachedStrengthData) {
             renderStrengthChart(cachedStrengthData);
@@ -2732,7 +2788,7 @@ function updateTrendBadge(view) {
             trendBadge.textContent = `↑ ${stats.change} kg`;
             trendBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-bold';
         } else {
-            trendBadge.textContent = '→ Stable';
+            trendBadge.textContent = '→ Stabile';
             trendBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold';
         }
     } else if (view === 'strength' && cachedStrengthData) {
@@ -2744,7 +2800,7 @@ function updateTrendBadge(view) {
             trendBadge.textContent = `↓ ${progress}%`;
             trendBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-bold';
         } else {
-            trendBadge.textContent = '→ Stable';
+            trendBadge.textContent = '→ Stabile';
             trendBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold';
         }
     }
@@ -2764,7 +2820,7 @@ function updateBodyMetricBadge(stats, config) {
         trendBadge.textContent = `${arrow} ${Math.abs(change)} ${config.unit}`;
         trendBadge.className = `text-[10px] px-2 py-0.5 rounded-full font-bold ${isGood ? 'bg-green-500/20 text-green-400' : isBad ? 'bg-red-500/20 text-red-400' : 'bg-blue-500/20 text-blue-400'}`;
     } else {
-        trendBadge.textContent = '→ Stable';
+        trendBadge.textContent = '→ Stabile';
         trendBadge.className = 'text-[10px] px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold';
     }
 }
@@ -2779,11 +2835,11 @@ window.switchBodyMetric = function(metric) {
         const btn = document.getElementById(`body-metric-${m}`);
         if (btn) {
             if (m === metric) {
-                btn.className = `text-[10px] px-3 py-1 rounded-lg bg-blue-500/20 text-blue-400 font-bold transition`;
-                btn.style.backgroundColor = config.color + '33';
+                btn.className = `text-[10px] px-3 py-1 rounded-md bg-white/10 font-semibold transition`;
+                btn.style.backgroundColor = '';
                 btn.style.color = config.color;
             } else {
-                btn.className = 'text-[10px] px-3 py-1 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition';
+                btn.className = 'text-[10px] px-3 py-1 rounded-md text-gray-500 hover:text-gray-300 transition';
                 btn.style.backgroundColor = '';
                 btn.style.color = '';
             }
@@ -2815,9 +2871,9 @@ async function loadWeightChart(period = 'month') {
         const btn = document.getElementById(`weight-period-${p}`);
         if (btn) {
             if (p === period) {
-                btn.className = 'text-[10px] px-2 py-1 rounded-lg bg-blue-500/20 text-blue-400 font-bold';
+                btn.className = 'text-[10px] px-2.5 py-1 rounded-md bg-white/10 text-white font-semibold transition';
             } else {
-                btn.className = 'text-[10px] px-2 py-1 rounded-lg bg-white/5 text-gray-400 hover:bg-white/10 transition';
+                btn.className = 'text-[10px] px-2.5 py-1 rounded-md text-gray-500 hover:text-gray-300 transition';
             }
         }
     });
@@ -2922,7 +2978,7 @@ function updateStrengthStats(strengthData) {
 
     // Overall trend
     if (trendEl) {
-        trendEl.textContent = trend === 'up' ? '↑ Gaining' : trend === 'down' ? '↓ Losing' : '→ Stable';
+        trendEl.textContent = trend === 'up' ? '↑ In aumento' : trend === 'down' ? '↓ In calo' : '→ Stabile';
         trendEl.className = `text-sm font-bold ${trend === 'up' ? 'text-green-400' : trend === 'down' ? 'text-red-400' : 'text-blue-400'}`;
     }
 }
@@ -2961,8 +3017,8 @@ function renderStrengthChart(strengthData, hoveredPoint = null) {
             ctx.fillStyle = 'rgba(255,255,255,0.3)';
             ctx.font = '12px system-ui';
             ctx.textAlign = 'center';
-            ctx.fillText('No strength data yet', rect.width / 2, rect.height / 2);
-            ctx.fillText('Complete workouts to track progress', rect.width / 2, rect.height / 2 + 16);
+            ctx.fillText('Nessun dato di forza', rect.width / 2, rect.height / 2);
+            ctx.fillText('Completa allenamenti per monitorare i progressi', rect.width / 2, rect.height / 2 + 16);
         }
         return;
     }
@@ -3732,13 +3788,13 @@ function updateStrengthGoalSection(category, data) {
     // Update status text
     if (statusEl) {
         if (progressPct >= 100) {
-            statusEl.textContent = 'Goal achieved!';
+            statusEl.textContent = 'Obiettivo raggiunto!';
             statusEl.className = 'text-xs text-green-400 mt-2 text-center font-semibold';
         } else if (progressPct >= 80) {
-            statusEl.textContent = `${progressPct}% of goal - Almost there!`;
+            statusEl.textContent = `${progressPct}% dell'obiettivo - Ci sei quasi!`;
             statusEl.className = 'text-xs text-yellow-400 mt-2 text-center';
         } else {
-            statusEl.textContent = `${progressPct}% of goal reached`;
+            statusEl.textContent = `${progressPct}% dell'obiettivo raggiunto`;
             statusEl.className = 'text-xs text-gray-500 mt-2 text-center';
         }
     }
@@ -4012,7 +4068,7 @@ function renderHeroWeightChart(data, stats) {
             trendBadge.textContent = `↑ ${stats.change}`;
             trendBadge.className = 'text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 font-bold ml-2';
         } else {
-            trendBadge.textContent = '→ Stable';
+            trendBadge.textContent = '→ Stabile';
             trendBadge.className = 'text-xs px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-400 font-bold ml-2';
         }
     }
@@ -4212,14 +4268,14 @@ function previewPhysiquePhoto(input) {
     // Validate file type
     const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (!validTypes.includes(file.type)) {
-        showToast('Please select a valid image (JPG, PNG, WEBP, GIF)', 'error');
+        showToast('Seleziona un\'immagine valida (JPG, PNG, WEBP, GIF)', 'error');
         input.value = '';
         return;
     }
 
     // Validate file size (10MB max)
     if (file.size > 10 * 1024 * 1024) {
-        showToast('Image too large. Maximum 10MB', 'error');
+        showToast('Immagine troppo grande. Massimo 10MB', 'error');
         input.value = '';
         return;
     }
@@ -4251,13 +4307,13 @@ document.addEventListener('DOMContentLoaded', () => {
             e.preventDefault();
 
             if (!selectedPhysiqueFile) {
-                showToast('Please select a photo', 'error');
+                showToast('Seleziona una foto', 'error');
                 return;
             }
 
             const submitBtn = document.getElementById('physique-submit-btn');
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Uploading...';
+            submitBtn.textContent = 'Caricamento...';
 
             try {
                 const formData = new FormData();
@@ -4272,7 +4328,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         title += ' - ' + customTitle;
                     }
                 } else {
-                    title = document.getElementById('physique-title').value || 'Progress Photo';
+                    title = document.getElementById('physique-title').value || 'Foto Progresso';
                 }
                 formData.append('title', title);
                 formData.append('photo_date', document.getElementById('physique-date').value);
@@ -4286,7 +4342,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
 
                 if (res.ok) {
-                    showToast('Progress photo saved!', 'success');
+                    showToast('Foto progresso salvata!', 'success');
                     closePhysiqueModal();
 
                     // Reload gallery
@@ -4295,21 +4351,21 @@ document.addEventListener('DOMContentLoaded', () => {
                         loadPhysiquePhotos(gallery);
                     }
                 } else {
-                    showToast(data.detail || 'Failed to upload photo', 'error');
+                    showToast(data.detail || 'Impossibile caricare la foto', 'error');
                 }
             } catch (e) {
                 console.error('Error uploading physique photo:', e);
-                showToast('Failed to upload photo', 'error');
+                showToast('Impossibile caricare la foto', 'error');
             } finally {
                 submitBtn.disabled = false;
-                submitBtn.textContent = 'Upload Photo';
+                submitBtn.textContent = 'Carica Foto';
             }
         });
     }
 });
 
 async function deletePhysiquePhoto(photoId, element) {
-    if (!confirm('Delete this photo?')) return;
+    if (!confirm('Eliminare questa foto?')) return;
 
     try {
         const res = await fetch(`/api/physique/photo/${photoId}`, {
@@ -4318,15 +4374,15 @@ async function deletePhysiquePhoto(photoId, element) {
 
         if (res.ok) {
             element.remove();
-            showToast('Photo deleted', 'success');
+            showToast('Foto eliminata', 'success');
 
             // Check if gallery is empty
             const gallery = document.getElementById('photo-gallery');
             if (gallery && gallery.children.length === 0) {
-                gallery.innerHTML = '<p class="text-gray-500 text-xs py-4">No photos yet. Tap + Add to track your progress!</p>';
+                gallery.innerHTML = '<p class="text-gray-500 text-xs py-4">Nessuna foto. Tocca + Aggiungi per monitorare i tuoi progressi!</p>';
             }
         } else {
-            showToast('Failed to delete photo', 'error');
+            showToast('Impossibile eliminare la foto', 'error');
         }
     } catch (e) {
         console.error('Error deleting photo:', e);
@@ -4358,12 +4414,12 @@ async function loadPhysiquePhotos(gallery) {
                     gallery.appendChild(wrapper);
                 });
             } else {
-                gallery.innerHTML = '<p class="text-gray-500 text-xs py-4">No photos yet. Tap + Add to track your progress!</p>';
+                gallery.innerHTML = '<p class="text-gray-500 text-xs py-4">Nessuna foto. Tocca + Aggiungi per monitorare i tuoi progressi!</p>';
             }
         }
     } catch (e) {
         console.error('Error loading physique photos:', e);
-        gallery.innerHTML = '<p class="text-red-400 text-xs py-4">Failed to load photos</p>';
+        gallery.innerHTML = '<p class="text-red-400 text-xs py-4">Impossibile caricare le foto</p>';
     }
 }
 
@@ -4379,7 +4435,7 @@ function openPhotoViewer(url, title, date, notes) {
         ${title || date || notes ? `
         <div class="mt-4 text-center max-w-md bg-white/5 backdrop-blur-sm px-6 py-3 rounded-xl border border-white/10">
             ${title ? `<h3 class="text-lg font-bold text-white">${title}</h3>` : ''}
-            ${date ? `<p class="text-sm text-gray-400">${new Date(date).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}</p>` : ''}
+            ${date ? `<p class="text-sm text-gray-400">${new Date(date).toLocaleDateString('it-IT', { year: 'numeric', month: 'long', day: 'numeric' })}</p>` : ''}
             ${notes ? `<p class="text-sm text-gray-300 mt-2">${notes}</p>` : ''}
         </div>
         ` : ''}
@@ -4523,7 +4579,7 @@ function renderComparePhotoList() {
     }
 
     if (filtered.length === 0) {
-        list.innerHTML = '<p class="text-gray-500 text-sm py-2">No photos match your filters</p>';
+        list.innerHTML = '<p class="text-gray-500 text-sm py-2">Nessuna foto corrisponde ai filtri</p>';
         return;
     }
 
@@ -4625,7 +4681,7 @@ function updateCarouselDisplay() {
 function formatCompareDate(dateStr) {
     if (!dateStr) return '';
     try {
-        return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+        return new Date(dateStr).toLocaleDateString('it-IT', { month: 'short', day: 'numeric', year: 'numeric' });
     } catch {
         return dateStr;
     }
@@ -4738,7 +4794,7 @@ function toggleCarouselAnimations() {
             : '<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
         btn.title = carouselAnimationsEnabled ? 'Animations On' : 'Animations Off';
     }
-    showToast(carouselAnimationsEnabled ? 'Swipe animations enabled' : 'Swipe animations disabled');
+    showToast(carouselAnimationsEnabled ? 'Animazioni swipe attivate' : 'Animazioni swipe disattivate');
 }
 
 // Animated carousel navigation (for swipe only)
@@ -4894,7 +4950,7 @@ window.saveProfile = async () => {
     const password = document.getElementById('profile-password').value;
 
     if (!name || !email) {
-        showToast("Name and Email are required!", "error");
+        showToast("Nome e Email sono obbligatori!", "error");
         return;
     }
 
@@ -4911,28 +4967,28 @@ window.saveProfile = async () => {
 
         if (!res.ok) throw new Error("Failed to update");
 
-        showToast("Profile updated successfully!", "success");
+        showToast("Profilo aggiornato con successo!", "success");
 
         // Clear password field
         document.getElementById('profile-password').value = '';
 
     } catch (e) {
         console.error(e);
-        showToast("Error updating profile", "error");
+        showToast("Errore nell'aggiornamento del profilo", "error");
     }
 };
 
 
 // --- TRAINER INTERACTIVITY ---
 function uploadVideo() {
-    const title = prompt("Video Title:");
+    const title = prompt("Titolo Video:");
     if (title) {
         const vidLib = document.getElementById('video-library');
         const div = document.createElement('div');
         div.className = "glass-card p-0 overflow-hidden relative group tap-effect slide-up";
         div.innerHTML = `<img src="https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=150&h=150&fit=crop" class="w-full h-24 object-cover opacity-60 group-hover:opacity-100 transition"><div class="absolute bottom-0 w-full p-2 bg-gradient-to-t from-black to-transparent"><p class="text-[10px] font-bold text-white truncate">${title}</p><p class="text-[8px] text-gray-400 uppercase">Custom</p></div>`;
         vidLib.prepend(div);
-        showToast('Video uploaded successfully!', 'success');
+        showToast('Video caricato con successo!', 'success');
     }
 }
 
@@ -5088,7 +5144,7 @@ async function initializeExerciseList(config) {
 window.openAssignDietModal = async () => {
     const clientId = document.getElementById('client-modal').dataset.clientId;
     if (!clientId) {
-        showToast("Error: No client selected");
+        showToast("Errore: Nessun cliente selezionato");
         return;
     }
 
@@ -5130,15 +5186,15 @@ window.saveDietPlan = async () => {
         });
 
         if (res.ok) {
-            showToast("Diet plan assigned successfully!", "success");
+            showToast("Piano alimentare assegnato con successo!", "success");
             hideModal('assign-diet-modal');
         } else {
             const err = await res.json();
-            showToast(`Error: ${err.detail || 'Failed to assign diet'}`);
+            showToast(`Errore: ${err.detail || 'Impossibile assegnare il piano alimentare'}`);
         }
     } catch (e) {
         console.error(e);
-        showToast("Network error");
+        showToast("Errore di rete");
     }
 };
 
@@ -5175,7 +5231,7 @@ function setupExerciseModals() {
             fileInput.addEventListener('change', async (e) => {
                 const file = e.target.files[0];
                 if (file) {
-                    filenameDisplay.innerText = `Uploading: ${file.name}...`;
+                    filenameDisplay.innerText = `Caricamento: ${file.name}...`;
 
                     const formData = new FormData();
                     formData.append('file', file);
@@ -5189,8 +5245,8 @@ function setupExerciseModals() {
                         if (res.ok) {
                             const data = await res.json();
                             videoInput.value = data.url; // Use real server URL
-                            filenameDisplay.innerText = `Uploaded: ${file.name}`;
-                            showToast('Video uploaded!', 'success');
+                            filenameDisplay.innerText = `Caricato: ${file.name}`;
+                            showToast('Video caricato!', 'success');
 
                             // Update Preview
                             const previewContainer = document.getElementById(`${prefix}-ex-preview-container`);
@@ -5201,13 +5257,13 @@ function setupExerciseModals() {
                                 previewVideo.load();
                             }
                         } else {
-                            filenameDisplay.innerText = `Upload failed`;
-                            showToast('Upload failed', 'error');
+                            filenameDisplay.innerText = `Caricamento fallito`;
+                            showToast('Caricamento fallito', 'error');
                         }
                     } catch (err) {
                         console.error(err);
-                        filenameDisplay.innerText = `Upload error`;
-                        showToast('Upload error', 'error');
+                        filenameDisplay.innerText = `Errore caricamento`;
+                        showToast('Errore caricamento', 'error');
                     }
                 }
             });
@@ -5277,7 +5333,7 @@ async function updateExercise() {
     const video = document.getElementById('edit-ex-video').value;
 
     if (!name) {
-        showToast('Please enter an exercise name', 'error');
+        showToast('Inserisci un nome per l\'esercizio', 'error');
         return;
     }
 
@@ -5296,7 +5352,7 @@ async function updateExercise() {
         });
 
         if (res.ok) {
-            showToast('Exercise updated!', 'success');
+            showToast('Esercizio aggiornato!', 'success');
             hideModal('edit-exercise-modal');
             hideModal('edit-exercise-modal');
             // Refresh main list if it exists
@@ -5320,11 +5376,11 @@ async function updateExercise() {
                 });
             }
         } else {
-            showToast('Failed to update exercise', 'error');
+            showToast('Impossibile aggiornare l\'esercizio', 'error');
         }
     } catch (e) {
         console.error(e);
-        showToast('Error updating exercise', 'error');
+        showToast('Errore nell\'aggiornamento dell\'esercizio', 'error');
     }
 }
 
@@ -5335,7 +5391,7 @@ window.createExercise = async function () {
     const video = document.getElementById('new-ex-video').value;
 
     if (!name) {
-        showToast('Please enter an exercise name', 'error');
+        showToast('Inserisci un nome per l\'esercizio', 'error');
         return;
     }
 
@@ -5354,7 +5410,7 @@ window.createExercise = async function () {
         });
 
         if (res.ok) {
-            showToast('Exercise created!', 'success');
+            showToast('Esercizio creato!', 'success');
             hideModal('create-exercise-modal');
             // Clear inputs
             document.getElementById('new-ex-name').value = '';
@@ -5383,11 +5439,11 @@ window.createExercise = async function () {
                 });
             }
         } else {
-            showToast('Failed to create exercise', 'error');
+            showToast('Impossibile creare l\'esercizio', 'error');
         }
     } catch (e) {
         console.error(e);
-        showToast('Error creating exercise', 'error');
+        showToast('Errore nella creazione dell\'esercizio', 'error');
     }
 };
 
@@ -5539,8 +5595,8 @@ window.updateExerciseDetails = function (idx, field, value) {
 
 window.openCreateWorkoutModal = function () {
     document.getElementById('new-workout-id').value = '';
-    document.getElementById('modal-workout-title').innerText = 'New Workout';
-    document.getElementById('btn-save-workout').innerText = 'Create Workout';
+    document.getElementById('modal-workout-title').innerText = 'Nuovo Allenamento';
+    document.getElementById('btn-save-workout').innerText = 'Crea Allenamento';
 
     document.getElementById('new-workout-title').value = '';
     document.getElementById('new-workout-duration').value = '';
@@ -5563,8 +5619,8 @@ window.openCreateWorkoutModal = function () {
 
 window.openEditWorkout = function (workout) {
     document.getElementById('new-workout-id').value = workout.id;
-    document.getElementById('modal-workout-title').innerText = 'Edit Workout';
-    document.getElementById('btn-save-workout').innerText = 'Update Workout';
+    document.getElementById('modal-workout-title').innerText = 'Modifica Allenamento';
+    document.getElementById('btn-save-workout').innerText = 'Aggiorna Allenamento';
 
     document.getElementById('new-workout-title').value = workout.title;
     document.getElementById('new-workout-duration').value = workout.duration;
@@ -5592,12 +5648,12 @@ window.createWorkout = async function () {
     const difficulty = document.getElementById('new-workout-difficulty').value;
 
     if (!title) {
-        showToast('Please enter a workout title');
+        showToast('Inserisci un titolo per l\'allenamento');
         return;
     }
 
     if (selectedExercisesList.length === 0) {
-        showToast('Please select at least one exercise');
+        showToast('Seleziona almeno un esercizio');
         return;
     }
 
@@ -5623,7 +5679,7 @@ window.createWorkout = async function () {
         });
 
         if (res.ok) {
-            showToast(id ? 'Workout updated!' : 'Workout created!', 'success');
+            showToast(id ? 'Allenamento aggiornato!' : 'Allenamento creato!', 'success');
             hideModal('create-workout-modal');
 
             // Reset form
@@ -5637,11 +5693,11 @@ window.createWorkout = async function () {
         } else {
             const errText = await res.text();
             console.error(errText);
-            showToast('Failed: ' + errText); // Show actual error
+            showToast('Errore: ' + errText);
         }
     } catch (e) {
         console.error(e);
-        showToast('Error saving workout', 'error');
+        showToast('Errore nel salvataggio dell\'allenamento', 'error');
         // alert(e.message); // Debug
     }
 }
@@ -5667,7 +5723,7 @@ window.assignWorkout = async function () {
     const workoutId = document.getElementById('assign-workout-select').value;
 
     if (!clientId || !date || !workoutId) {
-        showToast('Missing information');
+        showToast('Informazioni mancanti');
         return;
     }
 
@@ -5679,14 +5735,14 @@ window.assignWorkout = async function () {
     });
 
     if (res.ok) {
-        showToast('Workout assigned successfully!', 'success');
+        showToast('Allenamento assegnato con successo!', 'success');
         hideModal('assign-workout-modal');
         // Refresh calendar to show new assignment
         if (window.openTrainerCalendar) {
             window.openTrainerCalendar();
         }
     } else {
-        showToast('Failed to assign workout');
+        showToast('Impossibile assegnare l\'allenamento');
     }
 }
 
@@ -5845,13 +5901,13 @@ async function finishWorkout() {
             if (isCoopWorkout && coopPartner) {
                 const celebrationTitle = document.querySelector('#celebration-overlay h1');
                 const celebrationMsg = document.querySelector('#celebration-overlay p');
-                if (celebrationTitle) celebrationTitle.textContent = 'CO-OP Complete!';
-                if (celebrationMsg) celebrationMsg.textContent = `Great teamwork with ${coopPartner.name}!`;
+                if (celebrationTitle) celebrationTitle.textContent = 'CO-OP Completato!';
+                if (celebrationMsg) celebrationMsg.textContent = `Ottimo lavoro di squadra con ${coopPartner.name}!`;
                 // Show CO-OP bonus gems (50 base + 25 bonus = 75)
-                if (gemsAmountEl) gemsAmountEl.innerHTML = '+75 <span class="text-lg">gems</span> <span class="text-xs text-purple-400">(+25 CO-OP bonus!)</span>';
+                if (gemsAmountEl) gemsAmountEl.innerHTML = '+75 <span class="text-lg">gemme</span> <span class="text-xs text-purple-400">(+25 bonus CO-OP!)</span>';
             } else {
                 // Regular workout gems
-                if (gemsAmountEl) gemsAmountEl.innerHTML = '+50 <span class="text-lg">gems</span>';
+                if (gemsAmountEl) gemsAmountEl.innerHTML = '+50 <span class="text-lg">gemme</span>';
             }
 
             // Update UI to show completed state
@@ -5860,7 +5916,7 @@ async function finishWorkout() {
             const coopCompletedBadge = document.getElementById('coop-completed-badge');
 
             if (startBtn) {
-                startBtn.innerText = "COMPLETED ✓";
+                startBtn.innerText = "COMPLETATO ✓";
                 startBtn.className = "block w-full py-3 bg-green-500 text-white text-center font-bold rounded-xl hover:bg-green-600 transition";
                 // Append view=completed to existing href
                 if (!startBtn.href.includes('view=completed')) {
@@ -5915,11 +5971,11 @@ async function finishWorkout() {
                         const nextMilestone = dayMilestones.find(m => m > clientData.streak) || (clientData.streak + 30);
                         const nextGoalEl = document.getElementById('client-next-goal');
                         if (nextGoalEl) {
-                            nextGoalEl.innerText = `${nextMilestone} Days`;
+                            nextGoalEl.innerText = `${nextMilestone} Giorni`;
                         }
                         const legacyNextGoalEl = document.getElementById('next-goal');
                         if (legacyNextGoalEl) {
-                            legacyNextGoalEl.innerText = `${nextMilestone} Days`;
+                            legacyNextGoalEl.innerText = `${nextMilestone} Giorni`;
                         }
                     }
                 } catch (e) {
@@ -5929,11 +5985,11 @@ async function finishWorkout() {
         } else {
             console.error("Failed to mark workout complete");
             const errText = await res.text();
-            showToast("Failed to save workout: " + errText); // Show error to user
+            showToast("Impossibile salvare l'allenamento: " + errText);
         }
     } catch (e) {
         console.error("Error finishing workout:", e);
-        showToast("Error finishing workout. Please try again.");
+        showToast("Errore nel completamento dell'allenamento. Riprova.");
     }
 }
 
@@ -5966,7 +6022,7 @@ window.updateSetData = async function (exIdx, setIdx, reps, weight, duration, di
         });
 
         if (res.ok) {
-            showToast(isCardio ? "Cardio updated!" : "Set updated!", "success");
+            showToast(isCardio ? "Cardio aggiornato!" : "Set aggiornato!", "success");
             // Update local state to reflect changes
             workoutState.exercises[exIdx].performance[setIdx].reps = reps;
             workoutState.exercises[exIdx].performance[setIdx].weight = weight;
@@ -5974,11 +6030,11 @@ window.updateSetData = async function (exIdx, setIdx, reps, weight, duration, di
             workoutState.exercises[exIdx].performance[setIdx].distance = distance;
         } else {
             const err = await res.text();
-            showToast("Failed to update: " + err);
+            showToast("Impossibile aggiornare: " + err);
         }
     } catch (e) {
         console.error(e);
-        showToast("Error updating set");
+        showToast("Errore nell'aggiornamento del set");
     }
 };
 
@@ -6023,7 +6079,7 @@ window.createSplit = async function () {
     const schedule = getSplitScheduleFromBuilder('split-schedule-builder');
 
     if (!name) {
-        showToast('Please enter a split name');
+        showToast('Inserisci un nome per la scheda');
         return;
     }
 
@@ -6041,7 +6097,7 @@ window.createSplit = async function () {
         });
 
         if (res.ok) {
-            showToast('Split created successfully!', 'success');
+            showToast('Scheda creata con successo!', 'success');
             hideModal('create-split-modal');
             // Refresh data based on context
             if (location.pathname.includes('personal')) {
@@ -6051,11 +6107,11 @@ window.createSplit = async function () {
                 else window.location.reload();
             }
         } else {
-            showToast('Failed to create split');
+            showToast('Impossibile creare la scheda');
         }
     } catch (e) {
         console.error(e);
-        showToast('Error creating split');
+        showToast('Errore nella creazione della scheda');
     }
 };
 
@@ -6066,7 +6122,7 @@ window.updateSplit = async function () {
     const schedule = getSplitScheduleFromBuilder('edit-split-schedule-builder');
 
     if (!id || !name) {
-        showToast('Missing information');
+        showToast('Informazioni mancanti');
         return;
     }
 
@@ -6084,7 +6140,7 @@ window.updateSplit = async function () {
         });
 
         if (res.ok) {
-            showToast('Split updated!', 'success');
+            showToast('Scheda aggiornata!', 'success');
             hideModal('edit-split-modal');
             if (location.pathname.includes('personal')) {
                 if (typeof fetchTrainerData === 'function') fetchTrainerData();
@@ -6093,17 +6149,17 @@ window.updateSplit = async function () {
                 else window.location.reload();
             }
         } else {
-            showToast('Failed to update split');
+            showToast('Impossibile aggiornare la scheda');
         }
     } catch (e) {
         console.error(e);
-        showToast('Error updating split');
+        showToast('Errore nell\'aggiornamento della scheda');
     }
 };
 
 window.deleteSplit = async function (id) {
     if (!id) id = document.getElementById('edit-split-id').value; // fallback for modal usage
-    if (!confirm("Are you sure you want to delete this split?")) return;
+    if (!confirm("Sei sicuro di voler eliminare questa scheda?")) return;
 
     const trainerId = getCurrentTrainerId();
 
@@ -6114,7 +6170,7 @@ window.deleteSplit = async function (id) {
         });
 
         if (res.ok) {
-            showToast('Split deleted', 'success');
+            showToast('Scheda eliminata', 'success');
             hideModal('edit-split-modal');
             if (location.pathname.includes('personal')) {
                 if (typeof fetchTrainerData === 'function') fetchTrainerData();
@@ -6123,11 +6179,11 @@ window.deleteSplit = async function (id) {
                 else window.location.reload();
             }
         } else {
-            showToast('Failed to delete split');
+            showToast('Impossibile eliminare la scheda');
         }
     } catch (e) {
         console.error(e);
-        showToast('Error deleting split');
+        showToast('Errore nell\'eliminazione della scheda');
     }
 };
 
@@ -6135,9 +6191,10 @@ window.deleteSplit = async function (id) {
 function renderSplitScheduleBuilder(containerId, scheduleData) {
     const container = document.getElementById(containerId);
     if (!container) return;
-    container.innerHTML = '<p class="text-xs text-center text-gray-500">Loading workouts...</p>';
+    container.innerHTML = '<p class="text-xs text-center text-gray-500">Caricamento allenamenti...</p>';
 
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const dayLabels = { Monday: 'Lunedi', Tuesday: 'Martedi', Wednesday: 'Mercoledi', Thursday: 'Giovedi', Friday: 'Venerdi', Saturday: 'Sabato', Sunday: 'Domenica' };
 
     // Convert scheduleData to map for easy lookup { 'Monday': workoutId, ... }
     const scheduleMap = {};
@@ -6154,14 +6211,14 @@ function renderSplitScheduleBuilder(containerId, scheduleData) {
             const row = document.createElement('div');
             row.className = "flex items-center space-x-3 bg-white/5 p-2 rounded-lg";
 
-            let optionsHtml = `<option value="">Rest Day</option>`;
+            let optionsHtml = `<option value="">Giorno di Riposo</option>`;
             workouts.forEach(w => {
                 const selected = scheduleMap[day] === w.id ? 'selected' : '';
                 optionsHtml += `<option value="${w.id}" ${selected}>${w.title}</option>`;
             });
 
             row.innerHTML = `
-                <span class="w-24 text-sm text-gray-400 font-bold">${day}</span>
+                <span class="w-24 text-sm text-gray-400 font-bold">${dayLabels[day]}</span>
                 <select class="flex-1 bg-black/30 border border-white/10 rounded-lg p-2 text-sm text-white focus:border-primary outline-none transition"
                     data-day="${day}">
                     ${optionsHtml}
@@ -6171,7 +6228,7 @@ function renderSplitScheduleBuilder(containerId, scheduleData) {
         });
     }).catch(err => {
         console.error("Failed to load workouts for split builder", err);
-        container.innerHTML = '<p class="text-xs text-red-500">Failed to load workouts.</p>';
+        container.innerHTML = '<p class="text-xs text-red-500">Impossibile caricare gli allenamenti.</p>';
     });
 }
 
@@ -6194,7 +6251,7 @@ function getSplitScheduleFromBuilder(containerId) {
 window.assignSplitToSelf = async function (splitId, splitName) {
     const planContainer = document.getElementById('todays-plan-container');
     if (!planContainer) {
-        showToast("Could not find Today's Plan section");
+        showToast("Impossibile trovare la sezione Piano di Oggi");
         return;
     }
 
@@ -6241,7 +6298,7 @@ window.assignSplitToSelf = async function (splitId, splitName) {
     }
 
     if (!myId) {
-        showToast("Error: Could not identify your user account.");
+        showToast("Errore: Impossibile identificare il tuo account.");
         return;
     }
 
@@ -6314,7 +6371,7 @@ window.assignSplitToSelf = async function (splitId, splitName) {
 window.assignWorkoutToSelf = async function (workoutId, workoutTitle) {
     const planContainer = document.getElementById('todays-plan-container');
     if (!planContainer) {
-        showToast("Could not find Today's Plan section");
+        showToast("Impossibile trovare la sezione Piano di Oggi");
         return;
     }
 
@@ -6392,7 +6449,7 @@ function toggleStrengthGoalsUI() {
 async function saveStrengthGoals() {
     const clientId = document.getElementById('metrics-client-id')?.value;
     if (!clientId) {
-        showToast('No client selected');
+        showToast('Nessun cliente selezionato');
         return;
     }
 
@@ -6415,14 +6472,14 @@ async function saveStrengthGoals() {
         if (!response.ok) throw new Error('Failed to save goals');
 
         const data = await response.json();
-        showToast('Goals saved!');
+        showToast('Obiettivi salvati!');
 
         // Hide the UI and refresh the chart
         toggleStrengthGoalsUI();
         await fetchAndRenderStrengthChart(clientId);
     } catch (e) {
         console.error('Error saving goals:', e);
-        showToast('Error saving goals');
+        showToast('Errore nel salvataggio degli obiettivi');
     }
 }
 
@@ -6457,7 +6514,7 @@ async function openMetricsModal(clientId = null) {
     }
 
     if (!clientId) {
-        showToast("Error: No client selected.");
+        showToast("Errore: Nessun cliente selezionato.");
         return;
     }
 
@@ -6909,7 +6966,7 @@ function initWorkoutWithData(workout, isPreview = false) {
         if (header) {
             const banner = document.createElement('div');
             banner.className = "absolute top-20 left-1/2 transform -translate-x-1/2 bg-blue-500/90 text-white px-4 py-1 rounded-full text-xs font-bold backdrop-blur-md z-50";
-            banner.innerText = "PREVIEW MODE";
+            banner.innerText = "MODALITA ANTEPRIMA";
             header.appendChild(banner);
         }
 
@@ -6940,7 +6997,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (header) {
                 const banner = document.createElement('div');
                 banner.className = "absolute top-20 left-1/2 transform -translate-x-1/2 bg-green-500/90 text-white px-4 py-1 rounded-full text-xs font-bold backdrop-blur-md z-50";
-                banner.innerText = "COMPLETED VIEW";
+                banner.innerText = "VISTA COMPLETATO";
                 header.appendChild(banner);
             }
         }
@@ -6961,9 +7018,9 @@ document.addEventListener('DOMContentLoaded', () => {
                         document.getElementById('workout-screen').innerHTML = `
                             <div class="flex flex-col items-center justify-center h-screen bg-gray-900 text-white p-8 text-center">
                                 <div class="mb-4">${icon('alert-triangle', 48)}</div>
-                                <h1 class="text-4xl font-black mb-2">Workout Not Found</h1>
-                                <p class="text-gray-400 mb-8">The requested workout could not be loaded.</p>
-                                <a href="/?gym_id=${gymId}&role=${APP_CONFIG.role}" class="px-8 py-3 bg-white/10 rounded-xl font-bold hover:bg-white/20 transition">Back to Dashboard</a>
+                                <h1 class="text-4xl font-black mb-2">Allenamento Non Trovato</h1>
+                                <p class="text-gray-400 mb-8">L'allenamento richiesto non puo essere caricato.</p>
+                                <a href="/?gym_id=${gymId}&role=${APP_CONFIG.role}" class="px-8 py-3 bg-white/10 rounded-xl font-bold hover:bg-white/20 transition">Torna alla Dashboard</a>
                             </div>
                         `;
                         return;
@@ -6985,14 +7042,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (!workout) {
                     // Rest Day Logic
-                    document.getElementById('exercise-name').innerText = "Rest Day";
-                    document.getElementById('exercise-target').innerText = "Take it easy and recover!";
+                    document.getElementById('exercise-name').innerText = "Giorno di Riposo";
+                    document.getElementById('exercise-target').innerText = "Rilassati e recupera!";
                     document.getElementById('workout-screen').innerHTML = `
                         <div class="flex flex-col items-center justify-center h-screen bg-gray-900 text-white p-8 text-center">
                             <div class="mb-4">${icon('heart', 48)}</div>
-                            <h1 class="text-4xl font-black mb-2">Rest Day</h1>
-                            <p class="text-gray-400 mb-8">No workout scheduled for today. Enjoy your recovery!</p>
-                            <a href="/?gym_id=${gymId}&role=${APP_CONFIG.role}" class="px-8 py-3 bg-white/10 rounded-xl font-bold hover:bg-white/20 transition">Back to Dashboard</a>
+                            <h1 class="text-4xl font-black mb-2">Giorno di Riposo</h1>
+                            <p class="text-gray-400 mb-8">Nessun allenamento programmato per oggi. Buon recupero!</p>
+                            <a href="/?gym_id=${gymId}&role=${APP_CONFIG.role}" class="px-8 py-3 bg-white/10 rounded-xl font-bold hover:bg-white/20 transition">Torna alla Dashboard</a>
                         </div>
                     `;
                     return;
@@ -7124,13 +7181,13 @@ window.loadFriendWorkout = async function(friendId, friendName, friendPicture) {
     try {
         const res = await fetch(`${apiBase}/api/friends/${friendId}/workout?date=${todayStr}`);
         if (!res.ok) {
-            showToast('Could not load friend\'s workout', 'error');
+            showToast('Impossibile caricare l\'allenamento dell\'amico', 'error');
             return;
         }
 
         const data = await res.json();
         if (!data.found) {
-            showToast(data.message || 'Friend has no workout for today', 'info');
+            showToast(data.message || 'L\'amico non ha allenamenti per oggi', 'info');
             return;
         }
 
@@ -7161,7 +7218,7 @@ window.loadFriendWorkout = async function(friendId, friendName, friendPicture) {
                         <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
                             ${icon('user', 12)}
                         </div>
-                        <span class="text-sm font-bold text-white">You</span>
+                        <span class="text-sm font-bold text-white">Tu</span>
                     </button>
                     <button id="coop-tab-partner" onclick="switchCoopTab('partner')" class="flex-1 py-2 px-3 rounded-xl flex items-center justify-center gap-2 transition-all bg-white/5 border-2 border-white/10">
                         <div id="coop-partner-avatar" class="w-6 h-6 rounded-full bg-purple-500/30 flex items-center justify-center overflow-hidden">
@@ -7171,17 +7228,17 @@ window.loadFriendWorkout = async function(friendId, friendName, friendPicture) {
                     </button>
                 </div>
                 <p id="coop-active-label" class="text-xs text-center text-purple-300 font-medium">
-                    Viewing: <span id="coop-controlling-name" class="text-white">Your workout</span>
+                    Visualizzazione: <span id="coop-controlling-name" class="text-white">Il tuo allenamento</span>
                 </p>
             `;
         }
 
-        showToast(`Loaded ${friendName}'s workout!`, 'success');
+        showToast(`Allenamento di ${friendName} caricato!`, 'success');
         console.log('Loaded friend workout:', data);
 
     } catch (e) {
         console.error('Error loading friend workout:', e);
-        showToast('Failed to load friend\'s workout', 'error');
+        showToast('Impossibile caricare l\'allenamento dell\'amico', 'error');
     }
 };
 
@@ -7324,13 +7381,13 @@ function completeSet() {
             // For cardio, validate duration OR distance is entered
             if ((!currentPerf.duration && currentPerf.duration !== 0) &&
                 (!currentPerf.distance && currentPerf.distance !== 0)) {
-                showToast("Please enter duration or distance!", "error");
+                showToast("Inserisci durata o distanza!", "error");
                 return;
             }
         } else {
             // For strength, validate weight is entered
             if (!currentPerf.weight && currentPerf.weight !== 0) {
-                showToast("Please enter weight for this set!", "error");
+                showToast("Inserisci il peso per questo set!", "error");
                 return;
             }
             // AUTO-FILL REPS from Main Counter
@@ -7394,7 +7451,7 @@ function completeSet() {
                     window.coopState.partnerCurrentReps = parseInt(nextReps);
                     updateWorkoutUI();
                 } else {
-                    showToast("Partner's workout complete! Switch back to your tab.", 'success');
+                    showToast("Allenamento del partner completato! Torna alla tua scheda.", 'success');
                 }
             }
         } else {
@@ -7478,7 +7535,7 @@ function updateWorkoutUI() {
         videoEl.onerror = (e) => {
             console.error("Video failed to load:", newSrc, e);
             videoEl.style.border = "5px solid red"; // Visual indicator
-            showToast("Video failed to load: " + newSrc.split('/').pop());
+            showToast("Impossibile caricare il video: " + newSrc.split('/').pop());
         };
 
         // Update Main Video
@@ -7813,7 +7870,7 @@ window.openSchedulePicker = function () {
         // If we close the modal, the next time we open it for normal viewing, we want mode to be false.
         // So we should ensure it's false by default or reset it when opening normally.
     } else {
-        showToast('No client selected');
+        showToast('Nessun cliente selezionato');
     }
 }
 
@@ -7848,7 +7905,7 @@ window.fetchAndRenderSplits = async function () {
                 <button data-action="openCreateSplit"
                     class="w-full py-6 border-2 border-dashed border-white/10 rounded-xl text-white/40 hover:text-white/70 hover:border-white/20 transition flex flex-col items-center justify-center gap-2 group">
                     <span class="text-2xl group-hover:scale-110 transition-transform">${icon('calendar', 24)}</span>
-                    <span class="text-xs uppercase tracking-wider font-medium">Create Your First Split</span>
+                    <span class="text-xs uppercase tracking-wider font-medium">Crea la Tua Prima Scheda</span>
                 </button>
             `;
             return;
@@ -7860,11 +7917,11 @@ window.fetchAndRenderSplits = async function () {
             div.innerHTML = `
                 <div>
                     <p class="font-bold text-sm text-white">${s.name}</p>
-                    <p class="text-[10px] text-gray-400">${s.description || 'No description'}</p>
-                    <p class="text-[10px] text-primary mt-1">${s.days_per_week} Days</p>
+                    <p class="text-[10px] text-gray-400">${s.description || 'Nessuna descrizione'}</p>
+                    <p class="text-[10px] text-primary mt-1">${s.days_per_week} Giorni</p>
                 </div>
                 <div class="flex gap-2">
-                    <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition" onclick="openAssignSplitModal('${s.id}')">Assign</button>
+                    <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition" onclick="openAssignSplitModal('${s.id}')">Assegna</button>
                     <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition" onclick="openEditSplitModal('${s.id}')">${icon('pencil', 14)}</button>
                     <button class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition" onclick="deleteSplit('${s.id}')">${icon('trash-2', 14)}</button>
                 </div>
@@ -7901,7 +7958,7 @@ window.updateSplit = async function () {
     const desc = document.getElementById('edit-split-desc').value;
 
     if (!name) {
-        showToast('Please enter a split name');
+        showToast('Inserisci un nome per la scheda');
         return;
     }
 
@@ -7924,16 +7981,16 @@ window.updateSplit = async function () {
         });
 
         if (res.ok) {
-            showToast('Split updated!', 'success');
+            showToast('Scheda aggiornata!', 'success');
             hideModal('edit-split-modal');
             fetchAndRenderSplits();
         } else {
             const err = await res.text();
-            showToast('Failed to update split: ' + err);
+            showToast('Impossibile aggiornare la scheda: ' + err);
         }
     } catch (e) {
         console.error(e);
-        showToast('Error updating split');
+        showToast('Errore nell\'aggiornamento della scheda');
     }
 }
 
@@ -7949,7 +8006,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 window.deleteSplit = async function (splitId) {
-    if (!confirm("Are you sure you want to delete this split?")) return;
+    if (!confirm("Sei sicuro di voler eliminare questa scheda?")) return;
 
     const trainerId = getCurrentTrainerId();
     try {
@@ -7959,15 +8016,15 @@ window.deleteSplit = async function (splitId) {
         });
 
         if (res.ok) {
-            showToast("Split deleted");
+            showToast("Scheda eliminata");
             fetchAndRenderSplits();
             if (window.refreshWorkoutsPage) window.refreshWorkoutsPage();
         } else {
-            showToast("Failed to delete split");
+            showToast("Impossibile eliminare la scheda");
         }
     } catch (e) {
         console.error(e);
-        showToast("Error deleting split");
+        showToast("Errore nell'eliminazione della scheda");
     }
 };
 
@@ -8008,23 +8065,24 @@ function renderSplitScheduleBuilder(containerId) {
 
     container.innerHTML = '';
     const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const dayLabels = { Monday: 'Lunedi', Tuesday: 'Martedi', Wednesday: 'Mercoledi', Thursday: 'Giovedi', Friday: 'Venerdi', Saturday: 'Sabato', Sunday: 'Domenica' };
 
     days.forEach(day => {
         const div = document.createElement('div');
         div.className = "flex items-center justify-between bg-white/5 p-3 rounded-xl";
 
         const workout = splitScheduleState[day];
-        let content = `<span class="text-gray-500 italic text-xs">Rest Day</span>`;
+        let content = `<span class="text-gray-500 italic text-xs">Giorno di Riposo</span>`;
 
         if (workout && workout.id) {
             content = `<span class="text-primary font-bold text-xs">${workout.title}</span>`;
         }
 
         div.innerHTML = `
-            <span class="text-sm font-bold text-white w-24">${day}</span>
+            <span class="text-sm font-bold text-white w-24">${dayLabels[day]}</span>
             <div class="flex-1 mx-4 text-center truncate">${content}</div>
             <button onclick="openSplitWorkoutSelector('${day}', '${containerId}')" class="text-xs bg-white/10 px-2 py-1 rounded hover:bg-white/20 transition">
-                ${workout ? 'Change' : '+ Add Workout'}
+                ${workout ? 'Cambia' : '+ Aggiungi Allenamento'}
             </button>
         `;
         container.appendChild(div);
@@ -8041,20 +8099,20 @@ window.openSplitWorkoutSelector = async function (day, containerId) {
     const overlay = document.createElement('div');
     overlay.className = "fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4 backdrop-blur-sm";
 
-    let options = `<option value="">Rest Day</option>`;
+    let options = `<option value="">Giorno di Riposo</option>`;
     workouts.forEach(w => {
         options += `<option value="${w.id}">${w.title}</option>`;
     });
 
     overlay.innerHTML = `
         <div class="bg-[#1a1a1a] w-full max-w-sm rounded-3xl p-6 border border-white/10 relative slide-up">
-            <h2 class="text-xl font-bold mb-4 text-white">Select Workout for ${day}</h2>
+            <h2 class="text-xl font-bold mb-4 text-white">Seleziona Allenamento per ${{ Monday: 'Lunedi', Tuesday: 'Martedi', Wednesday: 'Mercoledi', Thursday: 'Giovedi', Friday: 'Venerdi', Saturday: 'Sabato', Sunday: 'Domenica' }[day] || day}</h2>
             <select id="temp-split-selector" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition mb-4">
                 ${options}
             </select>
             <div class="flex gap-2">
-                <button id="btn-cancel-split-sel" class="flex-1 py-3 bg-white/10 text-white font-bold rounded-xl">Cancel</button>
-                <button id="btn-confirm-split-sel" class="flex-1 py-3 bg-primary text-black font-bold rounded-xl">Confirm</button>
+                <button id="btn-cancel-split-sel" class="flex-1 py-3 bg-white/10 text-white font-bold rounded-xl">Annulla</button>
+                <button id="btn-confirm-split-sel" class="flex-1 py-3 bg-primary text-black font-bold rounded-xl">Conferma</button>
             </div>
         </div>
     `;
@@ -8078,7 +8136,7 @@ window.createSplit = async function () {
     const desc = document.getElementById('new-split-desc').value;
 
     if (!name) {
-        showToast('Please enter a split name');
+        showToast('Inserisci un nome per la scheda');
         return;
     }
 
@@ -8101,7 +8159,7 @@ window.createSplit = async function () {
         });
 
         if (res.ok) {
-            showToast('Split created successfully!', 'success');
+            showToast('Scheda creata con successo!', 'success');
             hideModal('create-split-modal');
             if (window.fetchAndRenderSplits) {
                 window.fetchAndRenderSplits();
@@ -8110,11 +8168,11 @@ window.createSplit = async function () {
         } else {
             const err = await res.text();
             console.error("Create Split Error:", err);
-            showToast('Failed to create split: ' + err);
+            showToast('Impossibile creare la scheda: ' + err);
         }
     } catch (e) {
         console.error(e);
-        showToast('Error creating split');
+        showToast('Errore nella creazione della scheda');
     }
 }
 window.openAssignSplitModal = async function (splitId, explicitClientId) {
@@ -8124,7 +8182,7 @@ window.openAssignSplitModal = async function (splitId, explicitClientId) {
 
     if (!container || !clientSelect) {
         console.error("Critical Error: Client selector UI elements missing!");
-        showToast("Error: UI element missing");
+        showToast("Errore: Elemento UI mancante");
         return;
     }
 
@@ -8139,15 +8197,15 @@ window.openAssignSplitModal = async function (splitId, explicitClientId) {
         if (!res.ok) {
             const err = await res.text();
             console.error("Fetch clients failed:", res.status, err);
-            showToast("Error fetching clients: " + res.status);
+            showToast("Errore nel recupero clienti: " + res.status);
         } else {
             const clients = await res.json();
             console.log("Clients received:", clients);
 
-            clientSelect.innerHTML = '<option value="">Select a Client</option>';
+            clientSelect.innerHTML = '<option value="">Seleziona un Cliente</option>';
             if (clients.length === 0) {
                 const opt = document.createElement('option');
-                opt.innerText = "No clients found";
+                opt.innerText = "Nessun cliente trovato";
                 opt.disabled = true;
                 clientSelect.appendChild(opt);
             } else {
@@ -8229,7 +8287,7 @@ window.openAssignSplitModal = async function (splitId, explicitClientId) {
 
     } catch (e) {
         console.error("Error in openAssignSplitModal:", e);
-        showToast("Error loading assignment data");
+        showToast("Errore nel caricamento dei dati di assegnazione");
     }
 };
 
@@ -8239,7 +8297,7 @@ window.assignSplit = async function () {
     const startDate = document.getElementById('assign-split-date').value;
 
     if (!splitId || !clientId || !startDate) {
-        showToast("Please fill in all fields");
+        showToast("Compila tutti i campi");
         return;
     }
 
@@ -8261,19 +8319,19 @@ window.assignSplit = async function () {
         if (res.ok) {
             const data = await res.json();
             if (data.warnings) {
-                showToast("Assigned with some errors. Check console.", "error");
+                showToast("Assegnata con alcuni errori. Controlla la console.", "error");
                 console.warn("Assignment Logs:", data.logs);
             } else {
-                showToast("Split assigned successfully!", "success");
+                showToast("Scheda assegnata con successo!", "success");
             }
             hideModal('assign-split-modal');
         } else {
             const err = await res.text();
-            showToast("Failed to assign: " + err);
+            showToast("Impossibile assegnare: " + err);
         }
     } catch (e) {
         console.error(e);
-        showToast("Error assigning split");
+        showToast("Errore nell'assegnazione della scheda");
     }
 };
 
@@ -8327,11 +8385,11 @@ window.openChatWithUser = async function(userId, userName, avatarUrl) {
         if (!checkData.can_message) {
             // Can't message - handle different reasons
             if (checkData.reason === 'staff_only') {
-                showToast('This user only accepts messages from gym staff', 'info');
+                showToast('Questo utente accetta messaggi solo dallo staff della palestra', 'info');
                 return;
             } else if (checkData.reason === 'private' && checkData.needs_request) {
                 // Show option to send chat request
-                if (confirm(`${userName} has a private profile. Send them a chat request?`)) {
+                if (confirm(`${userName} ha un profilo privato. Inviare una richiesta di chat?`)) {
                     const reqRes = await fetch(`${apiBase}/api/client/chat-requests`, {
                         method: 'POST',
                         headers: {
@@ -8342,17 +8400,17 @@ window.openChatWithUser = async function(userId, userName, avatarUrl) {
                     });
                     const reqData = await reqRes.json();
                     if (reqData.success) {
-                        showToast('Chat request sent!', 'success');
+                        showToast('Richiesta di chat inviata!', 'success');
                     } else {
-                        showToast(reqData.detail || 'Failed to send request', 'error');
+                        showToast(reqData.detail || 'Impossibile inviare la richiesta', 'error');
                     }
                 }
                 return;
             } else if (checkData.reason === 'request_pending') {
-                showToast('Your chat request is pending approval', 'info');
+                showToast('La tua richiesta di chat e in attesa di approvazione', 'info');
                 return;
             } else {
-                showToast('Cannot message this user', 'error');
+                showToast('Impossibile inviare messaggi a questo utente', 'error');
                 return;
             }
         }
@@ -8361,7 +8419,7 @@ window.openChatWithUser = async function(userId, userName, avatarUrl) {
         window.openChatModal(userId, userName, avatarUrl);
     } catch (err) {
         console.error('Error checking message permission:', err);
-        showToast('Error opening chat', 'error');
+        showToast('Errore nell\'apertura della chat', 'error');
     }
 };
 
@@ -8376,7 +8434,7 @@ window.openChatModal = async function(otherUserId, otherUserName, profilePicture
     }
 
     if (!otherUserId) {
-        showToast('No user selected for chat');
+        showToast('Nessun utente selezionato per la chat');
         return;
     }
 
@@ -8489,7 +8547,7 @@ async function loadChatMessages() {
         console.error('Error loading chat:', e);
         const messagesContainer = document.getElementById('chat-messages');
         if (messagesContainer) {
-            messagesContainer.innerHTML = '<div class="text-center text-red-400 py-8">Failed to load messages</div>';
+            messagesContainer.innerHTML = '<div class="text-center text-red-400 py-8">Impossibile caricare i messaggi</div>';
         }
     }
 }
@@ -8550,7 +8608,7 @@ window.sendChatMessage = async function() {
     if (!content) return;
 
     if (!currentChatState.otherUserId) {
-        showToast('No recipient selected');
+        showToast('Nessun destinatario selezionato');
         return;
     }
 
@@ -8601,7 +8659,7 @@ window.sendChatMessage = async function() {
 
     } catch (e) {
         console.error('Error sending message:', e);
-        showToast(e.message || 'Failed to send message', 'error');
+        showToast(e.message || 'Impossibile inviare il messaggio', 'error');
 
         // Remove temp message on error
         currentChatState.messages = currentChatState.messages.filter(m => m.id !== tempMsg.id);
@@ -8755,7 +8813,7 @@ window.openConversationsModal = async function() {
 
     } catch (e) {
         console.error('Error loading conversations:', e);
-        list.innerHTML = '<div class="text-center text-red-400 py-8">Failed to load conversations</div>';
+        list.innerHTML = '<div class="text-center text-red-400 py-8">Impossibile caricare le conversazioni</div>';
     }
 };
 
@@ -8785,7 +8843,7 @@ window.openBookAppointmentModal = function() {
     const clientName = document.getElementById('modal-client-name')?.innerText;
 
     if (!clientId) {
-        showToast('No client selected');
+        showToast('Nessun cliente selezionato');
         return;
     }
 
@@ -8802,9 +8860,9 @@ window.openBookAppointmentModal = function() {
     dateInput.value = today;
 
     // Clear fields
-    document.getElementById('book-appt-time').innerHTML = '<option value="">Select time...</option>';
+    document.getElementById('book-appt-time').innerHTML = '<option value="">Seleziona orario...</option>';
     document.getElementById('book-appt-duration').value = '60';
-    document.getElementById('book-appt-workout').innerHTML = '<option value="">None - General session</option>';
+    document.getElementById('book-appt-workout').innerHTML = '<option value="">Nessuno - Sessione generale</option>';
     document.getElementById('book-appt-notes').value = '';
 
     // Load available slots for today
@@ -8834,12 +8892,12 @@ async function loadWorkoutsForAppointment() {
 
         const workouts = await res.json();
 
-        workoutSelect.innerHTML = '<option value="">None - General session</option>';
+        workoutSelect.innerHTML = '<option value="">Nessuno - Sessione generale</option>';
 
         workouts.forEach(workout => {
             const option = document.createElement('option');
             option.value = workout.id;
-            option.textContent = `${workout.title} (${workout.exercises.length} exercises)`;
+            option.textContent = `${workout.title} (${workout.exercises.length} esercizi)`;
             workoutSelect.appendChild(option);
         });
     } catch (e) {
@@ -8849,7 +8907,7 @@ async function loadWorkoutsForAppointment() {
 
 async function loadTrainerAvailableSlots(date) {
     const timeSelect = document.getElementById('book-appt-time');
-    timeSelect.innerHTML = '<option value="">Loading...</option>';
+    timeSelect.innerHTML = '<option value="">Caricamento...</option>';
 
     try {
         // Use trainer's own endpoint to get their available slots
@@ -8861,10 +8919,10 @@ async function loadTrainerAvailableSlots(date) {
 
         const slots = await res.json();
 
-        timeSelect.innerHTML = '<option value="">Select time...</option>';
+        timeSelect.innerHTML = '<option value="">Seleziona orario...</option>';
 
         if (slots.length === 0) {
-            timeSelect.innerHTML = '<option value="">No available slots</option>';
+            timeSelect.innerHTML = '<option value="">Nessun orario disponibile</option>';
             return;
         }
 
@@ -8883,8 +8941,8 @@ async function loadTrainerAvailableSlots(date) {
         });
     } catch (e) {
         console.error('Error loading slots:', e);
-        timeSelect.innerHTML = '<option value="">Error loading slots</option>';
-        showToast('Failed to load available time slots');
+        timeSelect.innerHTML = '<option value="">Errore caricamento orari</option>';
+        showToast('Impossibile caricare gli orari disponibili');
     }
 }
 
@@ -8896,12 +8954,12 @@ async function confirmBookAppointment() {
     let notes = document.getElementById('book-appt-notes').value;
 
     if (!date || !time) {
-        showToast('Please select date and time');
+        showToast('Seleziona data e orario');
         return;
     }
 
     if (!currentBookingClientId) {
-        showToast('No client selected');
+        showToast('Nessun cliente selezionato');
         return;
     }
 
@@ -8935,7 +8993,7 @@ async function confirmBookAppointment() {
 
         if (!res.ok) {
             const error = await res.json();
-            throw new Error(error.detail || 'Failed to book appointment');
+            throw new Error(error.detail || 'Impossibile prenotare l\'appuntamento');
         }
 
         const result = await res.json();
@@ -8976,7 +9034,7 @@ async function confirmBookAppointment() {
         }
     } catch (e) {
         console.error('Error booking appointment:', e);
-        showToast('Failed to book appointment: ' + e.message);
+        showToast('Impossibile prenotare l\'appuntamento: ' + e.message);
     }
 }
 
@@ -9000,7 +9058,7 @@ window.openClientBookAppointmentModal = async function() {
         const trainers = await res.json();
 
         if (trainers.length === 0) {
-            showToast('No trainers available in your gym');
+            showToast('Nessun trainer disponibile nella tua palestra');
             return;
         }
 
@@ -9052,7 +9110,7 @@ window.openClientBookAppointmentModal = async function() {
 
             const trainerStatus = document.createElement('div');
             trainerStatus.className = 'text-xs text-gray-400';
-            trainerStatus.textContent = trainer.has_availability ? 'Available for booking' : 'No availability set';
+            trainerStatus.textContent = trainer.has_availability ? 'Disponibile per prenotazioni' : 'Nessuna disponibilità impostata';
 
             trainerInfo.appendChild(trainerName);
             trainerInfo.appendChild(trainerStatus);
@@ -9098,7 +9156,7 @@ window.openClientBookAppointmentModal = async function() {
         showModal('client-book-appointment-modal');
     } catch (e) {
         console.error('Error opening booking modal:', e);
-        showToast('Failed to load trainers: ' + e.message);
+        showToast('Impossibile caricare i trainer: ' + e.message);
     }
 };
 
@@ -9121,7 +9179,7 @@ function updateCollapsedTrainerView(trainerId, trainerName, trainerPicture) {
     const avatarEl = document.getElementById('client-trainer-avatar');
 
     nameEl.textContent = trainerName;
-    statusEl.textContent = 'Selected';
+    statusEl.textContent = 'Selezionato';
 
     // Update avatar
     avatarEl.innerHTML = '';
@@ -9282,10 +9340,10 @@ async function clientDateSelected() {
 
         const slots = await res.json();
         const timeSelect = document.getElementById('client-book-time');
-        timeSelect.innerHTML = '<option value="">Select time...</option>';
+        timeSelect.innerHTML = '<option value="">Seleziona orario...</option>';
 
         if (slots.length === 0) {
-            timeSelect.innerHTML = '<option value="">No slots available</option>';
+            timeSelect.innerHTML = '<option value="">Nessuno slot disponibile</option>';
             return;
         }
 
@@ -9297,7 +9355,7 @@ async function clientDateSelected() {
         });
     } catch (e) {
         console.error('Error loading slots:', e);
-        showToast('Failed to load available times: ' + e.message);
+        showToast('Impossibile caricare gli orari disponibili: ' + e.message);
     }
 }
 
@@ -9309,26 +9367,26 @@ async function confirmClientBookAppointment() {
     const notes = document.getElementById('client-book-notes').value;
 
     if (!trainerId) {
-        showToast('Please select a trainer');
+        showToast('Seleziona un trainer');
         return;
     }
 
     if (!date || !time) {
-        showToast('Please select date and time');
+        showToast('Seleziona data e orario');
         return;
     }
 
     // Validate payment method if trainer has a rate
     const hasPaidSession = appointmentTrainerRate && appointmentTrainerRate > 0;
     if (hasPaidSession && !appointmentPaymentMethod) {
-        showToast('Please select a payment method');
+        showToast('Seleziona un metodo di pagamento');
         return;
     }
 
     const bookBtn = document.getElementById('book-appointment-btn');
     if (bookBtn) {
         bookBtn.disabled = true;
-        bookBtn.textContent = 'Processing...';
+        bookBtn.textContent = 'Elaborazione...';
     }
 
     try {
@@ -9349,7 +9407,7 @@ async function confirmClientBookAppointment() {
 
             if (!checkoutRes.ok) {
                 const err = await checkoutRes.json();
-                throw new Error(err.detail || 'Failed to create checkout session');
+                throw new Error(err.detail || 'Impossibile creare la sessione di pagamento');
             }
 
             const { checkout_url } = await checkoutRes.json();
@@ -9375,7 +9433,7 @@ async function confirmClientBookAppointment() {
 
         if (!res.ok) {
             const error = await res.json();
-            throw new Error(error.detail || 'Failed to book appointment');
+            throw new Error(error.detail || 'Impossibile prenotare l\'appuntamento');
         }
 
         const result = await res.json();
@@ -9384,7 +9442,7 @@ async function confirmClientBookAppointment() {
         const trainer = availableTrainers.find(t => t.id === trainerId);
         const trainerName = trainer ? trainer.name : 'trainer';
 
-        showToast(`Appointment booked with ${trainerName}!`);
+        showToast(`Appuntamento prenotato con ${trainerName}!`);
         hideModal('client-book-appointment-modal');
 
         // Refresh calendar if open
@@ -9393,11 +9451,11 @@ async function confirmClientBookAppointment() {
         }
     } catch (e) {
         console.error('Error booking appointment:', e);
-        showToast('Failed to book appointment: ' + e.message);
+        showToast('Impossibile prenotare l\'appuntamento: ' + e.message);
     } finally {
         if (bookBtn) {
             bookBtn.disabled = false;
-            bookBtn.textContent = 'Book Appointment';
+            bookBtn.textContent = 'Prenota Appuntamento';
         }
     }
 }
@@ -9412,7 +9470,7 @@ let allCoursesData = [];
 
 // Day name helper
 function getDayName(dayNum) {
-    const days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+    const days = ['Lunedi', 'Martedi', 'Mercoledi', 'Giovedi', 'Venerdi', 'Sabato', 'Domenica'];
     return days[dayNum] || '';
 }
 
@@ -9436,7 +9494,7 @@ window.loadCourses = async function() {
                 <button data-action="openCreateCourse"
                     class="w-full py-6 border-2 border-dashed border-white/10 rounded-xl text-white/40 hover:text-white/70 hover:border-white/20 transition flex flex-col items-center justify-center gap-2 group">
                     <span class="text-2xl group-hover:scale-110 transition-transform">${icon('book-open', 24)}</span>
-                    <span class="text-xs uppercase tracking-wider font-medium">Create Your First Course</span>
+                    <span class="text-xs uppercase tracking-wider font-medium">Crea il Tuo Primo Corso</span>
                 </button>
             `;
             return;
@@ -9448,15 +9506,15 @@ window.loadCourses = async function() {
                 <div>
                     <p class="font-bold text-sm text-white">${c.name}</p>
                     <p class="text-[10px] text-gray-400">
-                        ${c.day_of_week !== null ? getDayName(c.day_of_week) + ' ' + (c.time_slot || '') : 'Not scheduled'}
+                        ${c.day_of_week !== null ? getDayName(c.day_of_week) + ' ' + (c.time_slot || '') : 'Non programmato'}
                         ${c.is_shared ? ' <span class="text-primary">• Shared</span>' : ''}
                     </p>
                 </div>
                 <div class="flex gap-2">
                     <button onclick="event.stopPropagation(); openEditCourse('${c.id}')"
-                        class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition">Edit</button>
+                        class="text-xs bg-white/5 hover:bg-white/10 px-2 py-1 rounded text-gray-300 transition">Modifica</button>
                     <button onclick="event.stopPropagation(); deleteCourse('${c.id}')"
-                        class="text-xs bg-red-500/20 hover:bg-red-500/40 px-2 py-1 rounded text-red-400 transition">Delete</button>
+                        class="text-xs bg-red-500/20 hover:bg-red-500/40 px-2 py-1 rounded text-red-400 transition">Elimina</button>
                 </div>
             </div>
         `).join('');
@@ -9516,8 +9574,8 @@ window.loadCoursesPage = async function() {
             ownCoursesContainer.innerHTML = `
                 <div class="glass-card p-8 text-center">
                     <span class="mb-3 block">${icon('book-open', 32)}</span>
-                    <p class="text-gray-400 text-sm mb-2">No courses yet</p>
-                    <p class="text-gray-500 text-xs">Create your first group fitness course to get started</p>
+                    <p class="text-gray-400 text-sm mb-2">Nessun corso</p>
+                    <p class="text-gray-500 text-xs">Crea il tuo primo corso di fitness di gruppo per iniziare</p>
                 </div>
             `;
         } else {
@@ -9529,7 +9587,7 @@ window.loadCoursesPage = async function() {
             if (sharedCourses.length === 0) {
                 sharedCoursesContainer.innerHTML = `
                     <div class="glass-card p-4 text-center">
-                        <p class="text-gray-400/50 text-xs">No shared courses from other trainers</p>
+                        <p class="text-gray-400/50 text-xs">Nessun corso condiviso da altri trainer</p>
                     </div>
                 `;
             } else {
@@ -9540,7 +9598,7 @@ window.loadCoursesPage = async function() {
         console.error('Error loading courses:', e);
         ownCoursesContainer.innerHTML = `
             <div class="glass-card p-4 text-center text-red-400">
-                <p class="text-sm">Failed to load courses</p>
+                <p class="text-sm">Impossibile caricare i corsi</p>
             </div>
         `;
     }
@@ -9604,7 +9662,7 @@ function renderCoursesGroupedByType(courses, isOwner) {
             <div class="mb-6">
                 <div class="flex items-center gap-2 mb-3 px-1">
                     <span class="text-xl">${icon('book-open', 20)}</span>
-                    <h4 class="text-sm font-bold text-white/80 uppercase tracking-wider">Other Courses</h4>
+                    <h4 class="text-sm font-bold text-white/80 uppercase tracking-wider">Altri Corsi</h4>
                     <span class="text-xs text-white/40">(${uncategorized.length})</span>
                 </div>
                 <div class="space-y-3">
@@ -9621,7 +9679,7 @@ function renderCoursesGroupedByType(courses, isOwner) {
 function renderCourseCard(course, isOwner) {
     const scheduleText = course.day_of_week !== null
         ? `${getDayName(course.day_of_week)}${course.time_slot ? ' @ ' + course.time_slot : ''}`
-        : 'Not scheduled';
+        : 'Non programmato';
 
     const exerciseCount = (course.exercises || []).length;
     const musicCount = (course.music_links || []).length;
@@ -9634,37 +9692,37 @@ function renderCourseCard(course, isOwner) {
                     <h4 class="font-bold text-white text-base mb-1">${course.name}</h4>
                     <p class="text-xs text-gray-400">${scheduleText}</p>
                 </div>
-                ${course.is_shared ? '<span class="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full uppercase font-bold">Shared</span>' : ''}
+                ${course.is_shared ? '<span class="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full uppercase font-bold">Condiviso</span>' : ''}
             </div>
 
             ${course.description ? `<p class="text-xs text-gray-500 mb-3 line-clamp-2">${course.description}</p>` : ''}
 
             <div class="flex items-center gap-4 text-[11px] text-gray-400 mb-3">
                 <span>${icon('clock', 12)} ${course.duration || 60} min</span>
-                <span>${icon('dumbbell', 12)} ${exerciseCount} exercise${exerciseCount !== 1 ? 's' : ''}</span>
-                <span>${icon('music', 12)} ${musicCount} playlist${musicCount !== 1 ? 's' : ''}</span>
+                <span>${icon('dumbbell', 12)} ${exerciseCount} eserciz${exerciseCount !== 1 ? 'i' : 'io'}</span>
+                <span>${icon('music', 12)} ${musicCount} playlist</span>
             </div>
 
             ${isOwner ? `
             <div class="flex gap-2 pt-2 border-t border-white/5">
                 <button onclick="event.stopPropagation(); openScheduleLessonModal('${course.id}')"
                     class="flex-1 text-xs bg-primary/20 hover:bg-primary/30 px-3 py-2 rounded-lg text-primary font-medium transition">
-                    Schedule Lesson
+                    Programma Lezione
                 </button>
                 <button onclick="event.stopPropagation(); openEditCourse('${course.id}')"
                     class="text-xs bg-white/5 hover:bg-white/10 px-3 py-2 rounded-lg text-gray-300 transition">
-                    Edit
+                    Modifica
                 </button>
                 <button onclick="event.stopPropagation(); deleteCourse('${course.id}')"
                     class="text-xs bg-red-500/10 hover:bg-red-500/20 px-3 py-2 rounded-lg text-red-400 transition">
-                    Delete
+                    Elimina
                 </button>
             </div>
             ` : `
             <div class="flex gap-2 pt-2 border-t border-white/5">
                 <button onclick="event.stopPropagation(); openCourseDetail('${course.id}')"
                     class="flex-1 text-xs bg-white/10 hover:bg-white/20 px-3 py-2 rounded-lg text-white font-medium transition">
-                    View Details
+                    Dettagli
                 </button>
             </div>
             `}
@@ -9726,8 +9784,8 @@ window.selectCourseType = function(btn, type, color) {
     const exerciseBtn = document.querySelector('[onclick="openCourseExercisePicker()"]');
     if (exerciseBtn) {
         const span = exerciseBtn.querySelector('span:last-child');
-        if (span && span.innerText.includes('Add')) {
-            span.innerText = `Add ${type.charAt(0).toUpperCase() + type.slice(1)} Exercises`;
+        if (span && (span.innerText.includes('Aggiungi') || span.innerText.includes('Add'))) {
+            span.innerText = `Aggiungi Esercizi ${type.charAt(0).toUpperCase() + type.slice(1)}`;
         }
     }
 
@@ -9880,8 +9938,8 @@ window.toggleCourseVisibility = function() {
         toggle.classList.add('bg-white/10');
         dot.style.transform = 'translateX(0)';
         icon.innerHTML = '<i data-lucide="lock" style="width:20px;height:20px;display:inline-block;vertical-align:middle;stroke:currentColor;"></i>';
-        label.innerText = 'Private Course';
-        desc.innerText = 'Only visible to you';
+        label.innerText = 'Corso Privato';
+        desc.innerText = 'Visibile solo a te';
     } else {
         // Switch to shared
         input.value = 'true';
@@ -9889,8 +9947,8 @@ window.toggleCourseVisibility = function() {
         toggle.classList.add('bg-primary');
         dot.style.transform = 'translateX(20px)';
         icon.innerHTML = '<i data-lucide="users" style="width:20px;height:20px;display:inline-block;vertical-align:middle;stroke:currentColor;"></i>';
-        label.innerText = 'Shared with Gym';
-        desc.innerText = 'Other trainers can see this';
+        label.innerText = 'Condiviso con la Palestra';
+        desc.innerText = 'Gli altri trainer possono vederlo';
     }
 };
 
@@ -9931,7 +9989,7 @@ function resetCourseModal() {
     const exerciseBtn = document.querySelector('[onclick="openCourseExercisePicker()"]');
     if (exerciseBtn) {
         const span = exerciseBtn.querySelector('span:last-child');
-        if (span) span.innerText = 'Add Yoga Exercises';
+        if (span) span.innerText = 'Aggiungi Esercizi Yoga';
     }
 
     // Reset day buttons
@@ -9950,8 +10008,8 @@ function resetCourseModal() {
     if (toggle) { toggle.classList.remove('bg-primary'); toggle.classList.add('bg-white/10'); }
     if (dot) dot.style.transform = 'translateX(0)';
     if (icon) icon.innerHTML = '<i data-lucide="lock" style="width:20px;height:20px;display:inline-block;vertical-align:middle;stroke:currentColor;"></i>';
-    if (label) label.innerText = 'Private Course';
-    if (desc) desc.innerText = 'Only visible to you';
+    if (label) label.innerText = 'Corso Privato';
+    if (desc) desc.innerText = 'Visibile solo a te';
 
     // Reset duration display
     const durationDisplay = document.getElementById('course-duration-display');
@@ -9980,7 +10038,7 @@ function resetCourseModal() {
 
     // Reset preview title
     const previewTitle = document.getElementById('course-preview-title');
-    if (previewTitle) previewTitle.innerText = 'Course Title';
+    if (previewTitle) previewTitle.innerText = 'Titolo Corso';
 }
 
 // --- COURSE CLIENT PREVIEW FUNCTIONS ---
@@ -10004,12 +10062,12 @@ window.handleCoverImageSelect = function(event) {
         if (data.url) {
             setCoverImageFromUrl(data.url);
         } else {
-            showToast('Failed to upload image');
+            showToast('Impossibile caricare l\'immagine');
         }
     })
     .catch(err => {
         console.error('Error uploading cover image:', err);
-        showToast('Failed to upload image');
+        showToast('Impossibile caricare l\'immagine');
     });
 };
 
@@ -10076,7 +10134,7 @@ window.previewTrailer = function(url) {
         if (trailerPlaceholder) trailerPlaceholder.classList.add('hidden');
     } else if (url) {
         // Invalid URL - show warning
-        showToast('Please enter a valid YouTube or Vimeo URL');
+        showToast('Inserisci un URL YouTube o Vimeo valido');
     }
 };
 
@@ -10146,7 +10204,7 @@ function updateCoursePreviewTitle() {
     const nameInput = document.getElementById('course-name');
     const previewTitle = document.getElementById('course-preview-title');
     if (nameInput && previewTitle) {
-        previewTitle.innerText = nameInput.value.trim() || 'Course Title';
+        previewTitle.innerText = nameInput.value.trim() || 'Titolo Corso';
     }
 }
 
@@ -10166,8 +10224,8 @@ window.openCreateCourseModal = function() {
     console.log('[DEBUG] openCreateCourseModal called');
     try {
         document.getElementById('edit-course-id').value = '';
-        document.getElementById('modal-course-title').innerText = 'New Course';
-        document.getElementById('btn-save-course').innerText = 'Create Course';
+        document.getElementById('modal-course-title').innerText = 'Nuovo Corso';
+        document.getElementById('btn-save-course').innerText = 'Crea Corso';
 
         document.getElementById('course-name').value = '';
         document.getElementById('course-description').value = '';
@@ -10238,8 +10296,8 @@ window.openEditCourse = async function(courseId) {
         const course = await res.json();
 
         document.getElementById('edit-course-id').value = course.id;
-        document.getElementById('modal-course-title').innerText = 'Edit Course';
-        document.getElementById('btn-save-course').innerText = 'Save Changes';
+        document.getElementById('modal-course-title').innerText = 'Modifica Corso';
+        document.getElementById('btn-save-course').innerText = 'Salva Modifiche';
 
         document.getElementById('course-name').value = course.name || '';
         document.getElementById('course-description').value = course.description || '';
@@ -10298,8 +10356,8 @@ window.openEditCourse = async function(courseId) {
             if (toggle) { toggle.classList.remove('bg-white/10'); toggle.classList.add('bg-primary'); }
             if (dot) dot.style.transform = 'translateX(20px)';
             if (icon) icon.innerHTML = '<i data-lucide="users" style="width:20px;height:20px;display:inline-block;vertical-align:middle;stroke:currentColor;"></i>';
-            if (label) label.innerText = 'Shared with Gym';
-            if (desc) desc.innerText = 'Other trainers can see this';
+            if (label) label.innerText = 'Condiviso con la Palestra';
+            if (desc) desc.innerText = 'Gli altri trainer possono vederlo';
         }
 
         courseExercisesList = course.exercises || [];
@@ -10375,7 +10433,7 @@ window.openEditCourse = async function(courseId) {
         showModal('create-course-modal');
     } catch (e) {
         console.error('Error loading course:', e);
-        showToast('Failed to load course');
+        showToast('Impossibile caricare il corso');
     }
 };
 
@@ -10438,7 +10496,7 @@ window.saveCourse = async function() {
     }
 
     if (!name) {
-        showToast('Please enter a course name');
+        showToast('Inserisci un nome per il corso');
         return;
     }
 
@@ -10480,21 +10538,21 @@ window.saveCourse = async function() {
             body: JSON.stringify(payload)
         });
 
-        if (!res.ok) throw new Error('Failed to save course');
+        if (!res.ok) throw new Error('Impossibile salvare il corso');
 
-        showToast(id ? 'Course updated!' : 'Course created!');
+        showToast(id ? 'Corso aggiornato!' : 'Corso creato!');
         hideModal('create-course-modal');
         loadCourses();
         if (document.getElementById('courses-page-list')) loadCoursesPage();
     } catch (e) {
         console.error('Error saving course:', e);
-        showToast('Failed to save course');
+        showToast('Impossibile salvare il corso');
     }
 };
 
 // Delete course
 window.deleteCourse = async function(courseId) {
-    if (!confirm('Delete this course and all its lessons?')) return;
+    if (!confirm('Eliminare questo corso e tutte le sue lezioni?')) return;
 
     try {
         const res = await fetch(`${apiBase}/api/trainer/courses/${courseId}`, {
@@ -10502,14 +10560,14 @@ window.deleteCourse = async function(courseId) {
             credentials: 'include'
         });
 
-        if (!res.ok) throw new Error('Failed to delete course');
+        if (!res.ok) throw new Error('Impossibile eliminare il corso');
 
-        showToast('Course deleted');
+        showToast('Corso eliminato');
         loadCourses();
         if (document.getElementById('courses-page-list')) loadCoursesPage();
     } catch (e) {
         console.error('Error deleting course:', e);
-        showToast('Failed to delete course');
+        showToast('Impossibile eliminare il corso');
     }
 };
 
@@ -10524,7 +10582,7 @@ function renderMusicLinks() {
     if (!container) return;
 
     if (courseMusicLinks.length === 0) {
-        container.innerHTML = '<p class="text-xs text-gray-500 italic text-center py-2">Add Spotify or YouTube playlists</p>';
+        container.innerHTML = '<p class="text-xs text-gray-500 italic text-center py-2">Aggiungi playlist Spotify o YouTube</p>';
         return;
     }
 
@@ -10532,7 +10590,7 @@ function renderMusicLinks() {
         <div class="bg-white/5 rounded-xl p-3 group hover:bg-white/10 transition">
             <div class="flex items-center gap-3 mb-2">
                 <span class="inline-block w-5 h-5 rounded-full ${link.type === 'spotify' ? 'bg-green-500' : 'bg-red-500'}"></span>
-                <input type="text" value="${link.title || ''}" placeholder="Playlist name"
+                <input type="text" value="${link.title || ''}" placeholder="Nome playlist"
                     onchange="updateMusicLink(${i}, 'title', this.value)"
                     class="flex-1 bg-transparent text-sm text-white font-medium outline-none placeholder-white/30">
                 <button onclick="removeMusicLink(${i})" class="text-white/30 hover:text-red-400 opacity-0 group-hover:opacity-100 transition">✕</button>
@@ -10543,7 +10601,7 @@ function renderMusicLinks() {
                     <option value="spotify" ${link.type === 'spotify' ? 'selected' : ''}>Spotify</option>
                     <option value="youtube" ${link.type === 'youtube' ? 'selected' : ''}>YouTube</option>
                 </select>
-                <input type="text" value="${link.url || ''}" placeholder="Paste playlist URL..."
+                <input type="text" value="${link.url || ''}" placeholder="Incolla URL playlist..."
                     onchange="updateMusicLink(${i}, 'url', this.value)"
                     class="flex-1 bg-white/10 border-0 rounded-lg px-3 py-1.5 text-[10px] text-white/70 outline-none min-w-0 placeholder-white/30">
             </div>
@@ -10570,14 +10628,14 @@ function renderCourseExercises() {
     // Update exercise count badge
     const badge = document.getElementById('exercise-count-badge');
     if (badge) {
-        badge.innerText = `${courseExercisesList.length} selected`;
+        badge.innerText = `${courseExercisesList.length} selezionat${courseExercisesList.length !== 1 ? 'i' : 'o'}`;
     }
 
     if (courseExercisesList.length === 0) {
         container.innerHTML = `
             <div class="text-center py-4">
                 <span class="mb-2 block opacity-30">${icon('footprints', 28)}</span>
-                <p class="text-xs text-gray-500">No exercises added yet</p>
+                <p class="text-xs text-gray-500">Nessun esercizio aggiunto</p>
             </div>
         `;
         return;
@@ -10644,13 +10702,13 @@ function filterCourseExercisePickerList(searchTerm) {
     );
 
     if (filtered.length === 0) {
-        container.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm">No exercises match your search</div>';
+        container.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm">Nessun esercizio corrisponde alla ricerca</div>';
         return;
     }
 
     const headerNote = showingAll
         ? `<div class="p-3 mb-2 bg-amber-500/20 border border-amber-500/30 rounded-xl text-amber-300 text-xs text-center">
-            No ${selectedCourseType} exercises found. Showing all course exercises.
+            Nessun esercizio ${selectedCourseType} trovato. Mostrando tutti gli esercizi del corso.
            </div>`
         : '';
 
@@ -10675,7 +10733,7 @@ async function populateCourseExerciseList() {
     if (!container) return;
 
     // Show loading state
-    container.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm">Loading exercises...</div>';
+    container.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm">Caricamento esercizi...</div>';
 
     // Get exercises from APP_STATE, allCourseExercises, or fetch fresh
     let allExercises = window.APP_STATE?.exercises || allCourseExercises || [];
@@ -10692,7 +10750,7 @@ async function populateCourseExerciseList() {
             }
         } catch (e) {
             console.error('Error fetching exercises:', e);
-            container.innerHTML = '<div class="p-4 text-center text-red-400 text-sm">Failed to load exercises</div>';
+            container.innerHTML = '<div class="p-4 text-center text-red-400 text-sm">Impossibile caricare gli esercizi</div>';
             return;
         }
     }
@@ -10709,16 +10767,16 @@ async function populateCourseExerciseList() {
     const showingAll = matchingExercises.length === 0 && courseTypeExercises.length > 0;
 
     if (exercisesToShow.length === 0) {
-        container.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm">No course exercises available. Create some in the Exercise Library below!</div>';
+        container.innerHTML = '<div class="p-4 text-center text-gray-400 text-sm">Nessun esercizio del corso disponibile. Creane alcuni nella Libreria Esercizi!</div>';
         return;
     }
 
     const headerNote = showingAll
         ? `<div class="p-3 mb-2 bg-amber-500/20 border border-amber-500/30 rounded-xl text-amber-300 text-xs text-center">
-            No ${selectedCourseType} exercises found. Showing all course exercises.
+            Nessun esercizio ${selectedCourseType} trovato. Mostrando tutti gli esercizi del corso.
            </div>`
         : `<div class="p-2 mb-2 text-center text-xs text-gray-400">
-            Showing ${selectedCourseType} exercises
+            Mostrando esercizi ${selectedCourseType}
            </div>`;
 
     container.innerHTML = headerNote + exercisesToShow.map(ex => {
@@ -10747,7 +10805,7 @@ window.selectCourseExercise = function(id, name, videoId) {
         video_id: videoId || ''
     });
     renderCourseExercises();
-    showToast(`Added ${name}`);
+    showToast(`${name} aggiunto`);
 };
 
 window.confirmCourseExercises = function() {
@@ -10772,7 +10830,7 @@ window.openCourseDetail = async function(courseId) {
         if (headerEl) headerEl.innerText = course.name;
         document.getElementById('detail-course-name').innerText = course.name;
         document.getElementById('detail-course-schedule').innerText =
-            course.day_of_week !== null ? `${getDayName(course.day_of_week)} ${course.time_slot || ''}` : 'No schedule set';
+            course.day_of_week !== null ? `${getDayName(course.day_of_week)} ${course.time_slot || ''}` : 'Nessun orario impostato';
         document.getElementById('detail-course-description').innerText = course.description || '';
 
         // Music links
@@ -10786,7 +10844,7 @@ window.openCourseDetail = async function(courseId) {
                 </a>
             `).join('');
         } else {
-            musicContainer.innerHTML = '<p class="text-xs text-gray-500 italic">No playlists</p>';
+            musicContainer.innerHTML = '<p class="text-xs text-gray-500 italic">Nessuna playlist</p>';
         }
 
         // Exercises
@@ -10799,7 +10857,7 @@ window.openCourseDetail = async function(courseId) {
                 </div>
             `).join('');
         } else {
-            exercisesContainer.innerHTML = '<p class="text-xs text-gray-500 italic">No exercises</p>';
+            exercisesContainer.innerHTML = '<p class="text-xs text-gray-500 italic">Nessun esercizio</p>';
         }
 
         // Lessons history
@@ -10810,16 +10868,16 @@ window.openCourseDetail = async function(courseId) {
                     <div>
                         <p class="text-sm text-white">${l.date} at ${l.time}</p>
                         <p class="text-[10px] text-gray-400">
-                            ${l.completed ? `Completed • Engagement: ${l.engagement_level}/5` : 'Scheduled'}
-                            ${l.attendee_count ? ` • ${l.attendee_count} attendees` : ''}
+                            ${l.completed ? `Completata • Coinvolgimento: ${l.engagement_level}/5` : 'Programmata'}
+                            ${l.attendee_count ? ` • ${l.attendee_count} partecipanti` : ''}
                         </p>
                     </div>
                     <div class="flex gap-2">
                         ${!l.completed ? `
                             <button onclick="openCompleteLessonModal(${l.id}, '${l.date}')"
-                                class="text-xs bg-green-600/20 hover:bg-green-600/40 px-2 py-1 rounded text-green-400 transition">Complete</button>
+                                class="text-xs bg-green-600/20 hover:bg-green-600/40 px-2 py-1 rounded text-green-400 transition">Completa</button>
                             <button onclick="deleteLesson(${l.id})"
-                                class="text-xs bg-red-500/20 hover:bg-red-500/40 px-2 py-1 rounded text-red-400 transition">Delete</button>
+                                class="text-xs bg-red-500/20 hover:bg-red-500/40 px-2 py-1 rounded text-red-400 transition">Elimina</button>
                         ` : `
                             <span class="text-xs text-green-400">✓</span>
                         `}
@@ -10827,7 +10885,7 @@ window.openCourseDetail = async function(courseId) {
                 </div>
             `).join('');
         } else {
-            lessonsContainer.innerHTML = '<p class="text-xs text-gray-500 italic">No lessons scheduled yet</p>';
+            lessonsContainer.innerHTML = '<p class="text-xs text-gray-500 italic">Nessuna lezione programmata</p>';
         }
 
         showModal('course-detail-modal');
@@ -10835,7 +10893,7 @@ window.openCourseDetail = async function(courseId) {
         if (typeof lucide !== 'undefined') lucide.createIcons();
     } catch (e) {
         console.error('Error loading course detail:', e);
-        showToast('Failed to load course');
+        showToast('Impossibile caricare il corso');
     }
 };
 
@@ -10873,7 +10931,7 @@ window.confirmScheduleLesson = async function() {
     const duration = parseInt(document.getElementById('schedule-lesson-duration').value) || 60;
 
     if (!date) {
-        showToast('Please select a date');
+        showToast('Seleziona una data');
         return;
     }
 
@@ -10885,21 +10943,21 @@ window.confirmScheduleLesson = async function() {
             body: JSON.stringify({ date, time: time || null, duration })
         });
 
-        if (!res.ok) throw new Error('Failed to schedule lesson');
+        if (!res.ok) throw new Error('Impossibile programmare la lezione');
 
-        showToast('Lesson scheduled!');
+        showToast('Lezione programmata!');
         hideModal('schedule-lesson-modal');
         openCourseDetail(courseId); // Refresh detail view
     } catch (e) {
         console.error('Error scheduling lesson:', e);
-        showToast('Failed to schedule lesson');
+        showToast('Impossibile programmare la lezione');
     }
 };
 
 // Complete lesson with engagement
 window.openCompleteLessonModal = function(lessonId, dateStr) {
     document.getElementById('complete-lesson-id').value = lessonId;
-    document.getElementById('complete-lesson-title').innerText = `Lesson on ${dateStr}`;
+    document.getElementById('complete-lesson-title').innerText = `Lezione del ${dateStr}`;
     document.getElementById('complete-attendees').value = '';
     document.getElementById('complete-notes').value = '';
 
@@ -10932,7 +10990,7 @@ window.submitLessonCompletion = async function() {
     const attendees = document.getElementById('complete-attendees').value;
 
     if (selectedEngagement < 1 || selectedEngagement > 5) {
-        showToast('Please rate the class engagement');
+        showToast('Valuta il coinvolgimento della classe');
         return;
     }
 
@@ -10948,22 +11006,22 @@ window.submitLessonCompletion = async function() {
             })
         });
 
-        if (!res.ok) throw new Error('Failed to complete lesson');
+        if (!res.ok) throw new Error('Impossibile completare la lezione');
 
-        showToast('Lesson completed!');
+        showToast('Lezione completata!');
         hideModal('complete-lesson-modal');
         if (currentCourseId) {
             openCourseDetail(currentCourseId); // Refresh detail view
         }
     } catch (e) {
         console.error('Error completing lesson:', e);
-        showToast('Failed to complete lesson');
+        showToast('Impossibile completare la lezione');
     }
 };
 
 // Delete lesson
 window.deleteLesson = async function(lessonId) {
-    if (!confirm('Delete this scheduled lesson?')) return;
+    if (!confirm('Eliminare questa lezione programmata?')) return;
 
     try {
         const res = await fetch(`${apiBase}/api/trainer/courses/lessons/${lessonId}`, {
@@ -10971,15 +11029,15 @@ window.deleteLesson = async function(lessonId) {
             credentials: 'include'
         });
 
-        if (!res.ok) throw new Error('Failed to delete lesson');
+        if (!res.ok) throw new Error('Impossibile eliminare la lezione');
 
-        showToast('Lesson deleted');
+        showToast('Lezione eliminata');
         if (currentCourseId) {
             openCourseDetail(currentCourseId); // Refresh detail view
         }
     } catch (e) {
         console.error('Error deleting lesson:', e);
-        showToast('Failed to delete lesson');
+        showToast('Impossibile eliminare la lezione');
     }
 };
 
@@ -11252,7 +11310,7 @@ async function initSpotifyPlayer(token) {
 
     spotifyPlayer.addListener('account_error', ({ message }) => {
         console.error('❌ Spotify account error:', message);
-        showToast('Spotify Premium required for playback');
+        showToast('Spotify Premium richiesto per la riproduzione');
     });
 
     spotifyPlayer.addListener('playback_error', ({ message }) => {
@@ -11440,7 +11498,7 @@ window.controlSpotifyPlayer = async function(action) {
 window.startLiveClass = function() {
     const course = allCoursesData.find(c => c.id === currentCourseId);
     if (!course) {
-        showToast('Course not found');
+        showToast('Corso non trovato');
         return;
     }
 
@@ -11455,7 +11513,7 @@ window.startLiveClass = function() {
     spotifyPlaybackStarted = false;
 
     if (liveClassData.exercises.length === 0) {
-        showToast('Add exercises to this course first');
+        showToast('Aggiungi prima degli esercizi a questo corso');
         return;
     }
 
@@ -11518,7 +11576,7 @@ function renderLiveMusicLinks() {
     if (!container) return;
 
     if (liveClassData.musicLinks.length === 0) {
-        container.innerHTML = '<p class="text-xs text-gray-500 italic">No playlists added</p>';
+        container.innerHTML = '<p class="text-xs text-gray-500 italic">Nessuna playlist aggiunta</p>';
         return;
     }
 
@@ -12085,7 +12143,7 @@ window.toggleLiveMusic = function() {
 
 // End class
 window.endLiveClass = function() {
-    if (!confirm('End this class?')) return;
+    if (!confirm('Terminare questa lezione?')) return;
 
     stopTimer();
 
@@ -12137,7 +12195,7 @@ window.loadCourseExercises = async function() {
         renderCourseExerciseLibrary();
     } catch (e) {
         console.error('Error loading course exercises:', e);
-        container.innerHTML = `<div class="glass-card p-6 text-center"><p class="text-red-400 text-xs">Failed to load exercises</p></div>`;
+        container.innerHTML = `<div class="glass-card p-6 text-center"><p class="text-red-400 text-xs">Impossibile caricare gli esercizi</p></div>`;
     }
 };
 
@@ -12262,7 +12320,7 @@ window.openCourseExerciseModal = function(exerciseId = null) {
     document.getElementById('course-exercise-steps').innerHTML = '';
 
     if (exerciseId) {
-        title.textContent = 'Edit Exercise';
+        title.textContent = 'Modifica Esercizio';
         // Load exercise data
         const exercise = allCourseExercises.find(ex => ex.id === exerciseId);
         if (exercise) {
@@ -12288,7 +12346,7 @@ window.openCourseExerciseModal = function(exerciseId = null) {
             }
         }
     } else {
-        title.textContent = 'Create Exercise';
+        title.textContent = 'Crea Esercizio';
     }
 
     showModal('course-exercise-modal');
@@ -12354,7 +12412,7 @@ window.uploadCourseExerciseImage = async function(input) {
         showToast('Image uploaded');
     } catch (e) {
         console.error('Upload error:', e);
-        showToast('Failed to upload image');
+        showToast('Impossibile caricare l\'immagine');
     }
 };
 
@@ -12477,7 +12535,7 @@ window.editCourseExerciseFromDetail = function() {
 // Delete from detail modal
 window.deleteCourseExerciseFromDetail = async function() {
     if (!currentCourseExerciseId) return;
-    if (!confirm('Delete this exercise?')) return;
+    if (!confirm('Eliminare questo esercizio?')) return;
 
     try {
         const res = await fetch(`${apiBase}/api/exercises/${currentCourseExerciseId}`, {
@@ -12485,9 +12543,9 @@ window.deleteCourseExerciseFromDetail = async function() {
             credentials: 'include'
         });
 
-        if (!res.ok) throw new Error('Failed to delete');
+        if (!res.ok) throw new Error('Eliminazione fallita');
 
-        showToast('Exercise deleted');
+        showToast('Esercizio eliminato');
         hideModal('course-exercise-detail-modal');
         loadCourseExercises();
     } catch (e) {
@@ -12694,7 +12752,7 @@ window.applyCouponCode = async function() {
 
     const code = codeInput.value.trim().toUpperCase();
     if (!code) {
-        messageEl.textContent = 'Please enter a coupon code';
+        messageEl.textContent = 'Inserisci un codice coupon';
         messageEl.className = 'text-xs mt-2 text-yellow-400';
         messageEl.classList.remove('hidden');
         return;
@@ -12724,7 +12782,7 @@ window.applyCouponCode = async function() {
             updatePriceWithDiscount();
         } else {
             appliedOffer = null;
-            messageEl.textContent = data.error || 'Invalid coupon code';
+            messageEl.textContent = data.error || 'Codice coupon non valido';
             messageEl.className = 'text-xs mt-2 text-red-400';
             messageEl.classList.remove('hidden');
 
@@ -12733,7 +12791,7 @@ window.applyCouponCode = async function() {
         }
     } catch (e) {
         console.error('Error validating coupon:', e);
-        messageEl.textContent = 'Error validating coupon';
+        messageEl.textContent = 'Errore nella convalida del coupon';
         messageEl.className = 'text-xs mt-2 text-red-400';
         messageEl.classList.remove('hidden');
     }
@@ -12982,10 +13040,10 @@ window.confirmCancelSubscription = async function() {
 
         if (!res.ok) {
             const data = await res.json();
-            throw new Error(data.detail || 'Failed to cancel');
+            throw new Error(data.detail || 'Impossibile annullare');
         }
 
-        showToast('Subscription will be cancelled at the end of billing period', 'success');
+        showToast('L\'abbonamento sarà annullato alla fine del periodo di fatturazione', 'success');
         hideModal('cancel-subscription-modal');
 
         // Reload plans to update UI

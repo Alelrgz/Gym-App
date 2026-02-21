@@ -7,7 +7,7 @@
 <header class="staff-mobile-header nutritionist-mobile-header">
     <div class="staff-mobile-header-logo">
         <img src="/static/fitos-logo.svg" alt="FitOS" class="staff-logo-img">
-        <span class="staff-role-label">Nutritionist</span>
+        <span class="staff-role-label">Nutrizionista</span>
     </div>
     <div class="staff-mobile-header-actions">
         <button class="staff-mobile-msg-btn relative" onclick="nutriOpenConversations()">
@@ -30,7 +30,7 @@
     <aside class="staff-sidebar nutritionist-sidebar">
         <div class="staff-sidebar-logo">
             <img src="/static/fitos-logo.svg" alt="FitOS" class="staff-logo-img staff-logo-img--sidebar">
-            <span class="staff-role-label">Nutritionist</span>
+            <span class="staff-role-label">Nutrizionista</span>
         </div>
 
         <nav class="staff-sidebar-nav">
@@ -43,7 +43,7 @@
             <button onclick="nutriOpenConversations()"
                     class="staff-nav-item sidebar-nav-item relative">
                 <i data-lucide="message-circle" class="w-[18px] h-[18px]"></i>
-                <span>Messages</span>
+                <span>Messaggi</span>
                 <span id="unread-messages-badge" class="absolute top-1 right-1 w-4 h-4 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center hidden">0</span>
             </button>
             <button onclick="switchNutriSection('schedule')"
@@ -56,7 +56,7 @@
                     class="staff-nav-item sidebar-nav-item"
                     data-section="settings">
                 <i data-lucide="settings" class="w-[18px] h-[18px]"></i>
-                <span>Settings</span>
+                <span>Impostazioni</span>
             </button>
         </nav>
 
@@ -64,7 +64,7 @@
 
         <a href="/auth/logout" class="staff-nav-item" style="color:#f87171;">
             <i data-lucide="log-out" class="w-[18px] h-[18px]"></i>
-            <span>Logout</span>
+            <span>Esci</span>
         </a>
     </aside>
 
@@ -77,8 +77,8 @@
             <!-- Header -->
             <div class="flex items-center justify-between mb-6">
                 <div>
-                    <p class="text-xs text-green-400 font-bold uppercase tracking-widest">Nutritionist Dashboard</p>
-                    <h1 class="text-2xl font-black text-white" id="nutri-name">Loading...</h1>
+                    <p class="text-xs text-green-400 font-bold uppercase tracking-widest">Dashboard Nutrizionista</p>
+                    <h1 class="text-2xl font-black text-white" id="nutri-name">Caricamento...</h1>
                 </div>
                 <div class="flex items-center gap-2">
                     <div onclick="nutriOpenConversations()" class="relative w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center cursor-pointer">
@@ -95,19 +95,19 @@
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
                 {% call card(classes="p-4 text-center") %}
                     <p class="text-2xl font-black text-green-400" id="stat-active">0</p>
-                    <p class="text-xs text-gray-400 font-bold uppercase mt-1">Active Clients</p>
+                    <p class="text-xs text-gray-400 font-bold uppercase mt-1">Clienti Attivi</p>
                 {% endcall %}
                 {% call card(classes="p-4 text-center") %}
                     <p class="text-2xl font-black text-red-400" id="stat-at-risk">0</p>
-                    <p class="text-xs text-gray-400 font-bold uppercase mt-1">At Risk</p>
+                    <p class="text-xs text-gray-400 font-bold uppercase mt-1">A Rischio</p>
                 {% endcall %}
                 {% call card(classes="p-4 text-center") %}
                     <p class="text-2xl font-black text-white" id="stat-total">0</p>
-                    <p class="text-xs text-gray-400 font-bold uppercase mt-1">Total Clients</p>
+                    <p class="text-xs text-gray-400 font-bold uppercase mt-1">Clienti Totali</p>
                 {% endcall %}
                 {% call card(classes="p-4 text-center") %}
                     <p class="text-2xl font-black text-orange-400" id="stat-diets">0</p>
-                    <p class="text-xs text-gray-400 font-bold uppercase mt-1">Diets Set</p>
+                    <p class="text-xs text-gray-400 font-bold uppercase mt-1">Diete Impostate</p>
                 {% endcall %}
             </div>
 
@@ -121,21 +121,21 @@
                             <i data-lucide="users" class="w-4 h-4 text-green-400"></i>
                         </div>
                         <div>
-                            <h3 class="text-sm font-bold text-green-400 uppercase tracking-wider">Clients</h3>
-                            <p class="text-xs text-gray-500">Your gym roster</p>
+                            <h3 class="text-sm font-bold text-green-400 uppercase tracking-wider">Clienti</h3>
+                            <p class="text-xs text-gray-500">I membri della tua palestra</p>
                         </div>
                     </div>
                     {% call card(classes="overflow-hidden") %}
                         <div class="p-3 border-b border-white/5">
                             <div class="relative">
                                 <i data-lucide="search" class="w-4 h-4 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2"></i>
-                                <input type="text" placeholder="Search clients..."
+                                <input type="text" placeholder="Cerca clienti..."
                                     class="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white outline-none focus:border-green-500/50"
                                     oninput="filterNutriClients(this.value)">
                             </div>
                         </div>
                         <div id="nutri-client-list" class="max-h-[60vh] overflow-y-auto">
-                            <div class="p-4 text-center text-gray-500 text-sm">Loading clients...</div>
+                            <div class="p-4 text-center text-gray-500 text-sm">Caricamento clienti...</div>
                         </div>
                     {% endcall %}
 
@@ -186,7 +186,7 @@
                             <p class="text-xs text-gray-400" id="detail-client-status"></p>
                         </div>
                         <button onclick="chatWithSelectedClient()" class="flex items-center gap-2 bg-white/10 hover:bg-white/15 border border-white/10 text-white font-semibold py-2 px-4 rounded-xl transition text-sm">
-                            <i data-lucide="message-circle" class="w-4 h-4"></i> Message
+                            <i data-lucide="message-circle" class="w-4 h-4"></i> Messaggio
                         </button>
                     </div>
 
@@ -194,19 +194,19 @@
                     <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
                         <div class="glass-card p-3 text-center">
                             <p class="text-lg font-bold text-white" id="detail-weight">—</p>
-                            <p class="text-[10px] text-gray-500 uppercase">Weight (kg)</p>
+                            <p class="text-[10px] text-gray-500 uppercase">Peso (kg)</p>
                         </div>
                         <div class="glass-card p-3 text-center">
                             <p class="text-lg font-bold text-white" id="detail-bodyfat">—</p>
-                            <p class="text-[10px] text-gray-500 uppercase">Body Fat %</p>
+                            <p class="text-[10px] text-gray-500 uppercase">Massa Grassa %</p>
                         </div>
                         <div class="glass-card p-3 text-center">
                             <p class="text-lg font-bold text-white" id="detail-leanmass">—</p>
-                            <p class="text-[10px] text-gray-500 uppercase">Lean Mass</p>
+                            <p class="text-[10px] text-gray-500 uppercase">Massa Magra</p>
                         </div>
                         <div class="glass-card p-3 text-center">
                             <p class="text-lg font-bold text-white" id="detail-fatmass">—</p>
-                            <p class="text-[10px] text-gray-500 uppercase">Fat Mass</p>
+                            <p class="text-[10px] text-gray-500 uppercase">Massa Grassa</p>
                         </div>
                     </div>
 
@@ -240,29 +240,29 @@
                         <div class="w-7 h-7 rounded-lg bg-orange-500/20 flex items-center justify-center">
                             <i data-lucide="activity" class="w-4 h-4 text-orange-400"></i>
                         </div>
-                        <h3 class="text-sm font-bold text-orange-400 uppercase tracking-wider">Add Body Composition</h3>
+                        <h3 class="text-sm font-bold text-orange-400 uppercase tracking-wider">Aggiungi Composizione Corporea</h3>
                     </div>
                     {% call card(classes="p-4 mb-4") %}
                         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
                             <div>
-                                <label class="text-[10px] text-gray-400 uppercase font-bold">Weight (kg) *</label>
+                                <label class="text-[10px] text-gray-400 uppercase font-bold">Peso (kg) *</label>
                                 <input type="number" step="0.1" id="bc-weight" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-orange-500/50">
                             </div>
                             <div>
-                                <label class="text-[10px] text-gray-400 uppercase font-bold">Body Fat %</label>
+                                <label class="text-[10px] text-gray-400 uppercase font-bold">Massa Grassa %</label>
                                 <input type="number" step="0.1" id="bc-bodyfat" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-orange-500/50">
                             </div>
                             <div>
-                                <label class="text-[10px] text-gray-400 uppercase font-bold">Fat Mass (kg)</label>
+                                <label class="text-[10px] text-gray-400 uppercase font-bold">Massa Grassa (kg)</label>
                                 <input type="number" step="0.1" id="bc-fatmass" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-orange-500/50">
                             </div>
                             <div>
-                                <label class="text-[10px] text-gray-400 uppercase font-bold">Lean Mass (kg)</label>
+                                <label class="text-[10px] text-gray-400 uppercase font-bold">Massa Magra (kg)</label>
                                 <input type="number" step="0.1" id="bc-leanmass" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-orange-500/50">
                             </div>
                         </div>
                         <button onclick="submitBodyComposition()" class="mt-3 bg-orange-500 hover:bg-orange-400 text-white font-bold py-2.5 px-6 rounded-xl transition text-sm">
-                            <i data-lucide="plus" class="w-4 h-4 inline-block align-middle mr-1"></i> Record Entry
+                            <i data-lucide="plus" class="w-4 h-4 inline-block align-middle mr-1"></i> Registra Misurazione
                         </button>
                     {% endcall %}
 
@@ -274,14 +274,14 @@
                                 <div class="w-7 h-7 rounded-lg bg-purple-500/20 flex items-center justify-center">
                                     <i data-lucide="target" class="w-4 h-4 text-purple-400"></i>
                                 </div>
-                                <h3 class="text-sm font-bold text-purple-400 uppercase tracking-wider">Weight Goal</h3>
+                                <h3 class="text-sm font-bold text-purple-400 uppercase tracking-wider">Obiettivo Peso</h3>
                             </div>
                             {% call card(classes="p-4") %}
-                                <p class="text-xs text-gray-400 mb-2">Current goal: <span id="detail-weight-goal" class="text-white font-bold">Not set</span></p>
+                                <p class="text-xs text-gray-400 mb-2">Obiettivo attuale: <span id="detail-weight-goal" class="text-white font-bold">Non impostato</span></p>
                                 <div class="flex gap-2">
-                                    <input type="number" step="0.1" id="weight-goal-input" placeholder="Target kg"
+                                    <input type="number" step="0.1" id="weight-goal-input" placeholder="Peso obiettivo kg"
                                         class="flex-1 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm outline-none focus:border-purple-500/50">
-                                    <button onclick="setWeightGoal()" class="bg-purple-500 hover:bg-purple-400 text-white font-bold py-2 px-4 rounded-xl transition text-sm">Set</button>
+                                    <button onclick="setWeightGoal()" class="bg-purple-500 hover:bg-purple-400 text-white font-bold py-2 px-4 rounded-xl transition text-sm">Imposta</button>
                                 </div>
                             {% endcall %}
                         </div>
@@ -292,29 +292,29 @@
                                 <div class="w-7 h-7 rounded-lg bg-teal-500/20 flex items-center justify-center">
                                     <i data-lucide="utensils" class="w-4 h-4 text-teal-400"></i>
                                 </div>
-                                <h3 class="text-sm font-bold text-teal-400 uppercase tracking-wider">Diet Plan</h3>
+                                <h3 class="text-sm font-bold text-teal-400 uppercase tracking-wider">Piano Dieta</h3>
                             </div>
                             {% call card(classes="p-4") %}
                                 <div class="grid grid-cols-2 gap-2">
                                     <div>
-                                        <label class="text-[10px] text-gray-400 uppercase font-bold">Calories</label>
+                                        <label class="text-[10px] text-gray-400 uppercase font-bold">Calorie</label>
                                         <input type="number" id="diet-calories" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-teal-500/50">
                                     </div>
                                     <div>
-                                        <label class="text-[10px] text-gray-400 uppercase font-bold">Protein (g)</label>
+                                        <label class="text-[10px] text-gray-400 uppercase font-bold">Proteine (g)</label>
                                         <input type="number" id="diet-protein" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-teal-500/50">
                                     </div>
                                     <div>
-                                        <label class="text-[10px] text-gray-400 uppercase font-bold">Carbs (g)</label>
+                                        <label class="text-[10px] text-gray-400 uppercase font-bold">Carboidrati (g)</label>
                                         <input type="number" id="diet-carbs" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-teal-500/50">
                                     </div>
                                     <div>
-                                        <label class="text-[10px] text-gray-400 uppercase font-bold">Fat (g)</label>
+                                        <label class="text-[10px] text-gray-400 uppercase font-bold">Grassi (g)</label>
                                         <input type="number" id="diet-fat" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-teal-500/50">
                                     </div>
                                 </div>
                                 <button onclick="assignDiet()" class="mt-3 w-full bg-teal-500 hover:bg-teal-400 text-white font-bold py-2.5 rounded-xl transition text-sm">
-                                    Assign Diet
+                                    Assegna Dieta
                                 </button>
                             {% endcall %}
                         </div>
@@ -326,7 +326,7 @@
                             <i data-lucide="trending-up" class="w-4 h-4 text-blue-400"></i>
                         </div>
                         <div class="flex-1">
-                            <h3 class="text-sm font-bold text-blue-400 uppercase tracking-wider">Progress Charts</h3>
+                            <h3 class="text-sm font-bold text-blue-400 uppercase tracking-wider">Grafici Progressi</h3>
                         </div>
                         <div class="flex gap-1 bg-white/5 rounded-lg p-0.5 border border-white/10">
                             <button onclick="setChartPeriod('week')" class="chart-period-btn px-3 py-1 text-[10px] font-bold uppercase rounded-md transition" data-period="week">Week</button>
@@ -338,6 +338,7 @@
                     <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
                         {% call card(classes="p-4") %}
                             <div class="flex items-center justify-between mb-3">
+                                <h4 class="text-xs font-bold text-gray-400 uppercase">Andamento Peso</h4>
                                 <div class="flex gap-1 bg-white/5 rounded-lg p-0.5 border border-white/10">
                                     <button onclick="setWeightTab('weight')" class="weight-tab-btn px-3 py-1 text-[10px] font-bold uppercase rounded-md transition active" data-tab="weight">Weight</button>
                                     <button onclick="setWeightTab('bodyfat')" class="weight-tab-btn px-3 py-1 text-[10px] font-bold uppercase rounded-md transition" data-tab="bodyfat">Body Fat</button>
@@ -347,7 +348,7 @@
                             <canvas id="nutri-weight-chart" height="200"></canvas>
                         {% endcall %}
                         {% call card(classes="p-4") %}
-                            <h4 class="text-xs font-bold text-gray-400 uppercase mb-3">Diet Consistency</h4>
+                            <h4 class="text-xs font-bold text-gray-400 uppercase mb-3">Costanza Dieta</h4>
                             <canvas id="nutri-diet-chart" height="200"></canvas>
                         {% endcall %}
                     </div>
@@ -358,7 +359,7 @@
                 <div class="lg:col-span-2" id="no-client-selected">
                     {% call card(classes="p-12 text-center") %}
                         <i data-lucide="user-check" class="w-12 h-12 text-gray-600 mx-auto mb-3"></i>
-                        <p class="text-gray-500 text-sm">Select a client from the list to view their data</p>
+                        <p class="text-gray-500 text-sm">Seleziona un cliente dalla lista per visualizzare i suoi dati</p>
                     {% endcall %}
                 </div>
             </div>
@@ -435,19 +436,19 @@
         <!-- ==================== SECTION: SETTINGS ==================== -->
         <section id="section-settings" class="nutritionist-section" style="display:none;">
             <div class="max-w-2xl">
-                <h1 class="text-2xl font-black text-white mb-6">Settings</h1>
+                <h1 class="text-2xl font-black text-white mb-6">Impostazioni</h1>
                 {% call card(classes="p-6") %}
                     <div class="space-y-4">
                         <div>
                             <label class="text-xs text-gray-400 uppercase font-bold">Bio</label>
-                            <textarea id="settings-bio" rows="3" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-green-500/50" placeholder="Write a short bio..."></textarea>
+                            <textarea id="settings-bio" rows="3" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-green-500/50" placeholder="Scrivi una breve biografia..."></textarea>
                         </div>
                         <div>
-                            <label class="text-xs text-gray-400 uppercase font-bold">Specialties</label>
-                            <input type="text" id="settings-specialties" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-green-500/50" placeholder="e.g. Sports Nutrition, Weight Management">
+                            <label class="text-xs text-gray-400 uppercase font-bold">Specializzazioni</label>
+                            <input type="text" id="settings-specialties" class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-white text-sm mt-1 outline-none focus:border-green-500/50" placeholder="es. Nutrizione Sportiva, Gestione del Peso">
                         </div>
                         <button onclick="saveSettings()" class="bg-green-500 hover:bg-green-400 text-white font-bold py-2.5 px-6 rounded-xl transition text-sm">
-                            Save Settings
+                            Salva Impostazioni
                         </button>
                     </div>
                 {% endcall %}
@@ -493,7 +494,7 @@ async function loadNutritionistData() {
         if (!res.ok) throw new Error('Failed to load');
         nutriData = await res.json();
 
-        document.getElementById('nutri-name').textContent = nutriData.name || 'Nutritionist';
+        document.getElementById('nutri-name').textContent = nutriData.name || 'Nutrizionista';
         document.getElementById('stat-active').textContent = nutriData.active_clients;
         document.getElementById('stat-at-risk').textContent = nutriData.at_risk_clients;
         document.getElementById('stat-total').textContent = nutriData.clients.length;
@@ -508,7 +509,7 @@ async function loadNutritionistData() {
 function renderClientList(clients) {
     const container = document.getElementById('nutri-client-list');
     if (!clients.length) {
-        container.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">No clients in your gym yet</div>';
+        container.innerHTML = '<div class="p-4 text-center text-gray-500 text-sm">Nessun cliente nella tua palestra</div>';
         return;
     }
     container.innerHTML = clients.map(c => {
@@ -522,7 +523,7 @@ function renderClientList(clients) {
             ${avatar}
             <div class="flex-1 min-w-0">
                 <p class="text-white font-medium text-sm truncate">${c.name}</p>
-                <p class="text-[10px] ${c.status === 'Active' ? 'text-green-400' : 'text-red-400'}">${c.status} · ${c.weight ? c.weight + 'kg' : 'No data'}</p>
+                <p class="text-[10px] ${c.status === 'Active' ? 'text-green-400' : 'text-red-400'}">${c.status === 'Active' ? 'Attivo' : c.status === 'Inactive' ? 'Inattivo' : c.status} · ${c.weight ? c.weight + 'kg' : 'Nessun dato'}</p>
             </div>
             <i data-lucide="chevron-right" class="w-4 h-4 text-gray-600 flex-shrink-0"></i>
         </div>`;
@@ -560,10 +561,11 @@ async function selectClient(clientId) {
             avatarImg.style.display = '';
             initialsDiv.style.display = 'none';
         } else {
+            avatarImg.src = '/static/img/default-avatar.png';
             avatarImg.style.display = 'none';
             initialsDiv.style.display = 'flex';
         }
-        document.getElementById('detail-client-status').textContent = `Weight: ${data.weight || '—'}kg · Body Fat: ${data.body_fat_pct || '—'}%`;
+        document.getElementById('detail-client-status').textContent = `Peso: ${data.weight || '—'}kg · Massa Grassa: ${data.body_fat_pct || '—'}%`;
 
         document.getElementById('detail-weight').textContent = data.weight ? data.weight + 'kg' : '—';
         document.getElementById('detail-bodyfat').textContent = data.body_fat_pct ? data.body_fat_pct + '%' : '—';
@@ -571,7 +573,7 @@ async function selectClient(clientId) {
         document.getElementById('detail-fatmass').textContent = data.fat_mass ? data.fat_mass + 'kg' : '—';
 
         // Weight goal
-        document.getElementById('detail-weight-goal').textContent = data.weight_goal ? data.weight_goal + ' kg' : 'Not set';
+        document.getElementById('detail-weight-goal').textContent = data.weight_goal ? data.weight_goal + ' kg' : 'Non impostato';
         document.getElementById('weight-goal-input').value = data.weight_goal || '';
 
         // Diet fields
@@ -620,7 +622,7 @@ async function selectClient(clientId) {
         await loadClientCharts();
     } catch (e) {
         console.error('Failed to load client detail:', e);
-        showToast('Failed to load client data', 'error');
+        showToast('Impossibile caricare i dati del cliente', 'error');
     }
 }
 
@@ -680,7 +682,7 @@ async function saveHealthData() {
 async function submitBodyComposition() {
     if (!selectedClientId) return;
     const weight = parseFloat(document.getElementById('bc-weight').value);
-    if (!weight || weight <= 0) { showToast('Weight is required', 'error'); return; }
+    if (!weight || weight <= 0) { showToast('Il peso \u00e8 obbligatorio', 'error'); return; }
 
     try {
         const res = await fetch('/api/nutritionist/client/body-composition', {
@@ -696,20 +698,20 @@ async function submitBodyComposition() {
             })
         });
         if (res.ok) {
-            showToast('Body composition recorded!', 'success');
+            showToast('Composizione corporea registrata!', 'success');
             await selectClient(selectedClientId); // Refresh
         } else {
             const err = await res.json().catch(() => ({}));
-            showToast(err.detail || 'Failed to save', 'error');
+            showToast(err.detail || 'Salvataggio fallito', 'error');
         }
-    } catch (e) { showToast('Error saving body composition', 'error'); }
+    } catch (e) { showToast('Errore nel salvataggio della composizione corporea', 'error'); }
 }
 
 // ===================== WEIGHT GOAL =====================
 async function setWeightGoal() {
     if (!selectedClientId) return;
     const goal = parseFloat(document.getElementById('weight-goal-input').value);
-    if (!goal || goal <= 0) { showToast('Enter a valid weight goal', 'error'); return; }
+    if (!goal || goal <= 0) { showToast('Inserisci un obiettivo di peso valido', 'error'); return; }
 
     try {
         const res = await fetch('/api/nutritionist/client/weight-goal', {
@@ -719,12 +721,12 @@ async function setWeightGoal() {
             body: JSON.stringify({ client_id: selectedClientId, weight_goal: goal })
         });
         if (res.ok) {
-            showToast('Weight goal set!', 'success');
+            showToast('Obiettivo peso impostato!', 'success');
             document.getElementById('detail-weight-goal').textContent = goal + ' kg';
         } else {
-            showToast('Failed to set weight goal', 'error');
+            showToast('Impossibile impostare obiettivo peso', 'error');
         }
-    } catch (e) { showToast('Error setting weight goal', 'error'); }
+    } catch (e) { showToast('Errore nell\'impostazione obiettivo peso', 'error'); }
 }
 
 // ===================== DIET ASSIGNMENT =====================
@@ -735,7 +737,7 @@ async function assignDiet() {
     const carbs = parseInt(document.getElementById('diet-carbs').value);
     const fat = parseInt(document.getElementById('diet-fat').value);
 
-    if (!calories) { showToast('Calories is required', 'error'); return; }
+    if (!calories) { showToast('Le calorie sono obbligatorie', 'error'); return; }
 
     try {
         const res = await fetch('/api/nutritionist/assign_diet', {
@@ -753,12 +755,12 @@ async function assignDiet() {
             })
         });
         if (res.ok) {
-            showToast('Diet plan assigned!', 'success');
+            showToast('Piano dieta assegnato!', 'success');
         } else {
             const err = await res.json().catch(() => ({}));
-            showToast(err.detail || 'Failed to assign diet', 'error');
+            showToast(err.detail || 'Impossibile assegnare la dieta', 'error');
         }
-    } catch (e) { showToast('Error assigning diet', 'error'); }
+    } catch (e) { showToast('Errore nell\'assegnazione della dieta', 'error'); }
 }
 
 // ===================== CHARTS =====================
@@ -805,7 +807,7 @@ async function loadClientCharts() {
             data: {
                 labels: (dietData.data || []).map(d => d.label || d.date),
                 datasets: [{
-                    label: 'Health Score',
+                    label: 'Punteggio Salute',
                     data: (dietData.data || []).map(d => d.health_score || d.score || 0),
                     backgroundColor: (dietData.data || []).map(d => {
                         const s = d.health_score || d.score || 0;
@@ -984,9 +986,9 @@ async function saveSettings() {
                 specialties: document.getElementById('settings-specialties').value
             })
         });
-        if (res.ok) showToast('Settings saved!', 'success');
-        else showToast('Failed to save', 'error');
-    } catch (e) { showToast('Error saving settings', 'error'); }
+        if (res.ok) showToast('Impostazioni salvate!', 'success');
+        else showToast('Salvataggio fallito', 'error');
+    } catch (e) { showToast('Errore nel salvataggio delle impostazioni', 'error'); }
 }
 
 // ===================== NOTIFICATIONS =====================
@@ -1013,7 +1015,7 @@ window.markAllNotificationsRead = async function() {
             const res = await fetch('/api/notifications?limit=20', { credentials: 'include' });
             const notifications = await res.json();
             if (notifications.length === 0) {
-                list.innerHTML = '<div class="text-center text-gray-400 py-8"><p class="text-sm">No notifications yet</p></div>';
+                list.innerHTML = '<div class="text-center text-gray-400 py-8"><p class="text-sm">Nessuna notifica</p></div>';
                 return;
             }
             list.innerHTML = notifications.map(n => {
@@ -1051,7 +1053,7 @@ function nutriOpenConversations() {
             const list = document.getElementById('conversations-list');
             if (!list) return;
             if (!conversations.length) {
-                list.innerHTML = '<div class="text-center text-gray-500 py-8"><p>No conversations yet</p></div>';
+                list.innerHTML = '<div class="text-center text-gray-500 py-8"><p>Nessuna conversazione</p></div>';
                 return;
             }
             list.innerHTML = conversations.map(conv => `
@@ -1066,7 +1068,7 @@ function nutriOpenConversations() {
                                 <p class="font-semibold text-white text-sm truncate">${conv.other_user_name}</p>
                                 ${conv.unread_count > 0 ? '<span class="w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">'+conv.unread_count+'</span>' : ''}
                             </div>
-                            <p class="text-xs text-gray-500 truncate">${conv.last_message_preview || 'No messages yet'}</p>
+                            <p class="text-xs text-gray-500 truncate">${conv.last_message_preview || 'Nessun messaggio'}</p>
                         </div>
                     </div>
                 </div>
@@ -1083,17 +1085,17 @@ function nutriNewChat() {
     modal.classList.add('slide-in-right');
     const list = document.getElementById('conversations-list');
     if (!list) return;
-    list.innerHTML = '<div class="text-center text-gray-500 py-8">Loading gym members...</div>';
+    list.innerHTML = '<div class="text-center text-gray-500 py-8">Caricamento membri palestra...</div>';
 
     const members = [];
     if (nutriData && nutriData.clients) {
-        nutriData.clients.forEach(c => members.push({ id: c.id, name: c.name, role: 'Client', pic: c.profile_picture }));
+        nutriData.clients.forEach(c => members.push({ id: c.id, name: c.name, role: 'Cliente', pic: c.profile_picture }));
     }
     if (!members.length) {
-        list.innerHTML = '<div class="text-center text-gray-500 py-8">No gym members found</div>';
+        list.innerHTML = '<div class="text-center text-gray-500 py-8">Nessun membro della palestra trovato</div>';
         return;
     }
-    list.innerHTML = '<p class="text-xs text-gray-500 uppercase font-bold mb-3">Start a new conversation</p>' +
+    list.innerHTML = '<p class="text-xs text-gray-500 uppercase font-bold mb-3">Inizia una nuova conversazione</p>' +
         members.map(m => `
             <div class="bg-white/5 hover:bg-white/10 p-3 rounded-xl cursor-pointer transition flex items-center gap-3"
                  onclick="nutriOpenChat('${m.id}', '${(m.name||'').replace(/'/g,"\\'")}', '${m.pic||''}')">
@@ -1143,7 +1145,7 @@ function nutriOpenChat(userId, userName, profilePic) {
         .then(r => r.json())
         .then(convs => {
             const conv = convs.find(c => c.other_user_id === userId);
-            if (!conv) { document.getElementById('chat-messages').innerHTML = '<div class="text-center text-gray-500 py-8">Start the conversation!</div>'; return; }
+            if (!conv) { document.getElementById('chat-messages').innerHTML = '<div class="text-center text-gray-500 py-8">Inizia la conversazione!</div>'; return; }
             window._nutriConvId = conv.id;
             return fetch(`/api/messages/conversation/${conv.id}`, { credentials: 'include' });
         })
@@ -1171,7 +1173,7 @@ function nutriOpenChat(userId, userName, profilePic) {
 function chatWithSelectedClient() {
     if (!selectedClientId || !nutriData) return;
     const client = nutriData.clients.find(c => c.id === selectedClientId);
-    if (!client) { if (typeof showToast === 'function') showToast('Select a client first', 'error'); return; }
+    if (!client) { if (typeof showToast === 'function') showToast('Seleziona prima un cliente', 'error'); return; }
     nutriOpenChat(client.id, client.name, client.profile_picture || '');
 }
 

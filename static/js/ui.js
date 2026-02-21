@@ -70,8 +70,8 @@ export function updateWorkoutUI(workoutState) {
                         <h4 class="font-medium text-white ${isCurrent ? 'text-base' : 'text-sm'}">${item.name}</h4>
                         <p class="text-xs text-white/40">${item.sets} Sets &bull; ${item.reps} Reps</p>
                     </div>
-                    ${isCurrent ? '<span class="text-[10px] font-medium text-orange-500 bg-orange-500/10 px-2 py-1 rounded-md border border-orange-500/20 uppercase tracking-wider">Active</span>' : ''}
-                    ${idx < workoutState.currentExerciseIdx ? '<span class="text-[10px] text-green-500 font-medium uppercase tracking-wider">Done</span>' : ''}
+                    ${isCurrent ? '<span class="text-[10px] font-medium text-orange-500 bg-orange-500/10 px-2 py-1 rounded-md border border-orange-500/20 uppercase tracking-wider">Attivo</span>' : ''}
+                    ${idx < workoutState.currentExerciseIdx ? '<span class="text-[10px] text-green-500 font-medium uppercase tracking-wider">Fatto</span>' : ''}
                 </div>
             `;
 
@@ -91,7 +91,7 @@ export function updateWorkoutUI(workoutState) {
     const completedExercises = workoutState.currentExerciseIdx;
     const progressPct = Math.round((completedExercises / totalExercises) * 100);
     const progressEl = document.getElementById('routine-progress');
-    if (progressEl) progressEl.innerText = `${progressPct}% Complete`;
+    if (progressEl) progressEl.innerText = `${progressPct}% Completato`;
 }
 
 export function showRestTimer(seconds, callback) {
@@ -99,9 +99,9 @@ export function showRestTimer(seconds, callback) {
     overlay.className = "absolute inset-0 bg-black/95 z-50 flex flex-col items-center justify-center";
     overlay.innerHTML = `
         <div class="text-center slide-up">
-            <p class="text-sm text-gray-400 uppercase tracking-wider mb-2">Rest Period</p>
+            <p class="text-sm text-gray-400 uppercase tracking-wider mb-2">Periodo di Riposo</p>
             <h1 class="text-8xl font-black text-white mb-8" id="rest-countdown">${seconds}</h1>
-            <button id="skip-rest" class="px-8 py-3 bg-white/10 rounded-full font-bold text-white hover:bg-white/20 transition">SKIP</button>
+            <button id="skip-rest" class="px-8 py-3 bg-white/10 rounded-full font-bold text-white hover:bg-white/20 transition">SALTA</button>
         </div>
     `;
     document.body.appendChild(overlay);

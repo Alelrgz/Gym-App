@@ -5,8 +5,8 @@
     <!-- Header -->
     <div class="flex justify-between items-start mb-6">
         <div>
-            <p class="text-xs text-white/60 uppercase tracking-wider">My Profile</p>
-            <h2 class="text-2xl font-bold" id="personal-name">Loading...</h2>
+            <p class="text-xs text-white/60 uppercase tracking-wider">Il Mio Profilo</p>
+            <h2 class="text-2xl font-bold" id="personal-name">Caricamento...</h2>
         </div>
         <div class="flex space-x-2">
             <div id="notification-bell" onclick="openNotificationsModal()"
@@ -31,21 +31,21 @@
         <!-- Day Streak -->
         <div class="glass-card p-4 flex flex-col items-center justify-center">
             <span class="text-3xl font-bold text-green-400" id="personal-streak">0</span>
-            <span class="text-[10px] text-white/50 uppercase tracking-wider mt-1">Streak <i data-lucide="flame" class="w-4 h-4 inline-block align-middle"></i></span>
+            <span class="text-[10px] text-white/50 uppercase tracking-wider mt-1">Serie <i data-lucide="flame" class="w-4 h-4 inline-block align-middle"></i></span>
         </div>
 
         <!-- My Workouts Button -->
         <button id="toggle-my-workout-btn"
             class="glass-card p-4 flex flex-col items-center justify-center hover:bg-white/10 transition group tap-effect">
             <span class="text-2xl mb-1 group-hover:scale-110 transition-transform"><i data-lucide="dumbbell" class="w-6 h-6"></i></span>
-            <span class="text-[10px] text-white/70 uppercase tracking-wider font-bold">Workouts</span>
+            <span class="text-[10px] text-white/70 uppercase tracking-wider font-bold">Allenamenti</span>
         </button>
 
         <!-- My Splits Button -->
         <button id="toggle-my-split-btn"
             class="glass-card p-4 flex flex-col items-center justify-center hover:bg-white/10 transition group tap-effect">
             <span class="text-2xl mb-1 group-hover:scale-110 transition-transform"><i data-lucide="calendar" class="w-6 h-6"></i></span>
-            <span class="text-[10px] text-white/70 uppercase tracking-wider font-bold">Splits</span>
+            <span class="text-[10px] text-white/70 uppercase tracking-wider font-bold">Schede</span>
         </button>
 
         <!-- Availability Settings Button -->
@@ -59,13 +59,13 @@
     <!-- My Workout Section (Hidden by default) -->
     <div id="my-workout-section" class="hidden transition-all duration-300 ease-in-out mb-4">
         <div class="flex justify-between items-center mb-2">
-            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">My Workouts</h3>
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">I Miei Allenamenti</h3>
             <button onclick="document.getElementById('my-workout-section').classList.add('hidden')"
                 class="text-white/40 hover:text-white text-sm">✕</button>
         </div>
         <div id="my-workout-card-container">
             <div class="glass-card p-4 text-center">
-                <p class="text-gray-400 text-sm mb-2">Loading...</p>
+                <p class="text-gray-400 text-sm mb-2">Caricamento...</p>
             </div>
         </div>
     </div>
@@ -73,13 +73,13 @@
     <!-- My Splits Section (Hidden by default) -->
     <div id="my-split-section" class="hidden transition-all duration-300 ease-in-out mb-4">
         <div class="flex justify-between items-center mb-2">
-            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">My Splits</h3>
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Le Mie Schede</h3>
             <button onclick="document.getElementById('my-split-section').classList.add('hidden')"
                 class="text-white/40 hover:text-white text-sm">✕</button>
         </div>
         <div id="my-split-card-container">
             <div class="glass-card p-4 text-center">
-                <p class="text-gray-400 text-sm mb-2">Loading...</p>
+                <p class="text-gray-400 text-sm mb-2">Caricamento...</p>
             </div>
         </div>
     </div>
@@ -89,13 +89,13 @@
         <!-- Default: No workout assigned - will be replaced by JS if workout exists -->
         <div class="glass-card p-5 relative overflow-hidden" id="default-plan-placeholder">
             <div class="flex justify-between items-start mb-4">
-                <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's
-                    Plan</span>
+                <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Piano di
+                    Oggi</span>
                 <i data-lucide="clipboard" class="w-5 h-5"></i>
             </div>
-            <h3 class="text-xl font-bold text-white/50 mb-2">No Workout Assigned</h3>
-            <p class="text-sm text-gray-400 mb-4">Select a workout from "My Workouts" and click "Assign to Me" to set
-                today's workout.</p>
+            <h3 class="text-xl font-bold text-white/50 mb-2">Nessun Allenamento Assegnato</h3>
+            <p class="text-sm text-gray-400 mb-4">Seleziona un allenamento da "I Miei Allenamenti" e clicca "Assegna a Me" per impostare
+                l'allenamento di oggi.</p>
         </div>
     </div>
 
@@ -103,7 +103,7 @@
     <div class="glass-card p-4 rounded-2xl mb-6">
         <div class="flex justify-between items-center mb-4">
             <div class="flex items-center space-x-2">
-                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Schedule</h3>
+                <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Programma</h3>
             </div>
 
             <div class="flex items-center space-x-2">
@@ -132,13 +132,13 @@
     <!-- Personal Notes -->
     <div class="glass-card p-4 rounded-2xl">
         <div class="flex justify-between items-center mb-2">
-            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Personal Notes</h3>
+            <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">Note Personali</h3>
             <span class="text-[10px] text-green-400 opacity-0 transition-opacity duration-500"
-                id="personal-notes-saved-indicator">Saved</span>
+                id="personal-notes-saved-indicator">Salvato</span>
         </div>
         <textarea id="personal-notes"
             class="w-full bg-black/20 text-white text-sm rounded-xl p-3 border border-white/5 focus:border-white/20 outline-none resize-none h-32 placeholder-white/20 transition"
-            placeholder="Journal your progress, ideas, or training logs..."></textarea>
+            placeholder="Annota i tuoi progressi, idee o registri di allenamento..."></textarea>
     </div>
 </div>
 
@@ -148,46 +148,46 @@
     <div class="glass-card w-full max-w-sm mx-4 p-6 rounded-2xl relative">
         <button onclick="document.getElementById('add-event-modal').classList.add('hidden')"
             class="absolute top-4 right-4 text-white/50 hover:text-white">✕</button>
-        <h3 class="text-xl font-bold mb-4 text-center">Add Event</h3>
+        <h3 class="text-xl font-bold mb-4 text-center">Aggiungi Evento</h3>
 
         <form id="add-event-form" class="space-y-4">
             <div>
-                <label class="text-xs text-gray-400 uppercase">Title</label>
+                <label class="text-xs text-gray-400 uppercase">Titolo</label>
                 <input type="text" name="title" required
                     class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none"
-                    placeholder="e.g. Client Consultation">
+                    placeholder="es. Consulenza Cliente">
             </div>
             <div>
-                <label class="text-xs text-gray-400 uppercase">Subtitle / Details</label>
+                <label class="text-xs text-gray-400 uppercase">Sottotitolo / Dettagli</label>
                 <input type="text" name="subtitle"
                     class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none"
-                    placeholder="e.g. John Doe - Leg Day">
+                    placeholder="es. Mario Rossi - Giorno Gambe">
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="text-xs text-gray-400 uppercase">Time</label>
+                    <label class="text-xs text-gray-400 uppercase">Ora</label>
                     <input type="time" name="time" required
                         class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400 uppercase">Type</label>
+                    <label class="text-xs text-gray-400 uppercase">Tipo</label>
                     <select name="type"
                         class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none">
-                        <option value="personal">Personal</option>
-                        <option value="consultation">Consultation</option>
-                        <option value="class">Class</option>
+                        <option value="personal">Personale</option>
+                        <option value="consultation">Consulenza</option>
+                        <option value="class">Lezione</option>
                     </select>
                 </div>
             </div>
             <div id="workout-selector-container" class="hidden">
-                <label class="text-xs text-gray-400 uppercase">Select Workout</label>
+                <label class="text-xs text-gray-400 uppercase">Seleziona Allenamento</label>
                 <select name="workout_id" id="event-workout-select"
                     class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none">
-                    <option value="">None</option>
+                    <option value="">Nessuno</option>
                 </select>
             </div>
             <div>
-                <label class="text-xs text-gray-400 uppercase">Duration (minutes)</label>
+                <label class="text-xs text-gray-400 uppercase">Durata (minuti)</label>
                 <input type="number" name="duration" value="60" min="15" step="15"
                     class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none"
                     placeholder="60">
@@ -196,7 +196,7 @@
 
             <button type="submit"
                 class="w-full py-3 bg-red-600 text-white font-bold rounded-xl hover:bg-red-700 transition text-center flex items-center justify-center">
-                Add to Schedule
+                Aggiungi al Programma
             </button>
         </form>
     </div>
@@ -208,8 +208,8 @@
     <div class="glass-card w-full max-w-md mx-4 p-6 rounded-2xl relative max-h-[90vh] overflow-y-auto">
         <button onclick="closeAvailabilityModal()"
             class="absolute top-4 right-4 text-white/50 hover:text-white">✕</button>
-        <h3 class="text-xl font-bold mb-2 text-center">1-on-1 Availability</h3>
-        <p class="text-xs text-gray-400 text-center mb-4">Set your weekly hours for client bookings</p>
+        <h3 class="text-xl font-bold mb-2 text-center">Disponibilita 1-a-1</h3>
+        <p class="text-xs text-gray-400 text-center mb-4">Imposta le tue ore settimanali per le prenotazioni dei clienti</p>
 
         <div id="availability-days" class="space-y-3">
             <!-- Monday -->
@@ -217,16 +217,16 @@
                 <div class="flex items-center justify-between mb-2">
                     <label class="flex items-center space-x-2 cursor-pointer">
                         <input type="checkbox" data-day="0" class="day-toggle w-5 h-5 rounded accent-orange-500">
-                        <span class="font-bold text-sm">Monday</span>
+                        <span class="font-bold text-sm">Lunedi</span>
                     </label>
                 </div>
                 <div class="day-times hidden grid grid-cols-2 gap-2" data-day="0">
                     <div>
-                        <label class="text-[10px] text-gray-400">Start</label>
+                        <label class="text-[10px] text-gray-400">Inizio</label>
                         <input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00">
                     </div>
                     <div>
-                        <label class="text-[10px] text-gray-400">End</label>
+                        <label class="text-[10px] text-gray-400">Fine</label>
                         <input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00">
                     </div>
                 </div>
@@ -237,16 +237,16 @@
                 <div class="flex items-center justify-between mb-2">
                     <label class="flex items-center space-x-2 cursor-pointer">
                         <input type="checkbox" data-day="1" class="day-toggle w-5 h-5 rounded accent-orange-500">
-                        <span class="font-bold text-sm">Tuesday</span>
+                        <span class="font-bold text-sm">Martedi</span>
                     </label>
                 </div>
                 <div class="day-times hidden grid grid-cols-2 gap-2" data-day="1">
                     <div>
-                        <label class="text-[10px] text-gray-400">Start</label>
+                        <label class="text-[10px] text-gray-400">Inizio</label>
                         <input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00">
                     </div>
                     <div>
-                        <label class="text-[10px] text-gray-400">End</label>
+                        <label class="text-[10px] text-gray-400">Fine</label>
                         <input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00">
                     </div>
                 </div>
@@ -257,16 +257,16 @@
                 <div class="flex items-center justify-between mb-2">
                     <label class="flex items-center space-x-2 cursor-pointer">
                         <input type="checkbox" data-day="2" class="day-toggle w-5 h-5 rounded accent-orange-500">
-                        <span class="font-bold text-sm">Wednesday</span>
+                        <span class="font-bold text-sm">Mercoledi</span>
                     </label>
                 </div>
                 <div class="day-times hidden grid grid-cols-2 gap-2" data-day="2">
                     <div>
-                        <label class="text-[10px] text-gray-400">Start</label>
+                        <label class="text-[10px] text-gray-400">Inizio</label>
                         <input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00">
                     </div>
                     <div>
-                        <label class="text-[10px] text-gray-400">End</label>
+                        <label class="text-[10px] text-gray-400">Fine</label>
                         <input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00">
                     </div>
                 </div>
@@ -277,16 +277,16 @@
                 <div class="flex items-center justify-between mb-2">
                     <label class="flex items-center space-x-2 cursor-pointer">
                         <input type="checkbox" data-day="3" class="day-toggle w-5 h-5 rounded accent-orange-500">
-                        <span class="font-bold text-sm">Thursday</span>
+                        <span class="font-bold text-sm">Giovedi</span>
                     </label>
                 </div>
                 <div class="day-times hidden grid grid-cols-2 gap-2" data-day="3">
                     <div>
-                        <label class="text-[10px] text-gray-400">Start</label>
+                        <label class="text-[10px] text-gray-400">Inizio</label>
                         <input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00">
                     </div>
                     <div>
-                        <label class="text-[10px] text-gray-400">End</label>
+                        <label class="text-[10px] text-gray-400">Fine</label>
                         <input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00">
                     </div>
                 </div>
@@ -297,16 +297,16 @@
                 <div class="flex items-center justify-between mb-2">
                     <label class="flex items-center space-x-2 cursor-pointer">
                         <input type="checkbox" data-day="4" class="day-toggle w-5 h-5 rounded accent-orange-500">
-                        <span class="font-bold text-sm">Friday</span>
+                        <span class="font-bold text-sm">Venerdi</span>
                     </label>
                 </div>
                 <div class="day-times hidden grid grid-cols-2 gap-2" data-day="4">
                     <div>
-                        <label class="text-[10px] text-gray-400">Start</label>
+                        <label class="text-[10px] text-gray-400">Inizio</label>
                         <input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00">
                     </div>
                     <div>
-                        <label class="text-[10px] text-gray-400">End</label>
+                        <label class="text-[10px] text-gray-400">Fine</label>
                         <input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00">
                     </div>
                 </div>
@@ -317,16 +317,16 @@
                 <div class="flex items-center justify-between mb-2">
                     <label class="flex items-center space-x-2 cursor-pointer">
                         <input type="checkbox" data-day="5" class="day-toggle w-5 h-5 rounded accent-orange-500">
-                        <span class="font-bold text-sm">Saturday</span>
+                        <span class="font-bold text-sm">Sabato</span>
                     </label>
                 </div>
                 <div class="day-times hidden grid grid-cols-2 gap-2" data-day="5">
                     <div>
-                        <label class="text-[10px] text-gray-400">Start</label>
+                        <label class="text-[10px] text-gray-400">Inizio</label>
                         <input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="10:00">
                     </div>
                     <div>
-                        <label class="text-[10px] text-gray-400">End</label>
+                        <label class="text-[10px] text-gray-400">Fine</label>
                         <input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="14:00">
                     </div>
                 </div>
@@ -337,16 +337,16 @@
                 <div class="flex items-center justify-between mb-2">
                     <label class="flex items-center space-x-2 cursor-pointer">
                         <input type="checkbox" data-day="6" class="day-toggle w-5 h-5 rounded accent-orange-500">
-                        <span class="font-bold text-sm">Sunday</span>
+                        <span class="font-bold text-sm">Domenica</span>
                     </label>
                 </div>
                 <div class="day-times hidden grid grid-cols-2 gap-2" data-day="6">
                     <div>
-                        <label class="text-[10px] text-gray-400">Start</label>
+                        <label class="text-[10px] text-gray-400">Inizio</label>
                         <input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="10:00">
                     </div>
                     <div>
-                        <label class="text-[10px] text-gray-400">End</label>
+                        <label class="text-[10px] text-gray-400">Fine</label>
                         <input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="14:00">
                     </div>
                 </div>
@@ -355,7 +355,7 @@
 
         <button onclick="saveAvailability()"
             class="w-full mt-4 py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition">
-            Save Availability
+            Salva Disponibilita
         </button>
     </div>
 </div>
@@ -423,7 +423,7 @@
                 list.innerHTML = `
                     <div class="text-center text-gray-400 py-8">
                         <i data-lucide="bell" class="w-10 h-10 mb-2 block"></i>
-                        <p class="text-sm">No notifications yet</p>
+                        <p class="text-sm">Nessuna notifica</p>
                     </div>
                 `;
                 return;
@@ -451,7 +451,7 @@
             console.error('Error loading notifications:', e);
             list.innerHTML = `
                 <div class="text-center text-red-400 py-4">
-                    <p class="text-sm">Failed to load notifications</p>
+                    <p class="text-sm">Errore nel caricamento delle notifiche</p>
                 </div>
             `;
         }
@@ -481,10 +481,10 @@
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
 
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        if (diffDays < 7) return `${diffDays}d ago`;
+        if (diffMins < 1) return 'Adesso';
+        if (diffMins < 60) return `${diffMins}m fa`;
+        if (diffHours < 24) return `${diffHours}h fa`;
+        if (diffDays < 7) return `${diffDays}g fa`;
         return date.toLocaleDateString();
     }
 
@@ -618,12 +618,12 @@
                             <div class="absolute inset-0 bg-primary opacity-20 group-hover:opacity-30 transition"></div>
                             <div class="relative z-10">
                                 <div class="flex justify-between items-start mb-4">
-                                    <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
+                                    <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Piano di Oggi</span>
                                     <span class="text-xl">${w.completed ? icon('check-circle', 20) : icon('dumbbell', 20)}</span>
                                 </div>
                                 <h3 class="text-2xl font-black italic uppercase mb-1">${w.title}</h3>
-                                <p class="text-sm text-gray-300 mb-4">${w.duration || 60} min • ${w.difficulty || 'Intermediate'}</p>
-                                <button class="block w-full py-3 ${w.completed ? 'bg-green-500 text-white' : 'bg-white text-black hover:bg-gray-200'} text-center font-bold rounded-xl transition">${w.completed ? 'COMPLETED ✓' : 'START SESSION'}</button>
+                                <p class="text-sm text-gray-300 mb-4">${w.duration || 60} min • ${w.difficulty || 'Intermedio'}</p>
+                                <button class="block w-full py-3 ${w.completed ? 'bg-green-500 text-white' : 'bg-white text-black hover:bg-gray-200'} text-center font-bold rounded-xl transition">${w.completed ? 'COMPLETATO ✓' : 'INIZIA SESSIONE'}</button>
                             </div>
                         </div>
                     `;
@@ -633,11 +633,11 @@
                     planContainer.innerHTML = `
                         <div class="glass-card p-5 relative overflow-hidden" id="default-plan-placeholder">
                             <div class="flex justify-between items-start mb-4">
-                                <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
+                                <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Piano di Oggi</span>
                                 <i data-lucide="clipboard" class="w-5 h-5"></i>
                             </div>
-                            <h3 class="text-xl font-bold text-white/50 mb-2">No Workout Assigned</h3>
-                            <p class="text-sm text-gray-400 mb-4">Select a workout from "My Workouts" and click "Assign to Me" to set today's workout.</p>
+                            <h3 class="text-xl font-bold text-white/50 mb-2">Nessun Allenamento Assegnato</h3>
+                            <p class="text-sm text-gray-400 mb-4">Seleziona un allenamento da "I Miei Allenamenti" e clicca "Assegna a Me" per impostare l'allenamento di oggi.</p>
                         </div>
                     `;
                     planContainer.classList.remove('hidden');
@@ -648,7 +648,7 @@
             const workoutCardContainer = document.getElementById('my-workout-card-container');
             if (workoutCardContainer && data.workouts) {
                 if (data.workouts.length === 0) {
-                    workoutCardContainer.innerHTML = '<p class="text-xs text-gray-500 italic text-center py-2">No workouts created yet.</p>';
+                    workoutCardContainer.innerHTML = '<p class="text-xs text-gray-500 italic text-center py-2">Nessun allenamento creato.</p>';
                 } else {
                     workoutCardContainer.innerHTML = '';
                     data.workouts.forEach(w => {
@@ -662,11 +662,11 @@
                                 </div>
                                 <button class="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded text-white transition" 
                                     onclick="window.location.href='/?gym_id=${localGymId}&role=trainer&mode=workout&workout_id=${w.id}'">
-                                    Preview
+                                    Anteprima
                                 </button>
                             </div>
                             <button class="w-full py-1.5 bg-green-600/20 hover:bg-green-600 text-green-400 hover:text-white text-xs font-bold rounded-lg transition border border-green-500/30"
-                                onclick="window.assignWorkoutToSelf('${w.id}', '${w.title}')">${icon('check-circle', 14)} Assign to Me (Today)
+                                onclick="window.assignWorkoutToSelf('${w.id}', '${w.title}')">${icon('check-circle', 14)} Assegna a Me (Oggi)
                             </button>
                         `;
                         workoutCardContainer.appendChild(div);
@@ -678,7 +678,7 @@
             const splitCardContainer = document.getElementById('my-split-card-container');
             if (splitCardContainer && data.splits) {
                 if (data.splits.length === 0) {
-                    splitCardContainer.innerHTML = '<p class="text-xs text-gray-500 italic text-center py-2">No splits created yet.</p>';
+                    splitCardContainer.innerHTML = '<p class="text-xs text-gray-500 italic text-center py-2">Nessuna scheda creata.</p>';
                 } else {
                     splitCardContainer.innerHTML = '';
                     data.splits.forEach(s => {
@@ -688,9 +688,9 @@
                             <div class="flex justify-between items-start">
                                 <div>
                                     <h4 class="font-bold text-sm text-white">${s.name}</h4>
-                                    <p class="text-[10px] text-gray-400">${s.description || 'No description'}</p>
+                                    <p class="text-[10px] text-gray-400">${s.description || 'Nessuna descrizione'}</p>
                                 </div>
-                                <span class="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded">${s.days_per_week} Days</span>
+                                <span class="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded">${s.days_per_week} Giorni</span>
                             </div>
                         `;
                         splitCardContainer.appendChild(div);
@@ -717,7 +717,7 @@
         if (!daysContainer) return;
         daysContainer.innerHTML = '';
         const monthLabel = document.getElementById('month-label');
-        if (monthLabel) monthLabel.innerText = currentWeekMonday.toLocaleDateString('en-US', { month: 'short' });
+        if (monthLabel) monthLabel.innerText = currentWeekMonday.toLocaleDateString('it-IT', { month: 'short' });
 
         for (let i = 0; i < 7; i++) {
             const d = new Date(currentWeekMonday);
@@ -731,7 +731,7 @@
             div.className = `flex flex-col items-center p-2 rounded cursor-pointer transition ${isSelected ? 'bg-white/10 text-white' : 'text-white/40 hover:bg-white/5'}`;
             if (isToday && !isSelected) div.classList.add('border', 'border-white/10');
 
-            const dayName = d.toLocaleDateString('en-US', { weekday: 'narrow' });
+            const dayName = d.toLocaleDateString('it-IT', { weekday: 'narrow' });
             const dayNum = d.getDate();
 
             const hasEvents = currentSchedule.some(e => e.date === dateStr);
@@ -756,7 +756,7 @@
         const [y, m, d] = dateStr.split('-').map(Number);
         const dateObj = new Date(y, m - 1, d);
         const dateEl = document.getElementById('current-full-date');
-        if (dateEl) dateEl.innerText = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+        if (dateEl) dateEl.innerText = dateObj.toLocaleDateString('it-IT', { weekday: 'long', month: 'long', day: 'numeric' });
 
         container.innerHTML = '';
 
@@ -813,7 +813,7 @@
         addDiv.innerHTML = `
              <div class="flex items-center justify-center text-white/50 group-hover:text-white transition">
                 <span class="text-2xl font-light mr-2">+</span>
-                <span class="font-bold text-sm text-white/60 group-hover:text-white transition">Free Slot</span>
+                <span class="font-bold text-sm text-white/60 group-hover:text-white transition">Slot Libero</span>
             </div>
         `;
         container.appendChild(addDiv);
@@ -865,28 +865,28 @@
                     if (durationInput) durationInput.value = 60;
                 } else {
                     const err = await res.json();
-                    alert(err.detail || "Failed to add event");
+                    alert(err.detail || "Errore nell'aggiunta dell'evento");
                 }
             } catch (err) {
                 console.error(err);
-                alert("Network Error: " + err.message);
+                alert("Errore di rete: " + err.message);
             }
         });
     }
 
     async function deleteEvent(id) {
-        if (!confirm("Delete this event?")) return;
+        if (!confirm("Eliminare questo evento?")) return;
         try {
             const res = await fetch(`/api/trainer/events/${id}`, { method: 'DELETE' });
             if (res.ok) {
                 await fetchTrainerData();
             } else {
                 const text = await res.text();
-                alert("Failed to delete event: " + text);
+                alert("Errore nell'eliminazione dell'evento: " + text);
             }
         } catch (e) {
             console.error(e);
-            alert("Error deleting event: " + e.message);
+            alert("Errore nell'eliminazione dell'evento: " + e.message);
         }
     }
 
@@ -897,11 +897,11 @@
                 await fetchTrainerData();
             } else {
                 const text = await res.text();
-                alert("Failed to toggle completion: " + text);
+                alert("Errore nel cambio di completamento: " + text);
             }
         } catch (e) {
             console.error(e);
-            alert("Error: " + e.message);
+            alert("Errore: " + e.message);
         }
     }
 
@@ -994,14 +994,14 @@
 
             if (res.ok) {
                 closeAvailabilityModal();
-                alert('Availability saved! Clients can now book 1-on-1 sessions during your available hours.');
+                alert('Disponibilita salvata! I clienti possono ora prenotare sessioni 1-a-1 durante le tue ore disponibili.');
             } else {
                 const err = await res.json();
-                alert('Failed to save: ' + (err.detail || 'Unknown error'));
+                alert('Errore nel salvataggio: ' + (err.detail || 'Errore sconosciuto'));
             }
         } catch (e) {
             console.error('Error saving availability:', e);
-            alert('Error saving availability: ' + e.message);
+            alert('Errore nel salvataggio della disponibilita: ' + e.message);
         }
     }
 

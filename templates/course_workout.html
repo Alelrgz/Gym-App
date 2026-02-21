@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="theme-color" content="#000000">
-    <title>{{ course_name }} - Workout Player</title>
+    <title>{{ course_name }} - Lettore Allenamento</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
@@ -25,9 +25,9 @@
         <div class="flex items-center justify-between max-w-4xl mx-auto">
             <button onclick="exitWorkout()" class="flex items-center gap-2 text-white/70 hover:text-white transition">
                 <i data-lucide="chevron-left" class="w-5 h-5"></i>
-                <span class="text-sm font-medium">Exit</span>
+                <span class="text-sm font-medium">Esci</span>
             </button>
-            <h1 id="course-title" class="text-lg font-bold">Course Workout</h1>
+            <h1 id="course-title" class="text-lg font-bold">Allenamento del Corso</h1>
             <div class="w-16"></div> <!-- Spacer for centering -->
         </div>
     </div>
@@ -42,14 +42,14 @@
                     <i data-lucide="music" class="w-5 h-5"></i>
                 </div>
                 <div>
-                    <h2 class="text-lg font-bold">Workout Playlist</h2>
-                    <p class="text-xs text-white/60" id="playlist-name">Loading...</p>
+                    <h2 class="text-lg font-bold">Playlist Allenamento</h2>
+                    <p class="text-xs text-white/60" id="playlist-name">Caricamento...</p>
                 </div>
             </div>
 
             <!-- Embedded Music Player -->
             <div id="music-player-container" class="rounded-2xl overflow-hidden bg-black/30">
-                <p class="text-center text-white/50 py-8 text-sm">No playlist selected</p>
+                <p class="text-center text-white/50 py-8 text-sm">Nessuna playlist selezionata</p>
             </div>
 
             <!-- Playlist Selector (if multiple playlists) -->
@@ -60,11 +60,11 @@
         <div class="bg-white/5 rounded-3xl p-6 border border-white/10">
             <div class="flex items-center justify-between mb-6">
                 <div>
-                    <p class="text-xs text-white/50 uppercase tracking-wider mb-1">Current Exercise</p>
-                    <h3 id="current-exercise-name" class="text-2xl font-bold">Ready to Start</h3>
+                    <p class="text-xs text-white/50 uppercase tracking-wider mb-1">Esercizio Corrente</p>
+                    <h3 id="current-exercise-name" class="text-2xl font-bold">Pronto per Iniziare</h3>
                 </div>
                 <div class="text-right">
-                    <p class="text-xs text-white/50 uppercase tracking-wider mb-1">Time</p>
+                    <p class="text-xs text-white/50 uppercase tracking-wider mb-1">Tempo</p>
                     <div id="exercise-timer" class="text-3xl font-bold text-orange-400">--:--</div>
                 </div>
             </div>
@@ -79,19 +79,19 @@
                 <button onclick="previousExercise()" id="btn-previous"
                     class="bg-white/10 hover:bg-white/20 rounded-xl py-4 flex flex-col items-center gap-2 transition disabled:opacity-30 disabled:cursor-not-allowed">
                     <i data-lucide="skip-back" class="w-6 h-6"></i>
-                    <span class="text-xs">Previous</span>
+                    <span class="text-xs">Precedente</span>
                 </button>
 
                 <button onclick="togglePlayPause()" id="btn-play-pause"
                     class="bg-gradient-to-br from-orange-500 to-pink-500 hover:opacity-90 rounded-xl py-4 flex flex-col items-center gap-2 transition shadow-lg shadow-orange-500/30">
                     <i data-lucide="play" class="w-8 h-8"></i>
-                    <span class="text-sm font-bold">Start</span>
+                    <span class="text-sm font-bold">Inizia</span>
                 </button>
 
                 <button onclick="nextExercise()" id="btn-next"
                     class="bg-white/10 hover:bg-white/20 rounded-xl py-4 flex flex-col items-center gap-2 transition disabled:opacity-30 disabled:cursor-not-allowed">
                     <i data-lucide="skip-forward" class="w-6 h-6"></i>
-                    <span class="text-xs">Next</span>
+                    <span class="text-xs">Successivo</span>
                 </button>
             </div>
         </div>
@@ -100,10 +100,10 @@
         <div class="bg-white/5 rounded-3xl p-6 border border-white/10">
             <h3 class="text-sm font-bold text-white/70 uppercase tracking-wider mb-4 flex items-center gap-2">
                 <i data-lucide="list" class="w-4 h-4"></i>
-                Exercise Sequence
+                Sequenza Esercizi
             </h3>
             <div id="exercise-list" class="space-y-2">
-                <p class="text-center text-white/50 py-4 text-sm">Loading exercises...</p>
+                <p class="text-center text-white/50 py-4 text-sm">Caricamento esercizi...</p>
             </div>
         </div>
 
@@ -130,14 +130,14 @@ async function initWorkout() {
         courseData = await res.json();
 
         if (!courseData || !courseData.exercises || courseData.exercises.length === 0) {
-            alert('No exercises found for this course');
+            alert('Nessun esercizio trovato per questo corso');
             return;
         }
 
         exercises = courseData.exercises;
 
         // Set course title
-        document.getElementById('course-title').innerText = courseData.name || 'Course Workout';
+        document.getElementById('course-title').innerText = courseData.name || 'Allenamento del Corso';
 
         // Load music player
         loadMusicPlayer();
@@ -150,7 +150,7 @@ async function initWorkout() {
 
     } catch (error) {
         console.error('Failed to load workout:', error);
-        alert('Failed to load workout. Please try again.');
+        alert('Errore nel caricamento dell\'allenamento. Riprova.');
     }
 }
 
@@ -159,7 +159,7 @@ function loadMusicPlayer() {
 
     if (playlists.length === 0) {
         document.getElementById('music-player-container').innerHTML =
-            '<p class="text-center text-white/50 py-8 text-sm">No playlists added to this course</p>';
+            '<p class="text-center text-white/50 py-8 text-sm">Nessuna playlist aggiunta a questo corso</p>';
         return;
     }
 
@@ -172,7 +172,7 @@ function loadMusicPlayer() {
         const selector = document.getElementById('playlist-selector');
         selector.classList.remove('hidden');
         selector.innerHTML = `
-            <p class="text-xs text-white/50 mb-2">Choose Playlist:</p>
+            <p class="text-xs text-white/50 mb-2">Scegli Playlist:</p>
             <div class="grid grid-cols-2 gap-2">
                 ${playlists.map((playlist, i) => `
                     <button onclick="selectPlaylist(${i})"
@@ -206,12 +206,12 @@ function selectPlaylist(index) {
 
 function loadPlaylist(playlist) {
     const container = document.getElementById('music-player-container');
-    document.getElementById('playlist-name').innerText = playlist.title || 'Workout Mix';
+    document.getElementById('playlist-name').innerText = playlist.title || 'Mix Allenamento';
 
     const embedUrl = getMusicEmbedUrl(playlist.url, playlist.type);
 
     if (!embedUrl) {
-        container.innerHTML = '<p class="text-center text-white/50 py-8 text-sm">Invalid playlist URL</p>';
+        container.innerHTML = '<p class="text-center text-white/50 py-8 text-sm">URL playlist non valido</p>';
         return;
     }
 
@@ -266,7 +266,7 @@ function renderExerciseList() {
             </div>
             <div class="flex-1 min-w-0">
                 <p class="font-medium truncate">${ex.name}</p>
-                <p class="text-xs text-white/50">${ex.duration || 30}s • ${ex.type || 'Exercise'}</p>
+                <p class="text-xs text-white/50">${ex.duration || 30}s • ${ex.type || 'Esercizio'}</p>
             </div>
             ${i < currentExerciseIndex ? '<i data-lucide="check-circle" class="w-5 h-5 text-green-400 flex-shrink-0"></i>' : ''}
         </div>
@@ -308,7 +308,7 @@ function startWorkout() {
     isPlaying = true;
     const btn = document.getElementById('btn-play-pause');
     btn.querySelector('i').setAttribute('data-lucide', 'pause');
-    btn.querySelector('span').innerText = 'Pause';
+    btn.querySelector('span').innerText = 'Pausa';
     lucide.createIcons();
 
     // Start timer
@@ -332,7 +332,7 @@ function pauseWorkout() {
     isPlaying = false;
     const btn = document.getElementById('btn-play-pause');
     btn.querySelector('i').setAttribute('data-lucide', 'play');
-    btn.querySelector('span').innerText = 'Resume';
+    btn.querySelector('span').innerText = 'Riprendi';
     lucide.createIcons();
 
     clearInterval(exerciseTimer);
@@ -361,13 +361,13 @@ function updateTimerDisplay() {
 
 function completeWorkout() {
     pauseWorkout();
-    alert('Workout Complete! Great job! 🎉');
+    alert('Allenamento Completato! Ottimo lavoro!');
     exitWorkout();
 }
 
 function exitWorkout() {
     if (isPlaying) {
-        if (!confirm('Are you sure you want to exit? Your progress will not be saved.')) {
+        if (!confirm('Sei sicuro di voler uscire? I tuoi progressi non saranno salvati.')) {
             return;
         }
     }

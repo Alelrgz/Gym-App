@@ -1,10 +1,10 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="it">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register - FitOS</title>
+    <title>Registrazione - FitOS</title>
     <link rel="stylesheet" href="/static/css/style.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
@@ -351,13 +351,13 @@
         <!-- Success: Show Gym Code for Owners -->
         <div class="success-msg">
             <div class="mb-4"><i data-lucide="party-popper" class="w-10 h-10"></i></div>
-            <h2 class="text-xl font-bold text-white mb-2">Welcome to FitOS!</h2>
-            <p class="text-gray-300 mb-4">Your gym has been created successfully.</p>
-            <p class="text-sm text-gray-400 mb-2">Share this code with your staff and members:</p>
+            <h2 class="text-xl font-bold text-white mb-2">Benvenuto su FitOS!</h2>
+            <p class="text-gray-300 mb-4">La tua palestra è stata creata con successo.</p>
+            <p class="text-sm text-gray-400 mb-2">Condividi questo codice con il tuo staff e i tuoi membri:</p>
             <div class="gym-code-display">{{ gym_code }}</div>
-            <p class="text-xs text-gray-500 mt-4">Trainers and staff will need approval after registering.</p>
+            <p class="text-xs text-gray-500 mt-4">Trainer e staff dovranno essere approvati dopo la registrazione.</p>
             <a href="/auth/login" class="btn-primary inline-block mt-6 text-center no-underline" style="text-decoration: none;">
-                Continue to Login
+                Vai al Login
             </a>
         </div>
         {% else %}
@@ -375,8 +375,8 @@
 
         <!-- Step 1: Choose Main Role -->
         <div id="step-1" class="step active">
-            <h1 class="text-2xl font-bold text-white text-center mb-2">Join FitOS</h1>
-            <p class="text-gray-400 text-center text-sm mb-6">Choose how you'll use the app</p>
+            <h1 class="text-2xl font-bold text-white text-center mb-2">Unisciti a FitOS</h1>
+            <p class="text-gray-400 text-center text-sm mb-6">Scegli come utilizzerai l'app</p>
 
             <div class="space-y-3">
                 <!-- Client Card -->
@@ -394,8 +394,8 @@
                             </svg>
                         </div>
                         <div class="flex-1">
-                            <h3 class="font-semibold text-white">Client / Member</h3>
-                            <p class="text-sm text-gray-400">Track workouts, book sessions & achieve goals</p>
+                            <h3 class="font-semibold text-white">Cliente / Membro</h3>
+                            <p class="text-sm text-gray-400">Monitora allenamenti, prenota sessioni e raggiungi obiettivi</p>
                         </div>
                     </div>
                 </div>
@@ -414,8 +414,8 @@
                             </svg>
                         </div>
                         <div class="flex-1">
-                            <h3 class="font-semibold text-white">Trainer / Nutritionist</h3>
-                            <p class="text-sm text-gray-400">Manage clients, create programs & diets</p>
+                            <h3 class="font-semibold text-white">Trainer / Nutrizionista</h3>
+                            <p class="text-sm text-gray-400">Gestisci clienti, crea programmi e diete</p>
                         </div>
                     </div>
                 </div>
@@ -435,19 +435,19 @@
                             </svg>
                         </div>
                         <div class="flex-1">
-                            <h3 class="font-semibold text-white">Owner / Staff</h3>
-                            <p class="text-sm text-gray-400">Manage gym, staff & subscriptions</p>
+                            <h3 class="font-semibold text-white">Proprietario / Staff</h3>
+                            <p class="text-sm text-gray-400">Gestisci palestra, staff e abbonamenti</p>
                         </div>
                     </div>
                 </div>
             </div>
 
             <button id="next-btn-1" class="btn-primary mt-6" onclick="goToStep2()" disabled>
-                Continue
+                Continua
             </button>
 
             <a href="/auth/login" class="login-link">
-                Already have an account? <span>Sign in</span>
+                Hai già un account? <span>Accedi qui</span>
             </a>
         </div>
 
@@ -457,13 +457,13 @@
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
-                Back
+                Indietro
             </button>
 
             <!-- Trainer Sub-roles -->
             <div id="trainer-subroles" style="display: none;">
-                <h1 class="text-2xl font-bold text-white mb-2">What's your specialty?</h1>
-                <p class="text-gray-400 text-sm mb-6">Select your professional role</p>
+                <h1 class="text-2xl font-bold text-white mb-2">Qual è la tua specialità?</h1>
+                <p class="text-gray-400 text-sm mb-6">Seleziona il tuo ruolo professionale</p>
 
                 <div class="space-y-3">
                     <div class="role-card compact" onclick="selectSubRole('trainer', this)">
@@ -480,7 +480,7 @@
                             </div>
                             <div class="flex-1">
                                 <h3 class="font-semibold text-white">Personal Trainer</h3>
-                                <p class="text-xs text-gray-400">Create workout plans & train clients</p>
+                                <p class="text-xs text-gray-400">Crea schede di allenamento e allena i clienti</p>
                             </div>
                         </div>
                     </div>
@@ -502,8 +502,8 @@
                                 </svg>
                             </div>
                             <div class="flex-1">
-                                <h3 class="font-semibold text-white">Nutritionist</h3>
-                                <p class="text-xs text-gray-400">Create meal plans & diet programs</p>
+                                <h3 class="font-semibold text-white">Nutrizionista</h3>
+                                <p class="text-xs text-gray-400">Crea piani alimentari e programmi dietetici</p>
                             </div>
                         </div>
                     </div>
@@ -521,8 +521,8 @@
                                 </svg>
                             </div>
                             <div class="flex-1">
-                                <h3 class="font-semibold text-white">Both</h3>
-                                <p class="text-xs text-gray-400">Full fitness & nutrition coaching</p>
+                                <h3 class="font-semibold text-white">Entrambi</h3>
+                                <p class="text-xs text-gray-400">Coaching completo fitness e nutrizione</p>
                             </div>
                         </div>
                     </div>
@@ -531,8 +531,8 @@
 
             <!-- Owner Sub-roles -->
             <div id="owner-subroles" style="display: none;">
-                <h1 class="text-2xl font-bold text-white mb-2">What's your role?</h1>
-                <p class="text-gray-400 text-sm mb-6">Select your position</p>
+                <h1 class="text-2xl font-bold text-white mb-2">Qual è il tuo ruolo?</h1>
+                <p class="text-gray-400 text-sm mb-6">Seleziona la tua posizione</p>
 
                 <div class="space-y-3">
                     <div class="role-card compact" onclick="selectSubRole('owner', this)">
@@ -549,8 +549,8 @@
                                 </svg>
                             </div>
                             <div class="flex-1">
-                                <h3 class="font-semibold text-white">Gym Owner</h3>
-                                <p class="text-xs text-gray-400">Full control over gym & staff management</p>
+                                <h3 class="font-semibold text-white">Proprietario Palestra</h3>
+                                <p class="text-xs text-gray-400">Controllo completo su palestra e gestione staff</p>
                             </div>
                         </div>
                     </div>
@@ -572,7 +572,7 @@
                             </div>
                             <div class="flex-1">
                                 <h3 class="font-semibold text-white">Staff / Reception</h3>
-                                <p class="text-xs text-gray-400">Manage check-ins & member services</p>
+                                <p class="text-xs text-gray-400">Gestisci check-in e servizi per i membri</p>
                             </div>
                         </div>
                     </div>
@@ -580,7 +580,7 @@
             </div>
 
             <button id="next-btn-2" class="btn-primary mt-6" onclick="goToStep3()" disabled>
-                Continue
+                Continua
             </button>
         </div>
 
@@ -590,18 +590,18 @@
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
-                Back
+                Indietro
             </button>
 
-            <h1 class="text-2xl font-bold text-white mb-2" id="step3-title">Create Account</h1>
-            <p class="text-gray-400 text-sm mb-6" id="step3-subtitle">Enter your details to get started</p>
+            <h1 class="text-2xl font-bold text-white mb-2" id="step3-title">Crea Account</h1>
+            <p class="text-gray-400 text-sm mb-6" id="step3-subtitle">Inserisci i tuoi dati per iniziare</p>
 
             <form id="register-form" action="/auth/register" method="POST">
                 <input type="hidden" id="role" name="role" value="">
                 <input type="hidden" id="sub_role" name="sub_role" value="">
 
                 <div class="input-group">
-                    <input type="text" id="username" name="username" placeholder="Username" required>
+                    <input type="text" id="username" name="username" placeholder="Nome utente" required>
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
                         <circle cx="12" cy="7" r="4"/>
@@ -609,7 +609,7 @@
                 </div>
 
                 <div class="input-group">
-                    <input type="email" id="email" name="email" placeholder="Email (optional)">
+                    <input type="email" id="email" name="email" placeholder="Email (opzionale)">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
                         <polyline points="22,6 12,13 2,6"/>
@@ -617,7 +617,7 @@
                 </div>
 
                 <div class="input-group">
-                    <input type="password" id="password" name="password" placeholder="Min 12 characters" required minlength="12">
+                    <input type="password" id="password" name="password" placeholder="Minimo 12 caratteri" required minlength="12">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                         <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
@@ -627,7 +627,7 @@
                 <!-- Gym Code (shown for client, trainer, and staff) -->
                 <div id="gym-code-section" style="display: none;">
                     <div class="input-group">
-                        <input type="text" id="gym_code" name="gym_code" placeholder="Gym Code" maxlength="6" style="text-transform: uppercase; letter-spacing: 0.2em;">
+                        <input type="text" id="gym_code" name="gym_code" placeholder="Codice Palestra" maxlength="6" style="text-transform: uppercase; letter-spacing: 0.2em;">
                         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
                             <path d="M9 9h6v6H9z"/>
@@ -640,12 +640,12 @@
                     <input type="checkbox" id="terms_agreed" name="terms_agreed" value="yes" required
                         class="mt-1 w-4 h-4 rounded border-gray-600 bg-gray-700 text-orange-500 focus:ring-orange-500">
                     <label for="terms_agreed" class="text-sm text-gray-400 leading-snug">
-                        I agree to the <a href="/terms" target="_blank" class="text-orange-500 hover:text-orange-400 underline">Terms of Service</a>
-                        and <a href="/privacy" target="_blank" class="text-orange-500 hover:text-orange-400 underline">Privacy Policy</a>
+                        Accetto i <a href="/terms" target="_blank" class="text-orange-500 hover:text-orange-400 underline">Termini di Servizio</a>
+                        e la <a href="/privacy" target="_blank" class="text-orange-500 hover:text-orange-400 underline">Privacy Policy</a>
                     </label>
                 </div>
 
-                <button type="submit" class="btn-primary">Create Account</button>
+                <button type="submit" class="btn-primary">Crea Account</button>
             </form>
         </div>
         {% endif %}
@@ -765,12 +765,12 @@
 
         function setupStep3() {
             const titles = {
-                'client': { title: 'Join as Member', subtitle: 'Start your fitness journey today' },
-                'trainer': { title: 'Join as Trainer', subtitle: 'Help clients achieve their goals' },
-                'nutritionist': { title: 'Join as Nutritionist', subtitle: 'Create meal plans for clients' },
-                'both': { title: 'Join as Coach', subtitle: 'Full fitness & nutrition coaching' },
-                'owner': { title: 'Create Your Gym', subtitle: 'Set up your fitness business' },
-                'staff': { title: 'Join as Staff', subtitle: 'Help manage gym operations' }
+                'client': { title: 'Iscriviti come Membro', subtitle: 'Inizia il tuo percorso fitness oggi' },
+                'trainer': { title: 'Iscriviti come Trainer', subtitle: 'Aiuta i clienti a raggiungere i loro obiettivi' },
+                'nutritionist': { title: 'Iscriviti come Nutrizionista', subtitle: 'Crea piani alimentari per i clienti' },
+                'both': { title: 'Iscriviti come Coach', subtitle: 'Coaching completo fitness e nutrizione' },
+                'owner': { title: 'Crea la Tua Palestra', subtitle: 'Configura la tua attività fitness' },
+                'staff': { title: 'Iscriviti come Staff', subtitle: 'Aiuta a gestire le operazioni della palestra' }
             };
 
             const titleInfo = titles[selectedSubRole] || titles[selectedRole];
@@ -785,20 +785,20 @@
             if (selectedRole === 'trainer') {
                 gymCodeSection.style.display = 'block';
                 gymCodeInput.required = true;
-                gymCodeInput.placeholder = 'Gym Code (required)';
-                gymCodeHint.textContent = 'Ask your gym owner for the 6-character code. Registration requires approval.';
+                gymCodeInput.placeholder = 'Codice Palestra (obbligatorio)';
+                gymCodeHint.textContent = 'Chiedi al proprietario della palestra il codice a 6 caratteri. La registrazione richiede approvazione.';
                 gymCodeHint.className = 'hint-text warning';
             } else if (selectedRole === 'client') {
                 gymCodeSection.style.display = 'block';
                 gymCodeInput.required = false;
-                gymCodeInput.placeholder = 'Gym Code (optional)';
-                gymCodeHint.textContent = 'Enter a gym code to join, or add one later from settings.';
+                gymCodeInput.placeholder = 'Codice Palestra (opzionale)';
+                gymCodeHint.textContent = 'Inserisci un codice palestra per unirti, oppure aggiungilo più tardi dalle impostazioni.';
                 gymCodeHint.className = 'hint-text';
             } else if (selectedSubRole === 'staff') {
                 gymCodeSection.style.display = 'block';
                 gymCodeInput.required = true;
-                gymCodeInput.placeholder = 'Gym Code (required)';
-                gymCodeHint.textContent = 'Enter your gym\'s code. Registration requires owner approval.';
+                gymCodeInput.placeholder = 'Codice Palestra (obbligatorio)';
+                gymCodeHint.textContent = 'Inserisci il codice della tua palestra. La registrazione richiede l\'approvazione del proprietario.';
                 gymCodeHint.className = 'hint-text warning';
             } else {
                 // Owner creating new gym
@@ -816,7 +816,7 @@
 
             if ((role === 'trainer' || role === 'nutritionist' || subRole === 'staff') && !gymCode.trim()) {
                 e.preventDefault();
-                document.getElementById('error-msg').textContent = 'Gym code is required.';
+                document.getElementById('error-msg').textContent = 'Il codice palestra è obbligatorio.';
                 document.getElementById('error-msg').style.display = 'block';
             }
         });

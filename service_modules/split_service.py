@@ -165,6 +165,8 @@ class SplitService:
                 raise HTTPException(status_code=404, detail="Split not found")
 
             # 2. Normalize Schedule to Map { "Monday": "workout_id" }
+            NUM_TO_DAY = {"1": "Monday", "2": "Tuesday", "3": "Wednesday",
+                          "4": "Thursday", "5": "Friday", "6": "Saturday", "7": "Sunday"}
             schedule_map = {}
             if isinstance(split_schedule, list):
                 for item in split_schedule:
@@ -174,7 +176,12 @@ class SplitService:
                         if day and wid:
                             schedule_map[day] = wid
             elif isinstance(split_schedule, dict):
-                schedule_map = split_schedule
+                # Keys may be numeric ("1"=Monday…"7"=Sunday) or already day names
+                first_key = next(iter(split_schedule), None)
+                if first_key and first_key in NUM_TO_DAY:
+                    schedule_map = {NUM_TO_DAY[k]: v for k, v in split_schedule.items() if k in NUM_TO_DAY}
+                else:
+                    schedule_map = split_schedule
             else:
                 print(f"Warning: Unknown schedule format: {type(split_schedule)}")
 
@@ -259,8 +266,8 @@ class SplitService:
             if success_count == 0 and fail_count > 0:
                 raise HTTPException(status_code=400, detail=f"Failed to assign any workouts. Errors: {logs[:3]}...")
 
-            # Track the assigned split on the client profile
-            if not is_self_assignment and success_count > 0:
+            # Track the assigned split on the client profile (always, even if split has no workouts)
+            if not is_self_assignment:
                 from models_orm import ClientProfileORM
                 profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
                 if profile:

@@ -134,6 +134,7 @@ class ClientSummary(BaseModel):
     profile_picture: Optional[str] = None
     assigned_split: Optional[str] = None
     plan_expiry: Optional[str] = None
+    upcoming_workouts: Optional[int] = 0
 
 class Video(BaseModel):
     id: str

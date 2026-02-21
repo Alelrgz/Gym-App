@@ -1,6 +1,6 @@
 <!-- Client Selector for Assign Split (added to existing modal) -->
 <div id="assign-split-client-selector-container">
-    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Select Client</label>
+    <label class="text-xs text-gray-500 uppercase font-bold ml-1">Seleziona Cliente</label>
     <select id="assign-split-client-selector"
         class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
         <!-- Populated by JS -->
@@ -16,25 +16,25 @@
         <button onclick="hideModal('edit-split-modal')"
             class="absolute top-4 right-4 text-gray-400 hover:text-white">✕</button>
 
-        <h2 class="text-2xl font-bold mb-1 text-white">Edit Weekly Split</h2>
-        <p class="text-sm text-gray-400 mb-6">Modify your 7-day workout schedule.</p>
+        <h2 class="text-2xl font-bold mb-1 text-white">Modifica Scheda Settimanale</h2>
+        <p class="text-sm text-gray-400 mb-6">Modifica il tuo programma di allenamento settimanale.</p>
 
         <input type="hidden" id="edit-split-id">
 
         <div class="space-y-4">
             <div>
-                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Split Name</label>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Nome Scheda</label>
                 <input type="text" id="edit-split-name"
                     class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
             </div>
             <div>
-                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Description</label>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Descrizione</label>
                 <input type="text" id="edit-split-desc"
                     class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
             </div>
 
             <div class="space-y-2">
-                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Weekly Schedule</label>
+                <label class="text-xs text-gray-500 uppercase font-bold ml-1">Programma Settimanale</label>
                 <div id="edit-split-schedule-builder" class="space-y-2">
                     <!-- Rows for Mon-Sun injected by JS -->
                 </div>
@@ -43,11 +43,11 @@
             <div class="flex gap-2">
                 <button onclick="updateSplit()"
                     class="flex-1 bg-primary text-black font-bold py-4 rounded-xl hover:bg-primary/90 transition">
-                    Save Changes
+                    Salva Modifiche
                 </button>
                 <button onclick="deleteSplit()"
                     class="bg-red-500/20 text-red-400 font-bold px-6 py-4 rounded-xl hover:bg-red-500/30 transition">
-                    Delete
+                    Elimina
                 </button>
             </div>
         </div>

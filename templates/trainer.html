@@ -127,60 +127,93 @@
                 </div>
             </div>
 
+            <!-- Mobile Panel Tabs for Utenti (hidden on desktop) -->
+            <div class="trainer-panel-tabs" id="utenti-panel-tabs">
+                <button class="trainer-panel-tab active" onclick="switchTrainerPanel('utenti-panel-tabs','utenti-panel-clients')">Clienti</button>
+                <button class="trainer-panel-tab" onclick="switchTrainerPanel('utenti-panel-tabs','utenti-panel-agenda')">Agenda</button>
+            </div>
+
             <!-- Two Column Layout -->
             <div class="trainer-utenti-grid">
-                <!-- LEFT: Client Table -->
-                <div class="staff-table-card">
-                    <table class="staff-table">
-                        <thead>
-                            <tr>
-                                <th style="width:40px;"><input type="checkbox" style="opacity:0.3;"></th>
-                                <th>Clienti</th>
-                                <th>Scheda</th>
-                                <th>Scadenza</th>
-                            </tr>
-                        </thead>
-                        <tbody id="trainer-clients-table-body">
-                            <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:160px;"></div></td><td><div class="staff-skeleton" style="width:100px;"></div></td><td><div class="staff-skeleton" style="width:80px;"></div></td></tr>
-                            <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:130px;"></div></td><td><div class="staff-skeleton" style="width:110px;"></div></td><td><div class="staff-skeleton" style="width:90px;"></div></td></tr>
-                            <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:150px;"></div></td><td><div class="staff-skeleton" style="width:90px;"></div></td><td><div class="staff-skeleton" style="width:70px;"></div></td></tr>
-                            <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:140px;"></div></td><td><div class="staff-skeleton" style="width:100px;"></div></td><td><div class="staff-skeleton" style="width:85px;"></div></td></tr>
-                        </tbody>
-                    </table>
+                <!-- LEFT: Client Table (desktop) -->
+                <div class="trainer-panel-content" id="utenti-panel-clients">
+                    <div class="staff-table-card staff-desktop-only">
+                        <table class="staff-table">
+                            <thead>
+                                <tr>
+                                    <th style="width:40px;"><input type="checkbox" style="opacity:0.3;"></th>
+                                    <th>Clienti</th>
+                                    <th>Scheda</th>
+                                    <th>Scadenza</th>
+                                </tr>
+                            </thead>
+                            <tbody id="trainer-clients-table-body">
+                                <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:160px;"></div></td><td><div class="staff-skeleton" style="width:100px;"></div></td><td><div class="staff-skeleton" style="width:80px;"></div></td></tr>
+                                <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:130px;"></div></td><td><div class="staff-skeleton" style="width:110px;"></div></td><td><div class="staff-skeleton" style="width:90px;"></div></td></tr>
+                                <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:150px;"></div></td><td><div class="staff-skeleton" style="width:90px;"></div></td><td><div class="staff-skeleton" style="width:70px;"></div></td></tr>
+                                <tr class="staff-skeleton-row"><td></td><td><div class="staff-skeleton" style="width:140px;"></div></td><td><div class="staff-skeleton" style="width:100px;"></div></td><td><div class="staff-skeleton" style="width:85px;"></div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Client Cards (mobile) -->
+                    <div class="staff-mobile-only" id="trainer-clients-mobile-list">
+                        <div class="staff-mobile-card" style="pointer-events:none;opacity:0.5;">
+                            <div class="staff-skeleton" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;"></div>
+                            <div style="flex:1;">
+                                <div class="staff-skeleton" style="width:120px;height:14px;border-radius:4px;margin-bottom:6px;"></div>
+                                <div class="staff-skeleton" style="width:80px;height:10px;border-radius:4px;"></div>
+                            </div>
+                        </div>
+                        <div class="staff-mobile-card" style="pointer-events:none;opacity:0.5;">
+                            <div class="staff-skeleton" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;"></div>
+                            <div style="flex:1;">
+                                <div class="staff-skeleton" style="width:140px;height:14px;border-radius:4px;margin-bottom:6px;"></div>
+                                <div class="staff-skeleton" style="width:90px;height:10px;border-radius:4px;"></div>
+                            </div>
+                        </div>
+                        <div class="staff-mobile-card" style="pointer-events:none;opacity:0.5;">
+                            <div class="staff-skeleton" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;"></div>
+                            <div style="flex:1;">
+                                <div class="staff-skeleton" style="width:100px;height:14px;border-radius:4px;margin-bottom:6px;"></div>
+                                <div class="staff-skeleton" style="width:70px;height:10px;border-radius:4px;"></div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
 
                 <!-- RIGHT: Appointments + My Workout -->
-                <div style="display:flex;flex-direction:column;gap:1.5rem;">
+                <div class="trainer-panel-content" id="utenti-panel-agenda" style="display:flex;flex-direction:column;gap:1.5rem;">
                     <!-- Appointments Widget -->
-                    <div class="glass-card p-4 rounded-2xl">
+                    <div class="glass-card" style="padding:1rem;border-radius:var(--radius-xl);">
                         <div style="display:flex;justify-content:center;align-items:center;gap:0.75rem;margin-bottom:1rem;">
-                            <button onclick="changeWeek(-1)" class="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 text-sm">&lt;</button>
-                            <span class="text-sm font-semibold text-white" id="d-week-range-label">...</span>
-                            <button onclick="changeWeek(1)" class="w-7 h-7 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 text-sm">&gt;</button>
+                            <button onclick="changeWeek(-1)" style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.05);border:none;color:rgba(255,255,255,0.5);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">&lt;</button>
+                            <span style="font-size:0.85rem;font-weight:600;color:white;" id="d-week-range-label">...</span>
+                            <button onclick="changeWeek(1)" style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.05);border:none;color:rgba(255,255,255,0.5);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">&gt;</button>
                         </div>
                         <!-- Day tabs -->
-                        <div class="grid grid-cols-7 gap-1 mb-4" id="d-calendar-strip"></div>
+                        <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:1rem;" id="d-calendar-strip"></div>
                         <!-- Events for selected day -->
-                        <div id="d-schedule-container" class="space-y-2 mb-3"></div>
+                        <div id="d-schedule-container" style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:0.75rem;"></div>
                     </div>
 
                     <!-- My Workout Card -->
-                    <div id="trainer-my-workout" style="flex:1;display:flex;flex-direction:column;">
-                        <div class="glass-card rounded-2xl" style="flex:1;display:flex;flex-direction:column;position:relative;overflow:hidden;">
+                    <div id="trainer-my-workout" style="display:flex;flex-direction:column;">
+                        <div class="glass-card" style="display:flex;flex-direction:column;position:relative;overflow:hidden;border-radius:var(--radius-xl);">
                             <!-- Content (always visible, blurred when empty) -->
-                            <div id="my-workout-content" style="flex:1;display:flex;flex-direction:column;justify-content:center;padding:1.25rem;">
-                                <p class="text-xs text-white/40 uppercase tracking-wider font-semibold mb-3">Il mio allenamento</p>
-                                <div class="flex justify-between items-end">
+                            <div id="my-workout-content" style="display:flex;flex-direction:column;justify-content:center;padding:1.25rem;">
+                                <p style="font-size:0.7rem;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;font-weight:600;margin-bottom:0.75rem;">Il mio allenamento</p>
+                                <div style="display:flex;justify-content:space-between;align-items:flex-end;">
                                     <div>
-                                        <h3 class="text-xl font-black text-white mb-1" id="my-workout-title">Allenamento</h3>
+                                        <h3 style="font-size:1.15rem;font-weight:900;color:white;margin-bottom:0.25rem;" id="my-workout-title">Allenamento</h3>
                                     </div>
-                                    <div class="text-right text-xs text-white/50 space-y-0.5">
+                                    <div style="text-align:right;font-size:0.75rem;color:rgba(255,255,255,0.5);line-height:1.6;">
                                         <p id="my-workout-duration">-- min</p>
                                         <p id="my-workout-exercises">-- esercizi</p>
                                         <p id="my-workout-difficulty">--</p>
                                     </div>
                                 </div>
-                                <button id="my-workout-cta" class="w-full mt-4 py-3 bg-primary hover:bg-primary-hover text-white font-bold rounded-xl transition text-sm">
+                                <button id="my-workout-cta" style="width:100%;margin-top:1rem;padding:0.75rem;background:var(--primary);border:none;border-radius:var(--radius-md);color:white;font-weight:700;font-size:0.85rem;cursor:pointer;transition:background 0.2s;">
                                     Avvia Allenamento
                                 </button>
                             </div>
@@ -223,36 +256,61 @@
                         <span class="staff-stat-label">Scaduti</span>
                     </div>
                 </div>
-                <button onclick="openCreateWorkoutModal()" class="staff-btn-action staff-btn-primary" style="border-radius:9999px;padding:0.6rem 1.5rem;">
-                    + Crea allenamento
-                </button>
+                <!-- Create workout button moved inside Allenamenti column -->
             </div>
 
-            <!-- Dual Search Row -->
-            <div class="trainer-workouts-dual-search">
-                <div class="staff-search-bar" style="margin-bottom:0;">
-                    <i data-lucide="search" class="w-4 h-4 search-icon"></i>
-                    <input type="text" id="workouts-search" placeholder="Cerca allenamento">
-                </div>
-                <div class="staff-search-bar" style="margin-bottom:0;">
-                    <i data-lucide="search" class="w-4 h-4 search-icon"></i>
-                    <input type="text" id="workouts-client-search" placeholder="Cerca clienti">
-                </div>
+            <!-- Mobile Panel Tabs (hidden on desktop, flex on mobile) -->
+            <div class="trainer-panel-tabs" id="workouts-panel-tabs">
+                <button class="trainer-panel-tab active" onclick="switchTrainerPanel('workouts-panel-tabs','workouts-panel-exercises')">Esercizi</button>
+                <button class="trainer-panel-tab" onclick="switchTrainerPanel('workouts-panel-tabs','workouts-panel-workouts')">Allenamenti</button>
+                <button class="trainer-panel-tab" onclick="switchTrainerPanel('workouts-panel-tabs','workouts-panel-clients')">Clienti</button>
             </div>
 
-            <!-- Two Column Grid -->
+            <!-- Three Column Grid -->
             <div class="trainer-workouts-grid">
-                <!-- LEFT: Tabs + List -->
-                <div>
+
+                <!-- COL 1: Exercise Library (accordion rows) -->
+                <div class="allenamenti-column trainer-panel-content" id="workouts-panel-exercises">
+                    <div class="allenamenti-sticky-header">
+                        <p class="allenamenti-col-header">Esercizi</p>
+                        <div class="staff-search-bar" style="margin-bottom:0.75rem;">
+                            <i data-lucide="search" class="w-4 h-4 search-icon"></i>
+                            <input type="text" id="allenamenti-ex-search" placeholder="Cerca esercizi" oninput="filterAllenamentiExercises()">
+                        </div>
+                        <button onclick="showModal('create-exercise-modal')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:0.4rem;padding:0.45rem 0;margin-bottom:0.65rem;background:rgba(255,255,255,0.05);border:1px dashed rgba(255,255,255,0.15);border-radius:8px;color:rgba(255,255,255,0.45);font-size:0.78rem;cursor:pointer;transition:all 0.18s;" onmouseover="this.style.background='rgba(255,255,255,0.09)';this.style.color='rgba(255,255,255,0.7)'" onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.color='rgba(255,255,255,0.45)'">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                            Aggiungi esercizio
+                        </button>
+                    </div>
+                    <div id="allenamenti-exercise-list">
+                        <div class="staff-skeleton" style="width:100%;height:32px;border-radius:6px;margin-bottom:0.4rem;"></div>
+                        <div class="staff-skeleton" style="width:85%;height:32px;border-radius:6px;margin-bottom:0.4rem;"></div>
+                        <div class="staff-skeleton" style="width:92%;height:32px;border-radius:6px;margin-bottom:0.4rem;"></div>
+                        <div class="staff-skeleton" style="width:78%;height:32px;border-radius:6px;margin-bottom:0.4rem;"></div>
+                        <div class="staff-skeleton" style="width:88%;height:32px;border-radius:6px;"></div>
+                    </div>
+                </div>
+
+                <!-- COL 2: Workouts / Splits -->
+                <div class="allenamenti-column trainer-panel-content" id="workouts-panel-workouts">
+                    <p class="allenamenti-col-header">Allenamenti</p>
+                    <div class="staff-search-bar" style="margin-bottom:0.75rem;">
+                        <i data-lucide="search" class="w-4 h-4 search-icon"></i>
+                        <input type="text" id="workouts-search" placeholder="Cerca allenamento">
+                    </div>
                     <!-- Tab Bar -->
-                    <div class="trainer-tab-bar">
+                    <div class="trainer-tab-bar" style="margin-bottom:0.75rem;">
                         <button class="trainer-tab active" data-tab="workouts-tab" onclick="switchWorkoutTab('workouts-tab')">Workout</button>
                         <button class="trainer-tab" data-tab="splits-tab" onclick="switchWorkoutTab('splits-tab')">Split</button>
                     </div>
 
-                    <!-- Workout List (table with checkbox + name) -->
+                    <!-- Workout List -->
                     <div id="workouts-tab" class="trainer-tab-content">
-                        <div class="staff-table-card">
+                        <button onclick="openCreateWorkoutModal()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:0.4rem;padding:0.45rem 0;margin-bottom:0.65rem;background:rgba(255,255,255,0.05);border:1px dashed rgba(255,255,255,0.15);border-radius:8px;color:rgba(255,255,255,0.45);font-size:0.78rem;cursor:pointer;transition:all 0.18s;" onmouseover="this.style.background='rgba(255,255,255,0.09)';this.style.color='rgba(255,255,255,0.7)'" onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.color='rgba(255,255,255,0.45)'">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                            Crea allenamento
+                        </button>
+                        <div class="staff-table-card" style="margin-bottom:0;">
                             <table class="staff-table">
                                 <thead>
                                     <tr>
@@ -269,9 +327,14 @@
                         </div>
                     </div>
 
-                    <!-- Split List (table with checkbox + name) -->
+                    <!-- Split List -->
                     <div id="splits-tab" class="trainer-tab-content hidden">
-                        <div class="staff-table-card">
+                        <button id="create-split-btn" onclick="_toggleCreateSplitForm()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:0.4rem;padding:0.45rem 0;margin-bottom:0.65rem;background:rgba(255,255,255,0.05);border:1px dashed rgba(255,255,255,0.15);border-radius:8px;color:rgba(255,255,255,0.45);font-size:0.78rem;cursor:pointer;transition:all 0.18s;" onmouseover="this.style.background='rgba(255,255,255,0.09)';this.style.color='rgba(255,255,255,0.7)'" onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.color='rgba(255,255,255,0.45)'">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                            Aggiungi split
+                        </button>
+                        <div id="create-split-form-container"></div>
+                        <div class="staff-table-card" style="margin-bottom:0;">
                             <table class="staff-table">
                                 <thead>
                                     <tr>
@@ -288,10 +351,16 @@
                     </div>
                 </div>
 
-                <!-- RIGHT: Client Drop Targets -->
-                <div>
+                <!-- COL 3: Client Drop Targets -->
+                <div class="allenamenti-column trainer-panel-content" id="workouts-panel-clients">
+                    <p class="allenamenti-col-header">Clienti</p>
+                    <div class="staff-search-bar" style="margin-bottom:0.75rem;">
+                        <i data-lucide="search" class="w-4 h-4 search-icon"></i>
+                        <input type="text" id="workouts-client-search" placeholder="Cerca clienti">
+                    </div>
                     <div id="workouts-client-list" class="space-y-2"></div>
                 </div>
+
             </div>
         </section>
 
@@ -318,8 +387,8 @@
             <!-- Header -->
             <div class="flex justify-between items-start mb-8">
                 <div>
-                    <p class="label-uppercase mb-1">My Profile</p>
-                    <h2 class="heading-page" id="personal-name">Loading...</h2>
+                    <p class="label-uppercase mb-1">Il Mio Profilo</p>
+                    <h2 class="heading-page" id="personal-name">Caricamento...</h2>
                 </div>
             </div>
 
@@ -330,8 +399,8 @@
                         <i data-lucide="flame" class="w-4 h-4 text-green-400"></i>
                     </div>
                     <div>
-                        <h3 class="text-sm font-bold text-green-400 uppercase tracking-wider">Training</h3>
-                        <p class="text-xs text-gray-500">Streak, plans & workouts</p>
+                        <h3 class="text-sm font-bold text-green-400 uppercase tracking-wider">Allenamento</h3>
+                        <p class="text-xs text-gray-500">Streak, piani e allenamenti</p>
                     </div>
                 </div>
 
@@ -351,13 +420,13 @@
                 <!-- My Workout Section (Hidden by default) -->
                 <div id="my-workout-section" class="hidden transition-all duration-300 ease-in-out mb-4">
                     <div class="flex justify-between items-center mb-2">
-                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">My Workouts</h3>
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">I Miei Allenamenti</h3>
                         <button onclick="document.getElementById('my-workout-section').classList.add('hidden')"
                             class="text-white/40 hover:text-white text-sm">✕</button>
                     </div>
                     <div id="my-workout-card-container">
                         <div class="glass-card p-4 text-center">
-                            <p class="text-gray-400 text-sm mb-2">Loading...</p>
+                            <p class="text-gray-400 text-sm mb-2">Caricamento...</p>
                         </div>
                     </div>
                 </div>
@@ -365,13 +434,13 @@
                 <!-- My Splits Section (Hidden by default) -->
                 <div id="my-split-section" class="hidden transition-all duration-300 ease-in-out mb-4">
                     <div class="flex justify-between items-center mb-2">
-                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">My Splits</h3>
+                        <h3 class="text-xs font-bold text-gray-400 uppercase tracking-wider">I Miei Split</h3>
                         <button onclick="document.getElementById('my-split-section').classList.add('hidden')"
                             class="text-white/40 hover:text-white text-sm">✕</button>
                     </div>
                     <div id="my-split-card-container">
                         <div class="glass-card p-4 text-center">
-                            <p class="text-gray-400 text-sm mb-2">Loading...</p>
+                            <p class="text-gray-400 text-sm mb-2">Caricamento...</p>
                         </div>
                     </div>
                 </div>
@@ -380,11 +449,11 @@
                 <div id="todays-plan-container">
                     <div class="glass-card p-5 relative overflow-hidden" id="default-plan-placeholder">
                         <div class="flex justify-between items-start mb-4">
-                            <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
+                            <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Piano di Oggi</span>
                             <i data-lucide="clipboard" class="w-5 h-5"></i>
                         </div>
-                        <h3 class="text-xl font-bold text-white/50 mb-2">No Workout Assigned</h3>
-                        <p class="text-sm text-gray-400 mb-4">Select a workout from "My Workouts" and click "Assign to Me" to set today's workout.</p>
+                        <h3 class="text-xl font-bold text-white/50 mb-2">Nessun Allenamento Assegnato</h3>
+                        <p class="text-sm text-gray-400 mb-4">Seleziona un allenamento da "I Miei Allenamenti" e clicca "Assegna a Me" per impostare l'allenamento di oggi.</p>
                     </div>
                 </div>
             </section>
@@ -396,8 +465,8 @@
                         <i data-lucide="calendar" class="w-4 h-4 text-blue-400"></i>
                     </div>
                     <div>
-                        <h3 class="text-sm font-bold text-blue-400 uppercase tracking-wider">Schedule</h3>
-                        <p class="text-xs text-gray-500">Calendar & appointments</p>
+                        <h3 class="text-sm font-bold text-blue-400 uppercase tracking-wider">Agenda</h3>
+                        <p class="text-xs text-gray-500">Calendario e appuntamenti</p>
                     </div>
                 </div>
                 <div class="glass-card p-4 rounded-2xl">
@@ -424,15 +493,15 @@
                         <i data-lucide="file-text" class="w-4 h-4 text-slate-400"></i>
                     </div>
                     <div>
-                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Personal Notes</h3>
-                        <p class="text-xs text-gray-500">Journal & training logs</p>
+                        <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Note Personali</h3>
+                        <p class="text-xs text-gray-500">Diario e appunti di allenamento</p>
                     </div>
-                    <span class="text-[10px] text-green-400 opacity-0 transition-opacity duration-500 ml-auto" id="personal-notes-saved-indicator">Saved</span>
+                    <span class="text-[10px] text-green-400 opacity-0 transition-opacity duration-500 ml-auto" id="personal-notes-saved-indicator">Salvato</span>
                 </div>
                 <div class="glass-card p-4 rounded-2xl">
                     <textarea id="personal-notes"
                         class="w-full bg-black/20 text-white text-sm rounded-xl p-3 border border-white/5 focus:border-white/20 outline-none resize-none h-32 placeholder-white/20 transition"
-                        placeholder="Journal your progress, ideas, or training logs..."></textarea>
+                        placeholder="Annota i tuoi progressi, idee o registri di allenamento..."></textarea>
                 </div>
             </section>
         </section>
@@ -466,11 +535,18 @@
             <!-- Hidden elements for backward compatibility -->
             <span id="avg-engagement" class="hidden">-</span>
 
+            <!-- Mobile Panel Tabs (hidden on desktop, flex on mobile) -->
+            <div class="trainer-panel-tabs" id="courses-panel-tabs">
+                <button class="trainer-panel-tab active" onclick="switchTrainerPanel('courses-panel-tabs','courses-panel-list')">Corsi</button>
+                <button class="trainer-panel-tab" onclick="switchTrainerPanel('courses-panel-tabs','courses-panel-participants')">Partecipanti</button>
+                <button class="trainer-panel-tab" onclick="switchTrainerPanel('courses-panel-tabs','courses-panel-exercises')">Esercizi</button>
+            </div>
+
             <!-- Three Column Grid -->
             <div class="trainer-courses-grid">
 
                 <!-- LEFT: Courses (Tabs: I miei corsi / Corsi condivisi) -->
-                <div>
+                <div class="trainer-panel-content" id="courses-panel-list">
                     <div class="trainer-tab-bar">
                         <button class="trainer-tab active" data-tab="own-courses-tab" onclick="switchCourseTab('own-courses-tab')">I miei corsi</button>
                         <button class="trainer-tab" data-tab="shared-courses-tab" onclick="switchCourseTab('shared-courses-tab')">Corsi condivisi</button>
@@ -492,7 +568,7 @@
                 </div>
 
                 <!-- MIDDLE: Partecipanti -->
-                <div>
+                <div class="trainer-panel-content" id="courses-panel-participants">
                     <div style="padding:0.65rem 1rem;font-size:0.75rem;font-weight:600;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;border-bottom:1px solid var(--glass-border-1);margin-bottom:1rem;">
                         Partecipanti
                     </div>
@@ -505,16 +581,16 @@
                 </div>
 
                 <!-- RIGHT: Exercise Library -->
-                <div>
+                <div class="trainer-panel-content" id="courses-panel-exercises">
                     <div style="display:flex;align-items:center;justify-content:space-between;padding:0.65rem 1rem;border-bottom:1px solid var(--glass-border-1);margin-bottom:1rem;">
-                        <span style="font-size:0.75rem;font-weight:600;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;">Exercise Library</span>
+                        <span style="font-size:0.75rem;font-weight:600;color:rgba(255,255,255,0.4);text-transform:uppercase;letter-spacing:0.05em;">Libreria Esercizi</span>
                         <button onclick="openCourseExerciseModal()" style="font-size:0.7rem;font-weight:600;color:var(--primary);background:none;border:none;cursor:pointer;">+ Nuovo</button>
                     </div>
 
                     <!-- Category filters -->
                     <div class="flex flex-wrap gap-1.5 mb-3" style="padding:0 0.25rem;">
                         <button onclick="filterCourseExercises('all')" data-filter="all"
-                            class="course-ex-filter-btn active px-2.5 py-1 text-[10px] rounded-full bg-primary/20 text-primary border border-primary/30 transition">All</button>
+                            class="course-ex-filter-btn active px-2.5 py-1 text-[10px] rounded-full bg-primary/20 text-primary border border-primary/30 transition">Tutti</button>
                         <button onclick="filterCourseExercises('yoga')" data-filter="yoga"
                             class="course-ex-filter-btn px-2.5 py-1 text-[10px] rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition">Yoga</button>
                         <button onclick="filterCourseExercises('pilates')" data-filter="pilates"
@@ -549,7 +625,7 @@
         <section id="section-settings" class="trainer-section hidden p-4 md:p-6 lg:p-8 max-w-[1000px] mx-auto">
             <div class="mb-8">
                 <p class="label-uppercase mb-1">Account</p>
-                <h2 class="heading-page">Settings</h2>
+                <h2 class="heading-page">Impostazioni</h2>
             </div>
 
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -560,10 +636,10 @@
                             T
                         </div>
                         <h3 class="text-xl font-bold text-white mb-1" id="settings-trainer-name">Trainer</h3>
-                        <p class="text-sm text-muted">Personal Trainer</p>
+                        <p class="text-sm text-muted">Trainer Personale</p>
                         <button onclick="document.getElementById('profile-picture-input').click()"
                             class="mt-5 btn-glass">
-                            Change Photo
+                            Cambia Foto
                         </button>
                         <input type="file" id="profile-picture-input" accept="image/*" class="hidden" onchange="uploadProfilePicture(this)">
                     </div>
@@ -574,26 +650,26 @@
                     <!-- Bio -->
                     <div class="glass-card p-5">
                         <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Bio</h3>
-                        <textarea id="settings-bio" placeholder="Tell clients about yourself, your experience, and training style..."
+                        <textarea id="settings-bio" placeholder="Racconta ai clienti di te, la tua esperienza e il tuo stile di allenamento..."
                             class="w-full bg-black/20 text-white text-sm rounded-xl p-3 border border-white/10 focus:border-primary/50 outline-none resize-none h-24 transition"></textarea>
-                        <button onclick="saveBio()" class="mt-2 text-xs bg-primary/20 hover:bg-primary/30 text-primary px-4 py-2 rounded-lg transition">Save Bio</button>
+                        <button onclick="saveBio()" class="mt-2 text-xs bg-primary/20 hover:bg-primary/30 text-primary px-4 py-2 rounded-lg transition">Salva Bio</button>
                     </div>
 
                     <!-- Specialties -->
                     <div class="glass-card p-5">
-                        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Specialties</h3>
+                        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Specializzazioni</h3>
                         <div id="specialties-container" class="flex flex-wrap gap-2">
                             <label class="specialty-tag cursor-pointer">
                                 <input type="checkbox" value="Weight Loss" class="hidden specialty-checkbox">
-                                <span class="px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition inline-block">Weight Loss</span>
+                                <span class="px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition inline-block">Dimagrimento</span>
                             </label>
                             <label class="specialty-tag cursor-pointer">
                                 <input type="checkbox" value="Muscle Building" class="hidden specialty-checkbox">
-                                <span class="px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition inline-block">Muscle Building</span>
+                                <span class="px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition inline-block">Massa Muscolare</span>
                             </label>
                             <label class="specialty-tag cursor-pointer">
                                 <input type="checkbox" value="Strength Training" class="hidden specialty-checkbox">
-                                <span class="px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition inline-block">Strength Training</span>
+                                <span class="px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition inline-block">Allenamento Forza</span>
                             </label>
                             <label class="specialty-tag cursor-pointer">
                                 <input type="checkbox" value="HIIT" class="hidden specialty-checkbox">
@@ -605,18 +681,18 @@
                             </label>
                             <label class="specialty-tag cursor-pointer">
                                 <input type="checkbox" value="Nutrition" class="hidden specialty-checkbox">
-                                <span class="px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition inline-block">Nutrition</span>
+                                <span class="px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition inline-block">Nutrizione</span>
                             </label>
                         </div>
-                        <button onclick="saveSpecialties()" class="mt-3 text-xs bg-primary/20 hover:bg-primary/30 text-primary px-4 py-2 rounded-lg transition">Save Specialties</button>
+                        <button onclick="saveSpecialties()" class="mt-3 text-xs bg-primary/20 hover:bg-primary/30 text-primary px-4 py-2 rounded-lg transition">Salva Specializzazioni</button>
                     </div>
 
                     <!-- Availability -->
                     <div class="glass-card p-5">
-                        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">1-on-1 Availability</h3>
-                        <p class="text-xs text-gray-400 mb-3">Set your weekly hours for client bookings</p>
+                        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Disponibilit&agrave; 1-on-1</h3>
+                        <p class="text-xs text-gray-400 mb-3">Imposta i tuoi orari settimanali per le prenotazioni</p>
                         <button onclick="openAvailabilityModal()" class="text-xs bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 px-4 py-2 rounded-lg transition">
-                            Configure Availability
+                            Configura Disponibilit&agrave;
                         </button>
                     </div>
 
@@ -624,7 +700,7 @@
                     <div class="glass-card p-5">
                         <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Account</h3>
                         <a href="/auth/logout" class="inline-flex items-center gap-2 text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 rounded-lg transition">
-                            <i data-lucide="log-out" class="w-5 h-5 inline-block align-middle"></i> Logout
+                            <i data-lucide="log-out" class="w-5 h-5 inline-block align-middle"></i> Esci
                         </a>
                     </div>
                 </div>
@@ -641,52 +717,52 @@
     <div class="glass-card w-full max-w-sm mx-4 p-6 rounded-2xl relative">
         <button onclick="document.getElementById('add-event-modal').classList.add('hidden')"
             class="absolute top-4 right-4 text-white/50 hover:text-white">✕</button>
-        <h3 class="text-xl font-bold mb-4 text-center">Add Event</h3>
+        <h3 class="text-xl font-bold mb-4 text-center">Aggiungi Evento</h3>
         <form id="add-event-form" class="space-y-4">
             <div>
-                <label class="text-xs text-gray-400 uppercase">Title</label>
+                <label class="text-xs text-gray-400 uppercase">Titolo</label>
                 <input type="text" name="title" required
                     class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none"
-                    placeholder="e.g. Client Consultation">
+                    placeholder="es. Consulenza Cliente">
             </div>
             <div>
-                <label class="text-xs text-gray-400 uppercase">Subtitle / Details</label>
+                <label class="text-xs text-gray-400 uppercase">Sottotitolo / Dettagli</label>
                 <input type="text" name="subtitle"
                     class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none"
-                    placeholder="e.g. John Doe - Leg Day">
+                    placeholder="es. Mario Rossi - Gambe">
             </div>
             <div class="grid grid-cols-2 gap-4">
                 <div>
-                    <label class="text-xs text-gray-400 uppercase">Time</label>
+                    <label class="text-xs text-gray-400 uppercase">Orario</label>
                     <input type="time" name="time" required
                         class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400 uppercase">Type</label>
+                    <label class="text-xs text-gray-400 uppercase">Tipo</label>
                     <select name="type"
                         class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none">
-                        <option value="personal">Personal</option>
-                        <option value="consultation">Consultation</option>
-                        <option value="class">Class</option>
+                        <option value="personal">Personale</option>
+                        <option value="consultation">Consulenza</option>
+                        <option value="class">Corso</option>
                     </select>
                 </div>
             </div>
             <div id="workout-selector-container" class="hidden">
-                <label class="text-xs text-gray-400 uppercase">Select Workout</label>
+                <label class="text-xs text-gray-400 uppercase">Seleziona Allenamento</label>
                 <select name="workout_id" id="event-workout-select"
                     class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none">
-                    <option value="">None</option>
+                    <option value="">Nessuno</option>
                 </select>
             </div>
             <div>
-                <label class="text-xs text-gray-400 uppercase">Duration (minutes)</label>
+                <label class="text-xs text-gray-400 uppercase">Durata (minuti)</label>
                 <input type="number" name="duration" value="60" min="15" step="15"
                     class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none">
             </div>
             <input type="hidden" name="date" id="event-date-input">
             <button type="submit"
                 class="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/80 transition">
-                Add to Schedule
+                Aggiungi all'Agenda
             </button>
         </form>
     </div>
@@ -696,94 +772,94 @@
 <div id="availability-modal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 backdrop-blur-sm">
     <div class="glass-card w-full max-w-md mx-4 p-6 rounded-2xl relative max-h-[90vh] overflow-y-auto">
         <button onclick="closeAvailabilityModal()" class="absolute top-4 right-4 text-white/50 hover:text-white">✕</button>
-        <h3 class="text-xl font-bold mb-2 text-center">1-on-1 Availability</h3>
-        <p class="text-xs text-gray-400 text-center mb-4">Set your weekly hours for client bookings</p>
+        <h3 class="text-xl font-bold mb-2 text-center">Disponibilit&agrave; 1-on-1</h3>
+        <p class="text-xs text-gray-400 text-center mb-4">Imposta i tuoi orari settimanali per le prenotazioni</p>
 
         <div id="availability-days" class="space-y-3">
             <!-- Days will be generated by JS or hardcoded -->
             <div class="bg-white/5 rounded-xl p-3">
                 <label class="flex items-center space-x-2 cursor-pointer">
                     <input type="checkbox" data-day="0" class="day-toggle w-5 h-5 rounded accent-orange-500">
-                    <span class="font-bold text-sm">Monday</span>
+                    <span class="font-bold text-sm">Luned&igrave;</span>
                 </label>
                 <div class="day-times hidden grid grid-cols-2 gap-2 mt-2" data-day="0">
-                    <div><label class="text-[10px] text-gray-400">Start</label><input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00"></div>
-                    <div><label class="text-[10px] text-gray-400">End</label><input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Inizio</label><input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Fine</label><input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00"></div>
                 </div>
             </div>
             <div class="bg-white/5 rounded-xl p-3">
                 <label class="flex items-center space-x-2 cursor-pointer">
                     <input type="checkbox" data-day="1" class="day-toggle w-5 h-5 rounded accent-orange-500">
-                    <span class="font-bold text-sm">Tuesday</span>
+                    <span class="font-bold text-sm">Marted&igrave;</span>
                 </label>
                 <div class="day-times hidden grid grid-cols-2 gap-2 mt-2" data-day="1">
-                    <div><label class="text-[10px] text-gray-400">Start</label><input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00"></div>
-                    <div><label class="text-[10px] text-gray-400">End</label><input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Inizio</label><input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Fine</label><input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00"></div>
                 </div>
             </div>
             <div class="bg-white/5 rounded-xl p-3">
                 <label class="flex items-center space-x-2 cursor-pointer">
                     <input type="checkbox" data-day="2" class="day-toggle w-5 h-5 rounded accent-orange-500">
-                    <span class="font-bold text-sm">Wednesday</span>
+                    <span class="font-bold text-sm">Mercoled&igrave;</span>
                 </label>
                 <div class="day-times hidden grid grid-cols-2 gap-2 mt-2" data-day="2">
-                    <div><label class="text-[10px] text-gray-400">Start</label><input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00"></div>
-                    <div><label class="text-[10px] text-gray-400">End</label><input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Inizio</label><input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Fine</label><input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00"></div>
                 </div>
             </div>
             <div class="bg-white/5 rounded-xl p-3">
                 <label class="flex items-center space-x-2 cursor-pointer">
                     <input type="checkbox" data-day="3" class="day-toggle w-5 h-5 rounded accent-orange-500">
-                    <span class="font-bold text-sm">Thursday</span>
+                    <span class="font-bold text-sm">Gioved&igrave;</span>
                 </label>
                 <div class="day-times hidden grid grid-cols-2 gap-2 mt-2" data-day="3">
-                    <div><label class="text-[10px] text-gray-400">Start</label><input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00"></div>
-                    <div><label class="text-[10px] text-gray-400">End</label><input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Inizio</label><input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Fine</label><input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00"></div>
                 </div>
             </div>
             <div class="bg-white/5 rounded-xl p-3">
                 <label class="flex items-center space-x-2 cursor-pointer">
                     <input type="checkbox" data-day="4" class="day-toggle w-5 h-5 rounded accent-orange-500">
-                    <span class="font-bold text-sm">Friday</span>
+                    <span class="font-bold text-sm">Venerd&igrave;</span>
                 </label>
                 <div class="day-times hidden grid grid-cols-2 gap-2 mt-2" data-day="4">
-                    <div><label class="text-[10px] text-gray-400">Start</label><input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00"></div>
-                    <div><label class="text-[10px] text-gray-400">End</label><input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Inizio</label><input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Fine</label><input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00"></div>
                 </div>
             </div>
             <div class="bg-white/5 rounded-xl p-3">
                 <label class="flex items-center space-x-2 cursor-pointer">
                     <input type="checkbox" data-day="5" class="day-toggle w-5 h-5 rounded accent-orange-500">
-                    <span class="font-bold text-sm">Saturday</span>
+                    <span class="font-bold text-sm">Sabato</span>
                 </label>
                 <div class="day-times hidden grid grid-cols-2 gap-2 mt-2" data-day="5">
-                    <div><label class="text-[10px] text-gray-400">Start</label><input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="10:00"></div>
-                    <div><label class="text-[10px] text-gray-400">End</label><input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="14:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Inizio</label><input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="10:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Fine</label><input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="14:00"></div>
                 </div>
             </div>
             <div class="bg-white/5 rounded-xl p-3">
                 <label class="flex items-center space-x-2 cursor-pointer">
                     <input type="checkbox" data-day="6" class="day-toggle w-5 h-5 rounded accent-orange-500">
-                    <span class="font-bold text-sm">Sunday</span>
+                    <span class="font-bold text-sm">Domenica</span>
                 </label>
                 <div class="day-times hidden grid grid-cols-2 gap-2 mt-2" data-day="6">
-                    <div><label class="text-[10px] text-gray-400">Start</label><input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="10:00"></div>
-                    <div><label class="text-[10px] text-gray-400">End</label><input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="14:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Inizio</label><input type="time" class="start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="10:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Fine</label><input type="time" class="end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="14:00"></div>
                 </div>
             </div>
         </div>
 
         <!-- Session Rate -->
         <div class="mt-4 bg-white/5 rounded-xl p-3">
-            <label class="text-sm font-bold text-white mb-2 block">Hourly Session Rate ($)</label>
-            <p class="text-[10px] text-gray-400 mb-2">Clients will see this price when booking. Leave empty for free sessions.</p>
-            <input type="number" id="trainer-session-rate" min="0" step="0.01" placeholder="e.g. 50.00"
+            <label class="text-sm font-bold text-white mb-2 block">Tariffa Oraria Sessione (&euro;)</label>
+            <p class="text-[10px] text-gray-400 mb-2">I clienti vedranno questo prezzo durante la prenotazione. Lascia vuoto per sessioni gratuite.</p>
+            <input type="number" id="trainer-session-rate" min="0" step="0.01" placeholder="es. 50.00"
                 class="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm">
         </div>
 
         <button onclick="saveAvailability()"
             class="w-full mt-4 py-3 bg-orange-500 text-white font-bold rounded-xl hover:bg-orange-600 transition">
-            Save Availability
+            Salva Disponibilit&agrave;
         </button>
     </div>
 </div>
@@ -802,7 +878,7 @@ async function loadNotifications() {
         const res = await fetch('/api/notifications?limit=20');
         const notifications = await res.json();
         if (notifications.length === 0) {
-            list.innerHTML = '<div class="text-center text-gray-400 py-8"><i data-lucide="bell" class="w-10 h-10 mb-2 block"></i><p class="text-sm">No notifications yet</p></div>';
+            list.innerHTML = '<div class="text-center text-gray-400 py-8"><i data-lucide="bell" class="w-10 h-10 mb-2 block"></i><p class="text-sm">Nessuna notifica</p></div>';
             return;
         }
         list.innerHTML = notifications.map(n => {
@@ -819,8 +895,32 @@ async function loadNotifications() {
 let currentSection = 'dashboard';
 let scheduleInitialized = false;
 let workoutsInitialized = false;
+let workoutsPendingInit = false;
 let coursesInitialized = false;
 let settingsInitialized = false;
+
+function switchTrainerPanel(tabGroupId, panelId) {
+    // Update tab active state
+    const tabGroup = document.getElementById(tabGroupId);
+    if (tabGroup) {
+        tabGroup.querySelectorAll('.trainer-panel-tab').forEach(btn => btn.classList.remove('active'));
+        // Find the button that targets this panel
+        tabGroup.querySelectorAll('.trainer-panel-tab').forEach(btn => {
+            if (btn.getAttribute('onclick').includes(panelId)) btn.classList.add('active');
+        });
+    }
+    // Find the parent grid (next sibling of the tab bar)
+    const grid = tabGroup ? tabGroup.nextElementSibling : null;
+    if (grid) {
+        grid.querySelectorAll('.trainer-panel-content').forEach(panel => {
+            if (panel.id === panelId) {
+                panel.classList.remove('trainer-panel-hidden');
+            } else {
+                panel.classList.add('trainer-panel-hidden');
+            }
+        });
+    }
+}
 
 function switchSection(sectionId) {
     // Close any open modals (e.g. course detail)
@@ -868,9 +968,23 @@ function switchSection(sectionId) {
 function initSection(sectionId) {
     switch(sectionId) {
         case 'workouts':
-            if (!workoutsInitialized) {
-                initWorkoutsSection();
-                workoutsInitialized = true;
+            if (!workoutsInitialized && !workoutsPendingInit) {
+                if (window.trainerData) {
+                    initWorkoutsSection();
+                    workoutsInitialized = true;
+                } else {
+                    // Data not yet loaded — poll until ready
+                    workoutsPendingInit = true;
+                    const waitForData = setInterval(() => {
+                        if (window.trainerData) {
+                            clearInterval(waitForData);
+                            workoutsPendingInit = false;
+                            initWorkoutsSection();
+                            workoutsInitialized = true;
+                        }
+                    }, 100);
+                    setTimeout(() => { clearInterval(waitForData); workoutsPendingInit = false; }, 10000);
+                }
             }
             break;
         case 'schedule':
@@ -983,8 +1097,489 @@ function initWorkoutsSection() {
         });
     }
 
+    // --- Load Exercise List (left column) ---
+    initAllenamentiExercises();
+
     // Refresh lucide icons
     if (window.lucide) lucide.createIcons();
+}
+
+// ============ EXERCISE LIST (Allenamenti column) ============
+
+async function initAllenamentiExercises() {
+    const container = document.getElementById('allenamenti-exercise-list');
+    if (!container) return;
+    const apiBase = (window.APP_CONFIG || {}).apiBase || '';
+    const trainerId = (typeof getCurrentTrainerId === 'function') ? getCurrentTrainerId() : 'trainer_default';
+    try {
+        const res = await fetch(`${apiBase}/api/exercises`, { credentials: 'include' });
+        if (!res.ok) return;
+        const exercises = await res.json();
+        window._allenamentiExercises = exercises;
+        renderAllenamentiExerciseList(exercises);
+    } catch(e) { console.error('Error loading exercises for allenamenti:', e); }
+}
+
+// After createExercise() runs, also refresh the allenamenti exercise list
+document.addEventListener('DOMContentLoaded', () => {
+    const orig = window.createExercise;
+    if (typeof orig === 'function') {
+        window.createExercise = async function(...args) {
+            await orig.apply(this, args);
+            if (document.getElementById('allenamenti-exercise-list')) {
+                await initAllenamentiExercises();
+            }
+        };
+    }
+});
+
+const _exMuscleColors = {
+    'Chest': '#ef4444', 'Back': '#3b82f6', 'Legs': '#22c55e', 'Shoulders': '#f59e0b',
+    'Arms': '#8b5cf6', 'Core': '#06b6d4', 'Cardio': '#ec4899', 'Glutes': '#f97316',
+    'Calves': '#84cc16', 'Warmup': '#fb923c', 'Stretch': '#a78bfa'
+};
+
+function renderAllenamentiExerciseList(exercises) {
+    const container = document.getElementById('allenamenti-exercise-list');
+    if (!container) return;
+    container.innerHTML = '';
+    if (!exercises || exercises.length === 0) {
+        container.innerHTML = '<p style="font-size:0.8rem;color:rgba(255,255,255,0.3);text-align:center;padding:1rem 0;">Nessun esercizio</p>';
+        return;
+    }
+    exercises.forEach(ex => {
+        const mColor = _exMuscleColors[ex.muscle] || '#6366f1';
+        const hasVideo = !!(ex.video_url || ex.video_id);
+
+        const item = document.createElement('div');
+        item.className = 'allenamenti-ex-item';
+        item.dataset.exId = ex.id;
+
+        const row = document.createElement('div');
+        row.className = 'allenamenti-ex-row';
+        row.innerHTML = `
+            <div style="width:3px;height:34px;border-radius:2px;background:${mColor};flex-shrink:0;opacity:0.75;"></div>
+            <div style="min-width:0;flex:1;">
+                <div style="font-size:0.8rem;font-weight:600;color:rgba(255,255,255,0.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ex.name}</div>
+                <div class="allenamenti-ex-muscle"><span style="color:${mColor};opacity:0.85;">${ex.muscle || ''}</span>${ex.type ? ' · ' + ex.type : ''}</div>
+            </div>
+            ${hasVideo ? `<svg xmlns="http://www.w3.org/2000/svg" style="width:13px;height:13px;flex-shrink:0;color:rgba(255,255,255,0.2);" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>` : ''}
+            <svg class="allenamenti-ex-chevron" xmlns="http://www.w3.org/2000/svg" width="11" height="11" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.25)" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
+        `;
+
+        const expand = document.createElement('div');
+        expand.className = 'allenamenti-ex-expand';
+        expand.innerHTML = '<div class="allenamenti-ex-expand-inner"></div>';
+
+        row.addEventListener('click', () => {
+            const isOpen = expand.classList.contains('open');
+            // Close any other open expands
+            document.querySelectorAll('.allenamenti-ex-expand.open').forEach(e => {
+                if (e !== expand) {
+                    e.classList.remove('open');
+                    e.previousElementSibling?.classList.remove('selected-ex');
+                    const vid = e.querySelector('video');
+                    if (vid) vid.pause();
+                }
+            });
+            if (isOpen) {
+                expand.classList.remove('open');
+                row.classList.remove('selected-ex');
+                const vid = expand.querySelector('video');
+                if (vid) vid.pause();
+            } else {
+                window._currentAllenamentiEx = ex;
+                populateExerciseExpand(expand.querySelector('.allenamenti-ex-expand-inner'), ex);
+                expand.classList.add('open');
+                row.classList.add('selected-ex');
+            }
+        });
+
+        // Drag exercise into a workout
+        row.draggable = true;
+        row.addEventListener('dragstart', (e) => {
+            row.classList.add('ex-dragging');
+            e.dataTransfer.effectAllowed = 'copy';
+            const payload = { type: 'exercise', id: ex.id, name: ex.name, video_id: ex.video_id || null };
+            currentDragData = payload;
+            try { e.dataTransfer.setData('text/plain', JSON.stringify(payload)); } catch(_) {}
+        });
+        row.addEventListener('dragend', () => {
+            row.classList.remove('ex-dragging');
+            document.querySelectorAll('.workout-drag-card.ex-drop-hover').forEach(el => el.classList.remove('ex-drop-hover'));
+            if (currentDragData?.type === 'exercise') currentDragData = null;
+        });
+
+        item.appendChild(row);
+        item.appendChild(expand);
+        container.appendChild(item);
+    });
+}
+
+function filterAllenamentiExercises() {
+    const q = document.getElementById('allenamenti-ex-search')?.value.toLowerCase().trim() || '';
+    const all = window._allenamentiExercises || [];
+    const filtered = q ? all.filter(ex => (ex.name || '').toLowerCase().includes(q) || (ex.muscle || '').toLowerCase().includes(q)) : all;
+    renderAllenamentiExerciseList(filtered);
+}
+window.filterAllenamentiExercises = filterAllenamentiExercises;
+
+function populateExerciseExpand(innerEl, ex) {
+    const mColor = _exMuscleColors[ex.muscle] || '#6366f1';
+    const videoSrc = ex.video_url || (ex.video_id ? `/static/videos/${ex.video_id}.mp4` : null);
+    const muscleOpts = Object.keys(_exMuscleColors).map(m =>
+        `<option value="${m}"${m === ex.muscle ? ' selected' : ''}>${m}</option>`
+    ).join('');
+
+    // Build HTML using classes only (no inline onclick, no IDs)
+    innerEl.innerHTML = `
+        <div class="ex-view-pane">
+            ${videoSrc
+                ? `<div style="height:140px;border-radius:var(--radius-md);overflow:hidden;margin-bottom:0.55rem;"><video src="${videoSrc}" style="width:100%;height:100%;object-fit:cover;" controls preload="metadata"></video></div>`
+                : ex.thumbnail_url
+                ? `<div style="height:110px;border-radius:var(--radius-md);overflow:hidden;margin-bottom:0.55rem;"><img src="${ex.thumbnail_url}" style="width:100%;height:100%;object-fit:cover;" alt=""></div>`
+                : ''}
+            <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:0.5rem;margin-bottom:0.35rem;">
+                <span class="ex-v-name" style="font-size:0.85rem;font-weight:700;color:rgba(255,255,255,0.92);line-height:1.3;"></span>
+                <button class="ex-edit-btn" title="Modifica" style="flex-shrink:0;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;padding:3px 8px;cursor:pointer;color:rgba(255,255,255,0.55);font-size:0.72rem;">✏</button>
+            </div>
+            <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.4rem;">
+                <span class="ex-v-muscle" style="font-size:0.65rem;padding:2px 7px;border-radius:20px;border:1px solid;font-weight:600;"></span>
+                <span class="ex-v-diff" style="font-size:0.65rem;padding:2px 7px;border-radius:20px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);"></span>
+                <span class="ex-v-type" style="font-size:0.65rem;padding:2px 7px;border-radius:20px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);"></span>
+            </div>
+            <p class="ex-v-desc" style="font-size:0.72rem;line-height:1.5;margin:0;"></p>
+        </div>
+        <div class="ex-edit-pane" style="display:none;">
+            <div style="display:flex;flex-direction:column;gap:0.4rem;">
+                <input class="ex-i-name" placeholder="Nome esercizio" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:var(--radius-md);padding:5px 9px;color:rgba(255,255,255,0.9);font-size:0.78rem;box-sizing:border-box;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.4rem;">
+                    <select class="ex-i-muscle" style="background:rgba(30,30,40,0.9);border:1px solid rgba(255,255,255,0.12);border-radius:var(--radius-md);padding:5px 9px;color:rgba(255,255,255,0.9);font-size:0.78rem;">${muscleOpts}</select>
+                    <input class="ex-i-type" placeholder="Tipo (es. Course)" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:var(--radius-md);padding:5px 9px;color:rgba(255,255,255,0.9);font-size:0.78rem;">
+                </div>
+                <select class="ex-i-diff" style="background:rgba(30,30,40,0.9);border:1px solid rgba(255,255,255,0.12);border-radius:var(--radius-md);padding:5px 9px;color:rgba(255,255,255,0.9);font-size:0.78rem;">
+                    <option value="beginner">Principiante</option>
+                    <option value="intermediate">Intermedio</option>
+                    <option value="advanced">Avanzato</option>
+                </select>
+                <textarea class="ex-i-desc" rows="2" placeholder="Descrizione" style="width:100%;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:var(--radius-md);padding:5px 9px;color:rgba(255,255,255,0.9);font-size:0.78rem;resize:none;box-sizing:border-box;"></textarea>
+                <div style="display:flex;align-items:center;gap:0.5rem;">
+                    <label style="display:inline-flex;align-items:center;gap:0.3rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:var(--radius-md);padding:4px 10px;cursor:pointer;font-size:0.72rem;color:rgba(255,255,255,0.6);flex-shrink:0;white-space:nowrap;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                        Carica video
+                        <input type="file" class="ex-video-file" accept="video/mp4,video/quicktime,video/webm,video/x-msvideo" style="display:none;">
+                    </label>
+                    <span class="ex-video-pick-name" style="font-size:0.65rem;color:rgba(255,255,255,0.4);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;"></span>
+                </div>
+                <div style="font-size:0.6rem;color:rgba(255,255,255,0.2);">Attuale: <span class="ex-v-video-lbl"></span></div>
+                <div style="display:flex;gap:0.4rem;justify-content:flex-end;">
+                    <button class="ex-cancel-btn" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:var(--radius-md);padding:5px 12px;color:rgba(255,255,255,0.6);font-size:0.75rem;cursor:pointer;">Annulla</button>
+                    <button class="ex-save-btn" style="background:rgba(var(--primary-rgb),0.2);border:1px solid rgba(var(--primary-rgb),0.35);border-radius:var(--radius-md);padding:5px 12px;color:rgba(255,255,255,0.9);font-size:0.75rem;cursor:pointer;font-weight:600;">Salva</button>
+                </div>
+            </div>
+        </div>
+    `;
+
+    // --- Populate view fields ---
+    const viewPane  = innerEl.querySelector('.ex-view-pane');
+    const editPane  = innerEl.querySelector('.ex-edit-pane');
+    const nameEl    = innerEl.querySelector('.ex-v-name');
+    const muscleEl  = innerEl.querySelector('.ex-v-muscle');
+    const diffEl    = innerEl.querySelector('.ex-v-diff');
+    const typeEl    = innerEl.querySelector('.ex-v-type');
+    const descEl    = innerEl.querySelector('.ex-v-desc');
+
+    nameEl.textContent = ex.name || '';
+    muscleEl.textContent = ex.muscle || '';
+    muscleEl.style.background = mColor + '22';
+    muscleEl.style.color = mColor;
+    muscleEl.style.borderColor = mColor + '44';
+    diffEl.textContent = ex.difficulty || '';
+    diffEl.style.display = ex.difficulty ? '' : 'none';
+    typeEl.textContent = ex.type || '';
+    typeEl.style.display = ex.type ? '' : 'none';
+    if (ex.description) {
+        descEl.textContent = ex.description;
+        descEl.style.color = 'rgba(255,255,255,0.5)';
+        descEl.style.fontStyle = '';
+    } else {
+        descEl.textContent = 'Nessuna descrizione disponibile.';
+        descEl.style.color = 'rgba(255,255,255,0.18)';
+        descEl.style.fontStyle = 'italic';
+    }
+
+    // --- Form field refs ---
+    const inputName      = innerEl.querySelector('.ex-i-name');
+    const selMuscle      = innerEl.querySelector('.ex-i-muscle');
+    const inputType      = innerEl.querySelector('.ex-i-type');
+    const selDiff        = innerEl.querySelector('.ex-i-diff');
+    const textDesc       = innerEl.querySelector('.ex-i-desc');
+    const videoLbl       = innerEl.querySelector('.ex-v-video-lbl');
+    const videoFileInput = innerEl.querySelector('.ex-video-file');
+    const videoPickName  = innerEl.querySelector('.ex-video-pick-name');
+    const cancelBtn      = innerEl.querySelector('.ex-cancel-btn');
+    const saveBtn        = innerEl.querySelector('.ex-save-btn');
+
+    // Show selected filename next to the upload button
+    videoFileInput.addEventListener('change', () => {
+        const f = videoFileInput.files[0];
+        videoPickName.textContent = f ? f.name : '';
+    });
+
+    // --- Enter edit mode ---
+    innerEl.querySelector('.ex-edit-btn').addEventListener('click', () => {
+        inputName.value  = ex.name || '';
+        selMuscle.value  = ex.muscle || 'Chest';
+        inputType.value  = ex.type || '';
+        selDiff.value    = ex.difficulty || 'intermediate';
+        textDesc.value   = ex.description || '';
+        videoLbl.textContent = ex.video_url ? ex.video_url : (ex.video_id ? `${ex.video_id}.mp4` : 'Nessun video');
+        videoPickName.textContent = '';
+        videoFileInput.value = '';
+        viewPane.style.display = 'none';
+        editPane.style.display = '';
+    });
+
+    // --- Cancel ---
+    cancelBtn.addEventListener('click', () => {
+        editPane.style.display = 'none';
+        viewPane.style.display = '';
+    });
+
+    // --- Save ---
+    saveBtn.addEventListener('click', async () => {
+        saveBtn.textContent   = 'Salvataggio...';
+        saveBtn.style.opacity = '0.5';
+        const updates = {
+            name:        inputName.value.trim(),
+            muscle:      selMuscle.value,
+            type:        inputType.value.trim() || null,
+            difficulty:  selDiff.value,
+            description: textDesc.value.trim() || null,
+        };
+        try {
+            const apiBase = (window.APP_CONFIG || {}).apiBase || '';
+            // 1. Save metadata (may fork a global exercise → new ID)
+            const res = await fetch(`${apiBase}/api/exercises/${ex.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify(updates),
+            });
+            if (!res.ok) throw new Error('Salvataggio fallito');
+            let updated = await res.json();
+
+            // 2. Upload video if one was selected
+            const videoFile = videoFileInput.files[0];
+            if (videoFile) {
+                saveBtn.textContent = 'Caricamento video...';
+                const fd = new FormData();
+                fd.append('file', videoFile);
+                const vRes = await fetch(`${apiBase}/api/exercises/${updated.id}/video`, {
+                    method: 'POST',
+                    credentials: 'include',
+                    body: fd,
+                });
+                if (!vRes.ok) throw new Error('Caricamento video fallito');
+                updated = await vRes.json();
+            }
+
+            if (window._allenamentiExercises) {
+                const idx = window._allenamentiExercises.findIndex(e => e.id === ex.id || e.name === ex.name);
+                if (idx >= 0) window._allenamentiExercises[idx] = updated;
+            }
+            window._currentAllenamentiEx = updated;
+            populateExerciseExpand(innerEl, updated);
+            if (typeof showToast === 'function') showToast('Esercizio aggiornato', 'success');
+        } catch(err) {
+            saveBtn.textContent   = 'Salva';
+            saveBtn.style.opacity = '';
+            if (typeof showToast === 'function') showToast(err.message || 'Errore nel salvataggio', 'error');
+        }
+    });
+}
+window.populateExerciseExpand = populateExerciseExpand;
+
+function hideAllenamentiExDetail() {
+    document.querySelectorAll('.allenamenti-ex-expand.open').forEach(e => {
+        e.classList.remove('open');
+        const vid = e.querySelector('video');
+        if (vid) vid.pause();
+    });
+    document.querySelectorAll('.allenamenti-ex-row.selected-ex').forEach(r => r.classList.remove('selected-ex'));
+}
+window.hideAllenamentiExDetail = hideAllenamentiExDetail;
+
+function _populateWorkoutExpand(el, w) {
+    const exercises = (Array.isArray(w.exercises) ? w.exercises : []).filter(ex => ex && ex.name);
+    el._addExercise = null; // Clear any edit-mode callback
+
+    let html = `<div style="display:flex;align-items:center;justify-content:space-between;padding:0.3rem 0.65rem 0.1rem;">
+        <span style="font-size:0.7rem;color:rgba(255,255,255,0.3);">${exercises.length === 0 ? 'Nessun esercizio' : exercises.length + ' esercizi'}</span>
+        <button class="workout-edit-btn" style="font-size:0.7rem;padding:0.18rem 0.55rem;border-radius:4px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);cursor:pointer;">Modifica</button>
+    </div>`;
+
+    if (exercises.length === 0) {
+        html += '<p style="margin:0;padding:0.25rem 0.65rem 0.5rem;font-size:0.72rem;color:rgba(255,255,255,0.25);font-style:italic;">Clicca Modifica per aggiungere esercizi</p>';
+    } else {
+        exercises.forEach(ex => {
+            const setsReps = (ex.sets && ex.reps) ? `${ex.sets}×${ex.reps}` : '';
+            const rest = ex.rest ? `${ex.rest}s` : '';
+            const exLib = (window._allenamentiExercises || []).find(e => e.name === ex.name);
+            const muscle = exLib?.muscle || exLib?.muscle_group || '';
+            const mColor = (typeof _exMuscleColors !== 'undefined' && muscle) ? (_exMuscleColors[muscle] || 'var(--primary)') : 'var(--primary)';
+            html += `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.32rem 0.65rem;border-bottom:1px solid rgba(255,255,255,0.04);">
+                <div style="width:3px;height:${muscle ? '36px' : '14px'};background:${mColor};border-radius:2px;flex-shrink:0;opacity:0.75;"></div>
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:0.82rem;font-weight:600;color:rgba(255,255,255,0.9);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${ex.name}</div>
+                    ${muscle ? `<div style="font-size:0.68rem;color:rgba(255,255,255,0.3);">${muscle}</div>` : ''}
+                </div>
+                <div style="text-align:right;flex-shrink:0;">
+                    ${setsReps ? `<div style="font-size:0.78rem;color:rgba(255,255,255,0.65);font-weight:500;">${setsReps}</div>` : ''}
+                    ${rest ? `<div style="font-size:0.68rem;color:rgba(255,255,255,0.3);">${rest} riposo</div>` : ''}
+                </div>
+            </div>`;
+        });
+    }
+
+    el.innerHTML = html;
+    el.querySelector('.workout-edit-btn')?.addEventListener('click', (e) => {
+        e.stopPropagation();
+        _showWorkoutEditForm(el, w);
+    });
+}
+
+function _showWorkoutEditForm(el, w) {
+    const apiBase = (window.APP_CONFIG || {}).apiBase || '';
+    let exercises = (Array.isArray(w.exercises) ? w.exercises : []).filter(ex => ex && ex.name).map(ex => ({ ...ex }));
+
+    function syncInputs() {
+        el.querySelectorAll('.w-ex-row').forEach((row, i) => {
+            if (exercises[i]) {
+                exercises[i].sets = parseInt(row.querySelector('.ex-sets')?.value) || 3;
+                exercises[i].reps = row.querySelector('.ex-reps')?.value?.trim() || '10';
+                exercises[i].rest = parseInt(row.querySelector('.ex-rest')?.value) || 60;
+            }
+        });
+    }
+
+    function renderList() {
+        const listEl = el.querySelector('.w-edit-list');
+        if (!listEl) return;
+        if (exercises.length === 0) {
+            listEl.innerHTML = '<p style="margin:0;padding:0.3rem 0.65rem;font-size:0.72rem;color:rgba(255,255,255,0.25);font-style:italic;">Nessun esercizio — trascina qui sotto</p>';
+        } else {
+            listEl.innerHTML = exercises.map((ex, i) => {
+                const exLib = (window._allenamentiExercises || []).find(e => e.name === ex.name);
+                const muscle = exLib?.muscle || '';
+                const mColor = (typeof _exMuscleColors !== 'undefined' && muscle) ? (_exMuscleColors[muscle] || '#6366f1') : '#6366f1';
+                return `<div class="w-ex-row" data-idx="${i}" style="display:flex;align-items:center;gap:0.4rem;padding:0.28rem 0.65rem;border-bottom:1px solid rgba(255,255,255,0.05);">
+                    <div style="width:3px;height:32px;background:${mColor};border-radius:2px;flex-shrink:0;opacity:0.7;"></div>
+                    <span style="flex:1;font-size:0.8rem;color:rgba(255,255,255,0.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">${ex.name}</span>
+                    <input type="number" class="ex-sets" value="${ex.sets || 3}" min="1" max="99" style="width:34px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:3px;color:white;font-size:0.72rem;text-align:center;padding:0.1rem 0;" title="Serie">
+                    <span style="font-size:0.65rem;color:rgba(255,255,255,0.25);">×</span>
+                    <input type="text" class="ex-reps" value="${ex.reps || '10'}" style="width:36px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:3px;color:white;font-size:0.72rem;text-align:center;padding:0.1rem 0;" title="Ripetizioni">
+                    <input type="number" class="ex-rest" value="${ex.rest || 60}" min="0" max="600" style="width:38px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:3px;color:white;font-size:0.72rem;text-align:center;padding:0.1rem 0;" title="Riposo (s)">
+                    <span style="font-size:0.62rem;color:rgba(255,255,255,0.25);">s</span>
+                    <button class="ex-del-btn" data-idx="${i}" style="background:none;border:none;color:rgba(255,80,80,0.5);cursor:pointer;font-size:1.1rem;padding:0 0.15rem;line-height:1;" title="Rimuovi">×</button>
+                </div>`;
+            }).join('');
+            listEl.querySelectorAll('.ex-del-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    syncInputs();
+                    exercises.splice(parseInt(btn.dataset.idx), 1);
+                    renderList();
+                });
+            });
+        }
+    }
+
+    el.innerHTML = `
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:0.3rem 0.65rem;border-bottom:1px solid rgba(255,255,255,0.07);">
+            <span style="font-size:0.72rem;color:rgba(255,255,255,0.45);font-weight:600;">Modifica esercizi</span>
+            <div style="display:flex;gap:0.35rem;">
+                <button class="w-save-btn" style="font-size:0.7rem;padding:0.2rem 0.65rem;border-radius:4px;background:var(--primary);border:none;color:white;cursor:pointer;font-weight:600;">Salva</button>
+                <button class="w-cancel-btn" style="font-size:0.7rem;padding:0.2rem 0.5rem;border-radius:4px;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.5);cursor:pointer;">Annulla</button>
+            </div>
+        </div>
+        <div class="w-edit-list"></div>
+        <div class="w-drop-zone" style="margin:0.4rem 0.65rem 0.5rem;padding:0.55rem;border:1.5px dashed rgba(255,255,255,0.13);border-radius:6px;text-align:center;font-size:0.72rem;color:rgba(255,255,255,0.28);transition:all 0.18s;">
+            ＋ &nbsp;Trascina un esercizio qui per aggiungerlo
+        </div>`;
+
+    renderList();
+
+    // Edit-mode callback — external drop handlers call this
+    el._addExercise = (dd) => {
+        syncInputs();
+        exercises.push({ name: dd.name, sets: 3, reps: '10', rest: 60, video_id: dd.video_id || null });
+        renderList();
+    };
+
+    // Drop zone
+    const dz = el.querySelector('.w-drop-zone');
+    dz.addEventListener('dragover', (e) => {
+        if (currentDragData?.type !== 'exercise') return;
+        e.preventDefault(); e.stopPropagation();
+        dz.style.borderColor = 'rgba(99,102,241,0.6)';
+        dz.style.background = 'rgba(99,102,241,0.08)';
+        dz.style.color = 'rgba(255,255,255,0.7)';
+    });
+    dz.addEventListener('dragleave', (e) => {
+        if (!dz.contains(e.relatedTarget)) {
+            dz.style.borderColor = 'rgba(255,255,255,0.13)';
+            dz.style.background = '';
+            dz.style.color = 'rgba(255,255,255,0.28)';
+        }
+    });
+    dz.addEventListener('drop', (e) => {
+        e.preventDefault(); e.stopPropagation();
+        dz.style.borderColor = 'rgba(255,255,255,0.13)'; dz.style.background = ''; dz.style.color = 'rgba(255,255,255,0.28)';
+        let dd = null;
+        try { const p = JSON.parse(e.dataTransfer.getData('text/plain')); if (p?.type === 'exercise' && p.name) dd = p; } catch(_) {}
+        if (!dd && currentDragData?.type === 'exercise' && currentDragData.name) dd = currentDragData;
+        if (!dd) return;
+        el._addExercise(dd);
+        currentDragData = null;
+    });
+
+    // Save
+    el.querySelector('.w-save-btn').addEventListener('click', async (e) => {
+        e.stopPropagation();
+        syncInputs();
+        const btn = el.querySelector('.w-save-btn');
+        btn.textContent = '...'; btn.disabled = true;
+        try {
+            const res = await fetch(`${apiBase}/api/trainer/workouts/${w.id}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+                body: JSON.stringify({ title: w.title || '', duration: w.duration || '', difficulty: w.difficulty || '', exercises })
+            });
+            if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'Errore'); }
+            const updated = await res.json();
+            w.exercises = updated.exercises;
+            if (window.trainerData?.workouts) {
+                const idx = window.trainerData.workouts.findIndex(ww => ww.id === w.id);
+                if (idx >= 0) window.trainerData.workouts[idx] = updated;
+            }
+            if (el._cardTr) {
+                const exCount = (updated.exercises || []).filter(ex => ex.name).length;
+                const meta = [updated.duration, updated.difficulty, exCount > 0 ? `${exCount} es.` : null].filter(Boolean).join(' · ');
+                const metaEl = el._cardTr.querySelector('.workout-card-meta');
+                if (metaEl) metaEl.textContent = meta;
+            }
+            _populateWorkoutExpand(el, updated);
+            if (typeof showToast === 'function') showToast('Allenamento salvato', 'success');
+        } catch (err) {
+            btn.textContent = 'Salva'; btn.disabled = false;
+            if (typeof showToast === 'function') showToast(err.message || 'Errore', 'error');
+        }
+    });
+
+    el.querySelector('.w-cancel-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        _populateWorkoutExpand(el, w);
+    });
 }
 
 function renderWorkoutDragList(workouts) {
@@ -1013,28 +1608,222 @@ function renderWorkoutDragList(workouts) {
             <td>
                 <div style="display:flex;align-items:center;gap:0.75rem;">
                     <i data-lucide="grip-vertical" class="w-4 h-4" style="color:rgba(255,255,255,0.2);flex-shrink:0;"></i>
-                    <div>
-                        <div style="font-weight:600;color:white;font-size:0.85rem;">${w.title || 'Untitled'}</div>
-                        <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);">${meta}</div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:600;color:white;font-size:0.85rem;">${w.title || 'Senza titolo'}</div>
+                        <div class="workout-card-meta" style="font-size:0.75rem;color:rgba(255,255,255,0.4);">${meta}</div>
                     </div>
+                    <svg class="workout-card-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.2)" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                 </div>
             </td>
         `;
 
-        // Drag handlers
+        // Expand row (inline exercise list)
+        const expandTr = document.createElement('tr');
+        expandTr.className = 'workout-expand-tr';
+        const expandTd = document.createElement('td');
+        expandTd.colSpan = 2;
+        expandTd.style.padding = '0';
+        const expandInner = document.createElement('div');
+        expandInner.className = 'workout-expand-inner';
+        expandInner._cardTr = tr;
+        _populateWorkoutExpand(expandInner, w);
+        expandTd.appendChild(expandInner);
+        expandTr.appendChild(expandTd);
+
+        // Click: toggle expand
+        tr.addEventListener('click', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            const isOpen = expandInner.classList.contains('open');
+            document.querySelectorAll('.workout-expand-inner.open').forEach(el => {
+                if (el !== expandInner) {
+                    el.classList.remove('open');
+                    el.closest('tr')?.previousElementSibling?.querySelector('.workout-card-chevron')?.style.setProperty('transform', '');
+                }
+            });
+            expandInner.classList.toggle('open', !isOpen);
+            tr.querySelector('.workout-card-chevron').style.transform = isOpen ? '' : 'rotate(180deg)';
+        });
+
+        // Drag workout → client
         tr.addEventListener('dragstart', handleDragStart);
         tr.addEventListener('dragend', handleDragEnd);
 
-        // Click-to-select handler (alternative to drag-and-drop)
-        tr.addEventListener('click', function(e) {
-            if (e.target.tagName === 'INPUT') return; // Ignore checkbox clicks
-            selectWorkoutItem(this);
+        // Drop exercise → this workout
+        tr.addEventListener('dragover', (e) => {
+            if (currentDragData?.type !== 'exercise') return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+        });
+        tr.addEventListener('dragenter', (e) => {
+            if (currentDragData?.type !== 'exercise') return;
+            e.preventDefault();
+            tr.classList.add('ex-drop-hover');
+        });
+        tr.addEventListener('dragleave', (e) => {
+            if (!tr.contains(e.relatedTarget)) tr.classList.remove('ex-drop-hover');
+        });
+        tr.addEventListener('drop', (e) => {
+            tr.classList.remove('ex-drop-hover');
+            let dd = null;
+            try { const p = JSON.parse(e.dataTransfer.getData('text/plain')); if (p?.type === 'exercise' && p.name) dd = p; } catch(_) {}
+            if (!dd && currentDragData?.type === 'exercise' && currentDragData.name) dd = currentDragData;
+            if (!dd) return;
+            e.preventDefault();
+            if (!expandInner.classList.contains('open')) {
+                expandInner.classList.add('open');
+                tr.querySelector('.workout-card-chevron').style.transform = 'rotate(180deg)';
+            }
+            if (expandInner._addExercise) {
+                expandInner._addExercise(dd); // Edit mode — add to form, don't auto-save
+            } else {
+                addExerciseToWorkout(w, dd, expandInner, tr); // View mode — auto-save
+            }
+            currentDragData = null;
+        });
+
+        // Also make expandTr a drop target (user may drop onto the open exercise list)
+        expandTr.addEventListener('dragover', (e) => {
+            if (currentDragData?.type !== 'exercise') return;
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            tr.classList.add('ex-drop-hover');
+        });
+        expandTr.addEventListener('dragleave', (e) => {
+            if (!tr.contains(e.relatedTarget) && !expandTr.contains(e.relatedTarget)) {
+                tr.classList.remove('ex-drop-hover');
+            }
+        });
+        expandTr.addEventListener('drop', (e) => {
+            tr.classList.remove('ex-drop-hover');
+            let dd = null;
+            try { const p = JSON.parse(e.dataTransfer.getData('text/plain')); if (p?.type === 'exercise' && p.name) dd = p; } catch(_) {}
+            if (!dd && currentDragData?.type === 'exercise' && currentDragData.name) dd = currentDragData;
+            if (!dd) return;
+            e.preventDefault();
+            if (expandInner._addExercise) {
+                expandInner._addExercise(dd);
+            } else {
+                addExerciseToWorkout(w, dd, expandInner, tr);
+            }
+            currentDragData = null;
         });
 
         tbody.appendChild(tr);
+        tbody.appendChild(expandTr);
     });
 
     if (window.lucide) lucide.createIcons();
+}
+
+function _populateSplitExpand(el, s) {
+    const schedule = (s.schedule && typeof s.schedule === 'object') ? s.schedule : {};
+    const workoutMap = {};
+    (window.trainerData?.workouts || []).forEach(ww => { workoutMap[ww.id] = ww.title; });
+    const scheduleEntries = Object.entries(schedule).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+
+    let html = `<div style="display:flex;align-items:center;justify-content:space-between;padding:0.35rem 0.65rem 0.15rem;">
+        <span style="font-size:0.72rem;color:rgba(255,255,255,0.4);">${s.description || ''}</span>
+        <button class="split-edit-btn" style="font-size:0.7rem;padding:0.18rem 0.55rem;border-radius:4px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);cursor:pointer;">Modifica</button>
+    </div>`;
+
+    if (scheduleEntries.length > 0) {
+        scheduleEntries.forEach(([dayNum, workoutId]) => {
+            const workoutName = workoutMap[workoutId] || workoutId || 'Riposo';
+            html += `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0.65rem;border-bottom:1px solid rgba(255,255,255,0.04);">
+                <div style="width:3px;height:14px;background:var(--primary);border-radius:2px;flex-shrink:0;"></div>
+                <span style="font-size:0.72rem;color:rgba(255,255,255,0.4);width:52px;flex-shrink:0;">Giorno ${dayNum}</span>
+                <span style="flex:1;font-size:0.8rem;color:rgba(255,255,255,0.85);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${workoutName}</span>
+            </div>`;
+        });
+    } else if (s.days_per_week) {
+        for (let d = 1; d <= s.days_per_week; d++) {
+            html += `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.3rem 0.65rem;border-bottom:1px solid rgba(255,255,255,0.04);">
+                <div style="width:3px;height:14px;background:rgba(255,255,255,0.1);border-radius:2px;flex-shrink:0;"></div>
+                <span style="font-size:0.72rem;color:rgba(255,255,255,0.4);width:52px;flex-shrink:0;">Giorno ${d}</span>
+                <span style="flex:1;font-size:0.8rem;color:rgba(255,255,255,0.3);font-style:italic;">Non assegnato</span>
+            </div>`;
+        }
+    } else {
+        html += '<p style="margin:0;padding:0.5rem 0.65rem;font-size:0.75rem;color:rgba(255,255,255,0.3);font-style:italic;">Nessun programma configurato</p>';
+    }
+
+    el.innerHTML = html;
+    el.querySelector('.split-edit-btn').addEventListener('click', (evt) => {
+        evt.stopPropagation();
+        _showSplitEditForm(el, s);
+    });
+}
+
+function _showSplitEditForm(el, s) {
+    const workoutList = window.trainerData?.workouts || [];
+    const schedule = (s.schedule && typeof s.schedule === 'object') ? s.schedule : {};
+    const daysCount = s.days_per_week || Object.keys(schedule).length || 3;
+    const apiBase = (window.APP_CONFIG || {}).apiBase || '';
+
+    let dayRows = '';
+    for (let d = 1; d <= daysCount; d++) {
+        const assignedId = schedule[d] || schedule[String(d)] || '';
+        const opts = workoutList.map(w =>
+            `<option value="${w.id}" ${w.id === assignedId ? 'selected' : ''}>${w.title || 'Senza titolo'}</option>`
+        ).join('');
+        dayRows += `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.25rem 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+            <span style="font-size:0.72rem;color:rgba(255,255,255,0.4);width:52px;flex-shrink:0;">Giorno ${d}</span>
+            <select data-day="${d}" style="flex:1;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:rgba(255,255,255,0.8);font-size:0.78rem;padding:0.2rem 0.4rem;cursor:pointer;">
+                <option value="">— Riposo —</option>${opts}
+            </select>
+        </div>`;
+    }
+
+    el.innerHTML = `<div style="padding:0.5rem 0.65rem;">
+        <div style="display:flex;gap:0.5rem;margin-bottom:0.4rem;">
+            <div style="flex:1;">
+                <label style="font-size:0.68rem;color:rgba(255,255,255,0.4);display:block;margin-bottom:0.15rem;">Nome</label>
+                <input class="s-name" value="${s.name || ''}" style="width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:white;font-size:0.8rem;padding:0.25rem 0.4rem;">
+            </div>
+            <div style="flex:1;">
+                <label style="font-size:0.68rem;color:rgba(255,255,255,0.4);display:block;margin-bottom:0.15rem;">Descrizione</label>
+                <input class="s-desc" value="${s.description || ''}" style="width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:white;font-size:0.8rem;padding:0.25rem 0.4rem;">
+            </div>
+        </div>
+        <div style="margin-bottom:0.4rem;">${dayRows}</div>
+        <div style="display:flex;gap:0.4rem;margin-top:0.3rem;">
+            <button class="s-save-btn" style="flex:1;padding:0.3rem 0;border-radius:5px;background:var(--primary);border:none;color:white;font-size:0.78rem;font-weight:600;cursor:pointer;">Salva</button>
+            <button class="s-cancel-btn" style="padding:0.3rem 0.7rem;border-radius:5px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:0.78rem;cursor:pointer;">Annulla</button>
+        </div>
+    </div>`;
+
+    el.querySelector('.s-save-btn').addEventListener('click', async (evt) => {
+        evt.stopPropagation();
+        const name = el.querySelector('.s-name').value.trim();
+        if (!name) { if (typeof showToast === 'function') showToast('Nome obbligatorio', 'error'); return; }
+        const newSchedule = {};
+        el.querySelectorAll('select[data-day]').forEach(sel => {
+            if (sel.value) newSchedule[sel.dataset.day] = sel.value;
+        });
+        const body = { name, description: el.querySelector('.s-desc').value.trim(), days_per_week: daysCount, schedule: newSchedule };
+        try {
+            const res = await fetch(`${apiBase}/api/trainer/splits/${s.id}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+                body: JSON.stringify(body)
+            });
+            if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'Errore'); }
+            const updated = await res.json();
+            Object.assign(s, updated);
+            if (window.trainerData?.splits) {
+                const idx = window.trainerData.splits.findIndex(sp => sp.id === s.id);
+                if (idx >= 0) Object.assign(window.trainerData.splits[idx], updated);
+            }
+            _populateSplitExpand(el, s);
+            if (typeof showToast === 'function') showToast('Split aggiornato', 'success');
+        } catch (err) {
+            if (typeof showToast === 'function') showToast(err.message || 'Errore', 'error');
+        }
+    });
+
+    el.querySelector('.s-cancel-btn').addEventListener('click', (evt) => {
+        evt.stopPropagation();
+        _populateSplitExpand(el, s);
+    });
 }
 
 function renderSplitDragList(splits) {
@@ -1055,7 +1844,7 @@ function renderSplitDragList(splits) {
         tr.dataset.itemId = s.id;
         tr.dataset.itemName = s.name || 'Split';
 
-        const dayCount = Array.isArray(s.days) ? s.days.length : 0;
+        const dayCount = Array.isArray(s.days) ? s.days.length : (s.days_per_week || 0);
         const meta = [s.description, dayCount > 0 ? `${dayCount} giorni` : null].filter(Boolean).join(' · ');
 
         tr.innerHTML = `
@@ -1063,24 +1852,49 @@ function renderSplitDragList(splits) {
             <td>
                 <div style="display:flex;align-items:center;gap:0.75rem;">
                     <i data-lucide="grip-vertical" class="w-4 h-4" style="color:rgba(255,255,255,0.2);flex-shrink:0;"></i>
-                    <div>
-                        <div style="font-weight:600;color:white;font-size:0.85rem;">${s.name || 'Untitled'}</div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="font-weight:600;color:white;font-size:0.85rem;">${s.name || 'Senza titolo'}</div>
                         <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);">${meta || 'Split settimanale'}</div>
                     </div>
+                    <svg class="workout-card-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.2)" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                 </div>
             </td>
         `;
 
+        // Expand row (split detail)
+        const expandTr = document.createElement('tr');
+        expandTr.className = 'workout-expand-tr';
+        const expandTd = document.createElement('td');
+        expandTd.colSpan = 2;
+        expandTd.style.padding = '0';
+        const expandInner = document.createElement('div');
+        expandInner.className = 'workout-expand-inner';
+        _populateSplitExpand(expandInner, s);
+        expandTd.appendChild(expandInner);
+        expandTr.appendChild(expandTd);
+
+        // Click: toggle expand
+        tr.addEventListener('click', (e) => {
+            if (e.target.tagName === 'INPUT') return;
+            const isOpen = expandInner.classList.contains('open');
+            // Close other open split expands
+            document.querySelectorAll('#splits-drag-list .workout-expand-inner.open').forEach(el => {
+                if (el !== expandInner) {
+                    el.classList.remove('open');
+                    el.closest('tr')?.previousElementSibling?.querySelector('.workout-card-chevron')?.style.setProperty('transform', '');
+                }
+            });
+            expandInner.classList.toggle('open', !isOpen);
+            tr.querySelector('.workout-card-chevron').style.transform = isOpen ? '' : 'rotate(180deg)';
+            // Also handle click-to-select for assignment
+            if (!isOpen) selectWorkoutItem(tr);
+        });
+
         tr.addEventListener('dragstart', handleDragStart);
         tr.addEventListener('dragend', handleDragEnd);
 
-        // Click-to-select handler
-        tr.addEventListener('click', function(e) {
-            if (e.target.tagName === 'INPUT') return;
-            selectWorkoutItem(this);
-        });
-
         tbody.appendChild(tr);
+        tbody.appendChild(expandTr);
     });
 
     if (window.lucide) lucide.createIcons();
@@ -1119,7 +1933,7 @@ function renderClientDropTargets(clients) {
         const avatarUrl = c.profile_picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.name}`;
         const initials = c.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
 
-        let expiryDisplay = '\u2014';
+        let expiryDisplay = null;
         if (c.plan_expiry) {
             try {
                 const d = new Date(c.plan_expiry);
@@ -1127,14 +1941,25 @@ function renderClientDropTargets(clients) {
             } catch(e) { expiryDisplay = c.plan_expiry; }
         }
 
+        // Assignment badge
+        let assignBadge = '';
+        if (c.assigned_split) {
+            const expText = expiryDisplay ? ` · scade ${expiryDisplay}` : '';
+            assignBadge = `<span style="display:inline-flex;align-items:center;gap:0.3rem;background:rgba(99,102,241,0.15);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;font-size:0.65rem;font-weight:600;padding:0.15rem 0.5rem;border-radius:9999px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:180px;" title="${c.assigned_split}${expText}">&#9632; ${c.assigned_split}${expText}</span>`;
+        } else if (c.upcoming_workouts > 0) {
+            assignBadge = `<span style="display:inline-flex;align-items:center;gap:0.3rem;background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.25);color:#86efac;font-size:0.65rem;font-weight:600;padding:0.15rem 0.5rem;border-radius:9999px;">&#9632; ${c.upcoming_workouts} allenament${c.upcoming_workouts === 1 ? 'o' : 'i'}</span>`;
+        } else {
+            assignBadge = `<span style="font-size:0.7rem;color:rgba(255,255,255,0.25);font-style:italic;">Nessun programma</span>`;
+        }
+
         div.innerHTML = `
-            <div style="display:flex;align-items:center;gap:0.75rem;flex:1;">
+            <div style="display:flex;align-items:center;gap:0.75rem;flex:1;min-width:0;">
                 <div class="member-avatar" style="width:32px;height:32px;overflow:hidden;flex-shrink:0;">
                     <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.parentElement.textContent='${initials}';">
                 </div>
-                <div style="min-width:0;">
+                <div style="min-width:0;flex:1;">
                     <div style="font-weight:600;color:white;font-size:0.85rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
-                    <div style="font-size:0.7rem;color:rgba(255,255,255,0.4);">${c.assigned_split || '\u2014'} · Scade: ${expiryDisplay}</div>
+                    <div style="margin-top:0.2rem;">${assignBadge}</div>
                 </div>
             </div>
         `;
@@ -1145,19 +1970,27 @@ function renderClientDropTargets(clients) {
         div.addEventListener('dragleave', handleDragLeave);
         div.addEventListener('drop', handleDrop);
 
-        // Click handler (click-to-assign alternative)
+        // Click handler: open client modal if no workout selected, otherwise assign
         div.addEventListener('click', function() {
-            if (!selectedWorkoutItem) {
-                window.showToast && window.showToast('Seleziona prima un allenamento o split dalla lista', 'info');
-                return;
+            if (selectedWorkoutItem) {
+                const cId = this.dataset.clientId;
+                const cName = this.dataset.clientName;
+                openAssignModal(selectedWorkoutItem.type, selectedWorkoutItem.id, selectedWorkoutItem.name, cId, cName);
+            } else {
+                showClientModal(c.name, c.plan, c.status, c.id, c.is_premium);
             }
-            const cId = this.dataset.clientId;
-            const cName = this.dataset.clientName;
-            console.log('[ClickAssign]', selectedWorkoutItem, '→', cId, cName);
-            openAssignModal(selectedWorkoutItem.type, selectedWorkoutItem.id, selectedWorkoutItem.name, cId, cName);
         });
 
         container.appendChild(div);
+    });
+
+    // Sync exercise column height to match clients column
+    requestAnimationFrame(() => {
+        const clientsCol = container.closest('.allenamenti-column');
+        const exCol = document.getElementById('allenamenti-ex-column');
+        if (!clientsCol || !exCol) return;
+        const h = clientsCol.getBoundingClientRect().height;
+        if (h > 0) exCol.style.height = h + 'px';
     });
 }
 
@@ -1177,6 +2010,94 @@ function switchWorkoutTab(tabId) {
     }
 }
 window.switchWorkoutTab = switchWorkoutTab;
+
+// ============ CREATE SPLIT INLINE ============
+
+function _toggleCreateSplitForm() {
+    const container = document.getElementById('create-split-form-container');
+    if (!container) return;
+    if (container.hasChildNodes()) { container.innerHTML = ''; return; }
+    _renderCreateSplitForm(container);
+}
+
+function _renderCreateSplitForm(container, daysCount) {
+    daysCount = daysCount || 5;
+    const workoutList = window.trainerData?.workouts || [];
+    const apiBase = (window.APP_CONFIG || {}).apiBase || '';
+
+    let dayRows = '';
+    for (let d = 1; d <= daysCount; d++) {
+        const opts = workoutList.map(w =>
+            `<option value="${w.id}">${w.title || 'Senza titolo'}</option>`
+        ).join('');
+        dayRows += `<div style="display:flex;align-items:center;gap:0.5rem;padding:0.25rem 0;border-bottom:1px solid rgba(255,255,255,0.05);">
+            <span style="font-size:0.72rem;color:rgba(255,255,255,0.4);width:52px;flex-shrink:0;">Giorno ${d}</span>
+            <select data-day="${d}" style="flex:1;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:rgba(255,255,255,0.8);font-size:0.78rem;padding:0.2rem 0.4rem;cursor:pointer;">
+                <option value="">— Riposo —</option>${opts}
+            </select>
+        </div>`;
+    }
+
+    container.innerHTML = `<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:0.65rem;margin-bottom:0.65rem;">
+        <div style="display:flex;gap:0.5rem;margin-bottom:0.4rem;">
+            <div style="flex:1;">
+                <label style="font-size:0.68rem;color:rgba(255,255,255,0.4);display:block;margin-bottom:0.15rem;">Nome</label>
+                <input id="cs-name" placeholder="Es. Push/Pull/Legs" style="width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:white;font-size:0.8rem;padding:0.25rem 0.4rem;">
+            </div>
+            <div style="flex:1;">
+                <label style="font-size:0.68rem;color:rgba(255,255,255,0.4);display:block;margin-bottom:0.15rem;">Descrizione</label>
+                <input id="cs-desc" placeholder="Opzionale" style="width:100%;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:white;font-size:0.8rem;padding:0.25rem 0.4rem;">
+            </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;">
+            <label style="font-size:0.68rem;color:rgba(255,255,255,0.4);">Giorni/settimana:</label>
+            <input id="cs-days" type="number" min="1" max="7" value="${daysCount}" style="width:48px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);border-radius:4px;color:white;font-size:0.8rem;padding:0.2rem 0.4rem;text-align:center;">
+        </div>
+        <div id="cs-day-rows" style="margin-bottom:0.5rem;">${dayRows}</div>
+        <div style="display:flex;gap:0.4rem;">
+            <button id="cs-save-btn" style="flex:1;padding:0.3rem 0;border-radius:5px;background:var(--primary);border:none;color:white;font-size:0.78rem;font-weight:600;cursor:pointer;">Crea split</button>
+            <button onclick="document.getElementById('create-split-form-container').innerHTML=''" style="padding:0.3rem 0.7rem;border-radius:5px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.1);color:rgba(255,255,255,0.6);font-size:0.78rem;cursor:pointer;">Annulla</button>
+        </div>
+    </div>`;
+
+    // Re-render day rows when days count changes
+    container.querySelector('#cs-days').addEventListener('change', function() {
+        const newCount = Math.max(1, Math.min(7, parseInt(this.value) || 5));
+        this.value = newCount;
+        _renderCreateSplitForm(container, newCount);
+    });
+
+    container.querySelector('#cs-save-btn').addEventListener('click', async () => {
+        const name = container.querySelector('#cs-name').value.trim();
+        if (!name) { if (typeof showToast === 'function') showToast('Nome obbligatorio', 'error'); return; }
+        const desc = container.querySelector('#cs-desc').value.trim();
+        const days = parseInt(container.querySelector('#cs-days').value) || daysCount;
+        const schedule = {};
+        container.querySelectorAll('select[data-day]').forEach(sel => {
+            if (sel.value) schedule[sel.dataset.day] = sel.value;
+        });
+
+        try {
+            const res = await fetch(`${apiBase}/api/trainer/splits`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ name, description: desc, days_per_week: days, schedule })
+            });
+            if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'Errore'); }
+            const created = await res.json();
+            if (window.trainerData) {
+                window.trainerData.splits = window.trainerData.splits || [];
+                window.trainerData.splits.push(created);
+                renderSplitDragList(window.trainerData.splits);
+            }
+            container.innerHTML = '';
+            if (typeof showToast === 'function') showToast('Split creato!', 'success');
+        } catch(err) {
+            if (typeof showToast === 'function') showToast('Errore: ' + err.message, 'error');
+        }
+    });
+}
 
 // ============ DRAG AND DROP ============
 
@@ -1244,6 +2165,9 @@ function handleDrop(e) {
         return;
     }
 
+    // Exercise drags go to workout cards, not client cards — ignore here
+    if (dragData.type === 'exercise') return;
+
     const clientId = this.dataset.clientId;
     const clientName = this.dataset.clientName;
     console.log('[Drop] Assigning', dragData, 'to client', clientId, clientName);
@@ -1251,6 +2175,64 @@ function handleDrop(e) {
     openAssignModal(dragData.type, dragData.id, dragData.name, clientId, clientName);
     currentDragData = null;
 }
+
+// ============ ADD EXERCISE TO WORKOUT ============
+
+async function addExerciseToWorkout(workout, exerciseData, expandInner, cardTr) {
+    if (!exerciseData?.name) {
+        if (typeof showToast === 'function') showToast('Errore: dati esercizio non validi', 'error');
+        return;
+    }
+    // Strip any nameless exercises from previous saves, then add the new one
+    const exercises = (workout.exercises || []).filter(ex => ex && ex.name);
+    exercises.push({
+        name: exerciseData.name,
+        sets: 3,
+        reps: '10',
+        rest: 60,
+        video_id: exerciseData.video_id || null,
+    });
+
+    try {
+        const apiBase = (window.APP_CONFIG || {}).apiBase || '';
+        const res = await fetch(`${apiBase}/api/trainer/workouts/${workout.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                title: workout.title || '',
+                duration: workout.duration || '',
+                difficulty: workout.difficulty || '',
+                exercises,
+            }),
+        });
+        if (!res.ok) {
+            const err = await res.json().catch(() => ({}));
+            throw new Error(err.detail || 'Errore nel salvataggio');
+        }
+        const updated = await res.json();
+        // Update workout object in place
+        workout.exercises = updated.exercises || exercises;
+        // Update cache
+        if (window.trainerData?.workouts) {
+            const idx = window.trainerData.workouts.findIndex(w => w.id === workout.id);
+            if (idx >= 0) window.trainerData.workouts[idx] = updated;
+        }
+        // Refresh expand panel in place (no full re-render)
+        if (expandInner) _populateWorkoutExpand(expandInner, updated);
+        // Update meta text on card
+        if (cardTr) {
+            const exCount = Array.isArray(updated.exercises) ? updated.exercises.length : 0;
+            const meta = [updated.duration, updated.difficulty, exCount > 0 ? `${exCount} es.` : null].filter(Boolean).join(' · ');
+            const metaEl = cardTr.querySelector('.workout-card-meta');
+            if (metaEl) metaEl.textContent = meta;
+        }
+        if (typeof showToast === 'function') showToast(`"${exerciseData.name}" aggiunto a "${workout.title}"`, 'success');
+    } catch(err) {
+        if (typeof showToast === 'function') showToast(err.message || 'Errore', 'error');
+    }
+}
+window.addExerciseToWorkout = addExerciseToWorkout;
 
 // ============ ASSIGNMENT MODAL ============
 
@@ -1345,28 +2327,25 @@ async function confirmAssignment() {
 
         if (res.ok) {
             const assignedClientId = clientId;
-            const assignedItemName = pendingAssignment.itemName;
             window.showToast(`${type === 'split' ? 'Split' : 'Allenamento'} assegnato con successo!`, 'success');
             closeAssignModal();
-
-            // Flash the client card green to confirm
-            const clientCard = document.querySelector(`.client-drop-target[data-client-id="${assignedClientId}"]`);
-            if (clientCard) {
-                clientCard.style.borderColor = '#22c55e';
-                clientCard.style.background = 'rgba(34, 197, 94, 0.1)';
-                setTimeout(() => {
-                    clientCard.style.borderColor = '';
-                    clientCard.style.background = '';
-                }, 1500);
-            }
 
             // Refresh trainer data to update client cards
             const trainerRes = await fetch(`${apiBase}/api/trainer/data?limit_cache=${Date.now()}`, { credentials: 'include' });
             if (trainerRes.ok) {
                 const newData = await trainerRes.json();
                 window.trainerData = newData;
-                // Re-render client drop targets with updated data
                 renderClientDropTargets(newData.clients || []);
+                // Flash the newly rendered card green
+                const updatedCard = document.querySelector(`.client-drop-target[data-client-id="${assignedClientId}"]`);
+                if (updatedCard) {
+                    updatedCard.style.borderColor = '#22c55e';
+                    updatedCard.style.background = 'rgba(34, 197, 94, 0.1)';
+                    setTimeout(() => {
+                        updatedCard.style.borderColor = '';
+                        updatedCard.style.background = '';
+                    }, 1500);
+                }
                 // Also update the Utenti page client table
                 if (typeof renderClientList === 'function') {
                     allClients = newData.clients || [];
@@ -1460,19 +2439,19 @@ async function fetchScheduleData() {
                         <div class="absolute inset-0 bg-primary opacity-20 group-hover:opacity-30 transition"></div>
                         <div class="relative z-10">
                             <div class="flex justify-between items-start mb-4">
-                                <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Today's Plan</span>
+                                <span class="bg-white/10 px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wider">Piano di Oggi</span>
                                 <span class="text-xl">${w.completed ? icon('check-circle', 20) : icon('dumbbell', 20)}</span>
                             </div>
                             <h3 class="text-2xl font-black italic uppercase mb-1">${w.title}</h3>
                             <p class="text-sm text-gray-300 mb-4">${w.duration || 60} min • ${w.difficulty || 'Intermediate'}</p>
-                            <button class="block w-full py-3 ${w.completed ? 'bg-green-500 text-white' : 'bg-white text-black hover:bg-gray-200'} text-center font-bold rounded-xl transition">${w.completed ? 'COMPLETED ✓' : 'START SESSION'}</button>
+                            <button class="block w-full py-3 ${w.completed ? 'bg-green-500 text-white' : 'bg-white text-black hover:bg-gray-200'} text-center font-bold rounded-xl transition">${w.completed ? 'COMPLETATO ✓' : 'INIZIA SESSIONE'}</button>
                         </div>
                     </div>
                 `;
             } else if (planContainer && !data.todays_workout) {
                 planContainer.innerHTML = `
                     <div class="glass-card p-5 text-center text-gray-500">
-                        <p class="text-sm">${icon('calendar-off', 20)} No workout planned for today</p>
+                        <p class="text-sm">${icon('calendar-off', 20)} Nessun allenamento programmato per oggi</p>
                     </div>
                 `;
             }
@@ -1482,7 +2461,7 @@ async function fetchScheduleData() {
         const workoutContainer = document.getElementById('my-workout-card-container');
         if (workoutContainer && data.workouts) {
             if (data.workouts.length === 0) {
-                workoutContainer.innerHTML = '<p class="text-xs text-gray-500 italic text-center py-2">No workouts created yet.</p>';
+                workoutContainer.innerHTML = '<p class="text-xs text-gray-500 italic text-center py-2">Nessun allenamento creato.</p>';
             } else {
                 workoutContainer.innerHTML = data.workouts.map(w => `
                     <div class="glass-card p-3 mb-2">
@@ -1493,7 +2472,7 @@ async function fetchScheduleData() {
                             </div>
                         </div>
                         <button class="w-full py-1.5 bg-green-600/20 hover:bg-green-600 text-green-400 hover:text-white text-xs font-bold rounded-lg transition border border-green-500/30"
-                            onclick="window.assignWorkoutToSelf && window.assignWorkoutToSelf('${w.id}', '${w.title}')"><i data-lucide="check-circle" class="w-4 h-4 inline-block align-middle"></i> Assign to Me (Today)</button>
+                            onclick="window.assignWorkoutToSelf && window.assignWorkoutToSelf('${w.id}', '${w.title}')"><i data-lucide="check-circle" class="w-4 h-4 inline-block align-middle"></i> Assegna a Me (Oggi)</button>
                     </div>
                 `).join('');
             }
@@ -1503,16 +2482,16 @@ async function fetchScheduleData() {
         const splitContainer = document.getElementById('my-split-card-container');
         if (splitContainer && data.splits) {
             if (data.splits.length === 0) {
-                splitContainer.innerHTML = '<p class="text-xs text-gray-500 italic text-center py-2">No splits created yet.</p>';
+                splitContainer.innerHTML = '<p class="text-xs text-gray-500 italic text-center py-2">Nessun split creato.</p>';
             } else {
                 splitContainer.innerHTML = data.splits.map(s => `
                     <div class="glass-card p-3 mb-2">
                         <div class="flex justify-between items-start">
                             <div>
                                 <h4 class="font-bold text-sm text-white">${s.name}</h4>
-                                <p class="text-[10px] text-gray-400">${s.description || 'No description'}</p>
+                                <p class="text-[10px] text-gray-400">${s.description || 'Nessuna descrizione'}</p>
                             </div>
-                            <span class="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded">${s.days_per_week} Days</span>
+                            <span class="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded">${s.days_per_week} Giorni</span>
                         </div>
                     </div>
                 `).join('');
@@ -1538,7 +2517,7 @@ function renderCalendarStripInto(containerId, monthLabelId) {
     if (!daysContainer) return;
     daysContainer.innerHTML = '';
     const monthLabel = document.getElementById(monthLabelId);
-    if (monthLabel) monthLabel.innerText = currentWeekMonday.toLocaleDateString('en-US', { month: 'short' });
+    if (monthLabel) monthLabel.innerText = currentWeekMonday.toLocaleDateString('it-IT', { month: 'short' });
 
     const itDays = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
     const isDashboard = containerId === 'd-calendar-strip';
@@ -1554,7 +2533,7 @@ function renderCalendarStripInto(containerId, monthLabelId) {
         div.className = `flex flex-col items-center p-2 rounded cursor-pointer transition ${isSelected ? 'bg-white/10 text-white' : 'text-white/40 hover:bg-white/5'}`;
         if (isToday && !isSelected) div.classList.add('border', 'border-white/10');
 
-        const dayName = isDashboard ? itDays[(d.getDay() + 6) % 7] : d.toLocaleDateString('en-US', { weekday: 'narrow' });
+        const dayName = isDashboard ? itDays[(d.getDay() + 6) % 7] : d.toLocaleDateString('it-IT', { weekday: 'narrow' });
         const dayNum = d.getDate();
         const hasEvents = currentSchedule.some(e => e.date === dateStr);
         const dot = hasEvents ? `<div class="w-1 h-1 rounded-full bg-primary mt-1"></div>` : '';
@@ -1592,7 +2571,7 @@ function renderScheduleInto(dateStr, containerId, dateElId) {
     const [y, m, d] = dateStr.split('-').map(Number);
     const dateObj = new Date(y, m - 1, d);
     const dateEl = document.getElementById(dateElId);
-    if (dateEl) dateEl.innerText = dateObj.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
+    if (dateEl) dateEl.innerText = dateObj.toLocaleDateString('it-IT', { weekday: 'long', month: 'long', day: 'numeric' });
 
     container.innerHTML = '';
     const dayEvents = currentSchedule.filter(e => e.date === dateStr).sort((a, b) => a.time.localeCompare(b.time));
@@ -1656,7 +2635,7 @@ async function openAddModal(dateStr) {
 }
 
 window.deleteEvent = async function(id) {
-    if (!confirm("Delete this event?")) return;
+    if (!confirm("Eliminare questo evento?")) return;
     try {
         const res = await fetch(`/api/trainer/events/${id}`, { method: 'DELETE' });
         if (res.ok) fetchScheduleData();
@@ -1778,7 +2757,7 @@ window.saveAvailability = async function() {
 
         if (res.ok) {
             closeAvailabilityModal();
-            alert('Availability & rate saved!');
+            alert('Disponibilit\u00e0 e tariffa salvate!');
         }
     } catch (e) { console.error('Error saving availability:', e); }
 };
@@ -1855,7 +2834,7 @@ window.saveBio = async function() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ bio })
         });
-        if (res.ok) alert('Bio saved!');
+        if (res.ok) alert('Bio salvata!');
     } catch (e) { console.error('Error saving bio:', e); }
 };
 
@@ -1884,7 +2863,7 @@ window.saveSpecialties = async function() {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ specialties })
         });
-        if (res.ok) alert('Specialties saved!');
+        if (res.ok) alert('Specializzazioni salvate!');
     } catch (e) { console.error('Error saving specialties:', e); }
 };
 
@@ -1954,5 +2933,6 @@ document.addEventListener('DOMContentLoaded', () => {
 // Expose functions globally
 window.switchSection = switchSection;
 </script>
+
 
 {% endblock %}

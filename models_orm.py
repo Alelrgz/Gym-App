@@ -29,6 +29,10 @@ class UserORM(Base):
     stripe_account_id = Column(String, nullable=True)  # Connected Stripe account ID (acct_xxx)
     stripe_account_status = Column(String, nullable=True)  # pending, active, restricted
 
+    # Stripe Terminal (for gym owners with POS readers)
+    stripe_terminal_location_id = Column(String, nullable=True)  # Terminal Location ID (tml_xxx)
+    stripe_terminal_reader_id = Column(String, nullable=True)  # Primary reader ID (tmr_xxx)
+
     # Trainer pricing
     session_rate = Column(Float, nullable=True)  # Hourly rate for 1-on-1 sessions
 
@@ -850,6 +854,21 @@ class ShowerUsageORM(Base):
     timer_seconds = Column(Integer, nullable=False)  # Granted timer duration
     completed = Column(Boolean, default=False)
     ended_at = Column(String, nullable=True)  # ISO datetime when session ended
+
+
+# --- PASSWORD RESET TOKENS ---
+
+class PasswordResetTokenORM(Base):
+    """Password reset tokens for self-service password recovery."""
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), index=True)
+    token_hash = Column(String, nullable=False)
+    token_type = Column(String, default="password_reset")  # "password_reset" or "username_recovery"
+    expires_at = Column(String, nullable=False)
+    used_at = Column(String, nullable=True)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
 
 
 # --- FACILITY / FIELD / ROOM BOOKING MODELS ---

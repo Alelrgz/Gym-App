@@ -902,8 +902,9 @@ body:has(.staff-layout) > nav {
     padding: 0 0.5rem;
     margin-bottom: 2.5rem;
     display: flex;
-    align-items: center;
-    gap: 0.75rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.4rem;
 }
 
 /* SVG logo image */
@@ -1457,8 +1458,9 @@ body:has(.staff-layout) > nav {
 
 .staff-mobile-header-logo {
     display: flex;
-    align-items: center;
-    gap: 0.6rem;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
 }
 
 .staff-mobile-msg-btn {
@@ -1771,12 +1773,11 @@ body:has(.trainer-layout) {
     grid-template-columns: 1.4fr 1fr;
     gap: 1.5rem;
     align-items: stretch;
+    max-height: calc(100vh - 280px);
 }
 
 /* Client table: fill height and scroll */
 .trainer-utenti-grid > .staff-table-card {
-    min-height: 650px;
-    max-height: calc(100vh - 320px);
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -1786,10 +1787,15 @@ body:has(.trainer-layout) {
     width: 100%;
 }
 
-/* Appointments schedule list: scrollable with space for ~3 items */
+/* Right column: fit viewport, scroll internally */
+.trainer-utenti-grid > div:last-child {
+    overflow-y: auto;
+    max-height: 100%;
+}
+
+/* Appointments schedule list: flexible */
 #d-schedule-container {
-    min-height: 220px;
-    max-height: 300px;
+    max-height: 30vh;
     overflow-y: auto;
 }
 
@@ -1798,6 +1804,29 @@ body:has(.trainer-layout) {
     grid-template-columns: 1.4fr 1fr;
     gap: 1.5rem;
     margin-bottom: 1.5rem;
+}
+
+/* Trainer mobile panel tabs (hidden on desktop) */
+.trainer-panel-tabs {
+    display: none;
+}
+
+.trainer-panel-tab {
+    flex: 1;
+    padding: 0.55rem 0.75rem;
+    background: transparent;
+    border: none;
+    color: rgba(255,255,255,0.4);
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: color 0.2s, border-color 0.2s;
+}
+
+.trainer-panel-tab.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
 }
 
 /* Trainer Corsi page */
@@ -1809,18 +1838,107 @@ body:has(.trainer-layout) {
 }
 
 /* Trainer Allenamenti page */
-.trainer-workouts-dual-search {
-    display: grid;
-    grid-template-columns: 1.2fr 1fr;
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
-}
-
 .trainer-workouts-grid {
     display: grid;
-    grid-template-columns: 1.2fr 1fr;
+    grid-template-columns: 1fr 1.2fr 1fr;
     gap: 1.5rem;
     align-items: start;
+}
+
+.allenamenti-column {
+    background: var(--glass-bg-1);
+    border: 1px solid var(--glass-border-1);
+    border-radius: var(--radius-xl);
+    padding: 1rem;
+    max-height: calc(100vh - 260px);
+    overflow-y: auto;
+}
+
+
+.allenamenti-sticky-header {
+    position: sticky;
+    top: -1rem;
+    z-index: 5;
+    background: #141414;
+    padding-top: 1rem;
+    margin-top: -1rem;
+    padding-bottom: 0.25rem;
+}
+
+.allenamenti-col-header {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: rgba(255,255,255,0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 0.75rem;
+}
+
+.allenamenti-ex-row {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.45rem 0.65rem;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    border: 1px solid transparent;
+}
+.allenamenti-ex-row:hover {
+    background: rgba(255,255,255,0.05);
+    border-color: rgba(255,255,255,0.08);
+}
+.allenamenti-ex-row.selected-ex {
+    background: rgba(var(--primary-rgb), 0.1);
+    border-color: rgba(var(--primary-rgb), 0.3);
+}
+.allenamenti-ex-muscle {
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.35);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Accordion expand per exercise row */
+.allenamenti-ex-item {
+    margin-bottom: 2px;
+}
+.allenamenti-ex-expand {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.36s cubic-bezier(0.4, 0, 0.2, 1);
+}
+.allenamenti-ex-expand.open {
+    max-height: 560px;
+    overflow-y: auto;
+}
+.allenamenti-ex-expand-inner {
+    background: rgba(255,255,255,0.025);
+    border-top: 1px solid rgba(255,255,255,0.07);
+    border-radius: 0 0 var(--radius-md) var(--radius-md);
+    padding: 0.6rem 0.65rem 0.65rem;
+    margin-bottom: 0.15rem;
+}
+.allenamenti-ex-row .allenamenti-ex-chevron {
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+}
+.allenamenti-ex-row.selected-ex .allenamenti-ex-chevron {
+    transform: rotate(180deg);
+}
+
+/* Exercise drag-to-workout */
+.allenamenti-ex-row[draggable="true"] {
+    cursor: grab;
+}
+.allenamenti-ex-row.ex-dragging {
+    opacity: 0.4;
+}
+.workout-drag-card.ex-drop-hover {
+    background: rgba(var(--primary-rgb), 0.12) !important;
+    outline: 1px dashed rgba(var(--primary-rgb), 0.5);
+    outline-offset: -2px;
 }
 
 .trainer-tab-bar {
@@ -1878,6 +1996,29 @@ tr.workout-drag-card.selected {
     border-left: 3px solid var(--primary);
 }
 
+/* Workout/split accordion chevron */
+.workout-card-chevron {
+    transition: transform 0.25s ease;
+    flex-shrink: 0;
+}
+/* Expand row */
+tr.workout-expand-tr td {
+    padding: 0 !important;
+    border: none !important;
+}
+.workout-expand-inner {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.32s cubic-bezier(0.4, 0, 0.2, 1);
+    background: rgba(255,255,255,0.02);
+    border-bottom: 1px solid transparent;
+}
+.workout-expand-inner.open {
+    max-height: 600px;
+    border-bottom-color: rgba(255,255,255,0.06);
+    overflow-y: auto;
+}
+
 /* Client drop targets */
 .client-drop-target {
     background: var(--glass-bg-2);
@@ -1928,11 +2069,17 @@ tr.workout-drag-card.selected {
         overflow-y: visible;
     }
 
-    /* Trainer sections get their own padding on mobile */
+    /* Trainer sections: override Tailwind padding, prevent overflow */
     .trainer-layout .trainer-section {
-        padding: 1rem;
+        padding: 1rem !important;
         max-width: 100vw;
         overflow-x: hidden;
+        box-sizing: border-box;
+    }
+
+    /* Tighter spacing on mobile */
+    .trainer-layout .staff-page-header {
+        margin-bottom: 0.75rem;
     }
 
     body:has(.trainer-layout) {
@@ -1940,34 +2087,140 @@ tr.workout-drag-card.selected {
         overflow-y: auto;
     }
 
-    /* Utenti page: stack columns on mobile */
+    /* Utenti page: single panel at a time on mobile */
     .trainer-utenti-grid {
-        grid-template-columns: 1fr;
+        display: block;
+    }
+    .trainer-utenti-grid .trainer-panel-hidden {
+        display: none !important;
     }
 
-    /* Allenamenti page: stack columns on mobile */
-    .trainer-workouts-dual-search,
+    /* Show mobile panel tabs */
+    .trainer-panel-tabs {
+        display: flex;
+        background: var(--glass-bg-1);
+        border: 1px solid var(--glass-border-1);
+        border-radius: var(--radius-lg);
+        margin-bottom: 1rem;
+        overflow: hidden;
+    }
+
+    /* Allenamenti page: single panel visible at a time */
     .trainer-workouts-grid {
-        grid-template-columns: 1fr;
+        display: block;
+    }
+    .trainer-workouts-grid .trainer-panel-hidden {
+        display: none !important;
     }
 
-    /* Corsi page: stack columns on mobile */
+    /* Corsi page: single panel visible at a time */
     .trainer-courses-grid {
-        grid-template-columns: 1fr;
+        display: block;
+    }
+    .trainer-courses-grid .trainer-panel-hidden {
+        display: none !important;
+    }
+    .trainer-courses-grid > .trainer-panel-content {
+        background: var(--glass-bg-1);
+        border: 1px solid var(--glass-border-1);
+        border-radius: var(--radius-xl);
+        padding: 1rem;
+        margin-bottom: 1rem;
     }
 
     .trainer-dual-search {
         grid-template-columns: 1fr;
     }
 
-    /* Make table horizontally scrollable */
-    .trainer-utenti-grid .staff-table-card {
-        overflow-x: auto;
-        -webkit-overflow-scrolling: touch;
+    /* Utenti: hide appointment search on mobile (integrated in Agenda tab) */
+    .trainer-dual-search .staff-search-bar:last-child {
+        display: none;
     }
 
-    .trainer-utenti-grid .staff-table {
-        min-width: 400px;
+    /* Fix broken max-heights on mobile */
+    .trainer-utenti-grid {
+        max-height: none;
+    }
+    .allenamenti-column {
+        max-height: none;
+    }
+    #courses-page-list,
+    #shared-courses-list,
+    #courses-participants-list,
+    #course-exercise-library {
+        max-height: none !important;
+    }
+    #d-schedule-container {
+        max-height: none;
+    }
+}
+
+/* ============ TRAINER SMALL SCREEN REFINEMENTS ============ */
+@media (max-width: 640px) {
+    .trainer-main-new {
+        padding: 56px 0 64px;
+    }
+
+    .trainer-layout .trainer-section {
+        padding: 0.75rem;
+    }
+
+    /* Tighter page headers */
+    .trainer-layout .staff-page-header {
+        margin-bottom: 0.75rem;
+    }
+    .trainer-layout .staff-page-header h1 {
+        font-size: 1.2rem;
+    }
+    .trainer-layout .staff-page-header p {
+        font-size: 0.75rem;
+    }
+
+    /* Smaller stats bar */
+    .trainer-layout .staff-stats-bar {
+        padding: 0.5rem 0.75rem;
+        gap: 0.75rem;
+    }
+    .trainer-layout .staff-stat-value {
+        font-size: 1rem;
+    }
+    .trainer-layout .staff-stat-label {
+        font-size: 0.65rem;
+    }
+
+    /* Compact panel tabs */
+    .trainer-panel-tab {
+        font-size: 0.75rem;
+        padding: 0.5rem 0.5rem;
+    }
+
+    /* Bottom nav with 5 tabs needs tighter text */
+    body:has(.trainer-layout) .bottom-nav-item span {
+        font-size: 9px;
+    }
+
+    /* Compact search bars */
+    .trainer-layout .staff-search-bar input {
+        font-size: 0.8rem;
+        padding: 0.55rem 0.75rem 0.55rem 2.25rem;
+    }
+
+    /* Tighter allenamenti columns */
+    .allenamenti-column {
+        padding: 0.75rem;
+    }
+    .allenamenti-col-header {
+        font-size: 0.65rem;
+    }
+
+    /* Global overflow guard */
+    .trainer-layout,
+    .trainer-layout * {
+        max-width: 100vw;
+    }
+    .trainer-layout .trainer-section {
+        overflow-x: hidden;
+        word-break: break-word;
     }
 }
 

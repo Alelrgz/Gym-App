@@ -725,6 +725,53 @@ By signing below, I acknowledge that I have read and understood this waiver and 
     }
 
 
+@router.post("/reset-member-password")
+async def reset_member_password(
+    data: dict,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Staff resets a member's password, generating a temporary one."""
+    if user.role not in ("staff", "owner"):
+        raise HTTPException(status_code=403, detail="Staff or owner access required")
+
+    member_id = data.get("member_id")
+    if not member_id:
+        raise HTTPException(status_code=400, detail="member_id is required")
+
+    from service_modules.password_reset_service import staff_reset_password
+    result = staff_reset_password(user, member_id)
+
+    if result["status"] == "error":
+        raise HTTPException(status_code=400, detail=result["message"])
+
+    return result
+
+
+@router.post("/change-member-username")
+async def change_member_username(
+    data: dict,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Staff changes a member's username."""
+    if user.role not in ("staff", "owner"):
+        raise HTTPException(status_code=403, detail="Staff or owner access required")
+
+    member_id = data.get("member_id")
+    new_username = data.get("new_username", "").strip()
+    if not member_id or not new_username:
+        raise HTTPException(status_code=400, detail="member_id and new_username are required")
+
+    from service_modules.password_reset_service import staff_change_username
+    result = staff_change_username(user, member_id, new_username)
+
+    if result["status"] == "error":
+        raise HTTPException(status_code=400, detail=result["message"])
+
+    return result
+
+
 @router.post("/onboard-client")
 async def onboard_new_client(
     data: dict,
@@ -766,6 +813,7 @@ async def onboard_new_client(
     stripe_payment_intent_id = data.get("stripe_payment_intent_id")  # From card payment
 
     # Validation
+    logger.info(f"Onboard attempt: name={name!r} phone={phone!r} username={username!r} email={email!r} plan_id={plan_id} payment_method={payment_method}")
     if not name:
         raise HTTPException(status_code=400, detail="Name is required")
     if not phone:
@@ -899,7 +947,7 @@ async def onboard_new_client(
                 db.add(new_subscription)
 
                 # Create payment record if payment was made
-                if payment_method in ("card", "cash", "qr") and plan.price > 0:
+                if payment_method in ("card", "cash", "qr", "terminal") and plan.price > 0:
                     payment_id = str(uuid.uuid4())
                     payment_record = PaymentORM(
                         id=payment_id,
@@ -908,7 +956,7 @@ async def onboard_new_client(
                         gym_id=user.gym_owner_id,
                         amount=plan.price,
                         currency=plan.currency or "usd",
-                        status="succeeded" if payment_method in ("card", "qr") else "recorded",
+                        status="succeeded" if payment_method in ("card", "qr", "terminal") else "recorded",
                         stripe_payment_intent_id=stripe_payment_intent_id,
                         description=f"Onboarding: {plan.name}",
                         payment_method=payment_method,

@@ -1,11 +1,17 @@
 """
 Exercise Routes - API endpoints for exercise management.
 """
-from fastapi import APIRouter, Depends, HTTPException
+import os
+import uuid
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from auth import get_current_user
 from models import ExerciseTemplate
 from models_orm import UserORM
 from service_modules.exercise_service import ExerciseService, get_exercise_service
+
+_VIDEOS_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "static", "videos")
+_ALLOWED_VIDEO_EXTS = {".mp4", ".mov", ".webm", ".avi", ".mkv"}
+_MAX_VIDEO_BYTES = 300 * 1024 * 1024  # 300 MB
 
 router = APIRouter()
 
@@ -90,3 +96,28 @@ async def delete_exercise(
 ):
     """Delete a personal exercise."""
     return service.delete_exercise(exercise_id, current_user.id)
+
+
+@router.post("/api/exercises/{exercise_id}/video")
+async def upload_exercise_video(
+    exercise_id: str,
+    file: UploadFile = File(...),
+    service: ExerciseService = Depends(get_exercise_service),
+    current_user: UserORM = Depends(get_current_user),
+):
+    """Upload a video file for an exercise and save it to static/videos/."""
+    ext = os.path.splitext(file.filename or "")[1].lower()
+    if ext not in _ALLOWED_VIDEO_EXTS:
+        raise HTTPException(status_code=400, detail=f"Formato non supportato. Usa: {', '.join(_ALLOWED_VIDEO_EXTS)}")
+
+    content = await file.read()
+    if len(content) > _MAX_VIDEO_BYTES:
+        raise HTTPException(status_code=400, detail="File troppo grande (max 300 MB)")
+
+    os.makedirs(_VIDEOS_DIR, exist_ok=True)
+    video_id = str(uuid.uuid4())
+    dest = os.path.join(_VIDEOS_DIR, f"{video_id}.mp4")
+    with open(dest, "wb") as f:
+        f.write(content)
+
+    return service.update_exercise(exercise_id, {"video_id": video_id}, current_user.id)
