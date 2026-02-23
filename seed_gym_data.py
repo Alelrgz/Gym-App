@@ -12,7 +12,8 @@ from models_orm import (
     UserORM, ClientProfileORM, WeightHistoryORM,
     AppointmentORM, CheckInORM, SubscriptionPlanORM,
     ClientSubscriptionORM, TrainerAvailabilityORM,
-    ClientExerciseLogORM, ExerciseORM
+    ClientExerciseLogORM, ExerciseORM,
+    ConversationORM, MessageORM
 )
 from auth import get_password_hash
 
@@ -526,6 +527,77 @@ for user, profile, c_data in ALL_CLIENTS_FOR_DATA:
                     log_count += 1
 
     print(f"  {user.username}: Added {log_count} exercise log entries")
+
+# ─────────────────────────────────────────────────────────────
+# 8. SEED CONVERSATIONS (trainer ↔ client messages)
+# ─────────────────────────────────────────────────────────────
+print("\n--- Seeding conversations ---")
+# Get Marco (trainer) and first two clients
+marco = db.query(UserORM).filter(UserORM.username == "Marco", UserORM.role == "trainer").first()
+if marco:
+    # Find clients assigned to Marco via their profile
+    marco_profiles = db.query(ClientProfileORM).filter(
+        ClientProfileORM.trainer_id == marco.id
+    ).limit(3).all()
+    seed_client_ids = [p.id for p in marco_profiles]
+    # Fallback: any client in the gym
+    if not seed_client_ids:
+        gym_profiles = db.query(ClientProfileORM).filter(
+            ClientProfileORM.gym_id == GYM_OWNER_ID
+        ).limit(3).all()
+        seed_client_ids = [p.id for p in gym_profiles]
+    seed_clients = db.query(UserORM).filter(UserORM.id.in_(seed_client_ids)).all() if seed_client_ids else []
+
+    messages_data = [
+        {"text": "Ciao Marco! Per caso è questa l'inclinazione giusta per l'incline bench? Ho un dubbio [Allegato]", "mins_ago": 12},
+        {"text": "Perfetto, grazie mille! Domani ci vediamo alle 10?", "mins_ago": 45},
+        {"text": "Ho fatto il PR sullo squat oggi! 120kg x 3!", "mins_ago": 180},
+    ]
+
+    conv_count = 0
+    for i, client in enumerate(seed_clients):
+        # Check if conversation already exists
+        existing_conv = db.query(ConversationORM).filter(
+            ConversationORM.trainer_id == marco.id,
+            ConversationORM.client_id == client.id
+        ).first()
+        if existing_conv:
+            print(f"  Conversation with {client.username} already exists, skipping")
+            continue
+
+        msg_data = messages_data[i % len(messages_data)]
+        msg_time = (NOW - timedelta(minutes=msg_data["mins_ago"])).isoformat()
+
+        conv = ConversationORM(
+            id=str(uuid.uuid4()),
+            trainer_id=marco.id,
+            client_id=client.id,
+            conversation_type="trainer_client",
+            last_message_at=msg_time,
+            last_message_preview=msg_data["text"][:80],
+            trainer_unread_count=1,
+            client_unread_count=0,
+            created_at=msg_time,
+        )
+        db.add(conv)
+        db.flush()
+
+        msg = MessageORM(
+            id=str(uuid.uuid4()),
+            conversation_id=conv.id,
+            sender_id=client.id,
+            sender_role="client",
+            content=msg_data["text"],
+            is_read=False,
+            created_at=msg_time,
+        )
+        db.add(msg)
+        conv_count += 1
+        print(f"  Created conversation: {client.username} → Marco: \"{msg_data['text'][:50]}...\"")
+
+    print(f"  Total new conversations: {conv_count}")
+else:
+    print("  Marco trainer not found, skipping conversations")
 
 # ─────────────────────────────────────────────────────────────
 # COMMIT ALL

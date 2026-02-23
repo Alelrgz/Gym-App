@@ -1231,14 +1231,23 @@ async function init() {
             // --- UTENTI PAGE STATS ---
             const totalClients = data.clients ? data.clients.length : 0;
             const atRisk = data.at_risk_clients || 0;
-            const activeCount = data.active_clients || 0;
-            const inactive = totalClients - activeCount;
+
+            // Compute expiring count (clients with plan_expiry within next 7 days)
+            let expiringCount = 0;
+            const now = new Date();
+            const in7Days = new Date(now.getTime() + 7 * 86400000);
+            (data.clients || []).forEach(c => {
+                if (c.plan_expiry) {
+                    const exp = new Date(c.plan_expiry);
+                    if (exp > now && exp <= in7Days) expiringCount++;
+                }
+            });
 
             const totalEl = document.getElementById('total-clients-count');
-            const inactiveEl = document.getElementById('inactive-clients-count');
+            const expiringEl = document.getElementById('expiring-clients-count');
             const atRiskEl = document.getElementById('at-risk-clients-count');
             if (totalEl) totalEl.innerText = totalClients;
-            if (inactiveEl) inactiveEl.innerText = inactive;
+            if (expiringEl) expiringEl.innerText = expiringCount;
             if (atRiskEl) atRiskEl.innerText = atRisk;
 
             // --- MY WORKOUT CARD ---
@@ -1257,7 +1266,7 @@ async function init() {
 
             if (tProfileName) tProfileName.innerText = username;
             if (tProfileEmail) tProfileEmail.innerText = `${username.toLowerCase().replace(/\s+/g, '')}@irongym.com`;
-            if (tProfileClientCount) tProfileClientCount.innerText = activeCount;
+            if (tProfileClientCount) tProfileClientCount.innerText = totalClients;
 
             // Store and render clients
             if (data.clients) {

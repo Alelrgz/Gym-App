@@ -2134,12 +2134,7 @@ tr.workout-expand-tr td {
     }
 
     .trainer-dual-search {
-        grid-template-columns: 1fr;
-    }
-
-    /* Utenti: hide appointment search on mobile (integrated in Agenda tab) */
-    .trainer-dual-search .staff-search-bar:last-child {
-        display: none;
+        display: none !important;
     }
 
     /* Fix broken max-heights on mobile */
@@ -2157,6 +2152,193 @@ tr.workout-expand-tr td {
     }
     #d-schedule-container {
         max-height: none;
+    }
+}
+
+/* ============ TRAINER MOBILE HOMEPAGE (FIGMA DESIGN) ============ */
+
+/* Trainer mobile-only utility (no !important so inline style="display:none" can override until JS removes it) */
+.trainer-mobile-only { display: none; }
+
+@media (max-width: 1024px) {
+    .trainer-mobile-only { display: block; }
+}
+
+/* --- Latest Message Card --- */
+.trainer-msg-card {
+    display: flex;
+    align-items: stretch;
+    background: var(--glass-bg-2);
+    border: 1px solid var(--glass-border-1);
+    border-left: 3px solid var(--primary);
+    border-radius: var(--radius-lg);
+    padding: 0.85rem 1rem;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+.trainer-msg-card:active {
+    background: var(--glass-bg-3);
+}
+.trainer-msg-card-content {
+    flex: 1;
+    min-width: 0;
+}
+.trainer-msg-card-name {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 0.15rem;
+}
+.trainer-msg-card-preview {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.45);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.trainer-msg-card-attachment {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.06);
+    border-radius: 20px;
+    padding: 0.15rem 0.5rem;
+    margin-top: 0.35rem;
+}
+
+/* --- Dashboard Calendar Strip --- */
+.trainer-cal-day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    cursor: pointer;
+    padding: 0.25rem 0;
+    transition: opacity 0.15s;
+}
+.trainer-cal-dayname {
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.4);
+    letter-spacing: 0.04em;
+}
+.trainer-cal-daynum {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+.trainer-cal-daynum--active {
+    border: 2px solid var(--primary);
+    color: white;
+    font-weight: 700;
+}
+.trainer-cal-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--primary);
+}
+
+/* --- Dashboard Schedule Items --- */
+.trainer-schedule-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+}
+.trainer-schedule-time {
+    flex-shrink: 0;
+    background: rgba(249, 115, 22, 0.15);
+    color: var(--primary);
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.35rem 0.65rem;
+    border-radius: var(--radius-md);
+    min-width: 52px;
+    text-align: center;
+}
+.trainer-schedule-title {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- Nuovo PR Card --- */
+.trainer-pr-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--glass-bg-2);
+    border: 1px solid var(--glass-border-1);
+    border-radius: var(--radius-xl);
+    padding: 1rem 1.25rem;
+}
+.trainer-pr-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(249, 115, 22, 0.1);
+    border-radius: var(--radius-lg);
+}
+.trainer-pr-content {
+    flex: 1;
+    min-width: 0;
+}
+.trainer-pr-title {
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 0.1rem;
+}
+.trainer-pr-desc {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.4;
+}
+.trainer-pr-desc strong, .trainer-pr-desc b {
+    color: white;
+    font-weight: 700;
+}
+
+/* --- Mobile Client List Overrides --- */
+@media (max-width: 1024px) {
+    #trainer-clients-mobile-list {
+        flex-direction: column;
+    }
+    #trainer-clients-mobile-list .staff-mobile-card {
+        padding: 0.65rem 0.75rem;
+        border: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        border-radius: 0;
+        background: transparent;
+    }
+    #trainer-clients-mobile-list .staff-mobile-card:last-child {
+        border-bottom: none;
+    }
+    #trainer-clients-mobile-list .staff-mobile-card-avatar {
+        width: 44px;
+        height: 44px;
+        font-size: 0.9rem;
+        background: rgba(255, 255, 255, 0.12);
+    }
+    /* Hide chevron arrow and secondary info on mobile homepage */
+    #trainer-clients-mobile-list .staff-mobile-card > svg {
+        display: none;
     }
 }
 
