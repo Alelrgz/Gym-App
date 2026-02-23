@@ -1224,7 +1224,9 @@ async function initAllenamentiExercises() {
     try {
         const res = await fetch(`${apiBase}/api/exercises`, { credentials: 'include' });
         if (!res.ok) return;
-        const exercises = await res.json();
+        const allExercises = await res.json();
+        // Filter out course-specific exercises from the workout panel
+        const exercises = allExercises.filter(ex => (ex.type || '').toLowerCase() !== 'course');
         window._allenamentiExercises = exercises;
         renderAllenamentiExerciseList(exercises);
     } catch(e) { console.error('Error loading exercises for allenamenti:', e); }
@@ -1520,6 +1522,52 @@ function hideAllenamentiExDetail() {
 }
 window.hideAllenamentiExDetail = hideAllenamentiExDetail;
 
+/** After renaming a split/workout, update any client badge that shows the old name */
+function _refreshClientBadges(oldName, newName) {
+    if (!oldName || oldName === newName) return;
+    document.querySelectorAll('#workouts-client-list .client-drop-target span').forEach(badge => {
+        const text = badge.textContent || '';
+        if (text.includes(oldName)) {
+            badge.textContent = text.replace(oldName, newName);
+            badge.title = (badge.title || '').replace(oldName, newName);
+        }
+    });
+}
+
+/** Double-click inline rename helper. labelEl = the div, getCurrent = () => current value, onSave = async (newVal) => save it */
+function _makeInlineEditable(labelEl, getCurrent, onSave) {
+    if (!labelEl) return;
+    labelEl.addEventListener('dblclick', function handler(e) {
+        e.stopPropagation();
+        const current = getCurrent();
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = current;
+        input.style.cssText = 'width:100%;background:rgba(255,255,255,0.1);border:1px solid rgba(99,102,241,0.5);border-radius:4px;color:white;font-size:0.85rem;font-weight:600;padding:0.1rem 0.35rem;outline:none;';
+        const parent = labelEl.parentNode;
+        parent.replaceChild(input, labelEl);
+        input.focus();
+        input.select();
+        let done = false;
+        const finish = async () => {
+            if (done) return;
+            done = true;
+            const newVal = input.value.trim() || current;
+            if (newVal !== current) {
+                try { await onSave(newVal); } catch (_) {}
+            }
+            labelEl.textContent = getCurrent() || 'Senza titolo';
+            input.parentNode?.replaceChild(labelEl, input);
+            if (typeof showToast === 'function' && newVal !== current) showToast('Nome aggiornato', 'success');
+        };
+        input.addEventListener('blur', finish);
+        input.addEventListener('keydown', (ke) => {
+            if (ke.key === 'Enter') { ke.preventDefault(); finish(); }
+            if (ke.key === 'Escape') { input.value = current; finish(); }
+        });
+    });
+}
+
 function _populateWorkoutExpand(el, w) {
     const exercises = (Array.isArray(w.exercises) ? w.exercises : []).filter(ex => ex && ex.name);
     el._addExercise = null; // Clear any edit-mode callback
@@ -1566,6 +1614,8 @@ function _showWorkoutEditForm(el, w) {
     function syncInputs() {
         el.querySelectorAll('.w-ex-row').forEach((row, i) => {
             if (exercises[i]) {
+                const nameInput = row.querySelector('.ex-name');
+                if (nameInput) exercises[i].name = nameInput.value.trim() || exercises[i].name;
                 exercises[i].sets = parseInt(row.querySelector('.ex-sets')?.value) || 3;
                 exercises[i].reps = row.querySelector('.ex-reps')?.value?.trim() || '10';
                 exercises[i].rest = parseInt(row.querySelector('.ex-rest')?.value) || 60;
@@ -1585,7 +1635,7 @@ function _showWorkoutEditForm(el, w) {
                 const mColor = (typeof _exMuscleColors !== 'undefined' && muscle) ? (_exMuscleColors[muscle] || '#6366f1') : '#6366f1';
                 return `<div class="w-ex-row" data-idx="${i}" style="display:flex;align-items:center;gap:0.4rem;padding:0.28rem 0.65rem;border-bottom:1px solid rgba(255,255,255,0.05);">
                     <div style="width:3px;height:32px;background:${mColor};border-radius:2px;flex-shrink:0;opacity:0.7;"></div>
-                    <span style="flex:1;font-size:0.8rem;color:rgba(255,255,255,0.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">${ex.name}</span>
+                    <input type="text" class="ex-name" value="${ex.name}" style="flex:1;font-size:0.8rem;color:rgba(255,255,255,0.85);background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:3px;padding:0.1rem 0.3rem;min-width:0;" title="Nome esercizio">
                     <input type="number" class="ex-sets" value="${ex.sets || 3}" min="1" max="99" style="width:34px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:3px;color:white;font-size:0.72rem;text-align:center;padding:0.1rem 0;" title="Serie">
                     <span style="font-size:0.65rem;color:rgba(255,255,255,0.25);">×</span>
                     <input type="text" class="ex-reps" value="${ex.reps || '10'}" style="width:36px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:3px;color:white;font-size:0.72rem;text-align:center;padding:0.1rem 0;" title="Ripetizioni">
@@ -1719,13 +1769,31 @@ function renderWorkoutDragList(workouts) {
                 <div style="display:flex;align-items:center;gap:0.75rem;">
                     <i data-lucide="grip-vertical" class="w-4 h-4" style="color:rgba(255,255,255,0.2);flex-shrink:0;"></i>
                     <div style="flex:1;min-width:0;">
-                        <div style="font-weight:600;color:white;font-size:0.85rem;">${w.title || 'Senza titolo'}</div>
+                        <div class="workout-title-label" style="font-weight:600;color:white;font-size:0.85rem;cursor:text;" title="Doppio clic per rinominare">${w.title || 'Senza titolo'}</div>
                         <div class="workout-card-meta" style="font-size:0.75rem;color:rgba(255,255,255,0.4);">${meta}</div>
                     </div>
                     <svg class="workout-card-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.2)" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                 </div>
             </td>
         `;
+
+        // Double-click to rename workout
+        _makeInlineEditable(tr.querySelector('.workout-title-label'), () => w.title || '', async (newVal) => {
+            const oldVal = w.title;
+            const res = await fetch(`${(window.APP_CONFIG || {}).apiBase || ''}/api/trainer/workouts/${w.id}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+                body: JSON.stringify({ title: newVal, duration: w.duration || '', difficulty: w.difficulty || '', exercises: w.exercises || [] })
+            });
+            if (res.ok) {
+                w.title = newVal;
+                tr.dataset.itemName = newVal;
+                if (window.trainerData?.workouts) {
+                    const idx = window.trainerData.workouts.findIndex(ww => ww.id === w.id);
+                    if (idx >= 0) window.trainerData.workouts[idx].title = newVal;
+                }
+                _refreshClientBadges(oldVal, newVal);
+            }
+        });
 
         // Expand row (inline exercise list)
         const expandTr = document.createElement('tr');
@@ -1963,13 +2031,31 @@ function renderSplitDragList(splits) {
                 <div style="display:flex;align-items:center;gap:0.75rem;">
                     <i data-lucide="grip-vertical" class="w-4 h-4" style="color:rgba(255,255,255,0.2);flex-shrink:0;"></i>
                     <div style="flex:1;min-width:0;">
-                        <div style="font-weight:600;color:white;font-size:0.85rem;">${s.name || 'Senza titolo'}</div>
+                        <div class="split-title-label" style="font-weight:600;color:white;font-size:0.85rem;cursor:text;" title="Doppio clic per rinominare">${s.name || 'Senza titolo'}</div>
                         <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);">${meta || 'Split settimanale'}</div>
                     </div>
                     <svg class="workout-card-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.2)" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                 </div>
             </td>
         `;
+
+        // Double-click to rename split
+        _makeInlineEditable(tr.querySelector('.split-title-label'), () => s.name || '', async (newVal) => {
+            const oldVal = s.name;
+            const res = await fetch(`${(window.APP_CONFIG || {}).apiBase || ''}/api/trainer/splits/${s.id}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+                body: JSON.stringify({ name: newVal, description: s.description || '', days_per_week: s.days_per_week || 3, schedule: s.schedule || {} })
+            });
+            if (res.ok) {
+                s.name = newVal;
+                tr.dataset.itemName = newVal;
+                if (window.trainerData?.splits) {
+                    const idx = window.trainerData.splits.findIndex(sp => sp.id === s.id);
+                    if (idx >= 0) window.trainerData.splits[idx].name = newVal;
+                }
+                _refreshClientBadges(oldVal, newVal);
+            }
+        });
 
         // Expand row (split detail)
         const expandTr = document.createElement('tr');

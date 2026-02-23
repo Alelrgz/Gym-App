@@ -852,7 +852,7 @@ async function init() {
         nameEls.forEach(el => el.innerText = gymConfig.logo_text);
 
         if (role === 'client') {
-            // Display client username from localStorage
+            // Display client name from localStorage
             const username = localStorage.getItem('username') || 'Guest';
             const displayNameEl = document.getElementById('client-display-name');
             const welcomeNameEl = document.getElementById('client-welcome-name');
@@ -880,10 +880,12 @@ async function init() {
                     }
                 };
 
-                // Update display name with actual username from API
-                if (user.username) {
-                    if (displayNameEl) displayNameEl.textContent = user.username;
-                    if (welcomeNameEl) welcomeNameEl.textContent = user.username;
+                // Update display name with profile name (fallback to username)
+                const displayName = user.name || user.username;
+                if (displayName) {
+                    if (displayNameEl) displayNameEl.textContent = displayName;
+                    if (welcomeNameEl) welcomeNameEl.textContent = displayName;
+                    localStorage.setItem('username', displayName);
                 }
 
                 // Update streak display (day streak)
@@ -5041,6 +5043,13 @@ window.saveProfile = async () => {
 
         showToast("Profilo aggiornato con successo!", "success");
 
+        // Update display name on dashboard immediately
+        const displayNameEl = document.getElementById('client-display-name');
+        const welcomeNameEl = document.getElementById('client-welcome-name');
+        if (displayNameEl) displayNameEl.textContent = name;
+        if (welcomeNameEl) welcomeNameEl.textContent = name;
+        localStorage.setItem('username', name);
+
         // Clear password field
         document.getElementById('profile-password').value = '';
 
@@ -6018,12 +6027,13 @@ async function finishWorkout() {
                         const clientData = await clientDataRes.json();
                         console.log("Refreshed client data after workout:", clientData);
 
-                        // Update username display
-                        if (clientData.username) {
+                        // Update display name
+                        const refreshedName = clientData.name || clientData.username;
+                        if (refreshedName) {
                             const displayNameEl = document.getElementById('client-display-name');
                             const welcomeNameEl = document.getElementById('client-welcome-name');
-                            if (displayNameEl) displayNameEl.textContent = clientData.username;
-                            if (welcomeNameEl) welcomeNameEl.textContent = clientData.username;
+                            if (displayNameEl) displayNameEl.textContent = refreshedName;
+                            if (welcomeNameEl) welcomeNameEl.textContent = refreshedName;
                         }
 
                         // Update streak display (week streak)

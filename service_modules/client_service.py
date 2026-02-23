@@ -560,6 +560,10 @@ class ClientService:
 
             if profile_update.name is not None:
                 profile.name = profile_update.name
+                # Also sync UserORM.username so display name is consistent
+                user = db.query(UserORM).filter(UserORM.id == client_id).first()
+                if user:
+                    user.username = profile_update.name
             if profile_update.email is not None:
                 profile.email = profile_update.email
             if profile_update.weight is not None:
