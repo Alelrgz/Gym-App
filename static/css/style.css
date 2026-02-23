@@ -549,6 +549,53 @@ body {
     transform: rotate(180deg);
 }
 
+/* Trainer card expand/collapse */
+/* Trainer card avatar animation */
+.trainer-avatar-box {
+    transition: width 0.3s ease, height 0.3s ease;
+}
+.trainer-avatar-box.avatar-expanded {
+    width: 3.5rem;
+    height: 3.5rem;
+}
+.trainer-avatar-box.avatar-expanded img {
+    width: 100%;
+    height: 100%;
+}
+
+#trainer-expand-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease-out, opacity 0.25s ease-out;
+    opacity: 0;
+}
+#trainer-expand-content.expanded {
+    max-height: 800px;
+    opacity: 1;
+}
+#trainer-chevron {
+    transition: transform 0.3s ease;
+}
+#trainer-chevron.rotate-180 {
+    transform: rotate(180deg);
+}
+#nutritionist-expand-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease-out, opacity 0.25s ease-out;
+    opacity: 0;
+}
+#nutritionist-expand-content.expanded {
+    max-height: 800px;
+    opacity: 1;
+}
+#nutritionist-chevron {
+    transition: transform 0.3s ease;
+}
+#nutritionist-chevron.rotate-180 {
+    transform: rotate(180deg);
+}
+
 @keyframes slideUp {
     from {
         transform: translateY(20px);
@@ -2442,7 +2489,7 @@ body:has(.nutritionist-layout) {
 
 /* Nutritionist sections: remove max-width constraint when inside layout */
 .nutritionist-layout .nutritionist-section {
-    max-width: 1400px;
+    max-width: 100%;
 }
 
 /* ============ NUTRITIONIST MOBILE RESPONSIVE ============ */

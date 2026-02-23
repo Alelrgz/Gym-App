@@ -2765,11 +2765,10 @@ function scrollToSlide(index) {
 }
 
 function updateCarouselDots(activeIndex) {
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 10; i++) {
         const dot = document.getElementById(`carousel-dot-${i}`);
-        if (dot) {
-            dot.className = `w-2 h-2 rounded-full transition ${i === activeIndex ? 'bg-white/60' : 'bg-white/20'}`;
-        }
+        if (!dot) break;
+        dot.className = `w-2 h-2 rounded-full transition ${i === activeIndex ? 'bg-white/60' : 'bg-white/20'}`;
     }
 }
 
@@ -8548,9 +8547,22 @@ window.openChatModal = async function(otherUserId, otherUserName, profilePicture
     await loadChatMessages();
 };
 
-// Client chat modal - always opens conversations list
+// Client chat modal - always opens conversations list (navbar button)
 window.openClientChatModal = async function() {
     window.openConversationsModal();
+};
+
+// Open direct chat with assigned trainer (trainer card button)
+window.openTrainerDirectChat = function() {
+    const trainerId = window.selectedTrainerId;
+    const trainerName = window.currentTrainerData?.name || document.getElementById('trainer-name')?.textContent;
+    const trainerPic = window.currentTrainerData?.profile_picture || null;
+
+    if (trainerId && trainerName && window.openChatModal) {
+        window.openChatModal(trainerId, trainerName, trainerPic);
+    } else {
+        window.openConversationsModal();
+    }
 };
 
 window.closeChatModal = function() {

@@ -229,6 +229,23 @@ class AssignDietRequest(BaseModel):
     hydration_target: int
     consistency_target: int
 
+# --- WEEKLY MEAL PLAN ---
+
+class MealPlanEntry(BaseModel):
+    meal_type: str  # colazione, spuntino_mattina, pranzo, spuntino_pomeriggio, cena
+    meal_name: str
+    description: Optional[str] = None
+    calories: int = 0
+    protein: int = 0
+    carbs: int = 0
+    fat: int = 0
+    alternative_index: int = 0  # 0=primary, 1+=alternatives
+
+class SetWeeklyMealPlanRequest(BaseModel):
+    client_id: str
+    day_of_week: int  # 0=Monday ... 6=Sunday
+    meals: List[MealPlanEntry]
+
 # --- SUBSCRIPTION & BILLING ---
 
 class SubscriptionPlan(BaseModel):
@@ -359,6 +376,16 @@ class AvailableSlot(BaseModel):
     start_time: str  # HH:MM
     end_time: str    # HH:MM
     available: bool = True
+
+class BookNutritionistAppointmentRequest(BaseModel):
+    nutritionist_id: str
+    date: str  # YYYY-MM-DD
+    start_time: str  # HH:MM
+    duration: int = 60
+    session_type: Optional[str] = None  # consultation, meal_planning, diet_review, follow_up
+    notes: Optional[str] = None
+    payment_method: Optional[str] = None  # "card", "cash", or None (free)
+    stripe_payment_intent_id: Optional[str] = None
 
 # --- GYM/TRAINER ASSIGNMENT ---
 

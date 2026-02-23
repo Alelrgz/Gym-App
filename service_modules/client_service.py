@@ -180,15 +180,13 @@ class ClientService:
                 s_prot = calc_score(diet_settings.protein_current, diet_settings.protein_target)
                 s_carb = calc_score(diet_settings.carbs_current, diet_settings.carbs_target)
                 s_fat = calc_score(diet_settings.fat_current, diet_settings.fat_target)
-                s_hydro = calc_score(diet_settings.hydration_current, diet_settings.hydration_target)
 
                 logger.debug(f"Health Score Calc - Cals: {diet_settings.calories_current}/{diet_settings.calories_target} -> {s_cals}")
                 logger.debug(f"Health Score Calc - Prot: {diet_settings.protein_current}/{diet_settings.protein_target} -> {s_prot}")
-                logger.debug(f"Health Score Calc - Hydro: {diet_settings.hydration_current}/{diet_settings.hydration_target} -> {s_hydro}")
 
                 # Weighted Average
-                # Cals: 40%, Protein: 30%, Hydration: 10%, Carbs: 10%, Fat: 10%
-                health_score = (s_cals * 0.4) + (s_prot * 0.3) + (s_hydro * 0.1) + (s_carb * 0.1) + (s_fat * 0.1)
+                # Cals: 45%, Protein: 35%, Carbs: 10%, Fat: 10%
+                health_score = (s_cals * 0.45) + (s_prot * 0.35) + (s_carb * 0.1) + (s_fat * 0.1)
                 logger.debug(f"Total Health Score: {health_score}")
 
                 # Update Profile

@@ -105,6 +105,40 @@
                 {% endcall %}
             </div>
 
+            <!-- Availability + Appointments Row -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+                <!-- Availability -->
+                {% call card(classes="p-4") %}
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-lg bg-cyan-500/20 flex items-center justify-center">
+                                <i data-lucide="clock" class="w-4 h-4 text-cyan-400"></i>
+                            </div>
+                            <h3 class="text-sm font-bold text-cyan-400 uppercase tracking-wider">Disponibilit&agrave;</h3>
+                        </div>
+                        <button onclick="openNutriAvailabilityModal()" class="text-xs bg-cyan-500/20 hover:bg-cyan-500/30 text-cyan-400 px-4 py-2 rounded-lg transition">
+                            Configura Disponibilit&agrave;
+                        </button>
+                    </div>
+                    <div id="nutri-availability-summary" class="text-sm text-gray-400">
+                        Caricamento...
+                    </div>
+                {% endcall %}
+
+                <!-- Upcoming Appointments -->
+                {% call card(classes="p-4") %}
+                    <div class="flex items-center gap-2 mb-3">
+                        <div class="w-7 h-7 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                            <i data-lucide="calendar" class="w-4 h-4 text-orange-400"></i>
+                        </div>
+                        <h3 class="text-sm font-bold text-orange-400 uppercase tracking-wider">Prossimi Appuntamenti</h3>
+                    </div>
+                    <div id="nutri-appointments-list" class="space-y-2 max-h-48 overflow-y-auto">
+                        <p class="text-sm text-gray-500">Nessun appuntamento</p>
+                    </div>
+                {% endcall %}
+            </div>
+
             <!-- Two-column layout: Client List + Detail -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
@@ -139,7 +173,10 @@
 
                     <!-- Client header -->
                     <div class="flex items-center gap-3 mb-4">
-                        <img id="detail-client-avatar" src="/static/img/default-avatar.png" class="w-12 h-12 rounded-full object-cover border-2 border-green-500/30">
+                        <div id="detail-client-avatar-wrap" class="w-12 h-12 rounded-full border-2 border-green-500/30 overflow-hidden flex-shrink-0 flex items-center justify-center bg-white/10">
+                            <span id="detail-client-initials" class="text-lg font-bold text-white">?</span>
+                            <img id="detail-client-avatar" class="w-full h-full object-cover hidden" onerror="this.classList.add('hidden');this.previousElementSibling.classList.remove('hidden')">
+                        </div>
                         <div class="flex-1">
                             <h2 class="text-xl font-bold text-white" id="detail-client-name"></h2>
                             <p class="text-xs text-gray-400" id="detail-client-status"></p>
@@ -254,6 +291,41 @@
                         </div>
                     </div>
 
+                    <!-- Weekly Meal Plan Editor -->
+                    <div class="flex items-center gap-2 mb-3 border-l-4 border-amber-400 pl-3">
+                        <div class="w-7 h-7 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                            <i data-lucide="calendar-days" class="w-4 h-4 text-amber-400"></i>
+                        </div>
+                        <h3 class="text-sm font-bold text-amber-400 uppercase tracking-wider">Piano Alimentare Settimanale</h3>
+                    </div>
+                    {% call card(classes="p-4 mb-4") %}
+                        <!-- Day selector tabs -->
+                        <div class="flex gap-1 mb-4 overflow-x-auto pb-1" id="meal-plan-day-tabs">
+                            <button onclick="selectMealPlanDay(0)" data-mp-day="0" class="text-xs px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 font-bold whitespace-nowrap transition">LUN</button>
+                            <button onclick="selectMealPlanDay(1)" data-mp-day="1" class="text-xs px-3 py-1.5 rounded-lg bg-white/5 text-gray-400 font-bold whitespace-nowrap transition hover:bg-white/10">MAR</button>
+                            <button onclick="selectMealPlanDay(2)" data-mp-day="2" class="text-xs px-3 py-1.5 rounded-lg bg-white/5 text-gray-400 font-bold whitespace-nowrap transition hover:bg-white/10">MER</button>
+                            <button onclick="selectMealPlanDay(3)" data-mp-day="3" class="text-xs px-3 py-1.5 rounded-lg bg-white/5 text-gray-400 font-bold whitespace-nowrap transition hover:bg-white/10">GIO</button>
+                            <button onclick="selectMealPlanDay(4)" data-mp-day="4" class="text-xs px-3 py-1.5 rounded-lg bg-white/5 text-gray-400 font-bold whitespace-nowrap transition hover:bg-white/10">VEN</button>
+                            <button onclick="selectMealPlanDay(5)" data-mp-day="5" class="text-xs px-3 py-1.5 rounded-lg bg-white/5 text-gray-400 font-bold whitespace-nowrap transition hover:bg-white/10">SAB</button>
+                            <button onclick="selectMealPlanDay(6)" data-mp-day="6" class="text-xs px-3 py-1.5 rounded-lg bg-white/5 text-gray-400 font-bold whitespace-nowrap transition hover:bg-white/10">DOM</button>
+                        </div>
+
+                        <!-- Meal entries for selected day -->
+                        <div id="meal-plan-entries" class="space-y-3">
+                            <!-- Dynamically populated -->
+                        </div>
+
+                        <!-- Add meal button -->
+                        <button onclick="addMealPlanEntry()" class="mt-3 w-full bg-white/5 hover:bg-white/10 border border-dashed border-white/10 text-gray-400 hover:text-white py-2 rounded-xl transition text-sm flex items-center justify-center gap-1">
+                            <i data-lucide="plus" class="w-3.5 h-3.5 inline-block align-middle"></i> Aggiungi Pasto
+                        </button>
+
+                        <!-- Save button -->
+                        <button onclick="saveMealPlan()" class="mt-3 w-full bg-amber-500 hover:bg-amber-400 text-white font-bold py-2.5 rounded-xl transition text-sm">
+                            Salva Piano Giornaliero
+                        </button>
+                    {% endcall %}
+
                     <!-- Charts -->
                     <div class="flex items-center gap-2 mb-3 border-l-4 border-blue-400 pl-3">
                         <div class="w-7 h-7 rounded-lg bg-blue-500/20 flex items-center justify-center">
@@ -316,6 +388,101 @@
     </main>
 </div>
 
+<!-- Nutritionist Availability Modal -->
+<div id="nutri-availability-modal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 backdrop-blur-sm">
+    <div class="glass-card w-full max-w-md mx-4 p-6 rounded-2xl relative max-h-[90vh] overflow-y-auto">
+        <button onclick="closeNutriAvailabilityModal()" class="absolute top-4 right-4 text-white/50 hover:text-white">&times;</button>
+        <h3 class="text-xl font-bold mb-2 text-center">Disponibilit&agrave; Consulenze</h3>
+        <p class="text-xs text-gray-400 text-center mb-4">Imposta i tuoi orari settimanali per le prenotazioni</p>
+
+        <div id="nutri-availability-days" class="space-y-3">
+            <div class="bg-white/5 rounded-xl p-3">
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" data-nutri-day="0" class="nutri-day-toggle w-5 h-5 rounded accent-cyan-500">
+                    <span class="font-bold text-sm">Luned&igrave;</span>
+                </label>
+                <div class="nutri-day-times hidden grid grid-cols-2 gap-2 mt-2" data-nutri-day="0">
+                    <div><label class="text-[10px] text-gray-400">Inizio</label><input type="time" class="nutri-start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Fine</label><input type="time" class="nutri-end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00"></div>
+                </div>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3">
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" data-nutri-day="1" class="nutri-day-toggle w-5 h-5 rounded accent-cyan-500">
+                    <span class="font-bold text-sm">Marted&igrave;</span>
+                </label>
+                <div class="nutri-day-times hidden grid grid-cols-2 gap-2 mt-2" data-nutri-day="1">
+                    <div><label class="text-[10px] text-gray-400">Inizio</label><input type="time" class="nutri-start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Fine</label><input type="time" class="nutri-end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00"></div>
+                </div>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3">
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" data-nutri-day="2" class="nutri-day-toggle w-5 h-5 rounded accent-cyan-500">
+                    <span class="font-bold text-sm">Mercoled&igrave;</span>
+                </label>
+                <div class="nutri-day-times hidden grid grid-cols-2 gap-2 mt-2" data-nutri-day="2">
+                    <div><label class="text-[10px] text-gray-400">Inizio</label><input type="time" class="nutri-start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Fine</label><input type="time" class="nutri-end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00"></div>
+                </div>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3">
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" data-nutri-day="3" class="nutri-day-toggle w-5 h-5 rounded accent-cyan-500">
+                    <span class="font-bold text-sm">Gioved&igrave;</span>
+                </label>
+                <div class="nutri-day-times hidden grid grid-cols-2 gap-2 mt-2" data-nutri-day="3">
+                    <div><label class="text-[10px] text-gray-400">Inizio</label><input type="time" class="nutri-start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Fine</label><input type="time" class="nutri-end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00"></div>
+                </div>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3">
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" data-nutri-day="4" class="nutri-day-toggle w-5 h-5 rounded accent-cyan-500">
+                    <span class="font-bold text-sm">Venerd&igrave;</span>
+                </label>
+                <div class="nutri-day-times hidden grid grid-cols-2 gap-2 mt-2" data-nutri-day="4">
+                    <div><label class="text-[10px] text-gray-400">Inizio</label><input type="time" class="nutri-start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="09:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Fine</label><input type="time" class="nutri-end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="17:00"></div>
+                </div>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3">
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" data-nutri-day="5" class="nutri-day-toggle w-5 h-5 rounded accent-cyan-500">
+                    <span class="font-bold text-sm">Sabato</span>
+                </label>
+                <div class="nutri-day-times hidden grid grid-cols-2 gap-2 mt-2" data-nutri-day="5">
+                    <div><label class="text-[10px] text-gray-400">Inizio</label><input type="time" class="nutri-start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="10:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Fine</label><input type="time" class="nutri-end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="14:00"></div>
+                </div>
+            </div>
+            <div class="bg-white/5 rounded-xl p-3">
+                <label class="flex items-center space-x-2 cursor-pointer">
+                    <input type="checkbox" data-nutri-day="6" class="nutri-day-toggle w-5 h-5 rounded accent-cyan-500">
+                    <span class="font-bold text-sm">Domenica</span>
+                </label>
+                <div class="nutri-day-times hidden grid grid-cols-2 gap-2 mt-2" data-nutri-day="6">
+                    <div><label class="text-[10px] text-gray-400">Inizio</label><input type="time" class="nutri-start-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="10:00"></div>
+                    <div><label class="text-[10px] text-gray-400">Fine</label><input type="time" class="nutri-end-time w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm" value="14:00"></div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Session Rate -->
+        <div class="mt-4 bg-white/5 rounded-xl p-3">
+            <label class="text-sm font-bold text-white mb-2 block">Tariffa Oraria Consulenza (&euro;)</label>
+            <p class="text-[10px] text-gray-400 mb-2">I clienti vedranno questo prezzo durante la prenotazione. Lascia vuoto per consulenze gratuite.</p>
+            <input type="number" id="nutri-session-rate" min="0" step="0.01" placeholder="es. 50.00"
+                class="w-full bg-black/30 border border-white/10 rounded-lg p-2 text-white text-sm">
+        </div>
+
+        <button onclick="saveNutriAvailability()"
+            class="w-full mt-4 py-3 bg-cyan-500 text-white font-bold rounded-xl hover:bg-cyan-600 transition">
+            Salva Disponibilit&agrave;
+        </button>
+    </div>
+</div>
+
 <!-- Chart.js CDN -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
@@ -329,6 +496,9 @@ let dietChartInstance = null;
 // ===================== INIT =====================
 document.addEventListener('DOMContentLoaded', async () => {
     await loadNutritionistData();
+    setupNutriDayToggles();
+    loadNutriAvailabilitySummary();
+    loadNutriAppointments();
     if (typeof lucide !== 'undefined') lucide.createIcons();
     // Load unread message count
     if (typeof updateUnreadBadge === 'function') updateUnreadBadge();
@@ -353,6 +523,14 @@ async function loadNutritionistData() {
     }
 }
 
+function _clientAvatar(c) {
+    if (c.profile_picture) {
+        return `<img src="${c.profile_picture}" class="w-9 h-9 rounded-full object-cover flex-shrink-0" onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+                <div class="w-9 h-9 rounded-full bg-white/10 flex-shrink-0 items-center justify-center text-xs font-bold text-white" style="display:none">${(c.name || '?')[0].toUpperCase()}</div>`;
+    }
+    return `<div class="w-9 h-9 rounded-full bg-white/10 flex-shrink-0 flex items-center justify-center text-xs font-bold text-white">${(c.name || '?')[0].toUpperCase()}</div>`;
+}
+
 function renderClientList(clients) {
     const container = document.getElementById('nutri-client-list');
     if (!clients.length) {
@@ -362,8 +540,7 @@ function renderClientList(clients) {
     container.innerHTML = clients.map(c => `
         <div class="p-3 border-b border-white/5 flex items-center gap-3 cursor-pointer hover:bg-white/5 transition ${selectedClientId === c.id ? 'bg-green-500/10 border-l-2 border-l-green-400' : ''}"
              onclick="selectClient('${c.id}')">
-            <img src="${c.profile_picture || '/static/img/default-avatar.png'}"
-                 class="w-9 h-9 rounded-full object-cover flex-shrink-0" onerror="this.src='/static/img/default-avatar.png'">
+            ${_clientAvatar(c)}
             <div class="flex-1 min-w-0">
                 <p class="text-white font-medium text-sm truncate">${c.name}</p>
                 <p class="text-[10px] ${c.status === 'Active' ? 'text-green-400' : 'text-red-400'}">${c.status === 'Active' ? 'Attivo' : c.status === 'Inactive' ? 'Inattivo' : c.status} · ${c.weight ? c.weight + 'kg' : 'Nessun dato'}</p>
@@ -395,7 +572,17 @@ async function selectClient(clientId) {
         const data = await res.json();
 
         document.getElementById('detail-client-name').textContent = data.name;
-        document.getElementById('detail-client-avatar').src = data.profile_picture || '/static/img/default-avatar.png';
+        const avatarImg = document.getElementById('detail-client-avatar');
+        const avatarInitials = document.getElementById('detail-client-initials');
+        if (data.profile_picture) {
+            avatarImg.src = data.profile_picture;
+            avatarImg.classList.remove('hidden');
+            avatarInitials.classList.add('hidden');
+        } else {
+            avatarImg.classList.add('hidden');
+            avatarInitials.classList.remove('hidden');
+            avatarInitials.textContent = (data.name || '?')[0].toUpperCase();
+        }
         document.getElementById('detail-client-status').textContent = `Peso: ${data.weight || '—'}kg · Massa Grassa: ${data.body_fat_pct || '—'}%`;
 
         document.getElementById('detail-weight').textContent = data.weight ? data.weight + 'kg' : '—';
@@ -427,6 +614,7 @@ async function selectClient(clientId) {
         document.getElementById('bc-leanmass').value = data.lean_mass || '';
 
         await loadClientCharts();
+        await loadClientMealPlan(clientId);
     } catch (e) {
         console.error('Failed to load client detail:', e);
         showToast('Impossibile caricare i dati del cliente', 'error');
@@ -619,6 +807,379 @@ async function loadClientCharts() {
             }
         });
     } catch (e) { console.error('Diet chart error:', e); }
+}
+
+// ===================== AVAILABILITY & APPOINTMENTS =====================
+const dayNamesIt = ['Luned\u00ec', 'Marted\u00ec', 'Mercoled\u00ec', 'Gioved\u00ec', 'Venerd\u00ec', 'Sabato', 'Domenica'];
+
+function setupNutriDayToggles() {
+    document.querySelectorAll('.nutri-day-toggle').forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const day = this.dataset.nutriDay;
+            const timesDiv = document.querySelector(`.nutri-day-times[data-nutri-day="${day}"]`);
+            if (timesDiv) timesDiv.classList.toggle('hidden', !this.checked);
+        });
+    });
+}
+
+function openNutriAvailabilityModal() {
+    document.getElementById('nutri-availability-modal').classList.remove('hidden');
+    loadNutriAvailability();
+}
+
+function closeNutriAvailabilityModal() {
+    document.getElementById('nutri-availability-modal').classList.add('hidden');
+}
+
+async function loadNutriAvailability() {
+    try {
+        const res = await fetch('/api/nutritionist/availability', { credentials: 'include' });
+        const slots = await res.json();
+
+        document.querySelectorAll('.nutri-day-toggle').forEach(cb => cb.checked = false);
+        document.querySelectorAll('.nutri-day-times').forEach(div => div.classList.add('hidden'));
+
+        slots.forEach(slot => {
+            const checkbox = document.querySelector(`.nutri-day-toggle[data-nutri-day="${slot.day_of_week}"]`);
+            const timesDiv = document.querySelector(`.nutri-day-times[data-nutri-day="${slot.day_of_week}"]`);
+            if (checkbox && timesDiv) {
+                checkbox.checked = true;
+                timesDiv.classList.remove('hidden');
+                timesDiv.querySelector('.nutri-start-time').value = slot.start_time;
+                timesDiv.querySelector('.nutri-end-time').value = slot.end_time;
+            }
+        });
+    } catch (e) { console.error('Error loading availability:', e); }
+
+    // Load session rate
+    try {
+        const rateRes = await fetch('/api/nutritionist/session-rate', { credentials: 'include' });
+        if (rateRes.ok) {
+            const rateData = await rateRes.json();
+            const rateInput = document.getElementById('nutri-session-rate');
+            if (rateInput && rateData.session_rate != null) {
+                rateInput.value = rateData.session_rate;
+            }
+        }
+    } catch (e) { console.error('Error loading session rate:', e); }
+}
+
+async function saveNutriAvailability() {
+    const availability = [];
+    document.querySelectorAll('.nutri-day-toggle:checked').forEach(checkbox => {
+        const day = parseInt(checkbox.dataset.nutriDay);
+        const timesDiv = document.querySelector(`.nutri-day-times[data-nutri-day="${day}"]`);
+        if (timesDiv) {
+            availability.push({
+                day_of_week: day,
+                start_time: timesDiv.querySelector('.nutri-start-time').value,
+                end_time: timesDiv.querySelector('.nutri-end-time').value
+            });
+        }
+    });
+
+    try {
+        const res = await fetch('/api/nutritionist/availability', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ availability })
+        });
+
+        // Save session rate
+        const rateInput = document.getElementById('nutri-session-rate');
+        const rateValue = rateInput.value ? parseFloat(rateInput.value) : null;
+        await fetch('/api/nutritionist/session-rate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ session_rate: rateValue })
+        });
+
+        if (res.ok) {
+            closeNutriAvailabilityModal();
+            showToast('Disponibilit\u00e0 e tariffa salvate!', 'success');
+            loadNutriAvailabilitySummary();
+        }
+    } catch (e) { console.error('Error saving availability:', e); }
+}
+
+async function loadNutriAvailabilitySummary() {
+    const summaryEl = document.getElementById('nutri-availability-summary');
+    if (!summaryEl) return;
+
+    try {
+        const res = await fetch('/api/nutritionist/availability', { credentials: 'include' });
+        const slots = await res.json();
+
+        if (slots.length === 0) {
+            summaryEl.innerHTML = '<p class="text-gray-500 text-sm">Nessuna disponibilit\u00e0 configurata</p>';
+            return;
+        }
+
+        summaryEl.innerHTML = slots.map(s =>
+            `<div class="flex items-center justify-between py-1 text-sm">
+                <span class="font-medium text-white">${dayNamesIt[s.day_of_week]}</span>
+                <span class="text-gray-400">${s.start_time} - ${s.end_time}</span>
+            </div>`
+        ).join('');
+    } catch (e) {
+        summaryEl.innerHTML = '<p class="text-red-400 text-sm">Errore caricamento</p>';
+    }
+}
+
+async function loadNutriAppointments() {
+    const listEl = document.getElementById('nutri-appointments-list');
+    if (!listEl) return;
+
+    try {
+        const res = await fetch('/api/nutritionist/appointments', { credentials: 'include' });
+        if (!res.ok) return;
+        const appointments = await res.json();
+
+        const upcoming = appointments.filter(a => a.status === 'scheduled');
+
+        if (upcoming.length === 0) {
+            listEl.innerHTML = '<p class="text-sm text-gray-500">Nessun appuntamento in programma</p>';
+            return;
+        }
+
+        listEl.innerHTML = upcoming.slice(0, 5).map(appt => `
+            <div class="flex items-center justify-between p-2 bg-white/5 rounded-lg">
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-medium text-white truncate">${appt.client_name || 'Cliente'}</p>
+                    <p class="text-xs text-gray-400">${new Date(appt.date).toLocaleDateString('it-IT', { weekday: 'short', month: 'short', day: 'numeric' })} &middot; ${appt.start_time} &middot; ${appt.duration}min</p>
+                </div>
+                <button onclick="completeNutriAppointment('${appt.id}')" class="text-xs bg-green-500/20 text-green-400 px-3 py-1 rounded-lg hover:bg-green-500/30 transition" title="Completato">
+                    <i data-lucide="check" class="w-3.5 h-3.5 inline"></i>
+                </button>
+            </div>
+        `).join('');
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    } catch (e) { console.error('Error loading appointments:', e); }
+}
+
+async function completeNutriAppointment(appointmentId) {
+    if (!confirm('Segna questo appuntamento come completato?')) return;
+    try {
+        const res = await fetch(`/api/nutritionist/appointments/${appointmentId}/complete`, {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        if (res.ok) {
+            showToast('Appuntamento completato!', 'success');
+            loadNutriAppointments();
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Errore', 'error');
+        }
+    } catch (e) { showToast('Errore di rete', 'error'); }
+}
+
+// ===================== WEEKLY MEAL PLAN EDITOR =====================
+let currentMealPlanDay = 0;
+let clientMealPlan = {}; // { day: [meals] }
+
+const mealTypeOptions = [
+    { value: 'colazione', label: 'Colazione' },
+    { value: 'spuntino_mattina', label: 'Spuntino Mattina' },
+    { value: 'pranzo', label: 'Pranzo' },
+    { value: 'spuntino_pomeriggio', label: 'Merenda' },
+    { value: 'cena', label: 'Cena' }
+];
+
+function selectMealPlanDay(day) {
+    currentMealPlanDay = day;
+    // Update tab styling
+    document.querySelectorAll('#meal-plan-day-tabs button').forEach(btn => {
+        if (parseInt(btn.dataset.mpDay) === day) {
+            btn.className = 'text-xs px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 font-bold whitespace-nowrap transition';
+        } else {
+            btn.className = 'text-xs px-3 py-1.5 rounded-lg bg-white/5 text-gray-400 font-bold whitespace-nowrap transition hover:bg-white/10';
+        }
+    });
+    renderMealPlanEntries();
+}
+
+function renderMealPlanEntries() {
+    const container = document.getElementById('meal-plan-entries');
+    const meals = clientMealPlan[currentMealPlanDay] || [];
+
+    if (meals.length === 0) {
+        container.innerHTML = '<p class="text-sm text-gray-500 text-center py-3">Nessun pasto configurato per questo giorno</p>';
+        return;
+    }
+
+    // Group by meal_type, preserving flat indices
+    const grouped = {};
+    meals.forEach((meal, idx) => {
+        const key = meal.meal_type;
+        if (!grouped[key]) grouped[key] = [];
+        grouped[key].push({ ...meal, _flatIdx: idx });
+    });
+
+    const mealOrder = ['colazione', 'spuntino_mattina', 'pranzo', 'spuntino_pomeriggio', 'cena'];
+    const sortedGroups = Object.entries(grouped).sort(([a], [b]) => {
+        const ai = mealOrder.indexOf(a) === -1 ? 99 : mealOrder.indexOf(a);
+        const bi = mealOrder.indexOf(b) === -1 ? 99 : mealOrder.indexOf(b);
+        return ai - bi;
+    });
+
+    let html = '';
+    sortedGroups.forEach(([mealType, entries]) => {
+        entries.sort((a, b) => (a.alternative_index || 0) - (b.alternative_index || 0));
+
+        entries.forEach(entry => {
+            const idx = entry._flatIdx;
+            const isAlt = (entry.alternative_index || 0) > 0;
+            const altBadge = isAlt ? `<span class="text-[9px] bg-amber-500/20 text-amber-400 px-1.5 py-0.5 rounded-full font-bold">ALT ${entry.alternative_index}</span>` : '';
+            const borderClass = isAlt ? 'ml-4 border-l-2 border-amber-500/30 pl-3' : '';
+
+            html += `<div class="bg-white/5 rounded-xl p-3 border border-white/5 ${borderClass}">
+                <div class="flex items-center justify-between mb-2">
+                    ${isAlt
+                        ? `<div class="flex items-center gap-2">
+                            <span class="text-xs text-gray-500">${mealTypeOptions.find(o => o.value === mealType)?.label || mealType}</span>
+                            ${altBadge}
+                           </div>`
+                        : `<select onchange="updateMealField(${idx}, 'meal_type', this.value)" class="bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white outline-none">
+                            ${mealTypeOptions.map(opt => `<option value="${opt.value}" ${entry.meal_type === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
+                           </select>`
+                    }
+                    <button onclick="removeMealEntry(${idx})" class="text-red-400 hover:text-red-300 transition p-1">
+                        <i data-lucide="trash-2" class="w-3.5 h-3.5 inline"></i>
+                    </button>
+                </div>
+                <input type="text" value="${entry.meal_name || ''}" placeholder="Nome pasto (es. Yogurt greco con frutta)"
+                    onchange="updateMealField(${idx}, 'meal_name', this.value)"
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white outline-none focus:border-amber-500/50 mb-2">
+                <input type="text" value="${entry.description || ''}" placeholder="Dettagli (es. 200g yogurt, 100g fragole, 30g muesli)"
+                    onchange="updateMealField(${idx}, 'description', this.value)"
+                    class="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-1.5 text-xs text-gray-300 outline-none focus:border-amber-500/50 mb-2">
+                <div class="grid grid-cols-4 gap-2">
+                    <div>
+                        <label class="text-[9px] text-gray-500 uppercase">Kcal</label>
+                        <input type="number" value="${entry.calories || 0}" onchange="updateMealField(${idx}, 'calories', parseInt(this.value)||0)"
+                            class="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-gray-500 uppercase">Prot</label>
+                        <input type="number" value="${entry.protein || 0}" onchange="updateMealField(${idx}, 'protein', parseInt(this.value)||0)"
+                            class="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-gray-500 uppercase">Carb</label>
+                        <input type="number" value="${entry.carbs || 0}" onchange="updateMealField(${idx}, 'carbs', parseInt(this.value)||0)"
+                            class="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white outline-none">
+                    </div>
+                    <div>
+                        <label class="text-[9px] text-gray-500 uppercase">Grassi</label>
+                        <input type="number" value="${entry.fat || 0}" onchange="updateMealField(${idx}, 'fat', parseInt(this.value)||0)"
+                            class="w-full bg-white/5 border border-white/10 rounded-lg px-2 py-1 text-xs text-white outline-none">
+                    </div>
+                </div>
+            </div>`;
+        });
+
+        // "+ Alternativa" button for this meal_type group
+        html += `<button onclick="addAlternativeEntry('${mealType}')" class="ml-4 mb-1 text-[10px] text-amber-400/50 hover:text-amber-400 transition flex items-center gap-1 py-0.5">
+            <i data-lucide="plus-circle" class="w-3 h-3 inline"></i> Alternativa
+        </button>`;
+    });
+
+    container.innerHTML = html;
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function addMealPlanEntry() {
+    if (!clientMealPlan[currentMealPlanDay]) clientMealPlan[currentMealPlanDay] = [];
+    // Auto-select next primary meal type (only count primary meals, not alternatives)
+    const usedPrimary = clientMealPlan[currentMealPlanDay].filter(m => (m.alternative_index || 0) === 0).map(m => m.meal_type);
+    const next = mealTypeOptions.find(opt => !usedPrimary.includes(opt.value));
+    clientMealPlan[currentMealPlanDay].push({
+        meal_type: next ? next.value : 'colazione',
+        meal_name: '',
+        description: '',
+        calories: 0, protein: 0, carbs: 0, fat: 0,
+        alternative_index: 0
+    });
+    renderMealPlanEntries();
+}
+
+function addAlternativeEntry(mealType) {
+    if (!clientMealPlan[currentMealPlanDay]) clientMealPlan[currentMealPlanDay] = [];
+    const existing = clientMealPlan[currentMealPlanDay].filter(m => m.meal_type === mealType);
+    const maxIdx = existing.reduce((max, m) => Math.max(max, m.alternative_index || 0), 0);
+    clientMealPlan[currentMealPlanDay].push({
+        meal_type: mealType,
+        meal_name: '',
+        description: '',
+        calories: 0, protein: 0, carbs: 0, fat: 0,
+        alternative_index: maxIdx + 1
+    });
+    renderMealPlanEntries();
+}
+
+function removeMealEntry(idx) {
+    if (!clientMealPlan[currentMealPlanDay]) return;
+    clientMealPlan[currentMealPlanDay].splice(idx, 1);
+    renderMealPlanEntries();
+}
+
+function updateMealField(idx, field, value) {
+    if (!clientMealPlan[currentMealPlanDay] || !clientMealPlan[currentMealPlanDay][idx]) return;
+    clientMealPlan[currentMealPlanDay][idx][field] = value;
+}
+
+async function saveMealPlan() {
+    if (!selectedClientId) { showToast('Seleziona un cliente', 'error'); return; }
+    const meals = clientMealPlan[currentMealPlanDay] || [];
+
+    try {
+        const res = await fetch(`/api/nutritionist/client/${selectedClientId}/weekly-meal-plan`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+                client_id: selectedClientId,
+                day_of_week: currentMealPlanDay,
+                meals: meals.map(m => ({
+                    meal_type: m.meal_type,
+                    meal_name: m.meal_name,
+                    description: m.description,
+                    calories: m.calories,
+                    protein: m.protein,
+                    carbs: m.carbs,
+                    fat: m.fat,
+                    alternative_index: m.alternative_index || 0
+                }))
+            })
+        });
+        if (res.ok) {
+            showToast('Piano alimentare salvato!', 'success');
+        } else {
+            const err = await res.json().catch(() => ({}));
+            showToast(err.detail || 'Errore nel salvataggio', 'error');
+        }
+    } catch (e) { showToast('Errore di rete', 'error'); }
+}
+
+async function loadClientMealPlan(clientId) {
+    clientMealPlan = {};
+    try {
+        const res = await fetch(`/api/nutritionist/client/${clientId}/weekly-meal-plan`, { credentials: 'include' });
+        if (res.ok) {
+            const data = await res.json();
+            // Convert string keys to integers
+            const plan = data.plan || {};
+            for (const key in plan) {
+                clientMealPlan[parseInt(key)] = plan[key];
+            }
+        }
+    } catch (e) { console.error('Error loading meal plan:', e); }
+    renderMealPlanEntries();
 }
 
 // ===================== SETTINGS =====================

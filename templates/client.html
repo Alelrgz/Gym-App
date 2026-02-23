@@ -997,210 +997,311 @@ function renderFriendHealthBars(data) {
                 </div>
                 {% endcall %}
             </div>
+
+            <!-- Slide 3: Weekly Consistency -->
+            <div class="snap-center flex-shrink-0 w-full">
+                {% call card(classes="p-4 flex flex-col justify-between h-[137px]") %}
+                <div class="flex justify-between items-center">
+                    <p class="text-[10px] text-gray-400 uppercase tracking-wider">Costanza</p>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold" id="hero-consistency-score">--</span>
+                </div>
+                <div class="flex items-end justify-between h-16 mt-2 space-x-1" id="weekly-chart">
+                    <!-- Bars injected by JS -->
+                </div>
+                <div class="flex justify-between mt-1">
+                    <span class="text-[8px] text-gray-500">L</span>
+                    <span class="text-[8px] text-gray-500">M</span>
+                    <span class="text-[8px] text-gray-500">M</span>
+                    <span class="text-[8px] text-gray-500">G</span>
+                    <span class="text-[8px] text-gray-500">V</span>
+                    <span class="text-[8px] text-gray-500">S</span>
+                    <span class="text-[8px] text-gray-500">D</span>
+                </div>
+                {% endcall %}
+            </div>
         </div>
 
         <!-- Carousel Dots -->
         <div class="flex justify-center gap-1.5 mt-2">
             <button onclick="scrollToSlide(0)" id="carousel-dot-0" class="w-2 h-2 rounded-full bg-white/60 transition"></button>
             <button onclick="scrollToSlide(1)" id="carousel-dot-1" class="w-2 h-2 rounded-full bg-white/20 transition"></button>
+            <button onclick="scrollToSlide(2)" id="carousel-dot-2" class="w-2 h-2 rounded-full bg-white/20 transition"></button>
         </div>
     </div>
 
     <!-- Quick Actions -->
-    <div class="flex space-x-3 overflow-x-auto pb-2 -mx-1 px-1">
+    <div class="flex space-x-2 overflow-x-auto pb-2 -mx-1 px-1">
         <button onclick="openManualMealModal()"
-            class="flex-shrink-0 bg-transparent border-2 border-orange-500 px-4 py-3 rounded-full flex items-center space-x-2 tap-effect hover:bg-orange-500/10 transition">
-            <i data-lucide="pencil" class="w-4 h-4 text-orange-400"></i> <span class="text-xs font-bold text-orange-400 uppercase tracking-wider">Aggiungi Pasto</span>
+            class="flex-shrink-0 bg-transparent border-2 border-orange-500 px-3 py-2.5 rounded-full flex items-center space-x-1.5 tap-effect hover:bg-orange-500/10 transition">
+            <i data-lucide="pencil" class="w-3.5 h-3.5 text-orange-400"></i> <span class="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Aggiungi Pasto</span>
         </button>
         <button data-action="quickAction" data-type="scan"
-            class="flex-shrink-0 bg-transparent border-2 border-orange-500 px-4 py-3 rounded-full flex items-center space-x-2 tap-effect hover:bg-orange-500/10 transition">
-            <i data-lucide="camera" class="w-4 h-4 text-orange-400"></i> <span class="text-xs font-bold text-orange-400 uppercase tracking-wider">Scansiona Pasto</span>
+            class="flex-shrink-0 bg-transparent border-2 border-orange-500 px-3 py-2.5 rounded-full flex items-center space-x-1.5 tap-effect hover:bg-orange-500/10 transition">
+            <i data-lucide="camera" class="w-3.5 h-3.5 text-orange-400"></i> <span class="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Scansiona Pasto</span>
         </button>
         <button data-action="quickAction" data-type="search"
-            class="flex-shrink-0 bg-transparent border-2 border-orange-500 px-4 py-3 rounded-full flex items-center space-x-2 tap-effect hover:bg-orange-500/10 transition">
-            <i data-lucide="search" class="w-4 h-4 text-orange-400"></i> <span class="text-xs font-bold text-orange-400 uppercase tracking-wider">Cerca</span>
+            class="flex-shrink-0 bg-transparent border-2 border-orange-500 px-3 py-2.5 rounded-full flex items-center space-x-1.5 tap-effect hover:bg-orange-500/10 transition">
+            <i data-lucide="search" class="w-3.5 h-3.5 text-orange-400"></i> <span class="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Cerca</span>
         </button>
         <button data-action="quickAction" data-type="copy"
-            class="flex-shrink-0 bg-transparent border-2 border-orange-500 px-4 py-3 rounded-full flex items-center space-x-2 tap-effect hover:bg-orange-500/10 transition">
-            <i data-lucide="clipboard" class="w-4 h-4 text-orange-400"></i> <span class="text-xs font-bold text-orange-400 uppercase tracking-wider">Copia Ieri</span>
+            class="flex-shrink-0 bg-transparent border-2 border-orange-500 px-3 py-2.5 rounded-full flex items-center space-x-1.5 tap-effect hover:bg-orange-500/10 transition">
+            <i data-lucide="clipboard" class="w-3.5 h-3.5 text-orange-400"></i> <span class="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Copia Ieri</span>
         </button>
     </div>
 
-    <!-- Bento Grid: Consistency & Hydration -->
-    <div class="bento-grid">
-        <!-- Weekly Consistency (LEFT) -->
-        {% call card(classes="p-4 flex flex-col justify-between") %}
-        <div class="flex justify-between items-center">
-            <p class="text-xs text-gray-400 uppercase font-bold">Costanza</p>
+    <!-- Week Calendar Strip + Daily Meal Plan -->
+    <div class="glass-card rounded-2xl overflow-hidden">
+        <!-- Calendar header -->
+        <div class="p-4 pb-3">
+            <div class="flex justify-between items-center" id="week-days-container"></div>
         </div>
-        <div class="flex items-end justify-between h-16 mt-2 space-x-1" id="weekly-chart">
-            <!-- Bars injected by JS -->
-        </div>
-        <div class="flex justify-between mt-1">
-            <span class="text-[8px] text-gray-500">L</span>
-            <span class="text-[8px] text-gray-500">M</span>
-            <span class="text-[8px] text-gray-500">M</span>
-            <span class="text-[8px] text-gray-500">G</span>
-            <span class="text-[8px] text-gray-500">V</span>
-            <span class="text-[8px] text-gray-500">S</span>
-            <span class="text-[8px] text-gray-500">D</span>
-        </div>
-        {% endcall %}
 
-        <!-- Hydration Wave (RIGHT) -->
-        {% call card(classes="wave-container h-40 flex flex-col justify-between p-4 relative") %}
-        <div class="relative z-10">
-            <p class="text-xs text-white/70 uppercase font-bold">Idratazione</p>
-            <p class="text-3xl font-black text-white mt-1" id="hydro-val">...</p>
-        </div>
-        <div class="wave" id="hydro-wave" style="top: 50%;"></div>
-        <button data-action="addWater"
-            class="absolute bottom-3 left-3 right-3 z-20 bg-white/20 backdrop-blur-sm rounded-xl py-2.5 text-white text-xs font-bold uppercase tracking-wider text-center hover:bg-white/30 transition tap-effect">BEVI</button>
-        {% endcall %}
-    </div>
-
-    <!-- Week Calendar Strip -->
-    <div class="glass-card p-3 rounded-2xl">
-        <div class="flex justify-between items-center" id="week-days-container">
+        <!-- Daily Meal Plan (shown for selected day) -->
+        <div id="daily-meal-plan-section" class="border-t border-white/10">
+            <!-- Plan header -->
+            <div class="px-4 pt-3 pb-2 flex justify-between items-center">
+                <p class="text-xs font-bold text-white/60 uppercase tracking-wider" id="meal-plan-day-label">Piano Alimentare - Oggi</p>
+                <span class="text-[10px] text-orange-400 font-semibold" id="meal-plan-total-kcal"></span>
+            </div>
+            <!-- Meal list -->
+            <div id="daily-meal-plan-list" class="px-4 pb-4 space-y-2">
+                <p class="text-xs text-white/30 py-2">Caricamento piano...</p>
+            </div>
         </div>
     </div>
     <script>
     (function(){
-        const container = document.getElementById('week-days-container');
-        if (!container) return;
-        const dayLabels = ['LUN','MAR','MER','GIO','VEN','SAB','DOM'];
-        const now = new Date();
-        const todayDow = now.getDay();
-        const mondayOffset = todayDow === 0 ? -6 : 1 - todayDow;
-        const monday = new Date(now);
-        monday.setDate(now.getDate() + mondayOffset);
-        for (let i = 0; i < 7; i++) {
-            const d = new Date(monday);
-            d.setDate(monday.getDate() + i);
-            const isToday = d.toDateString() === now.toDateString();
-            const dayEl = document.createElement('div');
-            dayEl.className = 'flex flex-col items-center flex-1';
-            dayEl.innerHTML = `
-                <span class="text-[9px] uppercase tracking-wider ${isToday ? 'text-orange-400 font-bold' : 'text-gray-500'} mb-1">${dayLabels[i]}</span>
-                <span class="w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold ${isToday ? 'bg-orange-500 text-white' : 'text-gray-400'}">${d.getDate()}</span>
-            `;
-            container.appendChild(dayEl);
+        var c = document.getElementById('week-days-container');
+        if (!c) return;
+        var labels = ['LUN','MAR','MER','GIO','VEN','SAB','DOM'];
+        var now = new Date();
+        var dow = now.getDay();
+        var off = dow === 0 ? -6 : 1 - dow;
+        var mon = new Date(now); mon.setDate(now.getDate() + off);
+
+        // Store week data globally
+        window._weekDays = [];
+        for (var i = 0; i < 7; i++) {
+            var d = new Date(mon); d.setDate(mon.getDate() + i);
+            window._weekDays.push(d);
         }
+        window._selectedDayIndex = (dow === 0 ? 6 : dow - 1); // Default to today (Monday=0)
+
+        function renderWeekStrip() {
+            c.innerHTML = '';
+            for (var i = 0; i < 7; i++) {
+                var d = window._weekDays[i];
+                var selected = (i === window._selectedDayIndex);
+                var el = document.createElement('div');
+                el.style.cssText = 'display:flex;flex-direction:column;align-items:center;flex:1;gap:6px;cursor:pointer;-webkit-tap-highlight-color:transparent';
+                el.dataset.dayIndex = i;
+                if (selected) {
+                    el.innerHTML = '<span style="font-size:10px;letter-spacing:0.05em;font-weight:700;color:#f97316;text-transform:uppercase">' + labels[i] + '</span>'
+                        + '<span style="width:2.5rem;height:2.5rem;display:flex;align-items:center;justify-content:center;border-radius:9999px;font-size:1rem;font-weight:700;background:#f97316;color:#fff;box-shadow:0 4px 12px rgba(249,115,22,0.35);transition:all 0.2s">' + d.getDate() + '</span>';
+                } else {
+                    el.innerHTML = '<span style="font-size:10px;letter-spacing:0.05em;font-weight:500;color:#6b7280;text-transform:uppercase">' + labels[i] + '</span>'
+                        + '<span style="width:2.5rem;height:2.5rem;display:flex;align-items:center;justify-content:center;border-radius:9999px;font-size:1rem;font-weight:700;color:#fff;transition:all 0.2s">' + d.getDate() + '</span>';
+                }
+                el.addEventListener('click', function() {
+                    var idx = parseInt(this.dataset.dayIndex);
+                    window._selectedDayIndex = idx;
+                    renderWeekStrip();
+                    loadDayMealPlan(idx);
+                });
+                c.appendChild(el);
+            }
+        }
+
+        renderWeekStrip();
+
+        // Load meal plan for today
+        window._dayDietLogs = {}; // cache: 'YYYY-MM-DD' -> [logged meals]
+
+        window.loadDayMealPlan = function(dayIndex) {
+            var fullLabels = ['Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato','Domenica'];
+            var dayLabel = document.getElementById('meal-plan-day-label');
+            var now = new Date();
+            var todayIdx = (now.getDay() === 0 ? 6 : now.getDay() - 1);
+            dayLabel.textContent = 'Piano Alimentare - ' + (dayIndex === todayIdx ? 'Oggi' : fullLabels[dayIndex]);
+
+            var list = document.getElementById('daily-meal-plan-list');
+            var totalEl = document.getElementById('meal-plan-total-kcal');
+            list.innerHTML = '<p class="text-xs text-white/30 py-2">Caricamento...</p>';
+
+            // Get the actual date for this day index
+            var selectedDate = window._weekDays[dayIndex];
+            var dateStr = selectedDate.getFullYear() + '-' + String(selectedDate.getMonth()+1).padStart(2,'0') + '-' + String(selectedDate.getDate()).padStart(2,'0');
+
+            // Fetch meal plan (cached) + diet log for date
+            var planReady = window._weeklyMealPlan ? Promise.resolve() :
+                fetch('/api/client/weekly-meal-plan', {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) { window._weeklyMealPlan = data.plan || {}; });
+
+            var logReady = window._dayDietLogs[dateStr] ? Promise.resolve() :
+                fetch('/api/client/diet-log/' + dateStr, {
+                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                })
+                .then(function(r) { return r.json(); })
+                .then(function(data) { window._dayDietLogs[dateStr] = data.meals || []; })
+                .catch(function() { window._dayDietLogs[dateStr] = []; });
+
+            Promise.all([planReady, logReady]).then(function() {
+                renderMealPlan(dayIndex, dateStr);
+            }).catch(function() {
+                list.innerHTML = '<p class="text-xs text-white/30 py-2">Nessun piano assegnato</p>';
+                totalEl.textContent = '';
+            });
+        };
+
+        var mealTypeLabels = {
+            'colazione': { label: 'Colazione', icon: '🌅', color: '#fbbf24' },
+            'spuntino_mattina': { label: 'Spuntino', icon: '🍎', color: '#34d399' },
+            'pranzo': { label: 'Pranzo', icon: '🍝', color: '#f97316' },
+            'spuntino_pomeriggio': { label: 'Merenda', icon: '🥤', color: '#818cf8' },
+            'cena': { label: 'Cena', icon: '🌙', color: '#60a5fa' }
+        };
+
+        // Map logged meal_type values to plan meal_type values
+        var logTypeToMealType = {
+            'Colazione': 'colazione',
+            'colazione': 'colazione',
+            'Spuntino': 'spuntino_mattina',
+            'spuntino_mattina': 'spuntino_mattina',
+            'spuntino': 'spuntino_mattina',
+            'Pranzo': 'pranzo',
+            'pranzo': 'pranzo',
+            'Merenda': 'spuntino_pomeriggio',
+            'merenda': 'spuntino_pomeriggio',
+            'spuntino_pomeriggio': 'spuntino_pomeriggio',
+            'Cena': 'cena',
+            'cena': 'cena',
+            'Snack': 'spuntino_mattina'
+        };
+
+        function buildMealRow(meal, info, isChecked, isAlternative) {
+            var checkIcon = isChecked
+                ? '<div style="width:20px;height:20px;border-radius:50%;background:#22c55e;display:flex;align-items:center;justify-content:center;flex-shrink:0">'
+                  + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg></div>'
+                : '<div style="width:20px;height:20px;border-radius:50%;border:2px solid rgba(255,255,255,0.15);flex-shrink:0"></div>';
+
+            var rowOpacity = isChecked ? 'opacity:0.6;' : '';
+            var nameStrike = isChecked ? 'text-decoration:line-through;' : '';
+            var altBadge = isAlternative ? '<span style="font-size:8px;background:rgba(251,191,36,0.2);color:#fbbf24;padding:1px 5px;border-radius:4px;margin-left:6px">ALT</span>' : '';
+            var borderColor = isChecked ? 'rgba(34,197,94,0.2)' : (isAlternative ? 'rgba(251,191,36,0.15)' : 'rgba(255,255,255,0.06)');
+
+            return '<div style="display:flex;align-items:center;gap:10px;padding:8px 10px;background:rgba(255,255,255,0.04);border-radius:12px;border:1px solid ' + borderColor + ';' + rowOpacity + '">'
+                + checkIcon
+                + '<div style="width:32px;height:32px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;background:rgba(255,255,255,0.05)">' + info.icon + '</div>'
+                + '<div style="flex:1;min-width:0">'
+                + '<div style="display:flex;justify-content:space-between;align-items:center">'
+                + '<span style="font-size:11px;font-weight:600;color:' + info.color + ';text-transform:uppercase;letter-spacing:0.03em">' + info.label + altBadge + '</span>'
+                + '<span style="font-size:10px;font-weight:700;color:#fff">' + (meal.calories || 0) + ' kcal</span>'
+                + '</div>'
+                + '<p style="font-size:12px;font-weight:500;color:#fff;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + nameStrike + '">' + meal.meal_name + '</p>'
+                + (meal.description ? '<p style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + meal.description + '</p>' : '')
+                + '</div></div>';
+        }
+
+        window.toggleAlternatives = function(id) {
+            var el = document.getElementById(id);
+            if (!el) return;
+            if (el.style.display === 'none' || el.style.display === '') {
+                el.style.display = 'flex';
+            } else {
+                el.style.display = 'none';
+            }
+        };
+
+        function renderMealPlan(dayIndex, dateStr) {
+            var list = document.getElementById('daily-meal-plan-list');
+            var totalEl = document.getElementById('meal-plan-total-kcal');
+            var dayKey = String(dayIndex);
+            var meals = window._weeklyMealPlan[dayKey] || [];
+            var loggedMeals = window._dayDietLogs[dateStr] || [];
+
+            if (meals.length === 0) {
+                list.innerHTML = '<p class="text-xs text-white/30 py-3 text-center">Nessun piano assegnato per questo giorno</p>';
+                totalEl.textContent = '';
+                return;
+            }
+
+            // Build a set of logged meal types for check-off
+            var loggedTypes = {};
+            loggedMeals.forEach(function(log) {
+                var mapped = logTypeToMealType[log.meal_type] || log.meal_type;
+                loggedTypes[mapped] = true;
+            });
+
+            // Group meals by meal_type
+            var grouped = {};
+            var mealOrder = ['colazione', 'spuntino_mattina', 'pranzo', 'spuntino_pomeriggio', 'cena'];
+            meals.forEach(function(meal) {
+                var key = meal.meal_type;
+                if (!grouped[key]) grouped[key] = [];
+                grouped[key].push(meal);
+            });
+
+            // Sort groups by meal_order
+            var sortedKeys = Object.keys(grouped).sort(function(a, b) {
+                var ai = mealOrder.indexOf(a); if (ai === -1) ai = 99;
+                var bi = mealOrder.indexOf(b); if (bi === -1) bi = 99;
+                return ai - bi;
+            });
+
+            var totalKcal = 0;
+            var checkedCount = 0;
+            var totalPrimaryMeals = 0;
+            var html = '';
+
+            sortedKeys.forEach(function(mealType) {
+                var group = grouped[mealType];
+                group.sort(function(a, b) { return (a.alternative_index || 0) - (b.alternative_index || 0); });
+
+                var primary = group.find(function(m) { return (m.alternative_index || 0) === 0; }) || group[0];
+                var alternatives = group.filter(function(m) { return (m.alternative_index || 0) > 0; });
+
+                var info = mealTypeLabels[mealType] || { label: mealType, icon: '🍽️', color: '#9ca3af' };
+                var isChecked = !!loggedTypes[mealType];
+                if (isChecked) checkedCount++;
+                totalKcal += primary.calories || 0;
+                totalPrimaryMeals++;
+
+                // Render primary meal
+                html += buildMealRow(primary, info, isChecked, false);
+
+                // If alternatives exist, add toggle button + hidden alternatives
+                if (alternatives.length > 0) {
+                    var altId = 'alt-' + mealType + '-' + dayIndex;
+                    html += '<div style="padding-left:30px;margin-top:-2px;margin-bottom:4px">'
+                        + '<button onclick="toggleAlternatives(\'' + altId + '\')" '
+                        + 'style="font-size:10px;color:#fbbf24;background:none;border:none;cursor:pointer;display:flex;align-items:center;gap:4px;padding:2px 0">'
+                        + '<span style="font-size:14px">&#8693;</span> '
+                        + 'Alternativa (' + alternatives.length + ')'
+                        + '</button>'
+                        + '<div id="' + altId + '" style="display:none;flex-direction:column;gap:4px;margin-top:4px">';
+
+                    alternatives.forEach(function(alt) {
+                        html += buildMealRow(alt, info, isChecked, true);
+                    });
+
+                    html += '</div></div>';
+                }
+            });
+
+            list.innerHTML = html;
+            totalEl.textContent = totalKcal + ' kcal totali · ' + checkedCount + '/' + totalPrimaryMeals;
+        }
+
+        // Auto-load today's plan
+        loadDayMealPlan(window._selectedDayIndex);
     })();
     </script>
 
-    <!-- Weight/Strength Trend Section -->
-    <div>
-        <div class="flex justify-between items-center mb-3">
-            <h3 id="trend-section-title" class="text-sm font-bold text-gray-400 uppercase tracking-wider">Andamento Peso</h3>
-            <!-- Toggle between Weight and Strength -->
-            <div class="flex bg-white/5 rounded-lg p-0.5">
-                <button onclick="switchTrendView('weight')" id="trend-toggle-weight" class="text-[10px] px-3 py-1 rounded-md bg-blue-500/20 text-blue-400 font-bold transition">Peso</button>
-                <button onclick="switchTrendView('strength')" id="trend-toggle-strength" class="text-[10px] px-3 py-1 rounded-md text-gray-400 hover:text-white transition">Forza</button>
-            </div>
-        </div>
-        <div id="weight-chart-container" class="bg-white/5 rounded-xl p-4">
-            <!-- Top row: Current value and period selector -->
-            <div class="flex justify-between items-center mb-2">
-                <div class="flex items-center gap-2">
-                    <button onclick="openWeightModal()" id="weight-update-btn" class="flex items-center gap-1.5 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-500/30 px-3 py-1 rounded-full hover:from-blue-500/30 hover:to-cyan-500/30 transition tap-effect">
-                        <span id="metric-icon" class="text-xs"><i data-lucide="scale" class="w-3.5 h-3.5 inline-block align-middle stroke-current"></i></span>
-                        <span id="client-weight" class="text-sm font-bold text-blue-400">--</span>
-                        <span id="metric-unit" class="text-xs text-blue-400/70">kg</span>
-                    </button>
-                    <span id="weight-trend-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold">--</span>
-                </div>
-                <div id="chart-period-selector" class="flex bg-white/5 rounded-lg p-0.5">
-                    <button onclick="loadTrendChart('week')" id="weight-period-week" class="text-[10px] px-2.5 py-1 rounded-md text-gray-500 hover:text-gray-300 transition">Sett.</button>
-                    <button onclick="loadTrendChart('month')" id="weight-period-month" class="text-[10px] px-2.5 py-1 rounded-md bg-white/10 text-white font-semibold transition">Mese</button>
-                    <button onclick="loadTrendChart('year')" id="weight-period-year" class="text-[10px] px-2.5 py-1 rounded-md text-gray-500 hover:text-gray-300 transition">Anno</button>
-                </div>
-            </div>
-            <!-- Metric tabs: Weight / Body Fat / Lean Mass -->
-            <div id="body-metric-tabs" class="flex justify-center mb-3">
-                <div class="flex bg-white/5 rounded-lg p-0.5">
-                    <button onclick="switchBodyMetric('weight')" id="body-metric-weight" class="text-[10px] px-3 py-1 rounded-md bg-white/10 text-blue-400 font-semibold transition">Peso</button>
-                    <button onclick="switchBodyMetric('body_fat_pct')" id="body-metric-body_fat_pct" class="text-[10px] px-3 py-1 rounded-md text-gray-500 hover:text-gray-300 transition">Grasso</button>
-                    <button onclick="switchBodyMetric('lean_mass')" id="body-metric-lean_mass" class="text-[10px] px-3 py-1 rounded-md text-gray-500 hover:text-gray-300 transition">Massa Magra</button>
-                </div>
-            </div>
-        <!-- Chart Area - 16:9 aspect ratio container -->
-        <div class="relative w-full" style="aspect-ratio: 16/9; min-height: 180px; max-height: 280px;">
-            <canvas id="weight-chart" class="absolute inset-0 w-full h-full"></canvas>
-            <div id="weight-chart-loading" class="absolute inset-0 flex items-center justify-center">
-                <span class="text-gray-500 text-xs">Caricamento grafico...</span>
-            </div>
-        </div>
-        <!-- Weight Stats Row -->
-        <div id="weight-stats-row" class="flex justify-between mt-3 text-center">
-            <div>
-                <p class="text-[10px] text-gray-500">Inizio</p>
-                <p id="weight-stat-start" class="text-sm font-bold text-gray-400">--</p>
-            </div>
-            <div>
-                <p class="text-[10px] text-gray-500">Min</p>
-                <p id="weight-stat-min" class="text-sm font-bold text-green-400">--</p>
-            </div>
-            <div>
-                <p class="text-[10px] text-gray-500">Max</p>
-                <p id="weight-stat-max" class="text-sm font-bold text-red-400">--</p>
-            </div>
-            <div>
-                <p class="text-[10px] text-gray-500">Variazione</p>
-                <p id="weight-stat-change" class="text-sm font-bold text-blue-400">--</p>
-            </div>
-        </div>
-        <!-- Strength Stats Row (hidden by default) -->
-        <div id="strength-stats-row" class="hidden mt-3 pt-3 border-t border-white/5">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-4">
-                    <div class="flex items-center gap-1.5">
-                        <div class="w-2 h-2 rounded-full bg-orange-500"></div>
-                        <span class="text-[10px] text-gray-500">Sup.</span>
-                        <span id="strength-stat-upper" class="text-xs font-bold text-orange-400">--%</span>
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <div class="w-2 h-2 rounded-full bg-purple-500"></div>
-                        <span class="text-[10px] text-gray-500">Inf.</span>
-                        <span id="strength-stat-lower" class="text-xs font-bold text-purple-400">--%</span>
-                    </div>
-                    <div class="flex items-center gap-1.5">
-                        <div class="w-2 h-2 rounded-full bg-green-500"></div>
-                        <span class="text-[10px] text-gray-500">Cardio</span>
-                        <span id="strength-stat-cardio" class="text-xs font-bold text-green-400">--%</span>
-                    </div>
-                </div>
-                <button onclick="openStrengthDetailsModal()" class="flex items-center gap-1 text-[10px] text-gray-400 hover:text-white transition">
-                    <span id="strength-stat-trend" class="font-semibold">Dettagli</span>
-                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
-                    </svg>
-                </button>
-            </div>
-        </div>
-        </div>
-    </div>
-
     <!-- Grouped Diet Log -->
     <div id="diet-log-container" class="space-y-4"></div>
-
-    <!-- Physique Photos -->
-    <div>
-        <div class="flex justify-between items-center mb-3">
-            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Aggiornamento Fisico</h3>
-            <div class="flex gap-2">
-                <button onclick="openCompareModal()" class="text-xs bg-white/5 border border-white/10 backdrop-blur-sm px-3 py-1.5 rounded-xl text-white/80 hover:bg-white/10 hover:text-white transition tap-effect flex items-center gap-1">
-                    <i data-lucide="scale" class="w-3 h-3 inline-block align-middle stroke-current"></i> Confronta
-                </button>
-                <button onclick="openPhysiqueModal()" class="text-xs bg-primary/20 border border-primary/30 backdrop-blur-sm px-3 py-1.5 rounded-xl text-white hover:bg-primary/30 transition tap-effect flex items-center gap-1">
-                    <i data-lucide="plus" class="w-3 h-3 inline-block align-middle stroke-current"></i> Aggiungi
-                </button>
-            </div>
-        </div>
-        <div class="flex space-x-3 overflow-x-auto pb-2" id="photo-gallery">
-            <p class="text-gray-500 text-xs py-4">Caricamento foto...</p>
-        </div>
-    </div>
 </div>
 
 <!-- Weight & Body Composition Update Modal -->
@@ -1793,6 +1894,133 @@ if (mealForm) {
 
 // (Quick action redirects removed — FAB actions are now self-contained in base.html)
 </script>
+
+{% elif mode == "body_progress" %}
+<!-- Body Progress Page: Weight/Strength Charts + Physique Photos -->
+<div id="body-progress-top-bar" class="fixed top-0 left-0 right-0 px-4 pb-3 flex justify-between items-center z-30 transition-all duration-200" style="padding-top: max(env(safe-area-inset-top, 0px), 2.5rem);">
+    <div class="flex items-center gap-3">
+        <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
+            class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+        </a>
+        <h1 class="text-lg font-bold text-white">Progressi</h1>
+    </div>
+    <div class="flex items-center space-x-2">
+        <button onclick="openWeightModal()" class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect" title="Aggiorna Peso">
+            <i data-lucide="scale" class="w-5 h-5"></i>
+        </button>
+        <button onclick="openPhysiqueModal()" class="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect" title="Aggiungi Foto">
+            <i data-lucide="camera" class="w-5 h-5"></i>
+        </button>
+    </div>
+</div>
+
+<div class="space-y-4 pb-8 px-4" style="padding-top: max(calc(env(safe-area-inset-top, 0px) + 5rem), 7rem);">
+
+    <!-- Weight/Strength Trend Section -->
+    <div>
+        <div class="flex justify-between items-center mb-3">
+            <h3 id="trend-section-title" class="text-sm font-bold text-gray-400 uppercase tracking-wider">Andamento Peso</h3>
+            <div class="flex bg-white/5 rounded-lg p-0.5">
+                <button onclick="switchTrendView('weight')" id="trend-toggle-weight" class="text-[10px] px-3 py-1 rounded-md bg-blue-500/20 text-blue-400 font-bold transition">Peso</button>
+                <button onclick="switchTrendView('strength')" id="trend-toggle-strength" class="text-[10px] px-3 py-1 rounded-md text-gray-400 hover:text-white transition">Forza</button>
+            </div>
+        </div>
+        <div id="weight-chart-container" class="bg-white/5 rounded-xl p-4">
+            <div class="flex justify-between items-center mb-2">
+                <div class="flex items-center gap-2">
+                    <button onclick="openWeightModal()" id="weight-update-btn" class="flex items-center gap-1.5 bg-gradient-to-r from-blue-500/20 to-cyan-500/20 border border-blue-500/30 px-3 py-1 rounded-full hover:from-blue-500/30 hover:to-cyan-500/30 transition tap-effect">
+                        <span id="metric-icon" class="text-xs"><i data-lucide="scale" class="w-3.5 h-3.5 inline-block align-middle stroke-current"></i></span>
+                        <span id="client-weight" class="text-sm font-bold text-blue-400">--</span>
+                        <span id="metric-unit" class="text-xs text-blue-400/70">kg</span>
+                    </button>
+                    <span id="weight-trend-badge" class="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 font-bold">--</span>
+                </div>
+                <div id="chart-period-selector" class="flex bg-white/5 rounded-lg p-0.5">
+                    <button onclick="loadTrendChart('week')" id="weight-period-week" class="text-[10px] px-2.5 py-1 rounded-md text-gray-500 hover:text-gray-300 transition">Sett.</button>
+                    <button onclick="loadTrendChart('month')" id="weight-period-month" class="text-[10px] px-2.5 py-1 rounded-md bg-white/10 text-white font-semibold transition">Mese</button>
+                    <button onclick="loadTrendChart('year')" id="weight-period-year" class="text-[10px] px-2.5 py-1 rounded-md text-gray-500 hover:text-gray-300 transition">Anno</button>
+                </div>
+            </div>
+            <div id="body-metric-tabs" class="flex justify-center mb-3">
+                <div class="flex bg-white/5 rounded-lg p-0.5">
+                    <button onclick="switchBodyMetric('weight')" id="body-metric-weight" class="text-[10px] px-3 py-1 rounded-md bg-white/10 text-blue-400 font-semibold transition">Peso</button>
+                    <button onclick="switchBodyMetric('body_fat_pct')" id="body-metric-body_fat_pct" class="text-[10px] px-3 py-1 rounded-md text-gray-500 hover:text-gray-300 transition">Grasso</button>
+                    <button onclick="switchBodyMetric('lean_mass')" id="body-metric-lean_mass" class="text-[10px] px-3 py-1 rounded-md text-gray-500 hover:text-gray-300 transition">Massa Magra</button>
+                </div>
+            </div>
+            <div class="relative w-full" style="aspect-ratio: 16/9; min-height: 180px; max-height: 280px;">
+                <canvas id="weight-chart" class="absolute inset-0 w-full h-full"></canvas>
+                <div id="weight-chart-loading" class="absolute inset-0 flex items-center justify-center">
+                    <span class="text-gray-500 text-xs">Caricamento grafico...</span>
+                </div>
+            </div>
+            <div id="weight-stats-row" class="flex justify-between mt-3 text-center">
+                <div>
+                    <p class="text-[10px] text-gray-500">Inizio</p>
+                    <p id="weight-stat-start" class="text-sm font-bold text-gray-400">--</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-500">Min</p>
+                    <p id="weight-stat-min" class="text-sm font-bold text-green-400">--</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-500">Max</p>
+                    <p id="weight-stat-max" class="text-sm font-bold text-red-400">--</p>
+                </div>
+                <div>
+                    <p class="text-[10px] text-gray-500">Variazione</p>
+                    <p id="weight-stat-change" class="text-sm font-bold text-blue-400">--</p>
+                </div>
+            </div>
+            <div id="strength-stats-row" class="hidden mt-3 pt-3 border-t border-white/5">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4">
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-2 h-2 rounded-full bg-orange-500"></div>
+                            <span class="text-[10px] text-gray-500">Sup.</span>
+                            <span id="strength-stat-upper" class="text-xs font-bold text-orange-400">--%</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-2 h-2 rounded-full bg-purple-500"></div>
+                            <span class="text-[10px] text-gray-500">Inf.</span>
+                            <span id="strength-stat-lower" class="text-xs font-bold text-purple-400">--%</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
+                            <div class="w-2 h-2 rounded-full bg-green-500"></div>
+                            <span class="text-[10px] text-gray-500">Cardio</span>
+                            <span id="strength-stat-cardio" class="text-xs font-bold text-green-400">--%</span>
+                        </div>
+                    </div>
+                    <button onclick="openStrengthDetailsModal()" class="flex items-center gap-1 text-[10px] text-gray-400 hover:text-white transition">
+                        <span id="strength-stat-trend" class="font-semibold">Dettagli</span>
+                        <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Physique Photos -->
+    <div>
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Aggiornamento Fisico</h3>
+            <div class="flex gap-2">
+                <button onclick="openCompareModal()" class="text-xs bg-white/5 border border-white/10 backdrop-blur-sm px-3 py-1.5 rounded-xl text-white/80 hover:bg-white/10 hover:text-white transition tap-effect flex items-center gap-1">
+                    <i data-lucide="scale" class="w-3 h-3 inline-block align-middle stroke-current"></i> Confronta
+                </button>
+                <button onclick="openPhysiqueModal()" class="text-xs bg-primary/20 border border-primary/30 backdrop-blur-sm px-3 py-1.5 rounded-xl text-white hover:bg-primary/30 transition tap-effect flex items-center gap-1">
+                    <i data-lucide="plus" class="w-3 h-3 inline-block align-middle stroke-current"></i> Aggiungi
+                </button>
+            </div>
+        </div>
+        <div class="flex space-x-3 overflow-x-auto pb-2" id="photo-gallery">
+            <p class="text-gray-500 text-xs py-4">Caricamento foto...</p>
+        </div>
+    </div>
+</div>
 
 {% elif mode == "calendar" %}
 <div class="p-6 pt-10 flex justify-between items-center bg-gradient-to-b from-black/80 to-transparent z-10">
@@ -3129,7 +3357,7 @@ async function selectFitnessGoal(goal) {
     <!-- Photo + Meals Section -->
     <div class="slide-up grid grid-cols-2 gap-3" style="animation-delay: 0.15s;">
         <!-- Left: Latest Physique Photo + Progressi -->
-        <a href="{{ '/?gym_id=' + gym_id + '&role=client&mode=progress' }}" class="block">
+        <a href="{{ '/?gym_id=' + gym_id + '&role=client&mode=body_progress' }}" class="block">
             <div id="home-physique-card" class="rounded-2xl overflow-hidden relative tap-effect" style="aspect-ratio: 3/4;">
                 <!-- Photo gets injected by JS, or placeholder shows -->
                 <div id="home-physique-photo" class="w-full h-full bg-white/5 flex items-center justify-center">
@@ -3170,31 +3398,109 @@ async function selectFitnessGoal(goal) {
 
     <!-- Trainer & Appointments Section -->
     <div class="slide-up" style="animation-delay: 0.15s;">
-        <div id="trainer-section" class="space-y-3">
-            <!-- Trainer Card -->
-            <div onclick="openTrainerProfileModal()" class="glass-card p-4 flex items-center justify-between cursor-pointer hover:bg-white/5 transition tap-effect">
-                <div class="flex items-center space-x-3">
-                    <div id="trainer-avatar" class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
-                        <i data-lucide="user" class="w-5 h-5 text-white/50"></i>
-                    </div>
-                    <div>
-                        <p class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Il Mio Trainer</p>
-                        <p class="font-bold text-white" id="trainer-name">{{ server_trainer_name or '' }}</p>
+        <div id="trainer-section">
+            <!-- Trainer Card (Expandable) -->
+            <div class="glass-card overflow-hidden">
+                <!-- Header row (clickable) -->
+                <div onclick="toggleTrainerCard()" class="p-4 cursor-pointer hover:bg-white/5 transition tap-effect">
+                    <div class="flex items-start justify-between">
+                        <!-- Left: Avatar + info -->
+                        <div class="flex items-start gap-3 flex-1 min-w-0">
+                            <!-- Avatar column: icon + availability underneath -->
+                            <div class="flex flex-col items-center flex-shrink-0">
+                                <div id="trainer-avatar" class="trainer-avatar-box w-10 h-10 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
+                                    <i data-lucide="user" class="w-5 h-5 text-white/50"></i>
+                                </div>
+                                <div id="trainer-inline-availability" class="hidden mt-1.5 flex items-center gap-1 text-[10px] text-gray-400 whitespace-nowrap">
+                                    <i data-lucide="clock" class="w-3 h-3 text-orange-400"></i>
+                                    <span id="trainer-availability-text"></span>
+                                </div>
+                            </div>
+                            <!-- Name + specialties column -->
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Il Mio Trainer</p>
+                                <p class="font-bold text-white" id="trainer-name">{{ server_trainer_name or '' }}</p>
+                            </div>
+                        </div>
+                        <!-- Right: buttons + chevron -->
+                        <div class="flex items-center gap-2 flex-shrink-0 ml-2">
+                            <div class="flex gap-2" onclick="event.stopPropagation()">
+                                <button onclick="openTrainerDirectChat()" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition tap-effect" title="Messaggio">
+                                    <i data-lucide="message-circle" class="w-5 h-5"></i>
+                                </button>
+                                <button onclick="openBookingModal()" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition tap-effect" title="Prenota Sessione 1-a-1">
+                                    <i data-lucide="calendar" class="w-5 h-5"></i>
+                                </button>
+                            </div>
+                            <i data-lucide="chevron-down" id="trainer-chevron" class="w-5 h-5 text-gray-400 ml-1"></i>
+                        </div>
                     </div>
                 </div>
-                <div class="flex gap-2" onclick="event.stopPropagation()">
-                    <button onclick="openClientChatModal()" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition tap-effect" title="Messaggio">
-                        <i data-lucide="message-circle" class="w-5 h-5"></i>
-                    </button>
-                    <button onclick="openBookingChoiceForMyTrainer()" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition tap-effect" title="Prenota Sessione">
-                        <i data-lucide="calendar" class="w-5 h-5"></i>
-                    </button>
+
+                <!-- Expandable content (appointments + profile link) -->
+                <div id="trainer-expand-content">
+                    <div class="px-4 pb-4 space-y-3">
+                        <!-- Upcoming Appointments -->
+                        <div>
+                            <p class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold mb-2">Prossimi Appuntamenti</p>
+                            <div id="appointments-list" class="space-y-2">
+                                <!-- Appointments will be loaded here -->
+                            </div>
+                        </div>
+
+                        <!-- Full profile link -->
+                        <button onclick="openTrainerProfileModal()" class="w-full py-2 text-xs text-orange-400 hover:text-orange-300 font-medium transition tap-effect">
+                            Vedi Profilo Completo →
+                        </button>
+                    </div>
                 </div>
             </div>
+        </div>
 
-            <!-- Upcoming Appointments -->
-            <div id="appointments-list" class="space-y-2">
-                <!-- Appointments will be loaded here -->
+        <!-- Nutritionist Card (Expandable, hidden by default) -->
+        <div id="nutritionist-card" class="hidden mt-3">
+            <div class="glass-card overflow-hidden">
+                <!-- Header row (clickable) -->
+                <div onclick="toggleNutritionistCard()" class="p-4 cursor-pointer hover:bg-white/5 transition tap-effect">
+                    <div class="flex items-start justify-between">
+                        <!-- Left: Avatar + info -->
+                        <div class="flex items-start gap-3 flex-1 min-w-0">
+                            <div class="flex flex-col items-center flex-shrink-0">
+                                <div id="nutritionist-avatar" class="trainer-avatar-box w-10 h-10 rounded-full bg-white/10 flex items-center justify-center overflow-hidden">
+                                    <i data-lucide="apple" class="w-5 h-5 text-white/50"></i>
+                                </div>
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold">Il Mio Nutrizionista</p>
+                                <p class="font-bold text-white" id="nutritionist-name"></p>
+                            </div>
+                        </div>
+                        <!-- Right: buttons + chevron -->
+                        <div class="flex items-center gap-2 flex-shrink-0 ml-2">
+                            <div class="flex gap-2" onclick="event.stopPropagation()">
+                                <button onclick="openNutritionistDirectChat()" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition tap-effect" title="Messaggio">
+                                    <i data-lucide="message-circle" class="w-5 h-5"></i>
+                                </button>
+                                <button onclick="openBookingModal('nutritionist')" class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center hover:bg-white/20 transition tap-effect" title="Prenota Consulenza">
+                                    <i data-lucide="calendar" class="w-5 h-5"></i>
+                                </button>
+                            </div>
+                            <i data-lucide="chevron-down" id="nutritionist-chevron" class="w-5 h-5 text-gray-400 ml-1"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Expandable content (appointments only) -->
+                <div id="nutritionist-expand-content">
+                    <div class="px-4 pb-4 space-y-3">
+                        <div>
+                            <p class="text-[10px] text-gray-400 uppercase tracking-wider font-semibold mb-2">Prossime Consulenze</p>
+                            <div id="nutrition-appointments-list" class="space-y-2">
+                                <!-- Nutrition appointments will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -3334,14 +3640,14 @@ async function selectFitnessGoal(goal) {
     onclick="if(event.target === this) closeBookingChoiceModal()">
     <div class="glass-card p-6 rounded-2xl max-w-sm w-full">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold">Prenota con <span id="booking-choice-trainer-name">Trainer</span></h3>
+            <h3 class="text-xl font-bold">Prenota</h3>
             <button onclick="closeBookingChoiceModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
         </div>
         <p class="text-gray-400 text-sm mb-6">Che tipo di sessione vuoi prenotare?</p>
 
         <div class="space-y-3">
             <!-- 1-on-1 Session Option -->
-            <button onclick="selectBookingType('personal')" class="w-full bg-gradient-to-r from-orange-500 to-red-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
+            <button id="booking-choice-personal-btn" onclick="selectBookingType('personal')" class="w-full bg-gradient-to-r from-orange-500 to-red-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
                         <i data-lucide="user" class="w-6 h-6 stroke-current"></i>
@@ -3375,6 +3681,19 @@ async function selectFitnessGoal(goal) {
                     <div>
                         <h4 class="font-bold text-white">Prenota Struttura</h4>
                         <p class="text-sm text-white/70">Campi, sale, spazi e altro</p>
+                    </div>
+                </div>
+            </button>
+
+            <!-- Nutritionist Consultation Option -->
+            <button id="booking-choice-nutrition-btn" onclick="selectBookingType('nutrition')" class="hidden w-full bg-gradient-to-r from-cyan-500 to-blue-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                        <i data-lucide="apple" class="w-6 h-6 stroke-current"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white">Consulenza Nutrizionale</h4>
+                        <p class="text-sm text-white/70">Prenota un appuntamento con il nutrizionista</p>
                     </div>
                 </div>
             </button>
@@ -3901,6 +4220,8 @@ async function selectFitnessGoal(goal) {
 
 <script>
 var selectedTrainerId = null;
+window.selectedNutritionistId = null;
+window.currentNutritionistData = null;
 let selectedDate = null;
 let selectedTime = null;
 
@@ -3927,21 +4248,47 @@ async function loadTrainerAndAppointments() {
             // Update trainer avatar with profile picture
             updateTrainerAvatar(info.trainer_profile_picture, trainerName);
 
-            // Store trainer data for profile modal
+            // Store trainer data for profile modal + expandable card
             currentTrainerData = {
                 id: info.trainer_id,
                 name: trainerName,
                 profile_picture: info.trainer_profile_picture,
                 has_availability: true,
                 bio: info.trainer_bio,
-                specialties: info.trainer_specialties || []
+                specialties: info.trainer_specialties || [],
+                availability_text: null
             };
+
+            // Load availability for inline display
+            loadTrainerAvailabilityInline(info.trainer_id);
 
             // Load upcoming appointments
             loadAppointments();
         } else {
             // No trainer - show selection option if they have a gym
             loadTrainerSelectionForHome();
+        }
+
+        // Load nutritionist data if assigned
+        if (info.has_nutritionist && info.nutritionist_id) {
+            window.selectedNutritionistId = info.nutritionist_id;
+            window.currentNutritionistData = {
+                id: info.nutritionist_id,
+                name: info.nutritionist_name || 'Nutrizionista',
+                profile_picture: info.nutritionist_profile_picture,
+                bio: info.nutritionist_bio,
+                specialties: info.nutritionist_specialties || []
+            };
+            // Show nutritionist card
+            const nutriCard = document.getElementById('nutritionist-card');
+            if (nutriCard) {
+                nutriCard.classList.remove('hidden');
+                const nutriName = document.getElementById('nutritionist-name');
+                if (nutriName) nutriName.textContent = window.currentNutritionistData.name;
+                updateNutritionistAvatar(info.nutritionist_profile_picture, window.currentNutritionistData.name);
+            }
+            // Load nutritionist appointments
+            loadNutritionistAppointments();
         }
     } catch (error) {
         console.error('Error loading trainer info:', error);
@@ -3998,10 +4345,15 @@ async function loadAppointments() {
 
 let bookingTrainerRate = null;
 let bookingPaymentMethod = null;
+window.bookingTargetType = 'trainer'; // 'trainer' or 'nutritionist'
 
-window.openBookingModal = async function() {
-    if (!selectedTrainerId) {
-        showToast('Nessun trainer assegnato', 'error');
+window.openBookingModal = async function(targetType) {
+    window.bookingTargetType = targetType || 'trainer';
+    const isNutri = window.bookingTargetType === 'nutritionist';
+    const targetId = isNutri ? window.selectedNutritionistId : selectedTrainerId;
+
+    if (!targetId) {
+        showToast(isNutri ? 'Nessun nutrizionista assegnato' : 'Nessun trainer assegnato', 'error');
         return;
     }
 
@@ -4022,14 +4374,23 @@ window.openBookingModal = async function() {
     document.getElementById('time-slots-list').innerHTML = '';
     document.getElementById('no-slots-message').classList.add('hidden');
 
-    // Fetch trainer's session rate
+    // Fetch session rate (trainer or nutritionist)
+    const rateUrl = isNutri
+        ? `/api/client/nutritionists/${targetId}/session-rate`
+        : `/api/client/trainers/${targetId}/session-rate`;
     try {
-        const rateRes = await fetch(`/api/client/trainers/${selectedTrainerId}/session-rate`, { credentials: 'include' });
+        const rateRes = await fetch(rateUrl, { credentials: 'include' });
         if (rateRes.ok) {
             const rateData = await rateRes.json();
             bookingTrainerRate = rateData.session_rate;
         }
-    } catch (e) { console.log('Could not fetch trainer rate:', e); }
+    } catch (e) { console.log('Could not fetch session rate:', e); }
+
+    // Update modal title
+    const modalTitle = document.querySelector('#booking-modal h3');
+    if (modalTitle) {
+        modalTitle.textContent = isNutri ? 'Prenota Consulenza Nutrizionale' : 'Prenota Appuntamento';
+    }
 
     document.getElementById('booking-modal').classList.remove('hidden');
     document.body.style.overflow = 'hidden';
@@ -4300,7 +4661,12 @@ window.onBookingDateSelected = async function() {
     document.getElementById('confirm-booking-btn').classList.add('hidden');
 
     try {
-        const response = await fetch(`/api/client/trainers/${selectedTrainerId}/available-slots?date=${selectedDate}`, {
+        const isNutri = window.bookingTargetType === 'nutritionist';
+        const targetId = isNutri ? window.selectedNutritionistId : selectedTrainerId;
+        const slotsUrl = isNutri
+            ? `/api/client/nutritionists/${targetId}/available-slots?date=${selectedDate}`
+            : `/api/client/trainers/${targetId}/available-slots?date=${selectedDate}`;
+        const response = await fetch(slotsUrl, {
             credentials: 'include'
         });
 
@@ -4423,14 +4789,20 @@ window.confirmBooking = async function() {
     confirmBtn.textContent = 'Elaborazione...';
 
     try {
+        const isNutri = window.bookingTargetType === 'nutritionist';
+        const targetId = isNutri ? window.selectedNutritionistId : selectedTrainerId;
+        const idField = isNutri ? 'nutritionist_id' : 'trainer_id';
+        const checkoutUrl = isNutri ? '/api/client/nutrition-checkout-session' : '/api/client/appointment-checkout-session';
+        const bookUrl = isNutri ? '/api/client/nutrition-appointments' : '/api/client/appointments';
+
         if (hasPaidSession && bookingPaymentMethod === 'card') {
             // Redirect to Stripe Checkout
-            const res = await fetch('/api/client/appointment-checkout-session', {
+            const res = await fetch(checkoutUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
                 body: JSON.stringify({
-                    trainer_id: selectedTrainerId,
+                    [idField]: targetId,
                     date: selectedDate,
                     start_time: selectedTime,
                     duration: duration,
@@ -4449,12 +4821,12 @@ window.confirmBooking = async function() {
         }
 
         // Cash or free booking
-        const response = await fetch('/api/client/appointments', {
+        const response = await fetch(bookUrl, {
             method: 'POST',
             credentials: 'include',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                trainer_id: selectedTrainerId,
+                [idField]: targetId,
                 date: selectedDate,
                 start_time: selectedTime,
                 duration: duration,
@@ -4472,6 +4844,7 @@ window.confirmBooking = async function() {
         showToast('Appuntamento prenotato con successo!', 'success');
         closeBookingModal();
         if (typeof loadAppointments === 'function') loadAppointments();
+        if (typeof loadNutritionistAppointments === 'function') loadNutritionistAppointments();
     } catch (error) {
         console.error('Error booking appointment:', error);
         showToast(error.message, 'error');
@@ -4946,6 +5319,7 @@ document.addEventListener('DOMContentLoaded', function() {
         url.searchParams.delete('booking_success');
         window.history.replaceState({}, '', url);
         if (typeof loadAppointments === 'function') loadAppointments();
+        if (typeof loadNutritionistAppointments === 'function') loadNutritionistAppointments();
     }
     if (params.get('booking_error')) {
         showToast('Prenotazione fallita: ' + params.get('booking_error'), 'error');
@@ -5158,7 +5532,24 @@ var bookingChoiceTrainerName = null;
 function openBookingChoiceModal(trainerId, trainerName) {
     bookingChoiceTrainerId = trainerId;
     bookingChoiceTrainerName = trainerName;
-    document.getElementById('booking-choice-trainer-name').textContent = trainerName || 'Trainer';
+    // Show/hide 1-on-1 option based on whether a trainer is available
+    const personalBtn = document.getElementById('booking-choice-personal-btn');
+    if (personalBtn) {
+        if (trainerId) {
+            personalBtn.classList.remove('hidden');
+        } else {
+            personalBtn.classList.add('hidden');
+        }
+    }
+    // Show/hide nutritionist option based on whether client has a nutritionist
+    const nutritionBtn = document.getElementById('booking-choice-nutrition-btn');
+    if (nutritionBtn) {
+        if (window.selectedNutritionistId) {
+            nutritionBtn.classList.remove('hidden');
+        } else {
+            nutritionBtn.classList.add('hidden');
+        }
+    }
     document.getElementById('booking-choice-modal').classList.remove('hidden');
 }
 
@@ -5168,7 +5559,7 @@ async function openBookingChoiceForMyTrainer() {
     let trainerId = selectedTrainerId;
 
     // If no trainer ID yet, try to fetch it
-    if (!trainerId) {
+    if (!trainerId || !window.selectedNutritionistId) {
         try {
             const response = await fetch('/api/client/gym-info', { credentials: 'include' });
             if (response.ok) {
@@ -5178,21 +5569,24 @@ async function openBookingChoiceForMyTrainer() {
                     selectedTrainerId = trainerId;
                     if (info.trainer_name) trainerName = info.trainer_name;
                 }
+                if (info.has_nutritionist && info.nutritionist_id) {
+                    window.selectedNutritionistId = info.nutritionist_id;
+                    window.currentNutritionistData = {
+                        id: info.nutritionist_id,
+                        name: info.nutritionist_name,
+                        profile_picture: info.nutritionist_profile_picture,
+                        bio: info.nutritionist_bio,
+                        specialties: info.nutritionist_specialties
+                    };
+                }
             }
         } catch (e) {
-            console.log('Could not fetch trainer info for booking');
+            console.log('Could not fetch trainer/nutritionist info for booking');
         }
     }
 
-    if (trainerId) {
-        // Go directly to 1-on-1 booking with the assigned trainer
-        selectedTrainerId = trainerId;
-        if (typeof openBookingModal === 'function') {
-            openBookingModal();
-        }
-    } else {
-        showToast('Nessun trainer assegnato', 'error');
-    }
+    // Always show choice modal (courses + facilities always available)
+    openBookingChoiceModal(trainerId || null, trainerId ? trainerName : null);
 }
 
 function closeBookingChoiceModal() {
@@ -5220,6 +5614,9 @@ function selectBookingType(type) {
     } else if (type === 'facility') {
         // Book a facility
         openFacilityBookingModal();
+    } else if (type === 'nutrition') {
+        // Book nutritionist consultation
+        openBookingModal('nutritionist');
     }
 }
 
@@ -5861,6 +6258,199 @@ function updateTrainerAvatar(profilePicture, trainerName) {
 
     // Store for profile modal
     currentTrainerData.profile_picture = profilePicture;
+}
+
+async function loadTrainerAvailabilityInline(trainerId) {
+    try {
+        const res = await fetch(`/api/client/trainers/${trainerId}/availability`, { credentials: 'include' });
+        if (res.ok) {
+            const availability = await res.json();
+            if (availability && availability.length > 0) {
+                const days = [...new Set(availability.map(a => a.day_of_week))];
+                currentTrainerData.availability_text = `${days.length} giorni/settimana`;
+            } else {
+                currentTrainerData.availability_text = 'Non impostata';
+            }
+        }
+    } catch (e) { /* ignore */ }
+}
+
+// --- TRAINER CARD EXPAND/COLLAPSE ---
+let trainerCardExpanded = false;
+
+function toggleTrainerCard() {
+    const content = document.getElementById('trainer-expand-content');
+    const chevron = document.getElementById('trainer-chevron');
+    const avatar = document.getElementById('trainer-avatar');
+    if (!content) return;
+
+    trainerCardExpanded = !trainerCardExpanded;
+
+    if (trainerCardExpanded) {
+        populateTrainerExpandedContent();
+        content.classList.add('expanded');
+        chevron?.classList.add('rotate-180');
+        avatar?.classList.add('avatar-expanded');
+    } else {
+        content.classList.remove('expanded');
+        chevron?.classList.remove('rotate-180');
+        avatar?.classList.remove('avatar-expanded');
+        // Hide inline details when collapsed
+        document.getElementById('trainer-inline-specialties')?.classList.add('hidden');
+        document.getElementById('trainer-inline-availability')?.classList.add('hidden');
+    }
+}
+
+function populateTrainerExpandedContent() {
+    const data = currentTrainerData;
+    if (!data) return;
+
+    const specs = data.specialties || [];
+
+    // Specialties (next to the name)
+    const specEl = document.getElementById('trainer-inline-specialties');
+    if (specEl && specs.length > 0) {
+        specEl.innerHTML = specs.map(s =>
+            `<span class="bg-white/5 text-gray-300 px-2.5 py-1 rounded-full text-[10px] border border-white/10">${s}</span>`
+        ).join('');
+        specEl.classList.remove('hidden');
+    }
+
+    // Availability (under the avatar)
+    const availEl = document.getElementById('trainer-inline-availability');
+    const availText = document.getElementById('trainer-availability-text');
+    if (availEl && availText && data.availability_text) {
+        availText.textContent = data.availability_text;
+        availEl.classList.remove('hidden');
+    }
+
+    // Re-init lucide icons for new elements
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+// --- NUTRITIONIST CARD ---
+function updateNutritionistAvatar(profilePicture, name) {
+    const avatarContainer = document.getElementById('nutritionist-avatar');
+    if (avatarContainer) {
+        if (profilePicture) {
+            avatarContainer.innerHTML = `<img src="${profilePicture}" alt="${name}" class="w-full h-full object-cover">`;
+        } else {
+            avatarContainer.innerHTML = `<i data-lucide="apple" class="w-5 h-5"></i>`;
+            if (typeof lucide !== 'undefined') lucide.createIcons();
+        }
+    }
+}
+
+let nutritionistCardExpanded = false;
+
+function toggleNutritionistCard() {
+    const content = document.getElementById('nutritionist-expand-content');
+    const chevron = document.getElementById('nutritionist-chevron');
+    const avatar = document.getElementById('nutritionist-avatar');
+    if (!content) return;
+
+    nutritionistCardExpanded = !nutritionistCardExpanded;
+
+    if (nutritionistCardExpanded) {
+        populateNutritionistExpandedContent();
+        content.classList.add('expanded');
+        chevron?.classList.add('rotate-180');
+        avatar?.classList.add('avatar-expanded');
+    } else {
+        content.classList.remove('expanded');
+        chevron?.classList.remove('rotate-180');
+        avatar?.classList.remove('avatar-expanded');
+        document.getElementById('nutritionist-inline-specialties')?.classList.add('hidden');
+    }
+}
+
+function populateNutritionistExpandedContent() {
+    const data = window.currentNutritionistData;
+    if (!data) return;
+
+    const specs = data.specialties || [];
+    const specEl = document.getElementById('nutritionist-inline-specialties');
+    if (specEl && specs.length > 0) {
+        specEl.innerHTML = specs.map(s =>
+            `<span class="bg-white/5 text-gray-300 px-2.5 py-1 rounded-full text-[10px] border border-white/10">${s}</span>`
+        ).join('');
+        specEl.classList.remove('hidden');
+    }
+
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+window.openNutritionistDirectChat = function() {
+    const nutriId = window.selectedNutritionistId;
+    const nutriName = window.currentNutritionistData?.name;
+    const nutriPic = window.currentNutritionistData?.profile_picture || null;
+    if (nutriId && nutriName && window.openChatModal) {
+        window.openChatModal(nutriId, nutriName, nutriPic);
+    } else {
+        window.openConversationsModal();
+    }
+};
+
+async function loadNutritionistAppointments() {
+    try {
+        const response = await fetch('/api/client/nutrition-appointments', { credentials: 'include' });
+        if (!response.ok) return;
+
+        const allAppts = await response.json();
+        const appointments = allAppts.filter(a => a.status !== 'canceled' && a.status !== 'cancelled');
+
+        const listEl = document.getElementById('nutrition-appointments-list');
+        if (!listEl) return;
+
+        if (appointments.length === 0) {
+            listEl.innerHTML = `
+                <div class="glass-card p-3 text-center text-sm text-gray-400">
+                    Nessuna consulenza in programma
+                </div>
+            `;
+            return;
+        }
+
+        listEl.innerHTML = appointments.slice(0, 3).map(appt => `
+            <div class="glass-card p-3">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <p class="font-bold text-sm text-white">${new Date(appt.date).toLocaleDateString('it-IT', { month: 'short', day: 'numeric' })}</p>
+                        <p class="text-xs text-gray-400">${appt.start_time} • ${appt.duration} min</p>
+                        ${appt.notes ? `<p class="text-xs text-gray-500 mt-1">${appt.notes}</p>` : ''}
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-[10px] px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-400">${appt.status === 'scheduled' ? 'Programmata' : appt.status}</span>
+                        <button onclick="cancelNutritionAppointment('${appt.id}')" class="text-xs text-red-400 hover:text-red-300 transition" title="Annulla">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    } catch (error) {
+        console.error('Error loading nutritionist appointments:', error);
+    }
+}
+
+async function cancelNutritionAppointment(appointmentId) {
+    if (!confirm('Vuoi annullare questa consulenza?')) return;
+    try {
+        const res = await fetch(`/api/client/nutrition-appointments/${appointmentId}/cancel`, {
+            method: 'POST', credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        if (res.ok) {
+            showToast('Consulenza annullata', 'success');
+            loadNutritionistAppointments();
+        } else {
+            const err = await res.json();
+            showToast(err.detail || 'Errore', 'error');
+        }
+    } catch (e) { showToast('Errore di rete', 'error'); }
 }
 
 // --- GYM MEMBERS ---

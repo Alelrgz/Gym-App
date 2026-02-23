@@ -169,10 +169,13 @@ class GymAssignmentService:
                 return {
                     "has_gym": False,
                     "has_trainer": False,
+                    "has_nutritionist": False,
                     "gym_id": None,
                     "gym_name": None,
                     "trainer_id": None,
-                    "trainer_name": None
+                    "trainer_name": None,
+                    "nutritionist_id": None,
+                    "nutritionist_name": None
                 }
 
             gym_name = None
@@ -193,16 +196,35 @@ class GymAssignmentService:
                     if trainer.specialties:
                         trainer_specialties = [s.strip() for s in trainer.specialties.split(",") if s.strip()]
 
+            nutritionist_name = None
+            nutritionist_profile_picture = None
+            nutritionist_bio = None
+            nutritionist_specialties = []
+            if profile.nutritionist_id:
+                nutri = db.query(UserORM).filter(UserORM.id == profile.nutritionist_id).first()
+                if nutri:
+                    nutritionist_name = nutri.username
+                    nutritionist_profile_picture = nutri.profile_picture
+                    nutritionist_bio = nutri.bio
+                    if nutri.specialties:
+                        nutritionist_specialties = [s.strip() for s in nutri.specialties.split(",") if s.strip()]
+
             return {
                 "has_gym": profile.gym_id is not None,
                 "has_trainer": profile.trainer_id is not None,
+                "has_nutritionist": profile.nutritionist_id is not None,
                 "gym_id": profile.gym_id,
                 "gym_name": gym_name,
                 "trainer_id": profile.trainer_id,
                 "trainer_name": trainer_name,
                 "trainer_profile_picture": trainer_profile_picture,
                 "trainer_bio": trainer_bio,
-                "trainer_specialties": trainer_specialties
+                "trainer_specialties": trainer_specialties,
+                "nutritionist_id": profile.nutritionist_id,
+                "nutritionist_name": nutritionist_name,
+                "nutritionist_profile_picture": nutritionist_profile_picture,
+                "nutritionist_bio": nutritionist_bio,
+                "nutritionist_specialties": nutritionist_specialties
             }
 
         finally:
