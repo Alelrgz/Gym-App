@@ -1480,8 +1480,10 @@ async function init() {
             const ownerRes = await fetch(`${apiBase}/api/owner/data`);
             const data = await ownerRes.json();
             const setTxt = (id, val) => { if (document.getElementById(id)) document.getElementById(id).innerText = val; };
-            setTxt('revenue-display', data.revenue_today);
+            const currSymbol = (data.currency || 'eur') === 'eur' ? '€' : '$';
+            setTxt('revenue-display', `${currSymbol}${(data.monthly_revenue || 0).toLocaleString('it-IT', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`);
             setTxt('active-members', data.active_members);
+            setTxt('active-subscriptions', data.active_subscriptions || 0);
             setTxt('staff-active', data.staff_active);
 
             const feed = document.getElementById('activity-feed');

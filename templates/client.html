@@ -1439,157 +1439,6 @@ function renderFriendHealthBars(data) {
     </div>
 </div>
 
-<!-- Physique Photo Upload Modal -->
-<div id="physique-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold">Aggiungi Foto Progressi</h3>
-            <button onclick="closePhysiqueModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
-        </div>
-
-        <form id="physique-form" class="space-y-4">
-            <!-- Photo Preview -->
-            <div id="physique-preview-container" class="hidden">
-                <img id="physique-preview" class="w-full h-48 object-cover rounded-xl border border-white/10 mb-2">
-                <button type="button" onclick="clearPhysiquePhoto()" class="text-xs text-red-400 hover:text-red-300">Rimuovi foto</button>
-            </div>
-
-            <!-- Upload Button -->
-            <div id="physique-upload-area" class="border-2 border-dashed border-white/20 rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 transition"
-                onclick="document.getElementById('physique-file-input').click()">
-                <i data-lucide="camera" class="w-10 h-10 mb-2 block"></i>
-                <p class="text-sm text-gray-400">Tocca per selezionare una foto</p>
-                <p class="text-xs text-gray-500 mt-1">JPG, PNG, WEBP (max 10MB)</p>
-            </div>
-            <input type="file" id="physique-file-input" accept="image/*" class="hidden" onchange="previewPhysiquePhoto(this)">
-
-            <!-- Pose Tags -->
-            <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Tag Posa</label>
-                <div class="flex flex-wrap gap-2" id="physique-tags">
-                    <button type="button" onclick="selectPhysiqueTag(this, 'Front')" class="physique-tag px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 border border-white/20 hover:bg-white/20 transition">Frontale</button>
-                    <button type="button" onclick="selectPhysiqueTag(this, 'Back')" class="physique-tag px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 border border-white/20 hover:bg-white/20 transition">Posteriore</button>
-                    <button type="button" onclick="selectPhysiqueTag(this, 'Side L')" class="physique-tag px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 border border-white/20 hover:bg-white/20 transition">Lato S</button>
-                    <button type="button" onclick="selectPhysiqueTag(this, 'Side R')" class="physique-tag px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 border border-white/20 hover:bg-white/20 transition">Lato D</button>
-                    <button type="button" onclick="selectPhysiqueTag(this, 'Flexed')" class="physique-tag px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 border border-white/20 hover:bg-white/20 transition">In Posa</button>
-                    <button type="button" onclick="selectPhysiqueTag(this, 'Relaxed')" class="physique-tag px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 border border-white/20 hover:bg-white/20 transition">Rilassato</button>
-                </div>
-            </div>
-
-            <!-- Title -->
-            <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Titolo (opzionale)</label>
-                <input type="text" id="physique-title" placeholder="es. Progressi Settimana 4"
-                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-3 text-sm text-white outline-none focus:border-primary/50 transition">
-            </div>
-
-            <!-- Date -->
-            <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Data Foto</label>
-                <input type="date" id="physique-date"
-                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-3 text-sm text-white outline-none focus:border-primary/50 transition">
-            </div>
-
-            <!-- Notes -->
-            <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Note (opzionale)</label>
-                <textarea id="physique-notes" rows="2" placeholder="Note su questa foto..."
-                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-3 text-sm text-white outline-none focus:border-primary/50 transition resize-none"></textarea>
-            </div>
-
-            <!-- Submit -->
-            <button type="submit" id="physique-submit-btn"
-                class="w-full bg-primary text-white py-3 rounded-xl font-bold hover:bg-primary/80 transition disabled:opacity-50 disabled:cursor-not-allowed">
-                Carica Foto
-            </button>
-        </form>
-    </div>
-</div>
-
-<!-- Physique Comparison Modal (Carousel) -->
-<div id="compare-modal" class="fixed inset-0 bg-black/70 backdrop-blur-xl z-50 hidden flex flex-col">
-    <div class="p-4 flex justify-between items-center border-b border-white/10 bg-white/5">
-        <h3 class="text-lg font-bold">Confronta Progressi</h3>
-        <div class="flex items-center gap-2">
-            <!-- Animation Toggle Button -->
-            <button id="animation-toggle-btn" onclick="toggleCarouselAnimations()" title="Animations On"
-                class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/20 transition">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-            </button>
-            <button onclick="closeCompareModal()" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/20 transition">&times;</button>
-        </div>
-    </div>
-
-    <!-- Carousel Container -->
-    <div class="flex-1 flex flex-col p-4 overflow-hidden min-h-0">
-        <!-- Carousel View -->
-        <div class="flex-1 relative flex items-center justify-center min-h-[200px]">
-            <!-- Navigation Arrow Left -->
-            <button id="carousel-prev" onclick="carouselPrev()"
-                class="absolute left-2 z-10 w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition tap-effect disabled:opacity-30 disabled:cursor-not-allowed">
-                ←
-            </button>
-
-            <!-- Photo Display -->
-            <div id="carousel-photo-container" class="flex-1 h-full mx-14 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex items-center justify-center overflow-hidden relative transition-all duration-300">
-                <p class="text-gray-400 text-sm" id="carousel-placeholder">Seleziona le foto qui sotto per confrontare</p>
-                <img id="carousel-img" class="hidden w-full h-full object-contain">
-            </div>
-
-            <!-- Navigation Arrow Right -->
-            <button id="carousel-next" onclick="carouselNext()"
-                class="absolute right-2 z-10 w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition tap-effect disabled:opacity-30 disabled:cursor-not-allowed">
-                →
-            </button>
-        </div>
-
-        <!-- Photo Label -->
-        <p id="carousel-label" class="text-center text-sm text-white mt-3 h-6 font-medium"></p>
-        <p id="carousel-date" class="text-center text-xs text-gray-400 h-5"></p>
-
-        <!-- Pagination Dots -->
-        <div id="carousel-dots" class="flex justify-center gap-2 mt-3 flex-wrap max-w-full px-4"></div>
-    </div>
-
-    <!-- Photo Selector with Filters (Collapsible) -->
-    <div id="photo-selector-panel" class="border-t border-white/10 bg-white/5 flex-shrink-0 overflow-hidden transition-all duration-300 ease-in-out" style="max-height: 260px;">
-        <!-- Drag Handle -->
-        <div onclick="togglePhotoSelector()" class="cursor-pointer py-3 flex justify-center hover:bg-white/5 transition">
-            <div id="selector-toggle-icon" class="w-10 h-1 bg-white/30 rounded-full transition-all duration-300 hover:bg-white/50"></div>
-        </div>
-        <div class="px-4 pb-4 pt-3">
-            <!-- Filter Bar -->
-            <div class="flex gap-2 mb-3 flex-wrap">
-                <input type="text" id="compare-search" placeholder="Cerca per titolo..."
-                    oninput="filterComparePhotos()"
-                    class="flex-1 min-w-[120px] bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 outline-none focus:border-primary/50 transition">
-                <select id="compare-date-filter" onchange="filterComparePhotos()"
-                    class="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition">
-                    <option value="all">Tutte le date</option>
-                    <option value="week">Questa settimana</option>
-                    <option value="month">Questo mese</option>
-                    <option value="3months">Ultimi 3 mesi</option>
-                    <option value="year">Quest'anno</option>
-                </select>
-                <select id="compare-pose-filter" onchange="filterComparePhotos()"
-                    class="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition">
-                    <option value="all">Tutte le pose</option>
-                    <option value="Front">Frontale</option>
-                    <option value="Back">Posteriore</option>
-                    <option value="Side">Laterale</option>
-                    <option value="Flexed">In Posa</option>
-                    <option value="Relaxed">Rilassato</option>
-                </select>
-            </div>
-            <p class="text-xs text-gray-400 mb-2">Tocca le foto per aggiungere/rimuovere: <span id="compare-photo-count" class="text-white/60"></span></p>
-            <div id="compare-photo-list" class="flex gap-2 overflow-x-auto pb-2"></div>
-        </div>
-    </div>
-</div>
-
 <!-- Manual Meal Entry Modal -->
 <div id="manual-meal-modal" class="fixed inset-0 bg-black/70 backdrop-blur-xl z-50 hidden flex items-center justify-center p-4">
     <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[80vh] overflow-y-auto">
@@ -7835,6 +7684,140 @@ loadFriendsPreview();
 </script>
 
 {% endif %}
+
+<!-- Physique Photo Upload Modal (shared across modes) -->
+<div id="physique-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-xl font-bold">Aggiungi Foto Progressi</h3>
+            <button onclick="closePhysiqueModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+
+        <form id="physique-form" class="space-y-4">
+            <!-- Photo Preview -->
+            <div id="physique-preview-container" class="hidden">
+                <img id="physique-preview" class="w-full h-48 object-cover rounded-xl border border-white/10 mb-2">
+                <button type="button" onclick="clearPhysiquePhoto()" class="text-xs text-red-400 hover:text-red-300">Rimuovi foto</button>
+            </div>
+
+            <!-- Upload Button -->
+            <div id="physique-upload-area" class="border-2 border-dashed border-white/20 rounded-xl p-8 text-center cursor-pointer hover:border-primary/50 transition"
+                onclick="document.getElementById('physique-file-input').click()">
+                <i data-lucide="camera" class="w-10 h-10 mb-2 block"></i>
+                <p class="text-sm text-gray-400">Tocca per selezionare una foto</p>
+                <p class="text-xs text-gray-500 mt-1">JPG, PNG, WEBP (max 10MB)</p>
+            </div>
+            <input type="file" id="physique-file-input" accept="image/*" class="hidden" onchange="previewPhysiquePhoto(this)">
+
+            <!-- Pose Tags -->
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Tag Posa</label>
+                <div class="flex flex-wrap gap-2" id="physique-tags">
+                    <button type="button" onclick="selectPhysiqueTag(this, 'Front')" class="physique-tag px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 border border-white/20 hover:bg-white/20 transition">Frontale</button>
+                    <button type="button" onclick="selectPhysiqueTag(this, 'Back')" class="physique-tag px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 border border-white/20 hover:bg-white/20 transition">Posteriore</button>
+                    <button type="button" onclick="selectPhysiqueTag(this, 'Side L')" class="physique-tag px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 border border-white/20 hover:bg-white/20 transition">Lato S</button>
+                    <button type="button" onclick="selectPhysiqueTag(this, 'Side R')" class="physique-tag px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 border border-white/20 hover:bg-white/20 transition">Lato D</button>
+                    <button type="button" onclick="selectPhysiqueTag(this, 'Flexed')" class="physique-tag px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 border border-white/20 hover:bg-white/20 transition">In Posa</button>
+                    <button type="button" onclick="selectPhysiqueTag(this, 'Relaxed')" class="physique-tag px-3 py-1.5 rounded-full text-xs font-medium bg-white/10 border border-white/20 hover:bg-white/20 transition">Rilassato</button>
+                </div>
+            </div>
+
+            <!-- Title -->
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Titolo (opzionale)</label>
+                <input type="text" id="physique-title" placeholder="es. Progressi Settimana 4"
+                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-3 text-sm text-white outline-none focus:border-primary/50 transition">
+            </div>
+
+            <!-- Date -->
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Data Foto</label>
+                <input type="date" id="physique-date"
+                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-3 text-sm text-white outline-none focus:border-primary/50 transition">
+            </div>
+
+            <!-- Notes -->
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Note (opzionale)</label>
+                <textarea id="physique-notes" rows="2" placeholder="Note su questa foto..."
+                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-3 text-sm text-white outline-none focus:border-primary/50 transition resize-none"></textarea>
+            </div>
+
+            <!-- Submit -->
+            <button type="submit" id="physique-submit-btn"
+                class="w-full bg-primary text-white py-3 rounded-xl font-bold hover:bg-primary/80 transition disabled:opacity-50 disabled:cursor-not-allowed">
+                Carica Foto
+            </button>
+        </form>
+    </div>
+</div>
+
+<!-- Physique Comparison Modal (Carousel, shared across modes) -->
+<div id="compare-modal" class="fixed inset-0 bg-black/70 backdrop-blur-xl z-50 hidden flex flex-col">
+    <div class="p-4 flex justify-between items-center border-b border-white/10 bg-white/5">
+        <h3 class="text-lg font-bold">Confronta Progressi</h3>
+        <div class="flex items-center gap-2">
+            <button id="animation-toggle-btn" onclick="toggleCarouselAnimations()" title="Animations On"
+                class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/20 transition">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </button>
+            <button onclick="closeCompareModal()" class="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center text-gray-400 hover:text-white hover:bg-white/20 transition">&times;</button>
+        </div>
+    </div>
+    <div class="flex-1 flex flex-col p-4 overflow-hidden min-h-0">
+        <div class="flex-1 relative flex items-center justify-center min-h-[200px]">
+            <button id="carousel-prev" onclick="carouselPrev()"
+                class="absolute left-2 z-10 w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition tap-effect disabled:opacity-30 disabled:cursor-not-allowed">
+                ←
+            </button>
+            <div id="carousel-photo-container" class="flex-1 h-full mx-14 bg-white/10 backdrop-blur-sm rounded-2xl border border-white/20 flex items-center justify-center overflow-hidden relative transition-all duration-300">
+                <p class="text-gray-400 text-sm" id="carousel-placeholder">Seleziona le foto qui sotto per confrontare</p>
+                <img id="carousel-img" class="hidden w-full h-full object-contain">
+            </div>
+            <button id="carousel-next" onclick="carouselNext()"
+                class="absolute right-2 z-10 w-10 h-10 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition tap-effect disabled:opacity-30 disabled:cursor-not-allowed">
+                →
+            </button>
+        </div>
+        <p id="carousel-label" class="text-center text-sm text-white mt-3 h-6 font-medium"></p>
+        <p id="carousel-date" class="text-center text-xs text-gray-400 h-5"></p>
+        <div id="carousel-dots" class="flex justify-center gap-2 mt-3 flex-wrap max-w-full px-4"></div>
+    </div>
+    <div id="photo-selector-panel" class="border-t border-white/10 bg-white/5 flex-shrink-0 overflow-hidden transition-all duration-300 ease-in-out" style="max-height: 260px;">
+        <div onclick="togglePhotoSelector()" class="cursor-pointer py-3 flex justify-center hover:bg-white/5 transition">
+            <div id="selector-toggle-icon" class="w-10 h-1 bg-white/30 rounded-full transition-all duration-300 hover:bg-white/50"></div>
+        </div>
+        <div class="px-4 pb-4 pt-3">
+            <div class="flex gap-2 mb-3 flex-wrap">
+                <input type="text" id="compare-search" placeholder="Cerca per titolo..."
+                    oninput="filterComparePhotos()"
+                    class="flex-1 min-w-[120px] bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white placeholder-gray-500 outline-none focus:border-primary/50 transition">
+                <select id="compare-date-filter" onchange="filterComparePhotos()"
+                    class="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition">
+                    <option value="all">Tutte le date</option>
+                    <option value="week">Questa settimana</option>
+                    <option value="month">Questo mese</option>
+                    <option value="3months">Ultimi 3 mesi</option>
+                    <option value="year">Quest'anno</option>
+                </select>
+                <select id="compare-pose-filter" onchange="filterComparePhotos()"
+                    class="bg-white/10 border border-white/20 rounded-xl px-3 py-2 text-xs text-white outline-none focus:border-primary/50 transition">
+                    <option value="all">Tutte le pose</option>
+                    <option value="Front">Frontale</option>
+                    <option value="Back">Posteriore</option>
+                    <option value="Side">Laterale</option>
+                    <option value="Flexed">In Posa</option>
+                    <option value="Relaxed">Rilassato</option>
+                </select>
+            </div>
+            <p class="text-xs text-gray-400 mb-2">Tocca le foto per aggiungere/rimuovere: <span id="compare-photo-count" class="text-white/60"></span></p>
+            <div id="compare-photo-list" class="flex gap-2 overflow-x-auto pb-2"></div>
+        </div>
+    </div>
+</div>
 
 <!-- Shared Booking Choice Modal (available for all modes) -->
 <div id="booking-choice-modal-shared" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"

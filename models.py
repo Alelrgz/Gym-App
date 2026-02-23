@@ -175,10 +175,12 @@ class Activity(BaseModel):
     type: str
 
 class OwnerData(BaseModel):
-    revenue_today: str
-    active_members: int
-    staff_active: int
-    recent_activity: List[Activity]
+    monthly_revenue: float = 0.0
+    currency: str = "eur"
+    active_members: int = 0
+    active_subscriptions: int = 0
+    staff_active: int = 0
+    recent_activity: List[Activity] = []
 
 # --- LEADERBOARD ---
 class LeaderboardUser(BaseModel):

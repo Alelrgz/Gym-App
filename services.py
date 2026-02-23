@@ -439,7 +439,68 @@ class UserService:
             db.close()
 
     def get_owner(self) -> OwnerData:
-        return OwnerData(**OWNER_DATA)
+        db = get_db_session()
+        try:
+            # Count active clients
+            active_members = db.query(UserORM).filter(UserORM.role == "client").count()
+
+            # Count staff (trainers + staff + nutritionists, excluding owner)
+            staff_active = db.query(UserORM).filter(
+                UserORM.role.in_(["trainer", "staff", "nutritionist"])
+            ).count()
+
+            # Calculate monthly revenue from active subscriptions
+            from models_orm import ClientSubscriptionORM, SubscriptionPlanORM
+            from sqlalchemy import func
+
+            monthly_revenue = 0.0
+            active_subscriptions = 0
+            currency = "eur"
+
+            active_subs = db.query(ClientSubscriptionORM, SubscriptionPlanORM).join(
+                SubscriptionPlanORM, ClientSubscriptionORM.plan_id == SubscriptionPlanORM.id
+            ).filter(
+                ClientSubscriptionORM.status.in_(["active", "trialing"])
+            ).all()
+
+            for sub, plan in active_subs:
+                active_subscriptions += 1
+                if plan.billing_interval == "year":
+                    monthly_revenue += plan.price / 12
+                else:
+                    monthly_revenue += plan.price
+                if plan.currency:
+                    currency = plan.currency
+
+            # Recent activity: last 10 new signups and subscriptions
+            recent_activity = []
+            recent_users = db.query(UserORM).filter(
+                UserORM.role == "client"
+            ).order_by(UserORM.created_at.desc()).limit(5).all()
+
+            for u in recent_users:
+                created = u.created_at or ""
+                try:
+                    dt = datetime.fromisoformat(created)
+                    time_str = dt.strftime("%d/%m %H:%M")
+                except Exception:
+                    time_str = created[:16] if created else "—"
+                recent_activity.append({
+                    "time": time_str,
+                    "text": f"Nuovo iscritto: {u.username}",
+                    "type": "money"
+                })
+
+            return OwnerData(
+                monthly_revenue=round(monthly_revenue, 2),
+                currency=currency,
+                active_members=active_members,
+                active_subscriptions=active_subscriptions,
+                staff_active=staff_active,
+                recent_activity=recent_activity
+            )
+        finally:
+            db.close()
 
     def get_exercises(self, trainer_id: str) -> list:
         """Delegate to ExerciseService."""
