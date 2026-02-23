@@ -89,7 +89,7 @@
 
             <!-- Stats Bar -->
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:1rem;">
-                <div class="staff-stats-bar" style="margin-bottom:0;">
+                <div class="staff-stats-bar" style="margin-bottom:0;flex:1;width:100%;">
                     <div class="staff-stat-item">
                         <span class="staff-stat-value" id="total-clients-count">0</span>
                         <span class="staff-stat-label">clienti</span>
@@ -219,8 +219,8 @@
                         <div id="d-schedule-container" style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:0.75rem;"></div>
                     </div>
 
-                    <!-- My Workout Card -->
-                    <div id="trainer-my-workout" style="display:flex;flex-direction:column;">
+                    <!-- My Workout Card (hidden by default, shown by JS when workout assigned) -->
+                    <div id="trainer-my-workout" style="display:none;flex-direction:column;">
                         <div class="glass-card" style="display:flex;flex-direction:column;position:relative;overflow:hidden;border-radius:var(--radius-xl);">
                             <!-- Content (always visible, blurred when empty) -->
                             <div id="my-workout-content" style="display:flex;flex-direction:column;justify-content:center;padding:1.25rem;">
@@ -924,13 +924,36 @@ async function loadTrainerLatestMessage() {
     if (!card) return;
     try {
         const res = await fetch('/api/messages/conversations', { credentials: 'include' });
-        if (!res.ok) return;
+        if (!res.ok) {
+            // Show placeholder on error
+            card.innerHTML = `
+                <div class="trainer-msg-card" onclick="openConversationsModal()">
+                    <div class="trainer-msg-card-content">
+                        <div class="trainer-msg-card-name">Messaggi</div>
+                        <div class="trainer-msg-card-preview" style="opacity:0.5;">Nessun nuovo messaggio</div>
+                    </div>
+                </div>`;
+            card.style.display = '';
+            if (window.lucide) lucide.createIcons();
+            return;
+        }
         const convos = await res.json();
-        if (!convos || convos.length === 0) { card.style.display = 'none'; return; }
+        if (!convos || convos.length === 0) {
+            // Show placeholder when no conversations
+            card.innerHTML = `
+                <div class="trainer-msg-card" onclick="openConversationsModal()">
+                    <div class="trainer-msg-card-content">
+                        <div class="trainer-msg-card-name">Messaggi</div>
+                        <div class="trainer-msg-card-preview" style="opacity:0.5;">Nessun nuovo messaggio</div>
+                    </div>
+                </div>`;
+            card.style.display = '';
+            if (window.lucide) lucide.createIcons();
+            return;
+        }
         const latest = convos[0];
-        if (!latest || !latest.last_message_preview) { card.style.display = 'none'; return; }
         const name = latest.other_user_name || 'Utente';
-        const preview = latest.last_message_preview || '';
+        const preview = latest.last_message_preview || 'Nessun nuovo messaggio';
         const hasAttachment = preview.toLowerCase().includes('allegato') || preview.toLowerCase().includes('[file]');
         card.innerHTML = `
             <div class="trainer-msg-card" onclick="openConversationsModal()">
@@ -943,7 +966,18 @@ async function loadTrainerLatestMessage() {
         `;
         card.style.display = '';
         if (window.lucide) lucide.createIcons();
-    } catch(e) { card.style.display = 'none'; }
+    } catch(e) {
+        // Show placeholder on error
+        card.innerHTML = `
+            <div class="trainer-msg-card" onclick="openConversationsModal()">
+                <div class="trainer-msg-card-content">
+                    <div class="trainer-msg-card-name">Messaggi</div>
+                    <div class="trainer-msg-card-preview" style="opacity:0.5;">Nessun nuovo messaggio</div>
+                </div>
+            </div>`;
+        card.style.display = '';
+        if (window.lucide) lucide.createIcons();
+    }
 }
 
 // Load latest PR/achievement for the mobile homepage card

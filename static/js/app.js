@@ -799,21 +799,19 @@ function renderTrainerWorkoutCard(workout) {
     const difficultyEl = document.getElementById('my-workout-difficulty');
     const ctaBtn = document.getElementById('my-workout-cta');
     const emptyOverlay = document.getElementById('my-workout-empty');
+    const cardContainer = document.getElementById('trainer-my-workout');
     if (!titleEl) return;
 
     const contentDiv = document.getElementById('my-workout-content');
 
     if (!workout) {
-        // Keep placeholder layout visible behind the blur
-        titleEl.textContent = 'Allenamento';
-        durationEl.textContent = '-- min';
-        exercisesEl.textContent = '-- esercizi';
-        difficultyEl.textContent = '--';
-        if (contentDiv) contentDiv.style.filter = 'blur(8px)';
-        if (emptyOverlay) emptyOverlay.style.display = 'flex';
+        // Hide the entire card when no workout assigned
+        if (cardContainer) cardContainer.style.display = 'none';
         return;
     }
 
+    // Show card and clear empty state
+    if (cardContainer) cardContainer.style.display = 'flex';
     if (contentDiv) contentDiv.style.filter = 'none';
     if (emptyOverlay) emptyOverlay.style.display = 'none';
 
