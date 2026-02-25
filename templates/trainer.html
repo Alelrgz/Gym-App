@@ -152,7 +152,7 @@
                             </button>
                         </div>
                     </div>
-                    <div class="staff-table-card staff-desktop-only">
+                    <div class="staff-table-card staff-desktop-only" style="max-height:550px;overflow-y:auto;">
                         <table class="staff-table">
                             <thead>
                                 <tr>
@@ -172,7 +172,7 @@
                     </div>
 
                     <!-- Client Cards (mobile) -->
-                    <div class="staff-mobile-only" id="trainer-clients-mobile-list">
+                    <div class="staff-mobile-only" id="trainer-clients-mobile-list" style="max-height:550px;overflow-y:auto;">
                         <div class="staff-mobile-card" style="pointer-events:none;opacity:0.5;">
                             <div class="staff-skeleton" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;"></div>
                             <div style="flex:1;">
@@ -198,7 +198,7 @@
                 </div>
 
                 <!-- RIGHT: Appointments + My Workout -->
-                <div class="trainer-panel-content" id="utenti-panel-agenda" style="display:flex;flex-direction:column;gap:1.5rem;">
+                <div class="trainer-panel-content" id="utenti-panel-agenda" style="display:flex;flex-direction:column;gap:1.5rem;max-height:550px;overflow-y:auto;">
                     <!-- Appointments Widget -->
                     <div class="glass-card" style="padding:1rem;border-radius:var(--radius-xl);">
                         <div style="display:flex;justify-content:center;align-items:center;gap:1rem;margin-bottom:1rem;">
@@ -2607,7 +2607,7 @@ const toLocalISO = (d) => {
 };
 
 function initScheduleSection() {
-    const username = localStorage.getItem('username') || 'Trainer';
+    const username = sessionStorage.getItem('username') || 'Trainer';
     const nameEl = document.getElementById('personal-name');
     if (nameEl) nameEl.textContent = username;
 
@@ -3060,7 +3060,7 @@ window.switchCourseTab = switchCourseTab;
 
 // ============ SETTINGS SECTION ============
 function initSettingsSection() {
-    const username = localStorage.getItem('username') || 'Trainer';
+    const username = sessionStorage.getItem('username') || 'Trainer';
     document.getElementById('settings-trainer-name').textContent = username;
     document.getElementById('settings-profile-pic').textContent = username.charAt(0).toUpperCase();
 
@@ -3155,7 +3155,7 @@ window.uploadProfilePicture = async function(input) {
 // ============ INITIALIZATION ============
 document.addEventListener('DOMContentLoaded', () => {
     // Update sidebar name
-    const username = localStorage.getItem('username') || 'Trainer';
+    const username = sessionStorage.getItem('username') || 'Trainer';
     const sidebarName = document.getElementById('sidebar-trainer-name');
     if (sidebarName) sidebarName.textContent = `Coach ${username}`;
 

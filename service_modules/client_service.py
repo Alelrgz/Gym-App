@@ -353,7 +353,7 @@ class ClientService:
                 id=client_id,
                 username=user.username,
                 name=profile.name or "Unknown User",
-                email=profile.email,
+                email=user.email or profile.email,
                 streak=streak,
                 gems=profile.gems,
                 health_score=profile.health_score,

@@ -24,7 +24,7 @@ class AppointmentService:
     # --- GYM TRAINERS ---
 
     def get_gym_trainers(self, client_id: str) -> List[dict]:
-        """Get all trainers in the client's gym."""
+        """Get all trainers and nutritionists in the client's gym."""
         db = get_db_session()
         try:
             # Get client's gym from their profile (not UserORM.gym_owner_id)
@@ -32,37 +32,44 @@ class AppointmentService:
             if not profile or not profile.gym_id:
                 return []
 
-            # Get all trainers in the same gym (approved trainers only)
-            trainers = db.query(UserORM).filter(
-                UserORM.role == "trainer",
+            # Get all trainers and nutritionists in the same gym (approved only)
+            professionals = db.query(UserORM).filter(
+                UserORM.role.in_(["trainer", "nutritionist"]),
                 UserORM.gym_owner_id == profile.gym_id,
                 UserORM.is_approved == True
             ).all()
 
-            trainer_list = []
-            for trainer in trainers:
-                # Get trainer's availability count (to show if they have slots set up)
+            result_list = []
+            for prof in professionals:
+                # Get availability count (to show if they have slots set up)
                 availability_count = db.query(TrainerAvailabilityORM).filter(
-                    TrainerAvailabilityORM.trainer_id == trainer.id
+                    TrainerAvailabilityORM.trainer_id == prof.id
                 ).count()
+                # Also check nutritionist availability
+                if prof.role == "nutritionist":
+                    from models_orm import NutritionistAvailabilityORM
+                    availability_count += db.query(NutritionistAvailabilityORM).filter(
+                        NutritionistAvailabilityORM.nutritionist_id == prof.id
+                    ).count()
 
                 # Parse specialties from comma-separated string to list
                 specialties_list = []
-                if trainer.specialties:
-                    specialties_list = [s.strip() for s in trainer.specialties.split(",") if s.strip()]
+                if prof.specialties:
+                    specialties_list = [s.strip() for s in prof.specialties.split(",") if s.strip()]
 
-                trainer_list.append({
-                    "id": trainer.id,
-                    "name": trainer.username,
-                    "profile_picture": trainer.profile_picture,
-                    "bio": trainer.bio,
+                result_list.append({
+                    "id": prof.id,
+                    "name": prof.username,
+                    "role": prof.role,
+                    "profile_picture": prof.profile_picture,
+                    "bio": prof.bio,
                     "specialties": specialties_list,
                     "has_availability": availability_count > 0,
-                    "session_rate": getattr(trainer, 'session_rate', None)
+                    "session_rate": getattr(prof, 'session_rate', None)
                 })
 
-            logger.info(f"Found {len(trainer_list)} trainers for client {client_id} in gym {profile.gym_id}")
-            return trainer_list
+            logger.info(f"Found {len(result_list)} professionals for client {client_id} in gym {profile.gym_id}")
+            return result_list
 
         except Exception as e:
             logger.error(f"Error getting gym trainers: {e}")

@@ -158,6 +158,66 @@ async def device_ping(request: Request):
     return {"status": "ok", "server_time": datetime.utcnow().isoformat()}
 
 
+@router.post("/api/device/verify-access")
+async def device_verify_access(request: Request, data: dict, db: Session = Depends(get_db)):
+    """Kiosk/turnstile verifies a member's temporary QR access token. Auth via X-Device-Key."""
+    import hashlib, time
+    owner = _get_device_owner(request, db)
+
+    token = (data.get("token") or "").strip()
+    user_id = (data.get("user_id") or "").strip()
+
+    if not token or not user_id:
+        raise HTTPException(status_code=400, detail="token and user_id required")
+
+    _ACCESS_SECRET = "gym-turnstile-access-2024"
+    current_window = int(time.time() // 30)
+
+    for window in [current_window, current_window - 1]:
+        raw = f"{user_id}:{window}:{_ACCESS_SECRET}"
+        expected = hashlib.sha256(raw.encode()).hexdigest()[:12]
+        if token == expected:
+            member = db.query(UserORM).filter(UserORM.id == user_id).first()
+            if not member:
+                raise HTTPException(status_code=404, detail="Member not found")
+
+            # Get display name
+            member_name = member.username
+            profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == user_id).first()
+            if profile and profile.name:
+                member_name = profile.name
+
+            # Auto check-in (best-effort)
+            try:
+                from models_orm import CheckInORM
+                today_str = date.today().isoformat()
+                already = db.query(CheckInORM).filter(
+                    CheckInORM.member_id == user_id,
+                    CheckInORM.gym_owner_id == owner.id,
+                    CheckInORM.checked_in_at.like(f"{today_str}%")
+                ).first()
+                if not already:
+                    db.add(CheckInORM(
+                        member_id=user_id,
+                        staff_id=None,
+                        gym_owner_id=owner.id,
+                        checked_in_at=datetime.now().isoformat()
+                    ))
+                    db.commit()
+            except Exception:
+                pass
+
+            logger.info(f"Kiosk access granted: {member_name} ({user_id})")
+            return {
+                "valid": True,
+                "username": member_name,
+                "user_id": user_id,
+                "profile_picture": member.profile_picture
+            }
+
+    raise HTTPException(status_code=401, detail="Token expired or invalid")
+
+
 # ==================== STAFF API ====================
 
 @router.post("/api/staff/register-nfc")

@@ -40,7 +40,7 @@ try:
     from models import TrainerData, JoinGymRequest, SelectTrainerRequest # Import models
     from services import UserService, get_user_service
     from service_modules.gym_assignment_service import get_gym_assignment_service, GymAssignmentService
-    from auth import get_current_user
+    from auth import get_current_user, create_access_token
     from fastapi import Depends, HTTPException
     from models_orm import UserORM
     # Rate limiting
@@ -861,8 +861,9 @@ async def gdpr_delete_account(request: Request, current_user: UserORM = Depends(
     return response
 
 @app.get("/", response_class=HTMLResponse)
-async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "client", mode: str = "dashboard"):
-    token = request.cookies.get("access_token")
+async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "client", mode: str = "dashboard", demo_token: str = None):
+    # demo_token allows per-tab auth (demo mode) without relying on the shared cookie
+    token = demo_token or request.cookies.get("access_token")
     if not token:
         return RedirectResponse(url="/auth/login", status_code=302)
 
@@ -876,13 +877,13 @@ async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "cli
         mode = "dashboard"
 
     # Determine which template to render based on role
-    # If role is default (client) but token says otherwise, trust token
+    # Always trust the token's role to prevent role mismatch (e.g., owner token on staff page)
     username = None
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         token_role = payload.get("role")
         username = payload.get("sub")
-        if token_role and role == "client":
+        if token_role:
             role = token_role
     except Exception:
         pass
@@ -935,6 +936,130 @@ async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "cli
     logger.info(f"Rendering {template_name} with cache_buster={context['cache_buster']}")
     return templates.TemplateResponse(template_name, context)
 
+
+@app.get("/demo", response_class=HTMLResponse)
+async def demo_launcher(request: Request, db: Session = Depends(get_db)):
+    """Demo launcher: generates per-account tokens and renders a multi-tab launcher page."""
+    GYM_OWNER_ID = "gym-owner-001"
+
+    owner = db.query(UserORM).filter(UserORM.id == GYM_OWNER_ID).first()
+    if not owner:
+        return HTMLResponse("<h1>Demo data not seeded. Run seed_gym_data.py first.</h1>", status_code=404)
+
+    demo_accounts = []
+    token_expiry = timedelta(hours=8)
+
+    # Owner
+    demo_accounts.append({
+        "username": owner.username,
+        "role": "owner",
+        "display_role": "Proprietario",
+        "token": create_access_token({"sub": owner.username, "role": "owner"}, token_expiry),
+        "color": "amber",
+    })
+
+    # Staff
+    for s in db.query(UserORM).filter(UserORM.role == "staff", UserORM.gym_owner_id == GYM_OWNER_ID, UserORM.is_active == True).all():
+        demo_accounts.append({
+            "username": s.username, "role": "staff", "display_role": "Staff",
+            "token": create_access_token({"sub": s.username, "role": "staff"}, token_expiry),
+            "color": "blue",
+        })
+
+    # Trainers (skip x1/x2 test accounts)
+    for t in db.query(UserORM).filter(
+        UserORM.role == "trainer", UserORM.gym_owner_id == GYM_OWNER_ID,
+        UserORM.is_approved == True, ~UserORM.username.in_(["x1", "x2"])
+    ).all():
+        demo_accounts.append({
+            "username": t.username, "role": "trainer", "display_role": "Trainer",
+            "token": create_access_token({"sub": t.username, "role": "trainer"}, token_expiry),
+            "color": "green",
+        })
+
+    # Nutritionists
+    for n in db.query(UserORM).filter(UserORM.role == "nutritionist", UserORM.gym_owner_id == GYM_OWNER_ID).all():
+        demo_accounts.append({
+            "username": n.username, "role": "nutritionist", "display_role": "Nutrizionista",
+            "token": create_access_token({"sub": n.username, "role": "nutritionist"}, token_expiry),
+            "color": "purple",
+        })
+
+    # Clients (first 3)
+    for c in db.query(UserORM).filter(UserORM.role == "client", UserORM.gym_owner_id == GYM_OWNER_ID).limit(3).all():
+        demo_accounts.append({
+            "username": c.username, "role": "client", "display_role": "Cliente",
+            "token": create_access_token({"sub": c.username, "role": "client"}, token_expiry),
+            "color": "orange",
+        })
+
+    return templates.TemplateResponse("demo.html", {
+        "request": request,
+        "accounts": demo_accounts,
+        "cache_buster": CACHE_BUSTER,
+    })
+
+
+@app.get("/kiosk", response_class=HTMLResponse)
+async def kiosk_page(request: Request, key: str = "", db: Session = Depends(get_db)):
+    """Entrance kiosk for Raspberry Pi + QR scanner. Auth via device API key."""
+    if not key:
+        return HTMLResponse("<h1>Missing device key. Use /kiosk?key=YOUR_DEVICE_KEY</h1>", status_code=401)
+
+    owner = db.query(UserORM).filter(
+        UserORM.device_api_key == key,
+        UserORM.role == "owner"
+    ).first()
+
+    if not owner:
+        return HTMLResponse("<h1>Invalid device key.</h1>", status_code=401)
+
+    gym_name = owner.gym_name or owner.username or "Gym"
+
+    return templates.TemplateResponse("kiosk.html", {
+        "request": request,
+        "device_key": key,
+        "gym_name": gym_name,
+    })
+
+
+# ---- Pi Kiosk Setup Endpoints ----
+
+@app.get("/api/pi-files/{filename}")
+async def pi_files(filename: str):
+    """Serve Pi kiosk scripts for setup.sh to download."""
+    import os
+    allowed = {"relay_service.py", "kiosk_scanner.py"}
+    if filename not in allowed:
+        return HTMLResponse("Not found", status_code=404)
+    path = os.path.join(os.path.dirname(__file__), "raspberry_pi", filename)
+    if not os.path.exists(path):
+        return HTMLResponse("File not found", status_code=404)
+    with open(path) as f:
+        content = f.read()
+    return HTMLResponse(content, media_type="text/plain")
+
+
+@app.get("/api/pi-setup/{device_key}")
+async def pi_setup(request: Request, device_key: str, db: Session = Depends(get_db)):
+    """Serve the setup.sh script with SERVER and DEVICE_KEY pre-filled.
+    Electrician runs: curl http://SERVER:9008/api/pi-setup/DEVICE_KEY | sudo bash
+    """
+    import os
+    owner = db.query(UserORM).filter(
+        UserORM.device_api_key == device_key,
+        UserORM.role == "owner"
+    ).first()
+    if not owner:
+        return HTMLResponse("echo 'ERROR: Invalid device key'; exit 1", status_code=401, media_type="text/plain")
+
+    server_url = str(request.base_url).rstrip("/")
+    path = os.path.join(os.path.dirname(__file__), "raspberry_pi", "setup.sh")
+    with open(path) as f:
+        script = f.read()
+    script = script.replace("__SERVER__", server_url)
+    script = script.replace("__DEVICE_KEY__", device_key)
+    return HTMLResponse(script, media_type="text/plain")
 
 
 @app.post("/api/trainer/events")

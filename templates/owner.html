@@ -346,22 +346,49 @@
         </button>
     </div>
 
+    {% endcall %}
+
+    <!-- Tornello / Kiosk Setup -->
+    {% call card(classes="p-4 mb-5") %}
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Tornello / Kiosk</h3>
+        <i data-lucide="scan" class="w-4 h-4 text-purple-400"></i>
+    </div>
+
+    <p class="text-xs text-gray-500 mb-4">Configura il Raspberry Pi all'ingresso della palestra per la scansione QR e l'apertura del tornello.</p>
+
     <!-- Device API Key -->
-    <div class="mt-5 pt-4 border-t border-white/10">
-        <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Chiave API Dispositivo (per ESP32)</label>
-        <div class="flex gap-2">
-            <input type="text" id="device-api-key-display" readonly
-                class="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono opacity-60"
-                value="Non ancora generata">
-            <button onclick="copyDeviceKey()" title="Copy" class="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition">
-                <i data-lucide="clipboard" class="w-4 h-4 text-gray-400"></i>
-            </button>
+    <div class="space-y-3">
+        <div>
+            <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Chiave API Dispositivo</label>
+            <div class="flex gap-2">
+                <input type="text" id="device-api-key-display" readonly
+                    class="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-sm text-white font-mono opacity-60"
+                    value="Non ancora generata">
+                <button onclick="copyDeviceKey()" title="Copia chiave" class="px-3 py-2 bg-white/10 hover:bg-white/20 rounded-lg transition">
+                    <i data-lucide="clipboard" class="w-4 h-4 text-gray-400"></i>
+                </button>
+            </div>
         </div>
+
+        <!-- Setup Command -->
+        <div id="setup-command-section" class="hidden">
+            <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Comando Setup (per l'elettricista)</label>
+            <div class="flex gap-2">
+                <input type="text" id="setup-command-display" readonly
+                    class="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-purple-300 font-mono opacity-80">
+                <button onclick="copySetupCommand()" title="Copia comando" class="px-3 py-2 bg-purple-500/20 hover:bg-purple-500/30 rounded-lg transition">
+                    <i data-lucide="clipboard" class="w-4 h-4 text-purple-400"></i>
+                </button>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">L'elettricista esegue questo comando sul Raspberry Pi via SSH.</p>
+        </div>
+
         <button onclick="generateDeviceKey()"
-            class="mt-2 w-full bg-white/10 hover:bg-white/20 text-white py-2 rounded-xl font-semibold transition text-sm">
+            class="w-full bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 py-2.5 rounded-xl font-bold transition text-sm">
             Genera Nuova Chiave
         </button>
-        <p class="text-xs text-gray-500 mt-2">Rigenerare la chiave disconnetterà tutti i dispositivi ESP32 attualmente configurati.</p>
+        <p class="text-xs text-gray-500">Rigenerare la chiave disconnetterà tutti i dispositivi attualmente configurati.</p>
     </div>
     {% endcall %}
 
@@ -783,7 +810,7 @@
         </div>
 
         <!-- ===== RIGHT COLUMN (1/3 width) ===== -->
-        <div class="lg:col-span-1 flex flex-col gap-6">
+        <div class="lg:col-span-1 flex flex-col gap-6 min-h-0 overflow-hidden">
 
             <!-- ZONE: Team (Orange) -->
             <section>
@@ -3372,7 +3399,7 @@ function displayActivityFeed(activities) {
         return `
         <div class="flex items-center gap-3 p-3 border-b border-white/5 last:border-b-0 hover:bg-white/5 transition">
             <div class="w-9 h-9 rounded-xl ${typeColors[activity.type] || 'bg-gray-500/20'} flex items-center justify-center flex-shrink-0">
-                ${icon(activity.icon || 'pin', 18)}
+                ${icon(CRM_ACTIVITY_ICONS[activity.type] || 'pin', 18)}
             </div>
             <div class="flex-1 min-w-0">
                 <p class="text-sm font-medium text-white truncate">${escapeHtml(activity.title)}</p>
@@ -3400,9 +3427,30 @@ async function loadShowerSettings() {
         if (timerEl) timerEl.value = data.shower_timer_minutes;
         if (limitEl) limitEl.value = data.shower_daily_limit;
         if (keyEl) keyEl.value = data.device_api_key || 'Non ancora generata';
+        updateSetupCommand(data.device_api_key);
     } catch (err) {
         console.error('Error loading shower settings:', err);
     }
+}
+
+function updateSetupCommand(key) {
+    const section = document.getElementById('setup-command-section');
+    const cmdEl = document.getElementById('setup-command-display');
+    if (!section || !cmdEl) return;
+    if (key) {
+        const server = window.location.origin;
+        cmdEl.value = `curl -sL ${server}/api/pi-setup/${key} | sudo bash`;
+        section.classList.remove('hidden');
+    } else {
+        section.classList.add('hidden');
+    }
+}
+
+function copySetupCommand() {
+    const cmd = document.getElementById('setup-command-display').value;
+    if (!cmd) return;
+    navigator.clipboard.writeText(cmd);
+    showToast('Comando setup copiato!');
 }
 
 async function saveShowerSettings() {
@@ -3439,6 +3487,7 @@ async function generateDeviceKey() {
         if (!res.ok) throw new Error(data.detail || 'Failed');
 
         document.getElementById('device-api-key-display').value = data.device_api_key;
+        updateSetupCommand(data.device_api_key);
         showToast('Nuova chiave dispositivo generata!');
     } catch (err) {
         alert('Errore: ' + err.message);

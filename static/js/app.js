@@ -2,6 +2,9 @@ const { gymId, role, apiBase } = window.APP_CONFIG;
 console.log("App.js loaded! apiBase: " + apiBase);
 console.log("App.js loaded (Restored Monolithic) v" + Math.random());
 
+// Per-tab auth storage (sessionStorage isolates each tab for multi-account demo)
+const authStorage = sessionStorage;
+
 // Global fetch wrapper: always send credentials (cookies) with API requests
 const _originalFetch = window.fetch;
 window.fetch = function(url, options = {}) {
@@ -15,11 +18,11 @@ window.fetch = function(url, options = {}) {
 // Bootstrap from Server if valid token present in config
 if (window.APP_CONFIG.token && window.APP_CONFIG.token !== "None") {
     console.log("Bootstrapping auth from server...");
-    localStorage.setItem('token', window.APP_CONFIG.token);
-    localStorage.setItem('role', window.APP_CONFIG.role);
+    authStorage.setItem('token', window.APP_CONFIG.token);
+    authStorage.setItem('role', window.APP_CONFIG.role);
 }
 
-if (!localStorage.getItem('token') && window.location.pathname !== '/auth/login' && window.location.pathname !== '/auth/register') {
+if (!authStorage.getItem('token') && window.location.pathname !== '/auth/login' && window.location.pathname !== '/auth/register') {
     // Check if we are on a public page or not
     // Simple check: if not login/register page specific
     window.location.href = '/auth/login';
@@ -27,7 +30,7 @@ if (!localStorage.getItem('token') && window.location.pathname !== '/auth/login'
 
 const originalFetch = window.fetch;
 window.fetch = async function (url, options = {}) {
-    const token = localStorage.getItem('token');
+    const token = authStorage.getItem('token');
     if (token) {
         options.headers = options.headers || {};
         if (!options.headers['Authorization']) {
@@ -39,7 +42,7 @@ window.fetch = async function (url, options = {}) {
     try {
         const response = await originalFetch(url, options);
         if (response.status === 401 && window.location.pathname !== '/auth/login') {
-            localStorage.removeItem('token');
+            authStorage.removeItem('token');
             window.location.href = '/auth/login';
         }
         return response;
@@ -49,8 +52,8 @@ window.fetch = async function (url, options = {}) {
 };
 
 function logout() {
-    localStorage.removeItem('token');
-    localStorage.removeItem('role');
+    authStorage.removeItem('token');
+    authStorage.removeItem('role');
     window.location.href = '/auth/logout';
 }
 window.logout = logout;
@@ -851,7 +854,7 @@ async function init() {
 
         if (role === 'client') {
             // Display client name from localStorage
-            const username = localStorage.getItem('username') || 'Guest';
+            const username = authStorage.getItem('username') || 'Guest';
             const displayNameEl = document.getElementById('client-display-name');
             const welcomeNameEl = document.getElementById('client-welcome-name');
             if (displayNameEl) displayNameEl.textContent = username;
@@ -883,7 +886,14 @@ async function init() {
                 if (displayName) {
                     if (displayNameEl) displayNameEl.textContent = displayName;
                     if (welcomeNameEl) welcomeNameEl.textContent = displayName;
-                    localStorage.setItem('username', displayName);
+                    authStorage.setItem('username', displayName);
+                }
+
+                // Update display email
+                const displayEmailEl = document.getElementById('client-display-email');
+                if (displayEmailEl) {
+                    const emailVal = user.email || '';
+                    displayEmailEl.textContent = emailVal.includes('@') ? emailVal : '';
                 }
 
                 // Update streak display (day streak)
@@ -1216,7 +1226,7 @@ async function init() {
 
         if (role === 'trainer') {
             // Display trainer username from localStorage
-            const username = localStorage.getItem('username') || 'Trainer';
+            const username = authStorage.getItem('username') || 'Trainer';
             const usernameEl = document.getElementById('trainer-username');
             if (usernameEl) usernameEl.textContent = username;
 
@@ -2369,7 +2379,7 @@ async function onBarcodeDetected(result) {
     try {
         const res = await fetch(`${apiBase}/api/client/diet/barcode/${code}`, {
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                'Authorization': `Bearer ${authStorage.getItem('token')}`
             }
         });
 
@@ -2546,7 +2556,7 @@ async function analyzeMealImage(imageBlob) {
         const res = await fetch(`${apiBase}/api/client/diet/scan`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                'Authorization': `Bearer ${authStorage.getItem('token')}`
             },
             credentials: 'include',
             body: formData
@@ -2598,7 +2608,7 @@ async function logScannedMeal() {
         const logRes = await fetch(`${apiBase}/api/client/diet/log`, {
             method: 'POST',
             headers: {
-                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                'Authorization': `Bearer ${authStorage.getItem('token')}`,
                 'Content-Type': 'application/json'
             },
             credentials: 'include',
@@ -2698,7 +2708,7 @@ async function saveWeight() {
             method: 'PUT',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+                'Authorization': `Bearer ${authStorage.getItem('token') || ''}`
             },
             credentials: 'include',
             body: JSON.stringify(payload)
@@ -2959,11 +2969,11 @@ async function loadWeightChart(period = 'month') {
         // Fetch both weight history and strength progress in parallel
         const [weightResponse, strengthResponse] = await Promise.all([
             fetch(`/api/client/weight-history?period=${period}`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` },
+                headers: { 'Authorization': `Bearer ${authStorage.getItem('token') || ''}` },
                 credentials: 'include'
             }),
             fetch(`/api/client/strength-progress?period=${period}`, {
-                headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` },
+                headers: { 'Authorization': `Bearer ${authStorage.getItem('token') || ''}` },
                 credentials: 'include'
             })
         ]);
@@ -3891,7 +3901,7 @@ async function loadStrengthDetails(category) {
         console.log('[StrengthDetails] Fetching:', url);
 
         const response = await fetch(url, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token') || ''}` },
+            headers: { 'Authorization': `Bearer ${authStorage.getItem('token') || ''}` },
             credentials: 'include'
         });
 
@@ -5027,6 +5037,10 @@ window.saveProfile = async () => {
         showToast("Nome e Email sono obbligatori!", "error");
         return;
     }
+    if (!email.includes('@')) {
+        showToast("Inserisci un indirizzo email valido!", "error");
+        return;
+    }
 
     try {
         const res = await fetch(`${apiBase}/api/client/profile`, {
@@ -5043,12 +5057,14 @@ window.saveProfile = async () => {
 
         showToast("Profilo aggiornato con successo!", "success");
 
-        // Update display name on dashboard immediately
+        // Update display name and email on dashboard immediately
         const displayNameEl = document.getElementById('client-display-name');
         const welcomeNameEl = document.getElementById('client-welcome-name');
         if (displayNameEl) displayNameEl.textContent = name;
         if (welcomeNameEl) welcomeNameEl.textContent = name;
-        localStorage.setItem('username', name);
+        authStorage.setItem('username', name);
+        const displayEmailEl = document.getElementById('client-display-email');
+        if (displayEmailEl) displayEmailEl.textContent = email;
 
         // Clear password field
         document.getElementById('profile-password').value = '';
@@ -8459,7 +8475,7 @@ window.openChatWithUser = async function(userId, userName, avatarUrl) {
     try {
         // First check if we can message this user
         const checkRes = await fetch(`${apiBase}/api/client/can-message/${userId}`, {
-            headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+            headers: { 'Authorization': `Bearer ${authStorage.getItem('token')}` }
         });
         const checkData = await checkRes.json();
 
@@ -8474,7 +8490,7 @@ window.openChatWithUser = async function(userId, userName, avatarUrl) {
                     const reqRes = await fetch(`${apiBase}/api/client/chat-requests`, {
                         method: 'POST',
                         headers: {
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                            'Authorization': `Bearer ${authStorage.getItem('token')}`,
                             'Content-Type': 'application/json'
                         },
                         body: JSON.stringify({ to_user_id: userId })
@@ -9346,22 +9362,22 @@ function updateAppointmentPriceDisplay() {
     const paymentSection = document.getElementById('appointment-payment-section');
     const freeSection = document.getElementById('appointment-free-section');
     const priceDisplay = document.getElementById('appointment-price-display');
-    const cardForm = document.getElementById('appointment-card-form');
     const cashInfo = document.getElementById('appointment-cash-info');
+    const posInfo = document.getElementById('appointment-pos-info');
 
     // Reset payment method selection visuals
     appointmentPaymentMethod = null;
-    if (cardForm) cardForm.classList.add('hidden');
     if (cashInfo) cashInfo.classList.add('hidden');
-    const cardBtn = document.getElementById('appt-pay-card-btn');
+    if (posInfo) posInfo.classList.add('hidden');
     const cashBtn = document.getElementById('appt-pay-cash-btn');
-    if (cardBtn) {
-        cardBtn.classList.remove('border-blue-500', 'bg-blue-500/20');
-        cardBtn.classList.add('border-white/20');
-    }
+    const posBtn = document.getElementById('appt-pay-pos-btn');
     if (cashBtn) {
         cashBtn.classList.remove('border-green-500', 'bg-green-500/20');
         cashBtn.classList.add('border-white/20');
+    }
+    if (posBtn) {
+        posBtn.classList.remove('border-orange-500', 'bg-orange-500/20');
+        posBtn.classList.add('border-white/20');
     }
 
     if (appointmentTrainerRate && appointmentTrainerRate > 0) {
@@ -9394,24 +9410,23 @@ window.appointmentDurationChanged = function() {
 window.selectAppointmentPayment = function(method) {
     appointmentPaymentMethod = method;
 
-    const cardBtn = document.getElementById('appt-pay-card-btn');
     const cashBtn = document.getElementById('appt-pay-cash-btn');
+    const posBtn = document.getElementById('appt-pay-pos-btn');
     const cashInfo = document.getElementById('appointment-cash-info');
+    const posInfo = document.getElementById('appointment-pos-info');
 
     // Reset styles
-    cardBtn.classList.remove('border-blue-500', 'bg-blue-500/20');
-    cardBtn.classList.add('border-white/20');
-    cashBtn.classList.remove('border-green-500', 'bg-green-500/20');
-    cashBtn.classList.add('border-white/20');
-    cashInfo.classList.add('hidden');
+    if (cashBtn) { cashBtn.classList.remove('border-green-500', 'bg-green-500/20'); cashBtn.classList.add('border-white/20'); }
+    if (posBtn) { posBtn.classList.remove('border-orange-500', 'bg-orange-500/20'); posBtn.classList.add('border-white/20'); }
+    if (cashInfo) cashInfo.classList.add('hidden');
+    if (posInfo) posInfo.classList.add('hidden');
 
-    if (method === 'card') {
-        cardBtn.classList.remove('border-white/20');
-        cardBtn.classList.add('border-blue-500', 'bg-blue-500/20');
-    } else if (method === 'cash') {
-        cashBtn.classList.remove('border-white/20');
-        cashBtn.classList.add('border-green-500', 'bg-green-500/20');
-        cashInfo.classList.remove('hidden');
+    if (method === 'cash') {
+        if (cashBtn) { cashBtn.classList.remove('border-white/20'); cashBtn.classList.add('border-green-500', 'bg-green-500/20'); }
+        if (cashInfo) cashInfo.classList.remove('hidden');
+    } else if (method === 'pos') {
+        if (posBtn) { posBtn.classList.remove('border-white/20'); posBtn.classList.add('border-orange-500', 'bg-orange-500/20'); }
+        if (posInfo) posInfo.classList.remove('hidden');
     }
 };
 
@@ -9484,32 +9499,7 @@ async function confirmClientBookAppointment() {
     }
 
     try {
-        if (hasPaidSession && appointmentPaymentMethod === 'card') {
-            // Redirect to Stripe Checkout
-            const checkoutRes = await fetch(`${apiBase}/api/client/appointment-checkout-session`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    trainer_id: trainerId,
-                    date: date,
-                    start_time: time,
-                    duration: duration,
-                    notes: notes,
-                })
-            });
-
-            if (!checkoutRes.ok) {
-                const err = await checkoutRes.json();
-                throw new Error(err.detail || 'Impossibile creare la sessione di pagamento');
-            }
-
-            const { checkout_url } = await checkoutRes.json();
-            window.location.href = checkout_url;
-            return;
-        }
-
-        // Cash or free booking
+        // Cash, POS, or free booking
         const res = await fetch(`${apiBase}/api/client/appointments`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -9635,7 +9625,7 @@ window.loadCoursesPage = async function() {
 
         // Get current user ID from JWT
         let currentUserId = null;
-        const token = localStorage.getItem('jwt_token');
+        const token = authStorage.getItem('token');
         if (token) {
             try {
                 const payload = JSON.parse(atob(token.split('.')[1]));

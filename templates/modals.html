@@ -373,15 +373,15 @@
             </div>
 
             <div class="grid grid-cols-2 gap-3 mb-3">
-                <button onclick="selectBookingPayment('card')" id="booking-pay-card-btn"
-                    class="p-3 rounded-xl border-2 border-white/20 hover:border-blue-500/50 transition text-center">
-                    <i data-lucide="credit-card" class="w-5 h-5 block mb-1"></i>
-                    <span class="text-xs font-semibold text-white">Carta</span>
-                </button>
                 <button onclick="selectBookingPayment('cash')" id="booking-pay-cash-btn"
                     class="p-3 rounded-xl border-2 border-white/20 hover:border-green-500/50 transition text-center">
                     <i data-lucide="banknote" class="w-6 h-6 block mb-1 mx-auto stroke-current"></i>
-                    <span class="text-xs font-semibold text-white">Contanti alla Sessione</span>
+                    <span class="text-xs font-semibold text-white">Contanti</span>
+                </button>
+                <button onclick="selectBookingPayment('pos')" id="booking-pay-pos-btn"
+                    class="p-3 rounded-xl border-2 border-white/20 hover:border-orange-500/50 transition text-center">
+                    <i data-lucide="smartphone-nfc" class="w-5 h-5 block mb-1 mx-auto"></i>
+                    <span class="text-xs font-semibold text-white">POS</span>
                 </button>
             </div>
 
@@ -389,6 +389,12 @@
             <div id="booking-cash-info" class="hidden">
                 <div class="bg-green-500/10 border border-green-500/30 rounded-xl p-3 text-center">
                     <p class="text-green-400 text-xs font-semibold">Paga in contanti in palestra prima della sessione</p>
+                </div>
+            </div>
+            <!-- POS Info -->
+            <div id="booking-pos-info" class="hidden">
+                <div class="bg-orange-500/10 border border-orange-500/30 rounded-xl p-3 text-center">
+                    <p class="text-orange-400 text-xs font-semibold">Paga con carta al POS in palestra</p>
                 </div>
             </div>
         </div>
@@ -1190,15 +1196,15 @@
 
                 <!-- Payment Method -->
                 <div class="grid grid-cols-2 gap-3 mb-3">
-                    <button onclick="selectAppointmentPayment('card')" id="appt-pay-card-btn"
-                        class="p-3 rounded-xl border-2 border-white/20 hover:border-blue-500/50 transition text-center">
-                        <i data-lucide="credit-card" class="w-5 h-5 block mb-1"></i>
-                        <span class="text-xs font-semibold text-white">Carta</span>
-                    </button>
                     <button onclick="selectAppointmentPayment('cash')" id="appt-pay-cash-btn"
                         class="p-3 rounded-xl border-2 border-white/20 hover:border-green-500/50 transition text-center">
                         <i data-lucide="banknote" class="w-6 h-6 block mb-1 mx-auto stroke-current"></i>
-                        <span class="text-xs font-semibold text-white">Contanti alla Sessione</span>
+                        <span class="text-xs font-semibold text-white">Contanti</span>
+                    </button>
+                    <button onclick="selectAppointmentPayment('pos')" id="appt-pay-pos-btn"
+                        class="p-3 rounded-xl border-2 border-white/20 hover:border-orange-500/50 transition text-center">
+                        <i data-lucide="smartphone-nfc" class="w-5 h-5 block mb-1 mx-auto"></i>
+                        <span class="text-xs font-semibold text-white">POS</span>
                     </button>
                 </div>
 
@@ -1206,6 +1212,12 @@
                 <div id="appointment-cash-info" class="hidden">
                     <div class="bg-green-500/10 border border-green-500/30 rounded-xl p-3 text-center">
                         <p class="text-green-400 text-xs font-semibold">Paga in contanti in palestra prima della sessione</p>
+                    </div>
+                </div>
+                <!-- POS Info -->
+                <div id="appointment-pos-info" class="hidden">
+                    <div class="bg-orange-500/10 border border-orange-500/30 rounded-xl p-3 text-center">
+                        <p class="text-orange-400 text-xs font-semibold">Paga con carta al POS in palestra</p>
                     </div>
                 </div>
             </div>

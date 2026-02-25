@@ -135,8 +135,8 @@
                 </a>
                 <a href="{{ 'client_progress.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=progress' }}"
                     class="bottom-nav-item {% if mode == 'progress' %}active{% endif %}">
-                    <i data-lucide="bar-chart-3"></i>
-                    <span>Stats</span>
+                    <i data-lucide="utensils"></i>
+                    <span>Dieta</span>
                 </a>
                 <!-- Center Quick Action Button -->
                 <div class="flex-1 flex items-center justify-center">
@@ -681,19 +681,22 @@
         if (typeof selectBookingPayment === 'undefined') {
             window.selectBookingPayment = function(method) {
                 globalBookingPaymentMethod = method;
-                const cardBtn = document.getElementById('booking-pay-card-btn');
                 const cashBtn = document.getElementById('booking-pay-cash-btn');
+                const posBtn = document.getElementById('booking-pay-pos-btn');
                 const cashInfo = document.getElementById('booking-cash-info');
+                const posInfo = document.getElementById('booking-pos-info');
 
-                cardBtn.classList.remove('border-blue-500', 'bg-blue-500/20'); cardBtn.classList.add('border-white/20');
-                cashBtn.classList.remove('border-green-500', 'bg-green-500/20'); cashBtn.classList.add('border-white/20');
-                cashInfo.classList.add('hidden');
+                if (cashBtn) { cashBtn.classList.remove('border-green-500', 'bg-green-500/20'); cashBtn.classList.add('border-white/20'); }
+                if (posBtn) { posBtn.classList.remove('border-orange-500', 'bg-orange-500/20'); posBtn.classList.add('border-white/20'); }
+                if (cashInfo) cashInfo.classList.add('hidden');
+                if (posInfo) posInfo.classList.add('hidden');
 
-                if (method === 'card') {
-                    cardBtn.classList.remove('border-white/20'); cardBtn.classList.add('border-blue-500', 'bg-blue-500/20');
-                } else if (method === 'cash') {
-                    cashBtn.classList.remove('border-white/20'); cashBtn.classList.add('border-green-500', 'bg-green-500/20');
-                    cashInfo.classList.remove('hidden');
+                if (method === 'cash') {
+                    if (cashBtn) { cashBtn.classList.remove('border-white/20'); cashBtn.classList.add('border-green-500', 'bg-green-500/20'); }
+                    if (cashInfo) cashInfo.classList.remove('hidden');
+                } else if (method === 'pos') {
+                    if (posBtn) { posBtn.classList.remove('border-white/20'); posBtn.classList.add('border-orange-500', 'bg-orange-500/20'); }
+                    if (posInfo) posInfo.classList.remove('hidden');
                 }
             };
         }
@@ -713,17 +716,6 @@
                 btn.disabled = true; btn.textContent = 'Elaborazione...';
 
                 try {
-                    if (hasPaid && globalBookingPaymentMethod === 'card') {
-                        const res = await fetch('/api/client/appointment-checkout-session', {
-                            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-                            body: JSON.stringify({ trainer_id: trainerId, date: globalSelectedDate, start_time: globalSelectedTime, duration, notes })
-                        });
-                        if (!res.ok) { const err = await res.json(); throw new Error(err.detail || 'Impossibile creare il checkout'); }
-                        const { checkout_url } = await res.json();
-                        window.location.href = checkout_url;
-                        return;
-                    }
-
                     const response = await fetch('/api/client/appointments', {
                         method: 'POST', credentials: 'include',
                         headers: { 'Content-Type': 'application/json' },

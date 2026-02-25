@@ -126,7 +126,7 @@ class NutritionistService:
                     "protein_current": diet.protein_current if diet else 0,
                     "carbs_current": diet.carbs_current if diet else 0,
                     "fat_current": diet.fat_current if diet else 0,
-                } if diet else None
+                }
             }
         finally:
             db.close()

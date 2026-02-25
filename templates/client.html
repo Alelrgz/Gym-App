@@ -1135,14 +1135,14 @@ function renderFriendHealthBars(data) {
             // Fetch meal plan (cached) + diet log for date
             var planReady = window._weeklyMealPlan ? Promise.resolve() :
                 fetch('/api/client/weekly-meal-plan', {
-                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                    headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('token') }
                 })
                 .then(function(r) { return r.json(); })
                 .then(function(data) { window._weeklyMealPlan = data.plan || {}; });
 
             var logReady = window._dayDietLogs[dateStr] ? Promise.resolve() :
                 fetch('/api/client/diet-log/' + dateStr, {
-                    headers: { 'Authorization': 'Bearer ' + localStorage.getItem('token') }
+                    headers: { 'Authorization': 'Bearer ' + sessionStorage.getItem('token') }
                 })
                 .then(function(r) { return r.json(); })
                 .then(function(data) { window._dayDietLogs[dateStr] = data.meals || []; })
@@ -1719,7 +1719,7 @@ if (mealForm) {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                    'Authorization': `Bearer ${sessionStorage.getItem('token')}`
                 },
                 body: JSON.stringify(mealData)
             });
@@ -2769,15 +2769,44 @@ setTimeout(() => loadGymAndTrainerInfo(), 100);
             <i data-lucide="camera" class="w-6 h-6 text-white"></i>
         </div>
         <!-- Hidden file input -->
-        <input type="file" id="profile-picture-input" accept="image/*" class="hidden" onchange="uploadProfilePicture(this)">
+        <input type="file" id="profile-picture-input" accept="image/*" class="hidden" onchange="openCropModal(this)">
     </div>
 
     <h2 class="text-2xl font-black text-white mb-1" id="client-display-name">Caricamento...</h2>
-    <p class="text-gray-400 text-sm mb-4" id="client-display-email">Caricamento...</p>
+    <p class="text-gray-400 text-sm mb-4" id="client-display-email"></p>
     <div class="flex space-x-4 text-xs text-gray-500 uppercase tracking-wider font-bold">
         <span id="member-since">Membro da Gen 2025</span>
     </div>
     {% endcall %}
+
+<!-- Profile Picture Crop Modal -->
+<div id="crop-modal" class="fixed inset-0 bg-black/95 z-[70] hidden flex flex-col items-center justify-center p-4">
+    <div class="max-w-sm w-full flex flex-col items-center">
+        <h3 class="text-lg font-bold text-white mb-4">Posiziona la foto</h3>
+        <!-- Circular preview -->
+        <div class="relative w-72 h-72 mx-auto mb-4">
+            <div class="w-72 h-72 rounded-full overflow-hidden border-2 border-white/30">
+                <canvas id="crop-canvas" width="400" height="400" class="w-full h-full" style="touch-action:none;"></canvas>
+            </div>
+        </div>
+        <!-- Zoom slider -->
+        <div class="w-64 flex items-center gap-3 mb-6">
+            <i data-lucide="zoom-out" class="w-4 h-4 text-gray-400 flex-shrink-0"></i>
+            <input type="range" id="crop-zoom" min="1" max="3" step="0.05" value="1"
+                class="flex-1 accent-orange-500" oninput="onCropZoomChange(this.value)">
+            <i data-lucide="zoom-in" class="w-4 h-4 text-gray-400 flex-shrink-0"></i>
+        </div>
+        <!-- Buttons -->
+        <div class="flex gap-3 w-full max-w-xs">
+            <button onclick="cancelCrop()" class="flex-1 py-3 rounded-xl border border-white/20 text-white font-bold hover:bg-white/10 transition tap-effect">
+                Annulla
+            </button>
+            <button onclick="confirmCrop()" id="crop-confirm-btn" class="flex-1 py-3 rounded-xl bg-orange-500 text-white font-bold hover:bg-orange-600 transition tap-effect">
+                Conferma
+            </button>
+        </div>
+    </div>
+</div>
 
     <!-- Fitness Goal Selector -->
     <div class="space-y-3">
@@ -2917,38 +2946,204 @@ function updateAllAvatars(url) {
     });
 }
 
-async function uploadProfilePicture(input) {
+// --- CROP MODAL LOGIC ---
+let _cropImage = null;
+let _cropOffsetX = 0, _cropOffsetY = 0, _cropZoom = 1;
+let _cropDragging = false, _cropLastX = 0, _cropLastY = 0;
+let _cropPinchDist = 0;
+
+function openCropModal(input) {
     const file = input.files?.[0];
     if (!file) return;
 
-    // Validate file type
     const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (!validTypes.includes(file.type)) {
         showToast('Seleziona un file immagine valido (JPG, PNG, WEBP, GIF)', 'error');
+        input.value = '';
         return;
     }
-
-    // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
         showToast('Immagine troppo grande. Dimensione massima 5MB', 'error');
+        input.value = '';
         return;
     }
 
-    // Show loading state
-    const container = document.getElementById('profile-avatar-container');
-    if (container) {
-        container.style.opacity = '0.5';
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const img = new Image();
+        img.onload = function() {
+            _cropImage = img;
+            _cropZoom = 1;
+            _cropOffsetX = 0;
+            _cropOffsetY = 0;
+            document.getElementById('crop-zoom').value = 1;
+            document.getElementById('crop-modal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+            _initCropCanvas();
+            drawCropCanvas();
+        };
+        img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+}
+
+function _initCropCanvas() {
+    const canvas = document.getElementById('crop-canvas');
+
+    // Mouse events
+    canvas.onmousedown = function(e) {
+        _cropDragging = true;
+        _cropLastX = e.clientX;
+        _cropLastY = e.clientY;
+    };
+    window._cropMouseMove = function(e) {
+        if (!_cropDragging) return;
+        const dx = e.clientX - _cropLastX;
+        const dy = e.clientY - _cropLastY;
+        _cropLastX = e.clientX;
+        _cropLastY = e.clientY;
+        // Convert screen px to canvas px (canvas 400px displayed at ~288px)
+        const scale = 400 / canvas.getBoundingClientRect().width;
+        _cropOffsetX += dx * scale;
+        _cropOffsetY += dy * scale;
+        _clampCropOffset();
+        drawCropCanvas();
+    };
+    window._cropMouseUp = function() { _cropDragging = false; };
+    document.addEventListener('mousemove', window._cropMouseMove);
+    document.addEventListener('mouseup', window._cropMouseUp);
+
+    // Touch events
+    canvas.ontouchstart = function(e) {
+        e.preventDefault();
+        if (e.touches.length === 1) {
+            _cropDragging = true;
+            _cropLastX = e.touches[0].clientX;
+            _cropLastY = e.touches[0].clientY;
+        } else if (e.touches.length === 2) {
+            _cropDragging = false;
+            _cropPinchDist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+        }
+    };
+    canvas.ontouchmove = function(e) {
+        e.preventDefault();
+        if (e.touches.length === 1 && _cropDragging) {
+            const dx = e.touches[0].clientX - _cropLastX;
+            const dy = e.touches[0].clientY - _cropLastY;
+            _cropLastX = e.touches[0].clientX;
+            _cropLastY = e.touches[0].clientY;
+            const scale = 400 / canvas.getBoundingClientRect().width;
+            _cropOffsetX += dx * scale;
+            _cropOffsetY += dy * scale;
+            _clampCropOffset();
+            drawCropCanvas();
+        } else if (e.touches.length === 2) {
+            const dist = Math.hypot(
+                e.touches[0].clientX - e.touches[1].clientX,
+                e.touches[0].clientY - e.touches[1].clientY
+            );
+            const delta = dist / _cropPinchDist;
+            _cropZoom = Math.min(3, Math.max(1, _cropZoom * delta));
+            _cropPinchDist = dist;
+            document.getElementById('crop-zoom').value = _cropZoom;
+            _clampCropOffset();
+            drawCropCanvas();
+        }
+    };
+    canvas.ontouchend = function() { _cropDragging = false; };
+
+    // Scroll to zoom
+    canvas.onwheel = function(e) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? -0.1 : 0.1;
+        _cropZoom = Math.min(3, Math.max(1, _cropZoom + delta));
+        document.getElementById('crop-zoom').value = _cropZoom;
+        _clampCropOffset();
+        drawCropCanvas();
+    };
+}
+
+function _clampCropOffset() {
+    if (!_cropImage) return;
+    const img = _cropImage;
+    const canvasSize = 400;
+    // Compute scaled image size (fit shortest side to canvas, then apply zoom)
+    const aspect = img.width / img.height;
+    let drawW, drawH;
+    if (aspect >= 1) {
+        drawH = canvasSize * _cropZoom;
+        drawW = drawH * aspect;
+    } else {
+        drawW = canvasSize * _cropZoom;
+        drawH = drawW / aspect;
+    }
+    // Clamp so image always covers the canvas
+    const maxOffX = (drawW - canvasSize) / 2;
+    const maxOffY = (drawH - canvasSize) / 2;
+    _cropOffsetX = Math.min(maxOffX, Math.max(-maxOffX, _cropOffsetX));
+    _cropOffsetY = Math.min(maxOffY, Math.max(-maxOffY, _cropOffsetY));
+}
+
+function drawCropCanvas() {
+    const canvas = document.getElementById('crop-canvas');
+    const ctx = canvas.getContext('2d');
+    if (!_cropImage) return;
+
+    const img = _cropImage;
+    const canvasSize = 400;
+    ctx.clearRect(0, 0, canvasSize, canvasSize);
+
+    // Compute draw dimensions (fill canvas, then zoom)
+    const aspect = img.width / img.height;
+    let drawW, drawH;
+    if (aspect >= 1) {
+        drawH = canvasSize * _cropZoom;
+        drawW = drawH * aspect;
+    } else {
+        drawW = canvasSize * _cropZoom;
+        drawH = drawW / aspect;
     }
 
+    const x = (canvasSize - drawW) / 2 + _cropOffsetX;
+    const y = (canvasSize - drawH) / 2 + _cropOffsetY;
+    ctx.drawImage(img, x, y, drawW, drawH);
+}
+
+function onCropZoomChange(val) {
+    _cropZoom = parseFloat(val);
+    _clampCropOffset();
+    drawCropCanvas();
+}
+
+function cancelCrop() {
+    document.getElementById('crop-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+    _cropImage = null;
+    document.getElementById('profile-picture-input').value = '';
+    // Cleanup listeners
+    if (window._cropMouseMove) document.removeEventListener('mousemove', window._cropMouseMove);
+    if (window._cropMouseUp) document.removeEventListener('mouseup', window._cropMouseUp);
+}
+
+async function confirmCrop() {
+    if (!_cropImage) return;
+    const canvas = document.getElementById('crop-canvas');
+    const btn = document.getElementById('crop-confirm-btn');
+    btn.disabled = true;
+    btn.textContent = 'Caricamento...';
+
     try {
+        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', blob, 'profile.jpg');
 
         const res = await fetch('/api/profile/picture', {
             method: 'POST',
             body: formData
         });
-
         const data = await res.json();
 
         if (res.ok) {
@@ -2961,10 +3156,9 @@ async function uploadProfilePicture(input) {
         console.error('Error uploading profile picture:', e);
         showToast('Impossibile caricare l\'immagine', 'error');
     } finally {
-        if (container) {
-            container.style.opacity = '1';
-        }
-        input.value = '';
+        btn.disabled = false;
+        btn.textContent = 'Conferma';
+        cancelCrop();
     }
 }
 
@@ -3301,6 +3495,9 @@ async function selectFitnessGoal(goal) {
                         <button onclick="openTrainerProfileModal()" class="w-full py-2 text-xs text-orange-400 hover:text-orange-300 font-medium transition tap-effect">
                             Vedi Profilo Completo →
                         </button>
+                        <button onclick="openAllTrainersModal()" class="w-full py-1 text-xs text-gray-400 hover:text-white font-medium transition tap-effect">
+                            Vedi tutti i professionisti →
+                        </button>
                     </div>
                 </div>
             </div>
@@ -3348,6 +3545,9 @@ async function selectFitnessGoal(goal) {
                                 <!-- Nutrition appointments will be loaded here -->
                             </div>
                         </div>
+                        <button onclick="openAllTrainersModal()" class="w-full py-1 text-xs text-gray-400 hover:text-white font-medium transition tap-effect">
+                            Vedi tutti i professionisti →
+                        </button>
                     </div>
                 </div>
             </div>
@@ -3667,15 +3867,15 @@ async function selectFitnessGoal(goal) {
     </div>
 </div>
 
-<!-- All Trainers Modal -->
-<div id="all-trainers-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+<!-- All Professionals Modal -->
+<div id="all-trainers-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4" style="overscroll-behavior:contain;overflow-y:auto;"
     onclick="if(event.target === this) closeAllTrainersModal()">
-    <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto">
+    <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[85vh] overflow-y-auto" style="overscroll-behavior:contain;">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold">Trainer della Palestra</h3>
+            <h3 class="text-xl font-bold">Professionisti</h3>
             <button onclick="closeAllTrainersModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
         </div>
-        <p class="text-gray-400 text-sm mb-4">Sfoglia tutti i trainer disponibili nella tua palestra</p>
+        <p class="text-gray-400 text-sm mb-4">Trainer e nutrizionisti della tua palestra</p>
 
         <div id="all-trainers-list" class="space-y-3">
             <!-- Loading state -->
@@ -4011,7 +4211,7 @@ async function selectFitnessGoal(goal) {
         <!-- Info Banner -->
         <div class="bg-purple-500/10 border border-purple-500/20 rounded-xl p-3 mb-4">
             <p class="text-sm text-purple-300">
-                <span class="font-bold">Come funziona:</span> Completa l'allenamento insieme - verrà registrato nei calendari di entrambi!
+                <span class="font-bold">Come funziona:</span> Vi allenate in 2, segna 1 e viene salvato per entrambi!
             </p>
         </div>
 
@@ -4071,8 +4271,8 @@ async function selectFitnessGoal(goal) {
 var selectedTrainerId = null;
 window.selectedNutritionistId = null;
 window.currentNutritionistData = null;
-let selectedDate = null;
-let selectedTime = null;
+var selectedDate = null;
+var selectedTime = null;
 
 // Load trainer info and appointments on page load
 async function loadTrainerAndAppointments() {
@@ -4192,235 +4392,8 @@ async function loadAppointments() {
     }
 }
 
-let bookingTrainerRate = null;
-let bookingPaymentMethod = null;
-window.bookingTargetType = 'trainer'; // 'trainer' or 'nutritionist'
-
-window.openBookingModal = async function(targetType) {
-    window.bookingTargetType = targetType || 'trainer';
-    const isNutri = window.bookingTargetType === 'nutritionist';
-    const targetId = isNutri ? window.selectedNutritionistId : selectedTrainerId;
-
-    if (!targetId) {
-        showToast(isNutri ? 'Nessun nutrizionista assegnato' : 'Nessun trainer assegnato', 'error');
-        return;
-    }
-
-    // Reset state
-    selectedDate = null;
-    selectedTime = null;
-    bookingPaymentMethod = null;
-    bookingTrainerRate = null;
-    bookingStripePaymentIntentId = null;
-
-    // Hide sections until date selected
-    document.getElementById('booking-time-section').classList.add('hidden');
-    document.getElementById('booking-duration-section').classList.add('hidden');
-    document.getElementById('booking-notes-section').classList.add('hidden');
-    document.getElementById('booking-payment-section').classList.add('hidden');
-    document.getElementById('booking-free-section').classList.add('hidden');
-    document.getElementById('confirm-booking-btn').classList.add('hidden');
-    document.getElementById('time-slots-list').innerHTML = '';
-    document.getElementById('no-slots-message').classList.add('hidden');
-
-    // Fetch session rate (trainer or nutritionist)
-    const rateUrl = isNutri
-        ? `/api/client/nutritionists/${targetId}/session-rate`
-        : `/api/client/trainers/${targetId}/session-rate`;
-    try {
-        const rateRes = await fetch(rateUrl, { credentials: 'include' });
-        if (rateRes.ok) {
-            const rateData = await rateRes.json();
-            bookingTrainerRate = rateData.session_rate;
-        }
-    } catch (e) { console.log('Could not fetch session rate:', e); }
-
-    // Update modal title
-    const modalTitle = document.querySelector('#booking-modal h3');
-    if (modalTitle) {
-        modalTitle.textContent = isNutri ? 'Prenota Consulenza Nutrizionale' : 'Prenota Appuntamento';
-    }
-
-    document.getElementById('booking-modal').classList.remove('hidden');
-    document.body.style.overflow = 'hidden';
-
-    // Build date buttons grid
-    buildBookingDateGrid();
-}
-
-window.buildBookingDateGrid = function() {
-    const grid = document.getElementById('booking-date-grid');
-    const dateInput = document.getElementById('appointment-date');
-    // Handle both hidden input and old cached date input
-    if (dateInput) dateInput.value = '';
-
-    // If the grid doesn't exist (old cached HTML), create it
-    if (!grid) {
-        // Old cached HTML with <input type="date"> - convert it dynamically
-        const oldInput = document.getElementById('appointment-date');
-        if (oldInput && oldInput.parentElement) {
-            oldInput.style.display = 'none';
-            const newGrid = document.createElement('div');
-            newGrid.id = 'booking-date-grid';
-            newGrid.className = 'grid grid-cols-4 gap-2';
-            oldInput.parentElement.appendChild(newGrid);
-            _populateDateGrid(newGrid);
-        }
-        return;
-    }
-    _populateDateGrid(grid);
-}
-
-function _populateDateGrid(grid) {
-    const dayNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
-    const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
-    const today = new Date();
-    let html = '';
-
-    for (let i = 0; i < 8; i++) {
-        const d = new Date(today);
-        d.setDate(today.getDate() + i);
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth() + 1).padStart(2, '0');
-        const dd = String(d.getDate()).padStart(2, '0');
-        const dateStr = `${yyyy}-${mm}-${dd}`;
-        const dayName = i === 0 ? 'Oggi' : (i === 1 ? 'Domani' : dayNames[d.getDay()]);
-        const label = `${monthNames[d.getMonth()]} ${d.getDate()}`;
-
-        html += `<button onclick="selectBookingDate('${dateStr}', this)" data-date="${dateStr}"
-            class="booking-date-btn p-2 rounded-xl border border-white/10 bg-white/5 hover:bg-orange-500/20 hover:border-orange-500/50 transition text-center tap-effect">
-            <span class="block text-[10px] text-gray-400 font-medium">${dayName}</span>
-            <span class="block text-sm font-bold text-white">${label}</span>
-        </button>`;
-    }
-    grid.innerHTML = html;
-}
-
-window.selectBookingDate = function(dateStr, btn) {
-    // Update hidden input
-    const dateInput = document.getElementById('appointment-date');
-    if (dateInput) dateInput.value = dateStr;
-
-    // Highlight selected quick-pick button
-    document.querySelectorAll('.booking-date-btn').forEach(b => {
-        b.classList.remove('bg-orange-500', 'border-orange-500');
-        b.classList.add('bg-white/5', 'border-white/10');
-    });
-    if (btn) {
-        btn.classList.remove('bg-white/5', 'border-white/10');
-        btn.classList.add('bg-orange-500', 'border-orange-500');
-    }
-
-    // Also highlight in calendar if open
-    document.querySelectorAll('.cal-day-btn').forEach(b => {
-        b.classList.remove('bg-orange-500', 'border-orange-500', 'text-white');
-        if (b.dataset.date === dateStr) {
-            b.classList.add('bg-orange-500', 'border-orange-500', 'text-white');
-        }
-    });
-
-    // Trigger slot loading
-    onBookingDateSelected();
-}
-
-// --- Inline Calendar ---
-window._bookingCalMonth = null;
-window._bookingCalYear = null;
-
-window.toggleBookingCalendar = function() {
-    const cal = document.getElementById('booking-calendar');
-    const btn = document.getElementById('booking-more-dates-btn');
-    if (!cal) return;
-    if (cal.classList.contains('hidden')) {
-        cal.classList.remove('hidden');
-        btn.textContent = 'Nascondi calendario';
-        const now = new Date();
-        window._bookingCalMonth = now.getMonth();
-        window._bookingCalYear = now.getFullYear();
-        renderBookingCalendar();
-    } else {
-        cal.classList.add('hidden');
-        btn.textContent = 'Altre date...';
-    }
-}
-
-window.changeBookingCalMonth = function(delta) {
-    window._bookingCalMonth += delta;
-    if (window._bookingCalMonth > 11) { window._bookingCalMonth = 0; window._bookingCalYear++; }
-    if (window._bookingCalMonth < 0) { window._bookingCalMonth = 11; window._bookingCalYear--; }
-    renderBookingCalendar();
-}
-
-window.renderBookingCalendar = function() {
-    const cal = document.getElementById('booking-calendar');
-    if (!cal) return;
-
-    const year = window._bookingCalYear;
-    const month = window._bookingCalMonth;
-    const monthNames = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
-    const today = new Date();
-    today.setHours(0,0,0,0);
-    const todayStr = today.toISOString().split('T')[0];
-    const selectedVal = document.getElementById('appointment-date')?.value || '';
-
-    const firstDay = new Date(year, month, 1).getDay();
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-    // Don't allow navigating before current month
-    const canGoPrev = year > today.getFullYear() || (year === today.getFullYear() && month > today.getMonth());
-
-    let html = `<div class="flex items-center justify-between mb-3">
-        <button onclick="changeBookingCalMonth(-1)" class="w-8 h-8 rounded-lg ${canGoPrev ? 'hover:bg-white/10 text-white' : 'text-gray-600 cursor-not-allowed'} flex items-center justify-center transition" ${canGoPrev ? '' : 'disabled'}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
-        </button>
-        <span class="text-sm font-bold text-white">${monthNames[month]} ${year}</span>
-        <button onclick="changeBookingCalMonth(1)" class="w-8 h-8 rounded-lg hover:bg-white/10 text-white flex items-center justify-center transition">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
-        </button>
-    </div>`;
-
-    // Weekday headers
-    html += '<div class="grid grid-cols-7 gap-1 mb-1">';
-    ['Do','Lu','Ma','Me','Gi','Ve','Sa'].forEach(d => {
-        html += `<div class="text-center text-[10px] text-gray-500 font-medium py-1">${d}</div>`;
-    });
-    html += '</div>';
-
-    // Day cells
-    html += '<div class="grid grid-cols-7 gap-1">';
-    for (let i = 0; i < firstDay; i++) {
-        html += '<div></div>';
-    }
-    for (let d = 1; d <= daysInMonth; d++) {
-        const date = new Date(year, month, d);
-        const mm = String(month + 1).padStart(2, '0');
-        const dd = String(d).padStart(2, '0');
-        const dateStr = `${year}-${mm}-${dd}`;
-        const isPast = date < today;
-        const isToday = dateStr === todayStr;
-        const isSelected = dateStr === selectedVal;
-
-        let cls = 'w-full aspect-square rounded-lg text-xs font-medium flex items-center justify-center transition';
-        if (isPast) {
-            cls += ' text-gray-600 cursor-not-allowed';
-        } else if (isSelected) {
-            cls += ' bg-orange-500 border-orange-500 text-white cursor-pointer cal-day-btn';
-        } else if (isToday) {
-            cls += ' border border-orange-500/50 text-orange-400 hover:bg-orange-500/20 cursor-pointer cal-day-btn';
-        } else {
-            cls += ' text-gray-300 hover:bg-white/10 cursor-pointer cal-day-btn';
-        }
-
-        if (isPast) {
-            html += `<div class="${cls}">${d}</div>`;
-        } else {
-            html += `<button data-date="${dateStr}" onclick="selectBookingDate('${dateStr}', null)" class="${cls}">${d}</button>`;
-        }
-    }
-    html += '</div>';
-
-    cal.innerHTML = html;
-}
+var bookingTrainerRate = null;
+var bookingPaymentMethod = null;
 
 // Category labels with emojis (lowercase keys)
 const categoryLabels = {
@@ -4473,235 +4446,6 @@ async function loadTrainerSessionTypes() {
         sessionTypeSelect.innerHTML = '<option value="" disabled selected>Errore caricamento categorie</option>';
     }
 }
-
-window.closeBookingModal = function() {
-    document.getElementById('booking-modal').classList.add('hidden');
-    document.body.style.overflow = '';
-    selectedDate = null;
-    selectedTime = null;
-    bookingPaymentMethod = null;
-    bookingStripePaymentIntentId = null;
-};
-
-// Auto-load available slots when date is selected
-window.onBookingDateSelected = async function() {
-    const dateInput = document.getElementById('appointment-date');
-    selectedDate = dateInput.value;
-    selectedTime = null;
-
-    if (!selectedDate) return;
-
-    const timeSection = document.getElementById('booking-time-section');
-    const slotsList = document.getElementById('time-slots-list');
-    const noSlotsMsg = document.getElementById('no-slots-message');
-    const loadingEl = document.getElementById('booking-slots-loading');
-
-    // Show time section with loading
-    timeSection.classList.remove('hidden');
-    loadingEl.classList.remove('hidden');
-    noSlotsMsg.classList.add('hidden');
-    slotsList.innerHTML = '';
-
-    // Hide downstream sections until time is picked
-    document.getElementById('booking-duration-section').classList.add('hidden');
-    document.getElementById('booking-notes-section').classList.add('hidden');
-    document.getElementById('booking-payment-section').classList.add('hidden');
-    document.getElementById('booking-free-section').classList.add('hidden');
-    document.getElementById('confirm-booking-btn').classList.add('hidden');
-
-    try {
-        const isNutri = window.bookingTargetType === 'nutritionist';
-        const targetId = isNutri ? window.selectedNutritionistId : selectedTrainerId;
-        const slotsUrl = isNutri
-            ? `/api/client/nutritionists/${targetId}/available-slots?date=${selectedDate}`
-            : `/api/client/trainers/${targetId}/available-slots?date=${selectedDate}`;
-        const response = await fetch(slotsUrl, {
-            credentials: 'include'
-        });
-
-        loadingEl.classList.add('hidden');
-
-        if (!response.ok) throw new Error('Failed to load available slots');
-
-        const slots = await response.json();
-
-        if (slots.length === 0) {
-            noSlotsMsg.classList.remove('hidden');
-            return;
-        }
-
-        slotsList.innerHTML = slots.map(slot => `
-            <button onclick="selectTimeSlot('${slot.start_time}', this)"
-                class="time-slot-btn bg-white/10 hover:bg-primary/30 border border-white/10 hover:border-primary px-3 py-2 rounded-lg text-sm font-bold transition tap-effect"
-                data-time="${slot.start_time}">
-                ${slot.start_time}
-            </button>
-        `).join('');
-    } catch (error) {
-        loadingEl.classList.add('hidden');
-        console.error('Error loading slots:', error);
-        showToast(error.message, 'error');
-    }
-};
-
-window.selectTimeSlot = function(time, clickedBtn) {
-    selectedTime = time;
-    // Reset all slots to default state
-    document.querySelectorAll('.time-slot-btn').forEach(btn => {
-        btn.classList.remove('bg-orange-500', 'border-orange-500', 'text-white');
-        btn.classList.add('bg-white/10', 'border-white/10');
-    });
-    // Highlight selected slot with orange color
-    if (clickedBtn) {
-        clickedBtn.classList.remove('bg-white/10', 'border-white/10');
-        clickedBtn.classList.add('bg-orange-500', 'border-orange-500', 'text-white');
-    }
-
-    // Show remaining sections
-    document.getElementById('booking-duration-section').classList.remove('hidden');
-    document.getElementById('booking-notes-section').classList.remove('hidden');
-    document.getElementById('confirm-booking-btn').classList.remove('hidden');
-    updateBookingPriceDisplay();
-};
-
-window.updateBookingPriceDisplay = function() {
-    const paymentSection = document.getElementById('booking-payment-section');
-    const freeSection = document.getElementById('booking-free-section');
-    const priceDisplay = document.getElementById('booking-price-display');
-    const cardForm = document.getElementById('booking-card-form');
-    const cashInfo = document.getElementById('booking-cash-info');
-
-    // Reset payment method visuals
-    bookingPaymentMethod = null;
-    if (cardForm) cardForm.classList.add('hidden');
-    if (cashInfo) cashInfo.classList.add('hidden');
-    const cardBtn = document.getElementById('booking-pay-card-btn');
-    const cashBtn = document.getElementById('booking-pay-cash-btn');
-    if (cardBtn) { cardBtn.classList.remove('border-blue-500', 'bg-blue-500/20'); cardBtn.classList.add('border-white/20'); }
-    if (cashBtn) { cashBtn.classList.remove('border-green-500', 'bg-green-500/20'); cashBtn.classList.add('border-white/20'); }
-
-    if (bookingTrainerRate && bookingTrainerRate > 0) {
-        const duration = parseInt(document.getElementById('booking-duration').value) || 60;
-        const price = (bookingTrainerRate * (duration / 60)).toFixed(2);
-        if (paymentSection) paymentSection.classList.remove('hidden');
-        if (freeSection) freeSection.classList.add('hidden');
-        if (priceDisplay) priceDisplay.textContent = `$${price}`;
-    } else {
-        if (paymentSection) paymentSection.classList.add('hidden');
-        if (freeSection) freeSection.classList.remove('hidden');
-    }
-};
-
-window.onBookingDurationChanged = function() {
-    updateBookingPriceDisplay();
-};
-
-window.selectBookingPayment = function(method) {
-    bookingPaymentMethod = method;
-    const cardBtn = document.getElementById('booking-pay-card-btn');
-    const cashBtn = document.getElementById('booking-pay-cash-btn');
-    const cashInfo = document.getElementById('booking-cash-info');
-
-    cardBtn.classList.remove('border-blue-500', 'bg-blue-500/20');
-    cardBtn.classList.add('border-white/20');
-    cashBtn.classList.remove('border-green-500', 'bg-green-500/20');
-    cashBtn.classList.add('border-white/20');
-    cashInfo.classList.add('hidden');
-
-    if (method === 'card') {
-        cardBtn.classList.remove('border-white/20');
-        cardBtn.classList.add('border-blue-500', 'bg-blue-500/20');
-    } else if (method === 'cash') {
-        cashBtn.classList.remove('border-white/20');
-        cashBtn.classList.add('border-green-500', 'bg-green-500/20');
-        cashInfo.classList.remove('hidden');
-    }
-};
-
-window.confirmBooking = async function() {
-    if (!selectedTime) {
-        showToast('Seleziona un orario', 'error');
-        return;
-    }
-
-    const duration = parseInt(document.getElementById('booking-duration').value) || 60;
-    const notes = document.getElementById('appointment-notes').value;
-    const hasPaidSession = bookingTrainerRate && bookingTrainerRate > 0;
-
-    if (hasPaidSession && !bookingPaymentMethod) {
-        showToast('Seleziona un metodo di pagamento', 'error');
-        return;
-    }
-
-    const confirmBtn = document.getElementById('confirm-booking-btn');
-    confirmBtn.disabled = true;
-    confirmBtn.textContent = 'Elaborazione...';
-
-    try {
-        const isNutri = window.bookingTargetType === 'nutritionist';
-        const targetId = isNutri ? window.selectedNutritionistId : selectedTrainerId;
-        const idField = isNutri ? 'nutritionist_id' : 'trainer_id';
-        const checkoutUrl = isNutri ? '/api/client/nutrition-checkout-session' : '/api/client/appointment-checkout-session';
-        const bookUrl = isNutri ? '/api/client/nutrition-appointments' : '/api/client/appointments';
-
-        if (hasPaidSession && bookingPaymentMethod === 'card') {
-            // Redirect to Stripe Checkout
-            const res = await fetch(checkoutUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                credentials: 'include',
-                body: JSON.stringify({
-                    [idField]: targetId,
-                    date: selectedDate,
-                    start_time: selectedTime,
-                    duration: duration,
-                    notes: notes,
-                })
-            });
-
-            if (!res.ok) {
-                const err = await res.json();
-                throw new Error(err.detail || 'Failed to create checkout session');
-            }
-
-            const { checkout_url } = await res.json();
-            window.location.href = checkout_url;
-            return;
-        }
-
-        // Cash or free booking
-        const response = await fetch(bookUrl, {
-            method: 'POST',
-            credentials: 'include',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                [idField]: targetId,
-                date: selectedDate,
-                start_time: selectedTime,
-                duration: duration,
-                notes: notes,
-                payment_method: hasPaidSession ? bookingPaymentMethod : null,
-                stripe_payment_intent_id: null
-            })
-        });
-
-        if (!response.ok) {
-            const error = await response.json();
-            throw new Error(error.detail || 'Failed to book appointment');
-        }
-
-        showToast('Appuntamento prenotato con successo!', 'success');
-        closeBookingModal();
-        if (typeof loadAppointments === 'function') loadAppointments();
-        if (typeof loadNutritionistAppointments === 'function') loadNutritionistAppointments();
-    } catch (error) {
-        console.error('Error booking appointment:', error);
-        showToast(error.message, 'error');
-    } finally {
-        confirmBtn.disabled = false;
-        confirmBtn.textContent = 'Prenota Appuntamento';
-    }
-};
 
 async function cancelAppointment(appointmentId) {
     if (!confirm('Sei sicuro di voler annullare questo appuntamento?')) {
@@ -4809,7 +4553,7 @@ async function joinGym() {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${localStorage.getItem('token')}`
+                'Authorization': `Bearer ${sessionStorage.getItem('token')}`
             },
             body: JSON.stringify({ gym_code: gymCode })
         });
@@ -5107,55 +4851,10 @@ function updateAllAvatars(url) {
     });
 }
 
+// uploadProfilePicture - delegates to openCropModal on the settings page
 async function uploadProfilePicture(input) {
-    const file = input.files?.[0];
-    if (!file) return;
-
-    // Validate file type
-    const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-    if (!validTypes.includes(file.type)) {
-        showToast('Seleziona un file immagine valido (JPG, PNG, WEBP, GIF)', 'error');
-        return;
-    }
-
-    // Validate file size (5MB max)
-    if (file.size > 5 * 1024 * 1024) {
-        showToast('Immagine troppo grande. Dimensione massima 5MB', 'error');
-        return;
-    }
-
-    // Show loading state
-    const container = document.getElementById('profile-avatar-container');
-    if (container) {
-        container.style.opacity = '0.5';
-    }
-
-    try {
-        const formData = new FormData();
-        formData.append('file', file);
-
-        const res = await fetch('/api/profile/picture', {
-            method: 'POST',
-            body: formData
-        });
-
-        const data = await res.json();
-
-        if (res.ok) {
-            updateAllAvatars(data.profile_picture);
-            showToast('Foto profilo aggiornata!', 'success');
-        } else {
-            showToast(data.detail || 'Impossibile caricare l\'immagine', 'error');
-        }
-    } catch (e) {
-        console.error('Error uploading profile picture:', e);
-        showToast('Impossibile caricare l\'immagine', 'error');
-    } finally {
-        if (container) {
-            container.style.opacity = '1';
-        }
-        // Clear input
-        input.value = '';
+    if (typeof openCropModal === 'function') {
+        openCropModal(input);
     }
 }
 
@@ -5181,6 +4880,15 @@ document.addEventListener('DOMContentLoaded', function() {
         const url = new URL(window.location);
         url.searchParams.delete('booking_canceled');
         window.history.replaceState({}, '', url);
+    }
+    // Auto-open course detail if redirected from another page
+    const viewCourseId = params.get('view_course');
+    if (viewCourseId && typeof viewCourseDetails === 'function') {
+        const url = new URL(window.location);
+        url.searchParams.delete('view_course');
+        window.history.replaceState({}, '', url);
+        // Small delay to let courses load first
+        setTimeout(() => viewCourseDetails(viewCourseId), 500);
     }
 });
 
@@ -5531,7 +5239,7 @@ function openMyQrModal() {
     let userId = window.currentUserId;
     if (!userId) {
         try {
-            const token = localStorage.getItem('jwt_token');
+            const token = sessionStorage.getItem('token');
             if (token) {
                 const payload = JSON.parse(atob(token.split('.')[1]));
                 userId = payload.user_id;
@@ -5545,7 +5253,7 @@ function openMyQrModal() {
     }
 
     // Set name
-    const name = localStorage.getItem('username') || 'Member';
+    const name = sessionStorage.getItem('username') || 'Member';
     document.getElementById('my-qr-name').textContent = name;
 
     // Generate QR only once
@@ -5578,7 +5286,7 @@ async function openAccessQrModal() {
     if (!modal) return;
 
     // Set name
-    const name = localStorage.getItem('username') || 'Member';
+    const name = sessionStorage.getItem('username') || 'Member';
     document.getElementById('access-qr-name').textContent = name;
 
     // Get temporary token from backend
@@ -6048,9 +5756,13 @@ async function loadAllGymTrainers() {
 
         list.innerHTML = allGymTrainers.map(trainer => {
             const isMyTrainer = trainer.id === selectedTrainerId;
+            const isMyNutritionist = trainer.id === window.selectedNutritionistId;
+            const isNutri = trainer.role === 'nutritionist';
+            const iconName = isNutri ? 'apple' : 'user';
+            const gradientClass = isNutri ? 'from-cyan-500 to-blue-500' : 'from-red-500 to-orange-500';
             const avatarHtml = trainer.profile_picture
                 ? `<img src="${trainer.profile_picture}" alt="${trainer.name}" class="w-full h-full object-cover">`
-                : `<i data-lucide="user" class="w-6 h-6"></i>`;
+                : `<i data-lucide="${iconName}" class="w-6 h-6"></i>`;
             const bioEscaped = trainer.bio ? trainer.bio.replace(/'/g, "\\'").replace(/"/g, "&quot;") : '';
             const specialtiesJson = trainer.specialties ? JSON.stringify(trainer.specialties).replace(/'/g, "\\'") : '[]';
 
@@ -6059,13 +5771,17 @@ async function loadAllGymTrainers() {
                 `<span class="bg-white/10 text-white/70 px-2.5 py-1 rounded-full text-[10px] border border-white/10">${s}</span>`
             ).join('');
 
+            const isMine = isMyTrainer || isMyNutritionist;
+            const badgeText = isMyTrainer ? 'Il Tuo Trainer' : isMyNutritionist ? 'Il Tuo Nutrizionista' : '';
+            const roleBadge = isNutri ? '<span class="text-[10px] bg-cyan-500/20 text-cyan-400 px-2 py-0.5 rounded-full">Nutrizionista</span>' : '';
+
             return `
                 <div onclick="openTrainerProfileModal('${trainer.id}', '${trainer.name}', ${trainer.profile_picture ? `'${trainer.profile_picture}'` : 'null'}, ${trainer.bio ? `'${bioEscaped}'` : 'null'}, '${specialtiesJson}')"
-                    class="glass-card p-4 cursor-pointer hover:bg-white/5 transition tap-effect ${isMyTrainer ? 'border border-orange-500/30' : ''}">
+                    class="glass-card p-4 cursor-pointer hover:bg-white/5 transition tap-effect ${isMine ? 'border border-orange-500/30' : ''}">
                     <div class="flex space-x-4">
                         <!-- Left column: Avatar -->
                         <div class="flex flex-col items-center flex-shrink-0">
-                            <div class="w-16 h-16 rounded-full bg-gradient-to-tr from-red-500 to-orange-500 flex items-center justify-center overflow-hidden">
+                            <div class="w-16 h-16 rounded-full bg-gradient-to-tr ${gradientClass} flex items-center justify-center overflow-hidden">
                                 ${avatarHtml}
                             </div>
                         </div>
@@ -6073,7 +5789,7 @@ async function loadAllGymTrainers() {
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2 flex-wrap">
                                 <p class="font-bold text-white text-lg flex items-center gap-1.5">${trainer.name}${trainer.has_availability ? '<svg class="w-4 h-4 text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}</p>
-                                ${isMyTrainer ? '<span class="text-[10px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full">Il Tuo Trainer</span>' : ''}
+                                ${isMine ? `<span class="text-[10px] bg-orange-500/20 text-orange-400 px-2 py-0.5 rounded-full">${badgeText}</span>` : roleBadge}
                             </div>
                             ${trainer.bio ? `<p class="text-sm text-gray-400 mt-1 line-clamp-2">${trainer.bio}</p>` : '<p class="text-sm text-gray-500 italic mt-1">Nessuna bio</p>'}
                             ${specialtyTags ? `<div class="flex flex-wrap gap-1.5 mt-2">${specialtyTags}</div>` : ''}
@@ -7824,7 +7540,7 @@ loadFriendsPreview();
     onclick="if(event.target === this) closeBookingChoiceModal()">
     <div class="glass-card p-6 rounded-2xl max-w-sm w-full">
         <div class="flex justify-between items-center mb-4">
-            <h3 class="text-xl font-bold">Book with <span id="booking-choice-trainer-name-shared">Trainer</span></h3>
+            <h3 class="text-xl font-bold">Prenota</h3>
             <button onclick="closeBookingChoiceModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
         </div>
         <p class="text-gray-400 text-sm mb-6">Che tipo di sessione vuoi prenotare?</p>
@@ -7868,6 +7584,19 @@ loadFriendsPreview();
                     </div>
                 </div>
             </button>
+
+            <!-- Nutritionist Consultation Option -->
+            <button id="booking-choice-nutrition-btn-shared" onclick="selectBookingType('nutrition')" class="hidden w-full bg-gradient-to-r from-cyan-500 to-blue-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                        <i data-lucide="apple" class="w-6 h-6 stroke-current"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white">Consulenza Nutrizionale</h4>
+                        <p class="text-sm text-white/70">Prenota un appuntamento con il nutrizionista</p>
+                    </div>
+                </div>
+            </button>
         </div>
     </div>
 </div>
@@ -7880,7 +7609,7 @@ loadFriendsPreview();
             <h3 class="text-xl font-bold">Corsi di Gruppo</h3>
             <button onclick="closeGymCoursesModal()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
         </div>
-        <p class="text-gray-400 text-sm mb-4">Browse all available courses at your gym</p>
+        <p class="text-gray-400 text-sm mb-4">Tutti i corsi disponibili nella tua palestra</p>
 
         <div id="gym-courses-list-shared" class="space-y-3">
             <div class="text-center py-8 text-gray-400">
@@ -7922,6 +7651,429 @@ if (typeof selectedTrainerId === 'undefined') {
     })();
 }
 
+// ==================== Shared Booking Modal Functions ====================
+// These handle the actual appointment booking flow (date, time, payment, confirm)
+// Available on ALL client pages since the booking modal lives in modals.html
+
+if (typeof selectedDate === 'undefined') var selectedDate = null;
+if (typeof selectedTime === 'undefined') var selectedTime = null;
+if (typeof bookingTrainerRate === 'undefined') var bookingTrainerRate = null;
+if (typeof bookingPaymentMethod === 'undefined') var bookingPaymentMethod = null;
+if (typeof bookingStripePaymentIntentId === 'undefined') var bookingStripePaymentIntentId = null;
+window.bookingTargetType = window.bookingTargetType || 'trainer';
+
+window.openBookingModal = async function(targetType) {
+    window.bookingTargetType = targetType || 'trainer';
+    const isNutri = window.bookingTargetType === 'nutritionist';
+    const targetId = isNutri ? window.selectedNutritionistId : selectedTrainerId;
+
+    if (!targetId) {
+        showToast(isNutri ? 'Nessun nutrizionista assegnato' : 'Nessun trainer assegnato', 'error');
+        return;
+    }
+
+    // Reset state
+    selectedDate = null;
+    selectedTime = null;
+    bookingPaymentMethod = null;
+    bookingTrainerRate = null;
+    bookingStripePaymentIntentId = null;
+
+    // Hide sections until date selected
+    document.getElementById('booking-time-section').classList.add('hidden');
+    document.getElementById('booking-duration-section').classList.add('hidden');
+    document.getElementById('booking-notes-section').classList.add('hidden');
+    document.getElementById('booking-payment-section').classList.add('hidden');
+    document.getElementById('booking-free-section').classList.add('hidden');
+    document.getElementById('confirm-booking-btn').classList.add('hidden');
+    document.getElementById('time-slots-list').innerHTML = '';
+    document.getElementById('no-slots-message').classList.add('hidden');
+
+    // Fetch session rate (trainer or nutritionist)
+    const rateUrl = isNutri
+        ? `/api/client/nutritionists/${targetId}/session-rate`
+        : `/api/client/trainers/${targetId}/session-rate`;
+    try {
+        const rateRes = await fetch(rateUrl, { credentials: 'include' });
+        if (rateRes.ok) {
+            const rateData = await rateRes.json();
+            bookingTrainerRate = rateData.session_rate;
+        }
+    } catch (e) { console.log('Could not fetch session rate:', e); }
+
+    // Update modal title
+    const modalTitle = document.querySelector('#booking-modal h3');
+    if (modalTitle) {
+        modalTitle.textContent = isNutri ? 'Prenota Consulenza Nutrizionale' : 'Prenota Appuntamento';
+    }
+
+    document.getElementById('booking-modal').classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+
+    // Build date buttons grid
+    buildBookingDateGrid();
+};
+
+window.buildBookingDateGrid = function() {
+    const grid = document.getElementById('booking-date-grid');
+    const dateInput = document.getElementById('appointment-date');
+    if (dateInput) dateInput.value = '';
+
+    if (!grid) {
+        const oldInput = document.getElementById('appointment-date');
+        if (oldInput && oldInput.parentElement) {
+            oldInput.style.display = 'none';
+            const newGrid = document.createElement('div');
+            newGrid.id = 'booking-date-grid';
+            newGrid.className = 'grid grid-cols-4 gap-2';
+            oldInput.parentElement.appendChild(newGrid);
+            _populateDateGrid(newGrid);
+        }
+        return;
+    }
+    _populateDateGrid(grid);
+};
+
+function _populateDateGrid(grid) {
+    const dayNames = ['Dom', 'Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab'];
+    const monthNames = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+    const today = new Date();
+    let html = '';
+
+    for (let i = 0; i < 8; i++) {
+        const d = new Date(today);
+        d.setDate(today.getDate() + i);
+        const yyyy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        const dateStr = `${yyyy}-${mm}-${dd}`;
+        const dayName = i === 0 ? 'Oggi' : (i === 1 ? 'Domani' : dayNames[d.getDay()]);
+        const label = `${monthNames[d.getMonth()]} ${d.getDate()}`;
+
+        html += `<button onclick="selectBookingDate('${dateStr}', this)" data-date="${dateStr}"
+            class="booking-date-btn p-2 rounded-xl border border-white/10 bg-white/5 hover:bg-orange-500/20 hover:border-orange-500/50 transition text-center tap-effect">
+            <span class="block text-[10px] text-gray-400 font-medium">${dayName}</span>
+            <span class="block text-sm font-bold text-white">${label}</span>
+        </button>`;
+    }
+    grid.innerHTML = html;
+}
+
+window.selectBookingDate = function(dateStr, btn) {
+    const dateInput = document.getElementById('appointment-date');
+    if (dateInput) dateInput.value = dateStr;
+
+    document.querySelectorAll('.booking-date-btn').forEach(b => {
+        b.classList.remove('bg-orange-500', 'border-orange-500');
+        b.classList.add('bg-white/5', 'border-white/10');
+    });
+    if (btn) {
+        btn.classList.remove('bg-white/5', 'border-white/10');
+        btn.classList.add('bg-orange-500', 'border-orange-500');
+    }
+
+    document.querySelectorAll('.cal-day-btn').forEach(b => {
+        b.classList.remove('bg-orange-500', 'border-orange-500', 'text-white');
+        if (b.dataset.date === dateStr) {
+            b.classList.add('bg-orange-500', 'border-orange-500', 'text-white');
+        }
+    });
+
+    onBookingDateSelected();
+};
+
+// --- Inline Calendar ---
+window._bookingCalMonth = null;
+window._bookingCalYear = null;
+
+window.toggleBookingCalendar = function() {
+    const cal = document.getElementById('booking-calendar');
+    const btn = document.getElementById('booking-more-dates-btn');
+    if (!cal) return;
+    if (cal.classList.contains('hidden')) {
+        cal.classList.remove('hidden');
+        btn.textContent = 'Nascondi calendario';
+        const now = new Date();
+        window._bookingCalMonth = now.getMonth();
+        window._bookingCalYear = now.getFullYear();
+        renderBookingCalendar();
+    } else {
+        cal.classList.add('hidden');
+        btn.textContent = 'Altre date...';
+    }
+};
+
+window.changeBookingCalMonth = function(delta) {
+    window._bookingCalMonth += delta;
+    if (window._bookingCalMonth > 11) { window._bookingCalMonth = 0; window._bookingCalYear++; }
+    if (window._bookingCalMonth < 0) { window._bookingCalMonth = 11; window._bookingCalYear--; }
+    renderBookingCalendar();
+};
+
+window.renderBookingCalendar = function() {
+    const cal = document.getElementById('booking-calendar');
+    if (!cal) return;
+
+    const year = window._bookingCalYear;
+    const month = window._bookingCalMonth;
+    const monthNames = ['Gennaio','Febbraio','Marzo','Aprile','Maggio','Giugno','Luglio','Agosto','Settembre','Ottobre','Novembre','Dicembre'];
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const todayStr = today.toISOString().split('T')[0];
+    const selectedVal = document.getElementById('appointment-date')?.value || '';
+
+    const firstDay = new Date(year, month, 1).getDay();
+    const daysInMonth = new Date(year, month + 1, 0).getDate();
+
+    const canGoPrev = year > today.getFullYear() || (year === today.getFullYear() && month > today.getMonth());
+
+    let html = `<div class="flex items-center justify-between mb-3">
+        <button onclick="changeBookingCalMonth(-1)" class="w-8 h-8 rounded-lg ${canGoPrev ? 'hover:bg-white/10 text-white' : 'text-gray-600 cursor-not-allowed'} flex items-center justify-center transition" ${canGoPrev ? '' : 'disabled'}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <span class="text-sm font-bold text-white">${monthNames[month]} ${year}</span>
+        <button onclick="changeBookingCalMonth(1)" class="w-8 h-8 rounded-lg hover:bg-white/10 text-white flex items-center justify-center transition">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+    </div>`;
+
+    html += '<div class="grid grid-cols-7 gap-1 mb-1">';
+    ['Do','Lu','Ma','Me','Gi','Ve','Sa'].forEach(d => {
+        html += `<div class="text-center text-[10px] text-gray-500 font-medium py-1">${d}</div>`;
+    });
+    html += '</div>';
+
+    html += '<div class="grid grid-cols-7 gap-1">';
+    for (let i = 0; i < firstDay; i++) {
+        html += '<div></div>';
+    }
+    for (let d = 1; d <= daysInMonth; d++) {
+        const date = new Date(year, month, d);
+        const mm = String(month + 1).padStart(2, '0');
+        const dd = String(d).padStart(2, '0');
+        const dateStr = `${year}-${mm}-${dd}`;
+        const isPast = date < today;
+        const isToday = dateStr === todayStr;
+        const isSelected = dateStr === selectedVal;
+
+        let cls = 'w-full aspect-square rounded-lg text-xs font-medium flex items-center justify-center transition';
+        if (isPast) {
+            cls += ' text-gray-600 cursor-not-allowed';
+        } else if (isSelected) {
+            cls += ' bg-orange-500 border-orange-500 text-white cursor-pointer cal-day-btn';
+        } else if (isToday) {
+            cls += ' border border-orange-500/50 text-orange-400 hover:bg-orange-500/20 cursor-pointer cal-day-btn';
+        } else {
+            cls += ' text-gray-300 hover:bg-white/10 cursor-pointer cal-day-btn';
+        }
+
+        if (isPast) {
+            html += `<div class="${cls}">${d}</div>`;
+        } else {
+            html += `<button data-date="${dateStr}" onclick="selectBookingDate('${dateStr}', null)" class="${cls}">${d}</button>`;
+        }
+    }
+    html += '</div>';
+
+    cal.innerHTML = html;
+};
+
+window.closeBookingModal = function() {
+    document.getElementById('booking-modal').classList.add('hidden');
+    document.body.style.overflow = '';
+    selectedDate = null;
+    selectedTime = null;
+    bookingPaymentMethod = null;
+    bookingStripePaymentIntentId = null;
+};
+
+window.onBookingDateSelected = async function() {
+    const dateInput = document.getElementById('appointment-date');
+    selectedDate = dateInput.value;
+    selectedTime = null;
+
+    if (!selectedDate) return;
+
+    const timeSection = document.getElementById('booking-time-section');
+    const slotsList = document.getElementById('time-slots-list');
+    const noSlotsMsg = document.getElementById('no-slots-message');
+    const loadingEl = document.getElementById('booking-slots-loading');
+
+    timeSection.classList.remove('hidden');
+    loadingEl.classList.remove('hidden');
+    noSlotsMsg.classList.add('hidden');
+    slotsList.innerHTML = '';
+
+    document.getElementById('booking-duration-section').classList.add('hidden');
+    document.getElementById('booking-notes-section').classList.add('hidden');
+    document.getElementById('booking-payment-section').classList.add('hidden');
+    document.getElementById('booking-free-section').classList.add('hidden');
+    document.getElementById('confirm-booking-btn').classList.add('hidden');
+
+    try {
+        const isNutri = window.bookingTargetType === 'nutritionist';
+        const targetId = isNutri ? window.selectedNutritionistId : selectedTrainerId;
+        const slotsUrl = isNutri
+            ? `/api/client/nutritionists/${targetId}/available-slots?date=${selectedDate}`
+            : `/api/client/trainers/${targetId}/available-slots?date=${selectedDate}`;
+        const response = await fetch(slotsUrl, { credentials: 'include' });
+
+        loadingEl.classList.add('hidden');
+
+        if (!response.ok) throw new Error('Failed to load available slots');
+
+        const slots = await response.json();
+
+        if (slots.length === 0) {
+            noSlotsMsg.classList.remove('hidden');
+            return;
+        }
+
+        slotsList.innerHTML = slots.map(slot => `
+            <button onclick="selectTimeSlot('${slot.start_time}', this)"
+                class="time-slot-btn bg-white/10 hover:bg-primary/30 border border-white/10 hover:border-primary px-3 py-2 rounded-lg text-sm font-bold transition tap-effect"
+                data-time="${slot.start_time}">
+                ${slot.start_time}
+            </button>
+        `).join('');
+    } catch (error) {
+        loadingEl.classList.add('hidden');
+        console.error('Error loading slots:', error);
+        showToast(error.message, 'error');
+    }
+};
+
+window.selectTimeSlot = function(time, clickedBtn) {
+    selectedTime = time;
+    document.querySelectorAll('.time-slot-btn').forEach(btn => {
+        btn.classList.remove('bg-orange-500', 'border-orange-500', 'text-white');
+        btn.classList.add('bg-white/10', 'border-white/10');
+    });
+    if (clickedBtn) {
+        clickedBtn.classList.remove('bg-white/10', 'border-white/10');
+        clickedBtn.classList.add('bg-orange-500', 'border-orange-500', 'text-white');
+    }
+
+    document.getElementById('booking-duration-section').classList.remove('hidden');
+    document.getElementById('booking-notes-section').classList.remove('hidden');
+    document.getElementById('confirm-booking-btn').classList.remove('hidden');
+    updateBookingPriceDisplay();
+};
+
+window.updateBookingPriceDisplay = function() {
+    const paymentSection = document.getElementById('booking-payment-section');
+    const freeSection = document.getElementById('booking-free-section');
+    const priceDisplay = document.getElementById('booking-price-display');
+    const cashInfo = document.getElementById('booking-cash-info');
+    const posInfo = document.getElementById('booking-pos-info');
+
+    bookingPaymentMethod = null;
+    if (cashInfo) cashInfo.classList.add('hidden');
+    if (posInfo) posInfo.classList.add('hidden');
+    const cashBtn = document.getElementById('booking-pay-cash-btn');
+    const posBtn = document.getElementById('booking-pay-pos-btn');
+    if (cashBtn) { cashBtn.classList.remove('border-green-500', 'bg-green-500/20'); cashBtn.classList.add('border-white/20'); }
+    if (posBtn) { posBtn.classList.remove('border-orange-500', 'bg-orange-500/20'); posBtn.classList.add('border-white/20'); }
+
+    if (bookingTrainerRate && bookingTrainerRate > 0) {
+        const duration = parseInt(document.getElementById('booking-duration').value) || 60;
+        const price = (bookingTrainerRate * (duration / 60)).toFixed(2);
+        if (paymentSection) paymentSection.classList.remove('hidden');
+        if (freeSection) freeSection.classList.add('hidden');
+        if (priceDisplay) priceDisplay.textContent = `$${price}`;
+    } else {
+        if (paymentSection) paymentSection.classList.add('hidden');
+        if (freeSection) freeSection.classList.remove('hidden');
+    }
+};
+
+window.onBookingDurationChanged = function() {
+    updateBookingPriceDisplay();
+};
+
+window.selectBookingPayment = function(method) {
+    bookingPaymentMethod = method;
+    const cashBtn = document.getElementById('booking-pay-cash-btn');
+    const posBtn = document.getElementById('booking-pay-pos-btn');
+    const cashInfo = document.getElementById('booking-cash-info');
+    const posInfo = document.getElementById('booking-pos-info');
+
+    cashBtn.classList.remove('border-green-500', 'bg-green-500/20');
+    cashBtn.classList.add('border-white/20');
+    if (posBtn) { posBtn.classList.remove('border-orange-500', 'bg-orange-500/20'); posBtn.classList.add('border-white/20'); }
+    cashInfo.classList.add('hidden');
+    if (posInfo) posInfo.classList.add('hidden');
+
+    if (method === 'cash') {
+        cashBtn.classList.remove('border-white/20');
+        cashBtn.classList.add('border-green-500', 'bg-green-500/20');
+        cashInfo.classList.remove('hidden');
+    } else if (method === 'pos') {
+        if (posBtn) { posBtn.classList.remove('border-white/20'); posBtn.classList.add('border-orange-500', 'bg-orange-500/20'); }
+        if (posInfo) posInfo.classList.remove('hidden');
+    }
+};
+
+window.confirmBooking = async function() {
+    if (!selectedTime) {
+        showToast('Seleziona un orario', 'error');
+        return;
+    }
+
+    const duration = parseInt(document.getElementById('booking-duration').value) || 60;
+    const notes = document.getElementById('appointment-notes').value;
+    const hasPaidSession = bookingTrainerRate && bookingTrainerRate > 0;
+
+    if (hasPaidSession && !bookingPaymentMethod) {
+        showToast('Seleziona un metodo di pagamento', 'error');
+        return;
+    }
+
+    const confirmBtn = document.getElementById('confirm-booking-btn');
+    confirmBtn.disabled = true;
+    confirmBtn.textContent = 'Elaborazione...';
+
+    try {
+        const isNutri = window.bookingTargetType === 'nutritionist';
+        const targetId = isNutri ? window.selectedNutritionistId : selectedTrainerId;
+        const idField = isNutri ? 'nutritionist_id' : 'trainer_id';
+        const checkoutUrl = isNutri ? '/api/client/nutrition-checkout-session' : '/api/client/appointment-checkout-session';
+        const bookUrl = isNutri ? '/api/client/nutrition-appointments' : '/api/client/appointments';
+
+        const response = await fetch(bookUrl, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                [idField]: targetId,
+                date: selectedDate,
+                start_time: selectedTime,
+                duration: duration,
+                notes: notes,
+                payment_method: hasPaidSession ? bookingPaymentMethod : null,
+                stripe_payment_intent_id: null
+            })
+        });
+
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.detail || 'Failed to book appointment');
+        }
+
+        showToast('Appuntamento prenotato con successo!', 'success');
+        closeBookingModal();
+        if (typeof loadAppointments === 'function') loadAppointments();
+        if (typeof loadNutritionistAppointments === 'function') loadNutritionistAppointments();
+    } catch (error) {
+        console.error('Error booking appointment:', error);
+        showToast(error.message, 'error');
+    } finally {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Prenota Appuntamento';
+    }
+};
+
+// ==================== Shared Booking Choice Functions ====================
 // Only define functions if not already defined by mode-specific scripts
 if (typeof openBookingChoiceModal !== 'function') {
     window.openBookingChoiceModal = function(trainerId, trainerName) {
@@ -7933,6 +8085,17 @@ if (typeof openBookingChoiceModal !== 'function') {
         const nameEl = document.getElementById('booking-choice-trainer-name') || document.getElementById('booking-choice-trainer-name-shared');
 
         if (nameEl) nameEl.textContent = trainerName || 'Trainer';
+
+        // Show/hide nutritionist option
+        const nutritionBtn = document.getElementById('booking-choice-nutrition-btn') || document.getElementById('booking-choice-nutrition-btn-shared');
+        if (nutritionBtn) {
+            if (window.selectedNutritionistId) {
+                nutritionBtn.classList.remove('hidden');
+            } else {
+                nutritionBtn.classList.add('hidden');
+            }
+        }
+
         if (modal) modal.classList.remove('hidden');
     };
 }
@@ -7941,18 +8104,21 @@ if (typeof openBookingChoiceForMyTrainer !== 'function') {
     window.openBookingChoiceForMyTrainer = async function() {
         // Try to get trainer info if not already loaded
         let trainerName = document.getElementById('trainer-name')?.textContent || 'Trainer';
-        let trainerId = selectedTrainerId;
+        let trainerId = typeof selectedTrainerId !== 'undefined' ? selectedTrainerId : null;
 
-        // If no trainer ID, try to fetch it
-        if (!trainerId) {
+        // If no trainer ID or nutritionist ID, fetch from gym-info API
+        if (!trainerId || !window.selectedNutritionistId) {
             try {
-                const response = await fetch('/api/client/data', { credentials: 'include' });
+                const response = await fetch('/api/client/gym-info', { credentials: 'include' });
                 if (response.ok) {
                     const data = await response.json();
                     if (data.has_trainer && data.trainer_id) {
                         trainerId = data.trainer_id;
-                        selectedTrainerId = trainerId;
+                        if (typeof selectedTrainerId !== 'undefined') selectedTrainerId = trainerId;
                         if (data.trainer_name) trainerName = data.trainer_name;
+                    }
+                    if (data.has_nutritionist && data.nutritionist_id) {
+                        window.selectedNutritionistId = data.nutritionist_id;
                     }
                 }
             } catch (e) {
@@ -8001,6 +8167,11 @@ if (typeof selectBookingType !== 'function') {
             if (typeof openFacilityBookingModal === 'function') {
                 openFacilityBookingModal();
             }
+        } else if (type === 'nutrition') {
+            // Book nutritionist consultation
+            if (typeof openBookingModal === 'function') {
+                openBookingModal('nutritionist');
+            }
         }
     };
 }
@@ -8038,7 +8209,7 @@ if (typeof openGymCoursesModalShared !== 'function') {
 
         listEl.innerHTML = courses.map(course => `
             <div class="bg-white/5 border border-white/10 rounded-xl p-4 hover:bg-white/10 transition cursor-pointer tap-effect"
-                onclick="viewCourseDetail('${course.id}')">
+                onclick="if(typeof viewCourseDetails==='function'){viewCourseDetails('${course.id}')}else{window.location.href='/?role=client&mode=client_dashboard&view_course=${course.id}'}">
                 <div class="flex items-center gap-3">
                     <div class="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center text-xl">
                         ${icon(getCategoryIconName(course.course_type || 'strength'), 20)}

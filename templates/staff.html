@@ -628,6 +628,23 @@
     </div>
 </div>
 
+<!-- QR Scanner Modal (USB/DS Reader) -->
+<div id="qr-scanner-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4"
+    onclick="if(event.target === this) closeQrScanner()">
+    <div class="bg-[#1a1a1a] p-6 rounded-2xl max-w-sm w-full border border-white/10 text-center">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-bold text-white">Scansione QR</h3>
+            <button onclick="closeQrScanner()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+        <div id="qr-scan-icon" class="w-24 h-24 rounded-2xl border-2 border-purple-500/50 bg-purple-500/20 flex items-center justify-center mx-auto mb-4 animate-pulse transition-all">
+            <i data-lucide="scan" class="w-10 h-10 text-white"></i>
+        </div>
+        <p id="qr-scan-status" class="text-white font-semibold text-lg mb-2">In attesa della scansione...</p>
+        <p class="text-gray-500 text-sm mb-4">Scansiona il QR code del membro con il lettore</p>
+        <input type="text" id="qr-scanner-input" class="opacity-0 absolute" autocomplete="off">
+    </div>
+</div>
+
 <div id="onboarding-wizard-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
     <div class="glass-card p-6 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
         <!-- Header -->
@@ -1016,27 +1033,32 @@ async function loadStaffData() {
 }
 
 async function loadTrainers() {
+    const listEl = document.getElementById('trainers-list');
     try {
         const res = await fetch('/api/staff/trainers', { credentials: 'include' });
-        const listEl = document.getElementById('trainers-list');
 
-        if (res.ok) {
-            allTrainers = await res.json();
+        if (!res.ok) {
+            console.error('loadTrainers failed:', res.status, res.statusText);
+            if (listEl) listEl.innerHTML = '<p style="color:rgba(255,255,255,0.35);font-size:0.85rem;padding:1rem 0;">Nessun trainer trovato</p>';
+            return;
+        }
 
-            // Update trainers count stat
-            const trainersCountEl = document.getElementById('trainers-count');
-            if (trainersCountEl) trainersCountEl.textContent = allTrainers.length;
+        allTrainers = await res.json();
 
-            if (allTrainers.length === 0) {
-                listEl.innerHTML = `
-                    <div class="glass-card p-3 text-center">
-                        <p class="text-gray-400 text-sm">Nessun trainer</p>
-                    </div>
-                `;
-                return;
-            }
+        // Update trainers count stat
+        const trainersCountEl = document.getElementById('trainers-count');
+        if (trainersCountEl) trainersCountEl.textContent = allTrainers.length;
 
-            listEl.innerHTML = allTrainers.map(trainer => `
+        if (allTrainers.length === 0) {
+            if (listEl) listEl.innerHTML = `
+                <div class="glass-card p-3 text-center">
+                    <p class="text-gray-400 text-sm">Nessun trainer</p>
+                </div>
+            `;
+            return;
+        }
+
+        if (listEl) listEl.innerHTML = allTrainers.map(trainer => `
                 <div class="glass-card p-3 hover:bg-white/10 transition cursor-pointer" onclick="viewTrainerSchedule('${trainer.id}', '${trainer.username}')">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-white font-bold">
@@ -1058,9 +1080,9 @@ async function loadTrainers() {
                     </div>
                 </div>
             `).join('');
-        }
     } catch (error) {
         console.error('Error loading trainers:', error);
+        if (listEl) listEl.innerHTML = '<p style="color:rgba(255,255,255,0.35);font-size:0.85rem;padding:1rem 0;">Nessun trainer trovato</p>';
     }
 }
 
@@ -1373,7 +1395,7 @@ async function loadTodaysAppointments() {
 
             listEl.innerHTML = `
                 <div class="glass-card p-3 text-center">
-                    <p class="text-gray-400 text-sm">No appointments today</p>
+                    <p class="text-gray-400 text-sm">Nessun appuntamento oggi</p>
                 </div>
             `;
         }
@@ -1627,8 +1649,13 @@ function messageFromModal() {
     if (!currentMemberData) return;
     const memberId = currentMemberData.id;
     const memberName = currentMemberData.name || currentMemberData.username;
+    const memberPic = currentMemberData.profile_picture || null;
     closeMemberModal();
-    openChatModal(memberId, memberName);
+    if (typeof openChatModal === 'function') {
+        openChatModal(memberId, memberName, memberPic);
+    } else {
+        showToast('Chat non disponibile', 'error');
+    }
 }
 
 // Close modal on background click
@@ -3301,13 +3328,17 @@ async function loadStaffConversations() {
         container.innerHTML = conversations.slice(0, 20).map(conv => {
             const name = conv.other_user_name || conv.other_username || 'Unknown';
             const initial = name.charAt(0).toUpperCase();
-            const preview = conv.last_message || '';
-            const time = conv.last_message_time ? formatMessageTime(conv.last_message_time) : '';
+            const preview = conv.last_message_preview || '';
+            const time = conv.last_message_at ? formatMessageTime(conv.last_message_at) : '';
             const unread = conv.unread_count > 0;
+            const pic = conv.other_user_profile_picture;
+            const avatarHtml = pic
+                ? `<img src="${pic}" class="w-full h-full object-cover" style="border-radius:50%;" />`
+                : initial;
 
             return `
-                <div class="staff-message-item" onclick="openChatModal('${conv.other_user_id}', '${escapeHtml(name).replace(/'/g, "\\'")}')">
-                    <div class="staff-message-avatar">${initial}</div>
+                <div class="staff-message-item" onclick="openChatModal('${conv.other_user_id}', '${escapeHtml(name).replace(/'/g, "\\'")}', ${pic ? "'" + pic.replace(/'/g, "\\'") + "'" : 'null'})">
+                    <div class="staff-message-avatar">${avatarHtml}</div>
                     <div class="staff-message-content">
                         <div class="staff-message-name">${escapeHtml(name)}</div>
                         <div class="staff-message-preview">${escapeHtml(preview)}</div>
@@ -3375,7 +3406,17 @@ function toggleMobileMessages() {
 }
 
 // Load conversations on page load
-document.addEventListener('DOMContentLoaded', loadStaffConversations);
+document.addEventListener('DOMContentLoaded', () => {
+    loadStaffConversations();
+    // Override closeChatModal to refresh conversations list after closing chat
+    const _origClose = window.closeChatModal;
+    if (_origClose) {
+        window.closeChatModal = function() {
+            _origClose();
+            setTimeout(loadStaffConversations, 300);
+        };
+    }
+});
 
 // ========== MEMBER SEARCH (new table layout) ==========
 document.getElementById('member-search')?.addEventListener('input', (e) => {
