@@ -9,15 +9,15 @@
         <span class="staff-role-label">{{ role | capitalize }}</span>
     </div>
     <div class="staff-mobile-header-actions">
-        <button class="staff-mobile-msg-btn" onclick="openConversationsModal()">
-            <i data-lucide="message-circle" class="w-5 h-5"></i>
+        <button class="staff-mobile-msg-btn" onclick="switchSection('schedule')">
+            <i data-lucide="calendar" class="w-5 h-5"></i>
         </button>
         <button class="staff-mobile-msg-btn" data-action="showModal" data-target="notification-modal">
             <i data-lucide="bell" class="w-5 h-5"></i>
         </button>
-        <a href="/auth/logout" class="staff-mobile-msg-btn" style="color:#f87171;">
-            <i data-lucide="log-out" class="w-5 h-5"></i>
-        </a>
+        <button class="staff-mobile-msg-btn" onclick="openConversationsModal()">
+            <i data-lucide="send" class="w-5 h-5"></i>
+        </button>
     </div>
 </header>
 
@@ -81,22 +81,22 @@
                 <option value="trainer_default">Default Trainer</option>
             </select>
 
-            <!-- Page Header -->
-            <div class="staff-page-header">
+            <!-- Page Header (hidden on mobile) -->
+            <div class="staff-page-header staff-desktop-only">
                 <h1>Utenti</h1>
                 <p>Da qui puoi registrare, cercare o gestire i clienti e i loro dati</p>
             </div>
 
             <!-- Stats Bar -->
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
-                <div class="staff-stats-bar" style="margin-bottom:0;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:1rem;">
+                <div class="staff-stats-bar" style="margin-bottom:0;flex:1;width:100%;">
                     <div class="staff-stat-item">
-                        <span class="staff-stat-value text-primary" id="total-clients-count">0</span>
-                        <span class="staff-stat-label">Clienti</span>
+                        <span class="staff-stat-value" id="total-clients-count">0</span>
+                        <span class="staff-stat-label">clienti</span>
                     </div>
                     <div class="staff-stat-item">
-                        <span class="staff-stat-value" style="color:rgba(255,255,255,0.5);" id="inactive-clients-count">0</span>
-                        <span class="staff-stat-label">Inattivi</span>
+                        <span class="staff-stat-value text-primary" id="expiring-clients-count">0</span>
+                        <span class="staff-stat-label">in scad.</span>
                     </div>
                     <div class="staff-stat-item">
                         <span class="staff-stat-value" style="color:#f87171;" id="at-risk-clients-count">0</span>
@@ -115,7 +115,10 @@
                 </div>
             </div>
 
-            <!-- Dual Search Row -->
+            <!-- Latest Message Card (mobile, populated by JS) -->
+            <div id="trainer-latest-message" class="trainer-mobile-only" style="display:none;margin-bottom:1rem;"></div>
+
+            <!-- Dual Search Row (desktop) -->
             <div class="trainer-dual-search">
                 <div class="staff-search-bar" style="margin-bottom:0;">
                     <i data-lucide="search" class="w-4 h-4 search-icon"></i>
@@ -127,16 +130,28 @@
                 </div>
             </div>
 
-            <!-- Mobile Panel Tabs for Utenti (hidden on desktop) -->
+            <!-- Mobile Panel Tabs (hidden on desktop) -->
             <div class="trainer-panel-tabs" id="utenti-panel-tabs">
-                <button class="trainer-panel-tab active" onclick="switchTrainerPanel('utenti-panel-tabs','utenti-panel-clients')">Clienti</button>
-                <button class="trainer-panel-tab" onclick="switchTrainerPanel('utenti-panel-tabs','utenti-panel-agenda')">Agenda</button>
+                <button class="trainer-panel-tab active" onclick="switchTrainerPanel('utenti-panel-tabs','utenti-panel-agenda')">AGENDA</button>
+                <button class="trainer-panel-tab" onclick="switchTrainerPanel('utenti-panel-tabs','utenti-panel-clients')">UTENTI</button>
             </div>
 
             <!-- Two Column Layout -->
             <div class="trainer-utenti-grid">
                 <!-- LEFT: Client Table (desktop) -->
-                <div class="trainer-panel-content" id="utenti-panel-clients">
+                <div class="trainer-panel-content trainer-panel-hidden" id="utenti-panel-clients">
+                    <!-- Mobile search bar (inside UTENTI tab) -->
+                    <div class="staff-mobile-only" style="margin-bottom:0.75rem;">
+                        <div style="display:flex;align-items:center;gap:0.5rem;">
+                            <div class="staff-search-bar" style="margin-bottom:0;flex:1;">
+                                <i data-lucide="search" class="w-4 h-4 search-icon"></i>
+                                <input type="text" id="trainer-client-search-mobile" placeholder="Cerca clienti...">
+                            </div>
+                            <button style="width:40px;height:40px;background:var(--glass-bg-2);border:1px solid var(--glass-border-1);border-radius:var(--radius-md);color:rgba(255,255,255,0.4);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">
+                                <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
+                            </button>
+                        </div>
+                    </div>
                     <div class="staff-table-card staff-desktop-only">
                         <table class="staff-table">
                             <thead>
@@ -186,10 +201,17 @@
                 <div class="trainer-panel-content" id="utenti-panel-agenda" style="display:flex;flex-direction:column;gap:1.5rem;">
                     <!-- Appointments Widget -->
                     <div class="glass-card" style="padding:1rem;border-radius:var(--radius-xl);">
-                        <div style="display:flex;justify-content:center;align-items:center;gap:0.75rem;margin-bottom:1rem;">
-                            <button onclick="changeWeek(-1)" style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.05);border:none;color:rgba(255,255,255,0.5);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">&lt;</button>
-                            <span style="font-size:0.85rem;font-weight:600;color:white;" id="d-week-range-label">...</span>
-                            <button onclick="changeWeek(1)" style="width:28px;height:28px;border-radius:50%;background:rgba(255,255,255,0.05);border:none;color:rgba(255,255,255,0.5);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">&gt;</button>
+                        <div style="display:flex;justify-content:center;align-items:center;gap:1rem;margin-bottom:1rem;">
+                            <button onclick="changeWeek(-1)" style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);font-size:0.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+                            </button>
+                            <div style="text-align:center;">
+                                <div style="font-size:1.15rem;font-weight:800;color:white;text-transform:capitalize;" id="d-month-label">...</div>
+                                <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);font-weight:500;" id="d-week-range-label">...</div>
+                            </div>
+                            <button onclick="changeWeek(1)" style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);font-size:0.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+                                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+                            </button>
                         </div>
                         <!-- Day tabs -->
                         <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:1rem;" id="d-calendar-strip"></div>
@@ -197,8 +219,8 @@
                         <div id="d-schedule-container" style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:0.75rem;"></div>
                     </div>
 
-                    <!-- My Workout Card -->
-                    <div id="trainer-my-workout" style="display:flex;flex-direction:column;">
+                    <!-- My Workout Card (hidden by default, shown by JS when workout assigned) -->
+                    <div id="trainer-my-workout" style="display:none;flex-direction:column;">
                         <div class="glass-card" style="display:flex;flex-direction:column;position:relative;overflow:hidden;border-radius:var(--radius-xl);">
                             <!-- Content (always visible, blurred when empty) -->
                             <div id="my-workout-content" style="display:flex;flex-direction:column;justify-content:center;padding:1.25rem;">
@@ -228,6 +250,9 @@
                     </div>
                 </div>
             </div>
+
+            <!-- Nuovo PR / Achievement Card (populated by JS) -->
+            <div id="trainer-pr-card" class="trainer-mobile-only" style="display:none;margin-top:1rem;"></div>
 
         </section>
 
@@ -891,6 +916,115 @@ async function loadNotifications() {
     }
 }
 
+// ============ MOBILE HOMEPAGE CARDS ============
+
+// Load latest message for the mobile homepage card
+async function loadTrainerLatestMessage() {
+    const card = document.getElementById('trainer-latest-message');
+    if (!card) return;
+    try {
+        const res = await fetch('/api/messages/conversations', { credentials: 'include' });
+        if (!res.ok) {
+            // Show placeholder on error
+            card.innerHTML = `
+                <div class="trainer-msg-card" onclick="openConversationsModal()">
+                    <div class="trainer-msg-card-content">
+                        <div class="trainer-msg-card-name">Messaggi</div>
+                        <div class="trainer-msg-card-preview" style="opacity:0.5;">Nessun nuovo messaggio</div>
+                    </div>
+                </div>`;
+            card.style.display = '';
+            if (window.lucide) lucide.createIcons();
+            return;
+        }
+        const convos = await res.json();
+        if (!convos || convos.length === 0) {
+            // Show placeholder when no conversations
+            card.innerHTML = `
+                <div class="trainer-msg-card" onclick="openConversationsModal()">
+                    <div class="trainer-msg-card-content">
+                        <div class="trainer-msg-card-name">Messaggi</div>
+                        <div class="trainer-msg-card-preview" style="opacity:0.5;">Nessun nuovo messaggio</div>
+                    </div>
+                </div>`;
+            card.style.display = '';
+            if (window.lucide) lucide.createIcons();
+            return;
+        }
+        const latest = convos[0];
+        const name = latest.other_user_name || 'Utente';
+        const preview = latest.last_message_preview || 'Nessun nuovo messaggio';
+        const hasAttachment = preview.toLowerCase().includes('allegato') || preview.toLowerCase().includes('[file]');
+        card.innerHTML = `
+            <div class="trainer-msg-card" onclick="openConversationsModal()">
+                <div class="trainer-msg-card-content">
+                    <div class="trainer-msg-card-name">${name}</div>
+                    <div class="trainer-msg-card-preview">${preview}</div>
+                    ${hasAttachment ? '<div class="trainer-msg-card-attachment"><i data-lucide="camera" style="width:12px;height:12px;"></i> Allegato</div>' : ''}
+                </div>
+            </div>
+        `;
+        card.style.display = '';
+        if (window.lucide) lucide.createIcons();
+    } catch(e) {
+        // Show placeholder on error
+        card.innerHTML = `
+            <div class="trainer-msg-card" onclick="openConversationsModal()">
+                <div class="trainer-msg-card-content">
+                    <div class="trainer-msg-card-name">Messaggi</div>
+                    <div class="trainer-msg-card-preview" style="opacity:0.5;">Nessun nuovo messaggio</div>
+                </div>
+            </div>`;
+        card.style.display = '';
+        if (window.lucide) lucide.createIcons();
+    }
+}
+
+// Load latest PR/achievement for the mobile homepage card
+async function loadTrainerPRCard() {
+    const card = document.getElementById('trainer-pr-card');
+    if (!card) return;
+    try {
+        const res = await fetch('/api/notifications?limit=20', { credentials: 'include' });
+        if (!res.ok) return;
+        const notifs = await res.json();
+        const prNotif = notifs.find(n =>
+            (n.type && (n.type === 'pr' || n.type === 'personal_record')) ||
+            (n.title && n.title.toLowerCase().includes('pr'))
+        );
+        if (!prNotif) { card.style.display = 'none'; return; }
+        card.innerHTML = `
+            <div class="trainer-pr-banner">
+                <div class="trainer-pr-icon">🏆</div>
+                <div class="trainer-pr-content">
+                    <div class="trainer-pr-title">Nuovo PR</div>
+                    <div class="trainer-pr-desc">${prNotif.message || prNotif.title || ''}</div>
+                </div>
+            </div>
+        `;
+        card.style.display = '';
+    } catch(e) { card.style.display = 'none'; }
+}
+
+// Mobile UTENTI search sync
+document.addEventListener('DOMContentLoaded', () => {
+    const mobileSearch = document.getElementById('trainer-client-search-mobile');
+    if (mobileSearch) {
+        mobileSearch.addEventListener('input', () => {
+            const desktopSearch = document.getElementById('trainer-client-search');
+            if (desktopSearch) {
+                desktopSearch.value = mobileSearch.value;
+                desktopSearch.dispatchEvent(new Event('input'));
+            }
+        });
+    }
+    // Load mobile homepage cards
+    setTimeout(() => {
+        loadTrainerLatestMessage();
+        loadTrainerPRCard();
+    }, 1000);
+});
+
 // ============ SECTION SWITCHING ============
 let currentSection = 'dashboard';
 let scheduleInitialized = false;
@@ -967,6 +1101,16 @@ function switchSection(sectionId) {
 
 function initSection(sectionId) {
     switch(sectionId) {
+        case 'dashboard':
+            // Dashboard shows calendar on mobile, so init schedule if not done
+            if (!scheduleInitialized) {
+                initScheduleSection();
+                scheduleInitialized = true;
+            }
+            // Load mobile homepage cards (latest message, PR)
+            if (typeof loadTrainerLatestMessage === 'function') loadTrainerLatestMessage();
+            if (typeof loadTrainerPRCard === 'function') loadTrainerPRCard();
+            break;
         case 'workouts':
             if (!workoutsInitialized && !workoutsPendingInit) {
                 if (window.trainerData) {
@@ -1114,7 +1258,9 @@ async function initAllenamentiExercises() {
     try {
         const res = await fetch(`${apiBase}/api/exercises`, { credentials: 'include' });
         if (!res.ok) return;
-        const exercises = await res.json();
+        const allExercises = await res.json();
+        // Filter out course-specific exercises from the workout panel
+        const exercises = allExercises.filter(ex => (ex.type || '').toLowerCase() !== 'course');
         window._allenamentiExercises = exercises;
         renderAllenamentiExerciseList(exercises);
     } catch(e) { console.error('Error loading exercises for allenamenti:', e); }
@@ -1410,6 +1556,52 @@ function hideAllenamentiExDetail() {
 }
 window.hideAllenamentiExDetail = hideAllenamentiExDetail;
 
+/** After renaming a split/workout, update any client badge that shows the old name */
+function _refreshClientBadges(oldName, newName) {
+    if (!oldName || oldName === newName) return;
+    document.querySelectorAll('#workouts-client-list .client-drop-target span').forEach(badge => {
+        const text = badge.textContent || '';
+        if (text.includes(oldName)) {
+            badge.textContent = text.replace(oldName, newName);
+            badge.title = (badge.title || '').replace(oldName, newName);
+        }
+    });
+}
+
+/** Double-click inline rename helper. labelEl = the div, getCurrent = () => current value, onSave = async (newVal) => save it */
+function _makeInlineEditable(labelEl, getCurrent, onSave) {
+    if (!labelEl) return;
+    labelEl.addEventListener('dblclick', function handler(e) {
+        e.stopPropagation();
+        const current = getCurrent();
+        const input = document.createElement('input');
+        input.type = 'text';
+        input.value = current;
+        input.style.cssText = 'width:100%;background:rgba(255,255,255,0.1);border:1px solid rgba(99,102,241,0.5);border-radius:4px;color:white;font-size:0.85rem;font-weight:600;padding:0.1rem 0.35rem;outline:none;';
+        const parent = labelEl.parentNode;
+        parent.replaceChild(input, labelEl);
+        input.focus();
+        input.select();
+        let done = false;
+        const finish = async () => {
+            if (done) return;
+            done = true;
+            const newVal = input.value.trim() || current;
+            if (newVal !== current) {
+                try { await onSave(newVal); } catch (_) {}
+            }
+            labelEl.textContent = getCurrent() || 'Senza titolo';
+            input.parentNode?.replaceChild(labelEl, input);
+            if (typeof showToast === 'function' && newVal !== current) showToast('Nome aggiornato', 'success');
+        };
+        input.addEventListener('blur', finish);
+        input.addEventListener('keydown', (ke) => {
+            if (ke.key === 'Enter') { ke.preventDefault(); finish(); }
+            if (ke.key === 'Escape') { input.value = current; finish(); }
+        });
+    });
+}
+
 function _populateWorkoutExpand(el, w) {
     const exercises = (Array.isArray(w.exercises) ? w.exercises : []).filter(ex => ex && ex.name);
     el._addExercise = null; // Clear any edit-mode callback
@@ -1456,6 +1648,8 @@ function _showWorkoutEditForm(el, w) {
     function syncInputs() {
         el.querySelectorAll('.w-ex-row').forEach((row, i) => {
             if (exercises[i]) {
+                const nameInput = row.querySelector('.ex-name');
+                if (nameInput) exercises[i].name = nameInput.value.trim() || exercises[i].name;
                 exercises[i].sets = parseInt(row.querySelector('.ex-sets')?.value) || 3;
                 exercises[i].reps = row.querySelector('.ex-reps')?.value?.trim() || '10';
                 exercises[i].rest = parseInt(row.querySelector('.ex-rest')?.value) || 60;
@@ -1475,7 +1669,7 @@ function _showWorkoutEditForm(el, w) {
                 const mColor = (typeof _exMuscleColors !== 'undefined' && muscle) ? (_exMuscleColors[muscle] || '#6366f1') : '#6366f1';
                 return `<div class="w-ex-row" data-idx="${i}" style="display:flex;align-items:center;gap:0.4rem;padding:0.28rem 0.65rem;border-bottom:1px solid rgba(255,255,255,0.05);">
                     <div style="width:3px;height:32px;background:${mColor};border-radius:2px;flex-shrink:0;opacity:0.7;"></div>
-                    <span style="flex:1;font-size:0.8rem;color:rgba(255,255,255,0.85);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;">${ex.name}</span>
+                    <input type="text" class="ex-name" value="${ex.name}" style="flex:1;font-size:0.8rem;color:rgba(255,255,255,0.85);background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:3px;padding:0.1rem 0.3rem;min-width:0;" title="Nome esercizio">
                     <input type="number" class="ex-sets" value="${ex.sets || 3}" min="1" max="99" style="width:34px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:3px;color:white;font-size:0.72rem;text-align:center;padding:0.1rem 0;" title="Serie">
                     <span style="font-size:0.65rem;color:rgba(255,255,255,0.25);">×</span>
                     <input type="text" class="ex-reps" value="${ex.reps || '10'}" style="width:36px;background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.12);border-radius:3px;color:white;font-size:0.72rem;text-align:center;padding:0.1rem 0;" title="Ripetizioni">
@@ -1609,13 +1803,31 @@ function renderWorkoutDragList(workouts) {
                 <div style="display:flex;align-items:center;gap:0.75rem;">
                     <i data-lucide="grip-vertical" class="w-4 h-4" style="color:rgba(255,255,255,0.2);flex-shrink:0;"></i>
                     <div style="flex:1;min-width:0;">
-                        <div style="font-weight:600;color:white;font-size:0.85rem;">${w.title || 'Senza titolo'}</div>
+                        <div class="workout-title-label" style="font-weight:600;color:white;font-size:0.85rem;cursor:text;" title="Doppio clic per rinominare">${w.title || 'Senza titolo'}</div>
                         <div class="workout-card-meta" style="font-size:0.75rem;color:rgba(255,255,255,0.4);">${meta}</div>
                     </div>
                     <svg class="workout-card-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.2)" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                 </div>
             </td>
         `;
+
+        // Double-click to rename workout
+        _makeInlineEditable(tr.querySelector('.workout-title-label'), () => w.title || '', async (newVal) => {
+            const oldVal = w.title;
+            const res = await fetch(`${(window.APP_CONFIG || {}).apiBase || ''}/api/trainer/workouts/${w.id}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+                body: JSON.stringify({ title: newVal, duration: w.duration || '', difficulty: w.difficulty || '', exercises: w.exercises || [] })
+            });
+            if (res.ok) {
+                w.title = newVal;
+                tr.dataset.itemName = newVal;
+                if (window.trainerData?.workouts) {
+                    const idx = window.trainerData.workouts.findIndex(ww => ww.id === w.id);
+                    if (idx >= 0) window.trainerData.workouts[idx].title = newVal;
+                }
+                _refreshClientBadges(oldVal, newVal);
+            }
+        });
 
         // Expand row (inline exercise list)
         const expandTr = document.createElement('tr');
@@ -1853,13 +2065,31 @@ function renderSplitDragList(splits) {
                 <div style="display:flex;align-items:center;gap:0.75rem;">
                     <i data-lucide="grip-vertical" class="w-4 h-4" style="color:rgba(255,255,255,0.2);flex-shrink:0;"></i>
                     <div style="flex:1;min-width:0;">
-                        <div style="font-weight:600;color:white;font-size:0.85rem;">${s.name || 'Senza titolo'}</div>
+                        <div class="split-title-label" style="font-weight:600;color:white;font-size:0.85rem;cursor:text;" title="Doppio clic per rinominare">${s.name || 'Senza titolo'}</div>
                         <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);">${meta || 'Split settimanale'}</div>
                     </div>
                     <svg class="workout-card-chevron" xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.2)" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/></svg>
                 </div>
             </td>
         `;
+
+        // Double-click to rename split
+        _makeInlineEditable(tr.querySelector('.split-title-label'), () => s.name || '', async (newVal) => {
+            const oldVal = s.name;
+            const res = await fetch(`${(window.APP_CONFIG || {}).apiBase || ''}/api/trainer/splits/${s.id}`, {
+                method: 'PUT', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+                body: JSON.stringify({ name: newVal, description: s.description || '', days_per_week: s.days_per_week || 3, schedule: s.schedule || {} })
+            });
+            if (res.ok) {
+                s.name = newVal;
+                tr.dataset.itemName = newVal;
+                if (window.trainerData?.splits) {
+                    const idx = window.trainerData.splits.findIndex(sp => sp.id === s.id);
+                    if (idx >= 0) window.trainerData.splits[idx].name = newVal;
+                }
+                _refreshClientBadges(oldVal, newVal);
+            }
+        });
 
         // Expand row (split detail)
         const expandTr = document.createElement('tr');
@@ -2517,10 +2747,17 @@ function renderCalendarStripInto(containerId, monthLabelId) {
     if (!daysContainer) return;
     daysContainer.innerHTML = '';
     const monthLabel = document.getElementById(monthLabelId);
-    if (monthLabel) monthLabel.innerText = currentWeekMonday.toLocaleDateString('it-IT', { month: 'short' });
-
-    const itDays = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
     const isDashboard = containerId === 'd-calendar-strip';
+
+    if (monthLabel) {
+        if (isDashboard) {
+            monthLabel.innerText = currentWeekMonday.toLocaleDateString('it-IT', { month: 'long' });
+        } else {
+            monthLabel.innerText = currentWeekMonday.toLocaleDateString('it-IT', { month: 'short' });
+        }
+    }
+
+    const itDays = ['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'];
 
     for (let i = 0; i < 7; i++) {
         const d = new Date(currentWeekMonday);
@@ -2528,17 +2765,28 @@ function renderCalendarStripInto(containerId, monthLabelId) {
         const dateStr = toLocalISO(d);
         const isSelected = dateStr === selectedDateStr;
         const isToday = dateStr === toLocalISO(new Date());
+        const hasEvents = currentSchedule.some(e => e.date === dateStr);
 
         const div = document.createElement('div');
-        div.className = `flex flex-col items-center p-2 rounded cursor-pointer transition ${isSelected ? 'bg-white/10 text-white' : 'text-white/40 hover:bg-white/5'}`;
-        if (isToday && !isSelected) div.classList.add('border', 'border-white/10');
-
         const dayName = isDashboard ? itDays[(d.getDay() + 6) % 7] : d.toLocaleDateString('it-IT', { weekday: 'narrow' });
         const dayNum = d.getDate();
-        const hasEvents = currentSchedule.some(e => e.date === dateStr);
-        const dot = hasEvents ? `<div class="w-1 h-1 rounded-full bg-primary mt-1"></div>` : '';
 
-        div.innerHTML = `<span class="opacity-50 text-[10px]">${dayName}</span><span>${dayNum}</span>${dot}`;
+        if (isDashboard) {
+            // Figma-style calendar strip
+            div.className = 'trainer-cal-day';
+            const isHighlighted = isSelected || isToday;
+            div.innerHTML = `
+                <span class="trainer-cal-dayname">${dayName}</span>
+                <span class="trainer-cal-daynum${isHighlighted ? ' trainer-cal-daynum--active' : ''}">${dayNum}</span>
+                ${hasEvents ? '<span class="trainer-cal-dot"></span>' : ''}
+            `;
+        } else {
+            div.className = `flex flex-col items-center p-2 rounded cursor-pointer transition ${isSelected ? 'bg-white/10 text-white' : 'text-white/40 hover:bg-white/5'}`;
+            if (isToday && !isSelected) div.classList.add('border', 'border-white/10');
+            const dot = hasEvents ? '<div class="w-1 h-1 rounded-full bg-primary mt-1"></div>' : '';
+            div.innerHTML = `<span class="opacity-50 text-[10px]">${dayName}</span><span>${dayNum}</span>${dot}`;
+        }
+
         div.onclick = () => {
             selectedDateStr = dateStr;
             renderCalendarStrip();
@@ -2559,8 +2807,7 @@ function renderCalendarStrip() {
         const endDate = new Date(currentWeekMonday);
         endDate.setDate(endDate.getDate() + 6);
         const endDay = endDate.getDate().toString().padStart(2, '0');
-        const monthName = endDate.toLocaleDateString('it-IT', { month: 'short' });
-        weekRangeEl.textContent = `${startDay} - ${endDay} ${monthName}`;
+        weekRangeEl.textContent = `${startDay} - ${endDay}`;
     }
 }
 
@@ -2573,54 +2820,74 @@ function renderScheduleInto(dateStr, containerId, dateElId) {
     const dateEl = document.getElementById(dateElId);
     if (dateEl) dateEl.innerText = dateObj.toLocaleDateString('it-IT', { weekday: 'long', month: 'long', day: 'numeric' });
 
+    const isDashboard = containerId === 'd-schedule-container';
     container.innerHTML = '';
     const dayEvents = currentSchedule.filter(e => e.date === dateStr).sort((a, b) => a.time.localeCompare(b.time));
 
     dayEvents.forEach(s => {
         const div = document.createElement('div');
         const opacityClass = s.completed ? 'opacity-50 grayscale' : '';
-        div.className = `flex justify-between items-center bg-white/5 border border-white/5 rounded-xl p-3 group relative ${opacityClass}`;
 
-        let colorClass = "text-blue-400 bg-blue-500/20";
-        if (s.type === 'personal') colorClass = "text-green-400 bg-green-500/20";
-        if (s.type === 'class') colorClass = "text-yellow-400 bg-yellow-500/20";
-        if (s.type === '1on1_appointment') colorClass = "text-orange-400 bg-orange-500/20";
+        if (isDashboard) {
+            // Simplified mobile-style schedule items
+            const timeStr = s.time.substring(0, 5);
+            div.className = `trainer-schedule-item ${opacityClass}`;
+            div.innerHTML = `
+                <span class="trainer-schedule-time">${timeStr}</span>
+                <span class="trainer-schedule-title ${s.completed ? 'line-through' : ''}">${s.title}${s.subtitle ? ' ' + s.subtitle : ''}</span>
+            `;
+        } else {
+            div.className = `flex justify-between items-center bg-white/5 border border-white/5 rounded-xl p-3 group relative ${opacityClass}`;
 
-        let [h, min] = s.time.split(':');
-        let ampm = h >= 12 ? 'PM' : 'AM';
-        h = h % 12 || 12;
+            let colorClass = "text-blue-400 bg-blue-500/20";
+            if (s.type === 'personal') colorClass = "text-green-400 bg-green-500/20";
+            if (s.type === 'class') colorClass = "text-yellow-400 bg-yellow-500/20";
+            if (s.type === '1on1_appointment') colorClass = "text-orange-400 bg-orange-500/20";
 
-        div.innerHTML = `
-            <div class="flex items-center space-x-3">
-                <div class="w-12 h-12 rounded-lg ${colorClass} flex flex-col items-center justify-center">
-                    <span class="font-bold text-lg leading-none">${h}</span>
-                    <span class="text-[9px] uppercase">${ampm}</span>
+            let [h, min] = s.time.split(':');
+            let ampm = h >= 12 ? 'PM' : 'AM';
+            h = h % 12 || 12;
+
+            div.innerHTML = `
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 rounded-lg ${colorClass} flex flex-col items-center justify-center">
+                        <span class="font-bold text-lg leading-none">${h}</span>
+                        <span class="text-[9px] uppercase">${ampm}</span>
+                    </div>
+                    <div>
+                        <p class="text-[10px] text-white/30">${s.duration || 60} min</p>
+                        <h4 class="font-bold text-sm text-white ${s.completed ? 'line-through text-white/50' : ''}">${s.title}</h4>
+                        <p class="text-xs text-white/50">${s.subtitle || ''}</p>
+                    </div>
                 </div>
-                <div>
-                    <p class="text-[10px] text-white/30">${s.duration || 60} min</p>
-                    <h4 class="font-bold text-sm text-white ${s.completed ? 'line-through text-white/50' : ''}">${s.title}</h4>
-                    <p class="text-xs text-white/50">${s.subtitle || ''}</p>
+                <div class="flex items-center space-x-3">
+                    <button onclick="toggleComplete('${s.id}')"
+                        class="w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300
+                        ${s.completed ? 'bg-green-500 border-green-500 text-white' : 'border-white/20 text-transparent hover:border-white/50'}">
+                        <span class="transform transition-transform duration-300 ${s.completed ? 'scale-100' : 'scale-0'}">✓</span>
+                    </button>
+                    <button onclick="deleteEvent('${s.id}')" class="text-red-500 opacity-0 group-hover:opacity-100 transition p-2 hover:bg-white/10 rounded-lg">✕</button>
                 </div>
-            </div>
-            <div class="flex items-center space-x-3">
-                <button onclick="toggleComplete('${s.id}')"
-                    class="w-10 h-10 rounded-full flex items-center justify-center border-2 transition-all duration-300
-                    ${s.completed ? 'bg-green-500 border-green-500 text-white' : 'border-white/20 text-transparent hover:border-white/50'}">
-                    <span class="transform transition-transform duration-300 ${s.completed ? 'scale-100' : 'scale-0'}">✓</span>
-                </button>
-                <button onclick="deleteEvent('${s.id}')" class="text-red-500 opacity-0 group-hover:opacity-100 transition p-2 hover:bg-white/10 rounded-lg">✕</button>
-            </div>
-        `;
+            `;
+        }
         container.appendChild(div);
     });
 
     // Add button
     const addDiv = document.createElement('div');
-    addDiv.className = "flex items-center justify-center rounded-xl border border-white/20 border-dashed hover:bg-white/5 transition cursor-pointer";
-    addDiv.style.padding = "0.75rem";
-    addDiv.style.minHeight = "72px";
-    addDiv.onclick = () => openAddModal(dateStr);
-    addDiv.innerHTML = `<span class="text-sm text-white/40">+ Aggiungi appuntamento</span>`;
+    if (isDashboard) {
+        addDiv.className = "trainer-schedule-item";
+        addDiv.style.cursor = 'pointer';
+        addDiv.style.opacity = '0.5';
+        addDiv.onclick = () => openAddModal(dateStr);
+        addDiv.innerHTML = `<span class="trainer-schedule-time" style="background:rgba(255,255,255,0.1);color:rgba(255,255,255,0.4);">+</span><span style="font-size:0.85rem;color:rgba(255,255,255,0.3);">Aggiungi appuntamento</span>`;
+    } else {
+        addDiv.className = "flex items-center justify-center rounded-xl border border-white/20 border-dashed hover:bg-white/5 transition cursor-pointer";
+        addDiv.style.padding = "0.75rem";
+        addDiv.style.minHeight = "72px";
+        addDiv.onclick = () => openAddModal(dateStr);
+        addDiv.innerHTML = `<span class="text-sm text-white/40">+ Aggiungi appuntamento</span>`;
+    }
     container.appendChild(addDiv);
 }
 
@@ -2898,8 +3165,8 @@ document.addEventListener('DOMContentLoaded', () => {
         switchSection(hash);
     }
 
-    // On desktop, load schedule data into the dashboard column
-    if (window.innerWidth >= 1024 && (!hash || hash === 'dashboard')) {
+    // Load schedule data into the dashboard calendar (both desktop and mobile)
+    if (!hash || hash === 'dashboard') {
         if (!scheduleInitialized) {
             const day = currentWeekMonday.getDay() || 7;
             if (day !== 1) currentWeekMonday.setHours(-24 * (day - 1));

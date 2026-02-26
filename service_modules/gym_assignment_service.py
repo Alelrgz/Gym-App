@@ -169,10 +169,13 @@ class GymAssignmentService:
                 return {
                     "has_gym": False,
                     "has_trainer": False,
+                    "has_nutritionist": False,
                     "gym_id": None,
                     "gym_name": None,
                     "trainer_id": None,
-                    "trainer_name": None
+                    "trainer_name": None,
+                    "nutritionist_id": None,
+                    "nutritionist_name": None
                 }
 
             gym_name = None
@@ -196,6 +199,8 @@ class GymAssignmentService:
             # Get nutritionist info
             nutritionist_name = None
             nutritionist_profile_picture = None
+            nutritionist_bio = None
+            nutritionist_specialties = []
             nutritionist_id = getattr(profile, 'nutritionist_id', None)
             if not nutritionist_id and profile.gym_id:
                 # Find any nutritionist assigned to this gym
@@ -210,6 +215,9 @@ class GymAssignmentService:
                 if nutri_user:
                     nutritionist_name = nutri_user.username
                     nutritionist_profile_picture = nutri_user.profile_picture
+                    nutritionist_bio = nutri_user.bio
+                    if nutri_user.specialties:
+                        nutritionist_specialties = [s.strip() for s in nutri_user.specialties.split(",") if s.strip()]
 
             return {
                 "has_gym": profile.gym_id is not None,
@@ -224,7 +232,9 @@ class GymAssignmentService:
                 "trainer_specialties": trainer_specialties,
                 "nutritionist_id": nutritionist_id,
                 "nutritionist_name": nutritionist_name,
-                "nutritionist_profile_picture": nutritionist_profile_picture
+                "nutritionist_profile_picture": nutritionist_profile_picture,
+                "nutritionist_bio": nutritionist_bio,
+                "nutritionist_specialties": nutritionist_specialties
             }
 
         finally:

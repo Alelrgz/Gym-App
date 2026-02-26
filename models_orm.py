@@ -517,6 +517,89 @@ class AppointmentORM(Base):
     updated_at = Column(String, default=lambda: datetime.utcnow().isoformat())
 
 
+class NutritionistAvailabilityORM(Base):
+    """Nutritionist's weekly availability schedule for consultations"""
+    __tablename__ = "nutritionist_availability"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    nutritionist_id = Column(String, ForeignKey("users.id"), index=True)
+
+    # Day of week (0 = Monday, 6 = Sunday)
+    day_of_week = Column(Integer, index=True)
+
+    # Time slots in HH:MM format (24-hour)
+    start_time = Column(String)  # e.g., "09:00"
+    end_time = Column(String)    # e.g., "17:00"
+
+    # If false, this slot is temporarily blocked
+    is_available = Column(Boolean, default=True)
+
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
+class NutritionistAppointmentORM(Base):
+    """Appointments between clients and nutritionists"""
+    __tablename__ = "nutritionist_appointments"
+
+    id = Column(String, primary_key=True, index=True)
+    client_id = Column(String, ForeignKey("users.id"), index=True)
+    nutritionist_id = Column(String, ForeignKey("users.id"), index=True)
+
+    # Appointment date and time
+    date = Column(String, index=True)  # ISO format YYYY-MM-DD
+    start_time = Column(String)  # HH:MM format
+    end_time = Column(String)    # HH:MM format
+    duration = Column(Integer, default=60)  # Duration in minutes
+
+    # Appointment details
+    title = Column(String, default="Consulenza Nutrizionale")
+    session_type = Column(String, nullable=True)  # consultation, meal_planning, diet_review, follow_up
+    notes = Column(String, nullable=True)  # Client's notes/goals
+    nutritionist_notes = Column(String, nullable=True)  # Nutritionist's notes after session
+
+    # Payment
+    price = Column(Float, nullable=True)
+    payment_method = Column(String, nullable=True)  # card, cash, or null (free)
+    payment_status = Column(String, default="pending")  # pending, paid, refunded, free
+    stripe_payment_intent_id = Column(String, nullable=True)
+
+    # Status
+    status = Column(String, default="scheduled", index=True)  # scheduled, completed, canceled, no_show
+
+    # Cancellation
+    canceled_by = Column(String, nullable=True)
+    canceled_at = Column(String, nullable=True)
+    cancellation_reason = Column(String, nullable=True)
+
+    # Timestamps
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    updated_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
+# --- WEEKLY MEAL PLAN (Nutritionist-assigned) ---
+
+class WeeklyMealPlanORM(Base):
+    """Nutritionist-assigned meal plan entries, organized by day of week."""
+    __tablename__ = "weekly_meal_plan"
+
+    id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    client_id = Column(String, ForeignKey("users.id"), index=True)
+    assigned_by = Column(String, ForeignKey("users.id"))  # nutritionist or trainer id
+
+    day_of_week = Column(Integer, index=True)  # 0=Monday, 1=Tuesday, ..., 6=Sunday
+    meal_type = Column(String)  # colazione, spuntino_mattina, pranzo, spuntino_pomeriggio, cena
+    meal_name = Column(String)
+    description = Column(String, nullable=True)  # e.g. "200g petto di pollo, 100g riso basmati, verdure"
+    calories = Column(Integer, default=0)
+    protein = Column(Integer, default=0)
+    carbs = Column(Integer, default=0)
+    fat = Column(Integer, default=0)
+    alternative_index = Column(Integer, default=0)  # 0=primary, 1+=alternatives
+
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    updated_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
 # --- MESSAGING MODELS ---
 
 class ConversationORM(Base):

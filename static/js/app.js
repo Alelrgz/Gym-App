@@ -799,21 +799,19 @@ function renderTrainerWorkoutCard(workout) {
     const difficultyEl = document.getElementById('my-workout-difficulty');
     const ctaBtn = document.getElementById('my-workout-cta');
     const emptyOverlay = document.getElementById('my-workout-empty');
+    const cardContainer = document.getElementById('trainer-my-workout');
     if (!titleEl) return;
 
     const contentDiv = document.getElementById('my-workout-content');
 
     if (!workout) {
-        // Keep placeholder layout visible behind the blur
-        titleEl.textContent = 'Allenamento';
-        durationEl.textContent = '-- min';
-        exercisesEl.textContent = '-- esercizi';
-        difficultyEl.textContent = '--';
-        if (contentDiv) contentDiv.style.filter = 'blur(8px)';
-        if (emptyOverlay) emptyOverlay.style.display = 'flex';
+        // Hide the entire card when no workout assigned
+        if (cardContainer) cardContainer.style.display = 'none';
         return;
     }
 
+    // Show card and clear empty state
+    if (cardContainer) cardContainer.style.display = 'flex';
     if (contentDiv) contentDiv.style.filter = 'none';
     if (emptyOverlay) emptyOverlay.style.display = 'none';
 
@@ -852,7 +850,7 @@ async function init() {
         nameEls.forEach(el => el.innerText = gymConfig.logo_text);
 
         if (role === 'client') {
-            // Display client username from localStorage
+            // Display client name from localStorage
             const username = localStorage.getItem('username') || 'Guest';
             const displayNameEl = document.getElementById('client-display-name');
             const welcomeNameEl = document.getElementById('client-welcome-name');
@@ -885,6 +883,7 @@ async function init() {
                 if (displayName) {
                     if (displayNameEl) displayNameEl.textContent = displayName;
                     if (welcomeNameEl) welcomeNameEl.textContent = displayName;
+                    localStorage.setItem('username', displayName);
                 }
 
                 // Update streak display (day streak)
@@ -1232,14 +1231,23 @@ async function init() {
             // --- UTENTI PAGE STATS ---
             const totalClients = data.clients ? data.clients.length : 0;
             const atRisk = data.at_risk_clients || 0;
-            const activeCount = data.active_clients || 0;
-            const inactive = totalClients - activeCount;
+
+            // Compute expiring count (clients with plan_expiry within next 7 days)
+            let expiringCount = 0;
+            const now = new Date();
+            const in7Days = new Date(now.getTime() + 7 * 86400000);
+            (data.clients || []).forEach(c => {
+                if (c.plan_expiry) {
+                    const exp = new Date(c.plan_expiry);
+                    if (exp > now && exp <= in7Days) expiringCount++;
+                }
+            });
 
             const totalEl = document.getElementById('total-clients-count');
-            const inactiveEl = document.getElementById('inactive-clients-count');
+            const expiringEl = document.getElementById('expiring-clients-count');
             const atRiskEl = document.getElementById('at-risk-clients-count');
             if (totalEl) totalEl.innerText = totalClients;
-            if (inactiveEl) inactiveEl.innerText = inactive;
+            if (expiringEl) expiringEl.innerText = expiringCount;
             if (atRiskEl) atRiskEl.innerText = atRisk;
 
             // --- MY WORKOUT CARD ---
@@ -1258,7 +1266,7 @@ async function init() {
 
             if (tProfileName) tProfileName.innerText = username;
             if (tProfileEmail) tProfileEmail.innerText = `${username.toLowerCase().replace(/\s+/g, '')}@irongym.com`;
-            if (tProfileClientCount) tProfileClientCount.innerText = activeCount;
+            if (tProfileClientCount) tProfileClientCount.innerText = totalClients;
 
             // Store and render clients
             if (data.clients) {
@@ -1472,8 +1480,10 @@ async function init() {
             const ownerRes = await fetch(`${apiBase}/api/owner/data`);
             const data = await ownerRes.json();
             const setTxt = (id, val) => { if (document.getElementById(id)) document.getElementById(id).innerText = val; };
-            setTxt('revenue-display', data.revenue_today);
+            const currSymbol = (data.currency || 'eur') === 'eur' ? '€' : '$';
+            setTxt('revenue-display', `${currSymbol}${(data.monthly_revenue || 0).toLocaleString('it-IT', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`);
             setTxt('active-members', data.active_members);
+            setTxt('active-subscriptions', data.active_subscriptions || 0);
             setTxt('staff-active', data.staff_active);
 
             const feed = document.getElementById('activity-feed');
@@ -2757,11 +2767,10 @@ function scrollToSlide(index) {
 }
 
 function updateCarouselDots(activeIndex) {
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 10; i++) {
         const dot = document.getElementById(`carousel-dot-${i}`);
-        if (dot) {
-            dot.className = `w-2 h-2 rounded-full transition ${i === activeIndex ? 'bg-white/60' : 'bg-white/20'}`;
-        }
+        if (!dot) break;
+        dot.className = `w-2 h-2 rounded-full transition ${i === activeIndex ? 'bg-white/60' : 'bg-white/20'}`;
     }
 }
 
@@ -5033,6 +5042,13 @@ window.saveProfile = async () => {
         if (!res.ok) throw new Error("Failed to update");
 
         showToast("Profilo aggiornato con successo!", "success");
+
+        // Update display name on dashboard immediately
+        const displayNameEl = document.getElementById('client-display-name');
+        const welcomeNameEl = document.getElementById('client-welcome-name');
+        if (displayNameEl) displayNameEl.textContent = name;
+        if (welcomeNameEl) welcomeNameEl.textContent = name;
+        localStorage.setItem('username', name);
 
         // Clear password field
         document.getElementById('profile-password').value = '';
@@ -8541,9 +8557,22 @@ window.openChatModal = async function(otherUserId, otherUserName, profilePicture
     await loadChatMessages();
 };
 
-// Client chat modal - always opens conversations list
+// Client chat modal - always opens conversations list (navbar button)
 window.openClientChatModal = async function() {
     window.openConversationsModal();
+};
+
+// Open direct chat with assigned trainer (trainer card button)
+window.openTrainerDirectChat = function() {
+    const trainerId = window.selectedTrainerId;
+    const trainerName = window.currentTrainerData?.name || document.getElementById('trainer-name')?.textContent;
+    const trainerPic = window.currentTrainerData?.profile_picture || null;
+
+    if (trainerId && trainerName && window.openChatModal) {
+        window.openChatModal(trainerId, trainerName, trainerPic);
+    } else {
+        window.openConversationsModal();
+    }
 };
 
 window.closeChatModal = function() {

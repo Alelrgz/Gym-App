@@ -549,6 +549,53 @@ body {
     transform: rotate(180deg);
 }
 
+/* Trainer card expand/collapse */
+/* Trainer card avatar animation */
+.trainer-avatar-box {
+    transition: width 0.3s ease, height 0.3s ease;
+}
+.trainer-avatar-box.avatar-expanded {
+    width: 3.5rem;
+    height: 3.5rem;
+}
+.trainer-avatar-box.avatar-expanded img {
+    width: 100%;
+    height: 100%;
+}
+
+#trainer-expand-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease-out, opacity 0.25s ease-out;
+    opacity: 0;
+}
+#trainer-expand-content.expanded {
+    max-height: 800px;
+    opacity: 1;
+}
+#trainer-chevron {
+    transition: transform 0.3s ease;
+}
+#trainer-chevron.rotate-180 {
+    transform: rotate(180deg);
+}
+#nutritionist-expand-content {
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.35s ease-out, opacity 0.25s ease-out;
+    opacity: 0;
+}
+#nutritionist-expand-content.expanded {
+    max-height: 800px;
+    opacity: 1;
+}
+#nutritionist-chevron {
+    transition: transform 0.3s ease;
+}
+#nutritionist-chevron.rotate-180 {
+    transform: rotate(180deg);
+}
+
 @keyframes slideUp {
     from {
         transform: translateY(20px);
@@ -914,7 +961,7 @@ body:has(.staff-layout) > nav {
 
 /* SVG logo image */
 .staff-logo-img {
-    height: 28px;
+    height: 36px;
     width: auto;
 }
 
@@ -924,11 +971,11 @@ body:has(.staff-layout) > nav {
 
 /* Role label (Staff / Trainer / Owner) */
 .staff-role-label {
-    font-size: 0.65rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: rgba(255, 255, 255, 0.35);
+    font-size: 1rem;
+    font-weight: 500;
+    text-transform: capitalize;
+    letter-spacing: 0;
+    color: rgba(255, 255, 255, 0.5);
     background: rgba(255, 255, 255, 0.06);
     padding: 0.2rem 0.5rem;
     border-radius: 4px;
@@ -1445,26 +1492,22 @@ body:has(.staff-layout) > nav {
     left: 0;
     right: 0;
     z-index: 100;
-    height: 56px;
-    background: rgba(0, 0, 0, 0.85);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border-bottom: 1px solid var(--glass-border-1);
-    padding: 0 1rem;
-    align-items: center;
+    background: transparent;
+    padding: calc(1.5rem + env(safe-area-inset-top, 0px)) 1.25rem 0.75rem;
+    align-items: flex-end;
     justify-content: space-between;
 }
 
 .staff-mobile-header-actions {
     display: flex;
     align-items: center;
-    gap: 0.25rem;
+    gap: 0.5rem;
 }
 
 .staff-mobile-header-logo {
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: baseline;
     gap: 0.15rem;
 }
 
@@ -1472,11 +1515,17 @@ body:has(.staff-layout) > nav {
     position: relative;
     background: none;
     border: none;
-    color: rgba(255, 255, 255, 0.7);
+    color: rgba(255, 255, 255, 0.6);
     cursor: pointer;
     padding: 0.5rem;
     border-radius: var(--radius-md);
     transition: all var(--transition-fast);
+}
+
+.staff-mobile-msg-btn i,
+.staff-mobile-msg-btn svg {
+    width: 24px;
+    height: 24px;
 }
 
 .staff-mobile-msg-btn:hover {
@@ -1670,7 +1719,7 @@ body:has(.staff-layout) > nav {
     }
 
     .staff-stats-bar {
-        border-radius: var(--radius-md);
+        border-radius: var(--radius-xl);
     }
 
     .staff-stat-value {
@@ -2067,11 +2116,32 @@ tr.workout-expand-tr td {
     }
 
     .trainer-main-new {
-        padding: 64px 0 72px;
+        padding: 80px 0 72px;
         max-height: none;
         max-width: 100vw;
         overflow-x: hidden;
         overflow-y: visible;
+    }
+
+    /* Stats bar full width with equal columns */
+    .trainer-layout .staff-stats-bar {
+        width: 100%;
+        padding: 0.6rem 0;
+        gap: 0;
+    }
+    .trainer-layout .staff-stat-item {
+        flex: 1;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 0.2rem;
+        padding: 0.5rem 0.25rem;
+    }
+    .trainer-layout .staff-stat-value {
+        font-size: 1.35rem;
+    }
+    .trainer-layout .staff-stat-label {
+        font-size: 0.8rem;
     }
 
     /* Trainer sections: override Tailwind padding, prevent overflow */
@@ -2134,12 +2204,7 @@ tr.workout-expand-tr td {
     }
 
     .trainer-dual-search {
-        grid-template-columns: 1fr;
-    }
-
-    /* Utenti: hide appointment search on mobile (integrated in Agenda tab) */
-    .trainer-dual-search .staff-search-bar:last-child {
-        display: none;
+        display: none !important;
     }
 
     /* Fix broken max-heights on mobile */
@@ -2160,10 +2225,201 @@ tr.workout-expand-tr td {
     }
 }
 
+/* ============ TRAINER MOBILE HOMEPAGE (FIGMA DESIGN) ============ */
+
+/* Trainer mobile-only utility (no !important so inline style="display:none" can override until JS removes it) */
+.trainer-mobile-only { display: none; }
+
+@media (max-width: 1024px) {
+    .trainer-mobile-only { display: block; }
+}
+
+/* --- Latest Message Card --- */
+.trainer-msg-card {
+    display: flex;
+    align-items: stretch;
+    gap: 0.75rem;
+    background: var(--glass-bg-2);
+    border: 1px solid var(--glass-border-1);
+    border-radius: var(--radius-xl);
+    padding: 1.1rem 1.25rem;
+    cursor: pointer;
+    transition: background var(--transition-fast);
+}
+.trainer-msg-card::before {
+    content: '';
+    width: 3px;
+    border-radius: 3px;
+    background: var(--primary);
+    flex-shrink: 0;
+}
+.trainer-msg-card:active {
+    background: var(--glass-bg-3);
+}
+.trainer-msg-card-content {
+    flex: 1;
+    min-width: 0;
+}
+.trainer-msg-card-name {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: white;
+    margin-bottom: 0.2rem;
+}
+.trainer-msg-card-preview {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.45);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.trainer-msg-card-attachment {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.75rem;
+    color: rgba(255, 255, 255, 0.4);
+    margin-top: 0.4rem;
+}
+
+/* --- Dashboard Calendar Strip --- */
+.trainer-cal-day {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.15rem;
+    cursor: pointer;
+    padding: 0.25rem 0;
+    transition: opacity 0.15s;
+}
+.trainer-cal-dayname {
+    font-size: 0.6rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.4);
+    letter-spacing: 0.04em;
+}
+.trainer-cal-daynum {
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.5);
+    border-radius: 50%;
+    transition: all 0.2s;
+}
+.trainer-cal-daynum--active {
+    border: 2px solid var(--primary);
+    color: white;
+    font-weight: 700;
+}
+.trainer-cal-dot {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: var(--primary);
+}
+
+/* --- Dashboard Schedule Items --- */
+.trainer-schedule-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+}
+.trainer-schedule-time {
+    flex-shrink: 0;
+    background: rgba(249, 115, 22, 0.15);
+    color: var(--primary);
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.35rem 0.65rem;
+    border-radius: var(--radius-md);
+    min-width: 52px;
+    text-align: center;
+}
+.trainer-schedule-title {
+    font-size: 0.85rem;
+    color: rgba(255, 255, 255, 0.7);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- Nuovo PR Card --- */
+.trainer-pr-banner {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--glass-bg-2);
+    border: 1px solid var(--glass-border-1);
+    border-radius: var(--radius-xl);
+    padding: 1rem 1.25rem;
+}
+.trainer-pr-icon {
+    font-size: 2rem;
+    flex-shrink: 0;
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(249, 115, 22, 0.1);
+    border-radius: var(--radius-lg);
+}
+.trainer-pr-content {
+    flex: 1;
+    min-width: 0;
+}
+.trainer-pr-title {
+    font-size: 0.9rem;
+    font-weight: 800;
+    color: white;
+    margin-bottom: 0.1rem;
+}
+.trainer-pr-desc {
+    font-size: 0.8rem;
+    color: rgba(255, 255, 255, 0.5);
+    line-height: 1.4;
+}
+.trainer-pr-desc strong, .trainer-pr-desc b {
+    color: white;
+    font-weight: 700;
+}
+
+/* --- Mobile Client List Overrides --- */
+@media (max-width: 1024px) {
+    #trainer-clients-mobile-list {
+        flex-direction: column;
+    }
+    #trainer-clients-mobile-list .staff-mobile-card {
+        padding: 0.65rem 0.75rem;
+        border: none;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        border-radius: 0;
+        background: transparent;
+    }
+    #trainer-clients-mobile-list .staff-mobile-card:last-child {
+        border-bottom: none;
+    }
+    #trainer-clients-mobile-list .staff-mobile-card-avatar {
+        width: 44px;
+        height: 44px;
+        font-size: 0.9rem;
+        background: rgba(255, 255, 255, 0.12);
+    }
+    /* Hide chevron arrow and secondary info on mobile homepage */
+    #trainer-clients-mobile-list .staff-mobile-card > svg {
+        display: none;
+    }
+}
+
 /* ============ TRAINER SMALL SCREEN REFINEMENTS ============ */
 @media (max-width: 640px) {
     .trainer-main-new {
-        padding: 56px 0 64px;
+        padding: 80px 0 64px;
     }
 
     .trainer-layout .trainer-section {
@@ -2183,14 +2439,22 @@ tr.workout-expand-tr td {
 
     /* Smaller stats bar */
     .trainer-layout .staff-stats-bar {
-        padding: 0.5rem 0.75rem;
-        gap: 0.75rem;
+        padding: 0.6rem 0;
+        gap: 0;
+    }
+    .trainer-layout .staff-stat-item {
+        flex: 1;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 0.2rem;
+        padding: 0.5rem 0.25rem;
     }
     .trainer-layout .staff-stat-value {
-        font-size: 1rem;
+        font-size: 1.35rem;
     }
     .trainer-layout .staff-stat-label {
-        font-size: 0.65rem;
+        font-size: 0.8rem;
     }
 
     /* Compact panel tabs */
@@ -2260,7 +2524,7 @@ body:has(.nutritionist-layout) {
 
 /* Nutritionist sections: remove max-width constraint when inside layout */
 .nutritionist-layout .nutritionist-section {
-    max-width: 1400px;
+    max-width: 100%;
 }
 
 /* ============ NUTRITIONIST MOBILE RESPONSIVE ============ */

@@ -132,6 +132,7 @@ async def get_version():
 # Mount static and templates
 app.mount("/static", StaticFiles(directory="static"), name="static")
 templates = Jinja2Templates(directory="templates")
+templates.env.auto_reload = True
 
 # --- ROUTES DEFINED DIRECTLY ON APP ---
 # (Removed - now using gym_assignment_router included directly)
@@ -572,6 +573,18 @@ def run_migrations(engine):
                         logger.info(f"Added column {col_name} to client_exercise_log table")
                     except Exception as e:
                         logger.debug(f"Column {col_name} may already exist: {e}")
+
+    # Add alternative_index to weekly_meal_plan table
+    if 'weekly_meal_plan' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('weekly_meal_plan')]
+        if 'alternative_index' not in columns:
+            with engine.connect() as conn:
+                try:
+                    conn.execute(text("ALTER TABLE weekly_meal_plan ADD COLUMN alternative_index INTEGER DEFAULT 0"))
+                    conn.commit()
+                    logger.info("Added column alternative_index to weekly_meal_plan table")
+                except Exception as e:
+                    logger.debug(f"Column alternative_index may already exist: {e}")
 
 def background_trigger_checker():
     """Background thread that periodically checks for automated message triggers."""

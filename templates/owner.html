@@ -754,10 +754,10 @@
                 <div class="absolute inset-0 bg-gradient-to-br from-green-500/10 to-transparent"></div>
                 <div class="relative z-10">
                     <p class="text-xs text-gray-400 uppercase tracking-wider mb-1">Ricavi Mensili</p>
-                    <h1 class="text-4xl font-black text-green-400 mb-4" id="revenue-display">$0</h1>
+                    <h1 class="text-4xl font-black text-green-400 mb-4" id="revenue-display">€0</h1>
                     <div class="space-y-2 text-sm">
                         <div class="flex justify-between">
-                            <span class="text-gray-400">Abbonamenti</span>
+                            <span class="text-gray-400">Abbonamenti Attivi</span>
                             <span class="font-bold" id="active-subscriptions">0</span>
                         </div>
                         <div class="flex justify-between">
@@ -1445,7 +1445,7 @@ function displayPlans(plans) {
     `).join('');
 }
 
-// Update revenue display
+// Update revenue display from subscription plans data
 function updateRevenue(plans) {
     const revenueEl = document.getElementById('revenue-display');
     const subsEl = document.getElementById('active-subscriptions');
@@ -1454,7 +1454,7 @@ function updateRevenue(plans) {
     const totalMRR = plans.reduce((sum, plan) => sum + (plan.monthly_revenue || 0), 0);
     const totalSubs = plans.reduce((sum, plan) => sum + (plan.active_subscriptions || 0), 0);
 
-    revenueEl.textContent = `€${totalMRR.toFixed(0)}`;
+    revenueEl.textContent = `€${totalMRR.toLocaleString('it-IT', {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
     subsEl.textContent = totalSubs;
 }
 
@@ -3487,10 +3487,10 @@ function displayCertificatesOverview(clients) {
     }
 
     const statusConfig = {
-        valid: { icon: '✓', bg: 'bg-green-500/20', border: 'border-green-500/30', text: 'text-green-400', label: 'Valido' },
-        expiring: { icon: 'alert-triangle', bg: 'bg-yellow-500/20', border: 'border-yellow-500/30', text: 'text-yellow-400', label: 'In Scadenza' },
-        expired: { icon: '✗', bg: 'bg-red-500/20', border: 'border-red-500/30', text: 'text-red-400', label: 'Scaduto' },
-        missing: { icon: '—', bg: 'bg-gray-500/20', border: 'border-gray-500/30', text: 'text-gray-400', label: 'Mancante' }
+        valid: { icon: '&#10003;', bg: 'bg-green-500/20', border: 'border-green-500/30', text: 'text-green-400', label: 'Valido' },
+        expiring: { icon: '&#9888;', bg: 'bg-yellow-500/20', border: 'border-yellow-500/30', text: 'text-yellow-400', label: 'In Scadenza' },
+        expired: { icon: '&#10007;', bg: 'bg-red-500/20', border: 'border-red-500/30', text: 'text-red-400', label: 'Scaduto' },
+        missing: { icon: '&mdash;', bg: 'bg-gray-500/20', border: 'border-gray-500/30', text: 'text-gray-400', label: 'Mancante' }
     };
 
     container.innerHTML = clients.map(c => {
