@@ -365,6 +365,42 @@
     </div>
     {% endcall %}
 
+    <!-- Turnstile QR Scanner Settings -->
+    {% call card(classes="p-4 mb-5") %}
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Tornello QR Scanner</h3>
+        <i data-lucide="scan-line" class="w-4 h-4 text-emerald-400"></i>
+    </div>
+
+    <div class="space-y-4">
+        <div>
+            <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Durata Apertura Cancello (secondi)</label>
+            <input type="number" id="turnstile-gate-input" min="2" max="15" value="5"
+                class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/50 transition">
+        </div>
+
+        <button onclick="saveTurnstileSettings()"
+            class="w-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 py-2.5 rounded-xl font-bold transition text-sm">
+            Salva Impostazioni Tornello
+        </button>
+    </div>
+
+    <!-- Pi Setup Command -->
+    <div class="mt-5 pt-4 border-t border-white/10">
+        <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Comando Setup Raspberry Pi</label>
+        <p class="text-xs text-gray-500 mb-2">Esegui questo comando sul Raspberry Pi per installare automaticamente lo scanner QR del tornello.</p>
+        <div class="relative">
+            <textarea id="pi-setup-command" readonly rows="3"
+                class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-emerald-300 font-mono opacity-80 resize-none"
+                >Genera prima una chiave API dispositivo nella sezione sopra</textarea>
+            <button onclick="copyPiSetupCommand()" title="Copia"
+                class="absolute top-2 right-2 px-2 py-1 bg-white/10 hover:bg-white/20 rounded-lg transition">
+                <i data-lucide="clipboard" class="w-3.5 h-3.5 text-gray-400"></i>
+            </button>
+        </div>
+    </div>
+    {% endcall %}
+
     <!-- Client Import Card -->
     {% call card(classes="p-4 mb-5") %}
     <div class="flex items-center justify-between mb-3">
@@ -3661,6 +3697,7 @@ async function generateDeviceKey() {
         if (!res.ok) throw new Error(data.detail || 'Failed');
 
         document.getElementById('device-api-key-display').value = data.device_api_key;
+        updatePiSetupCommand(data.device_api_key);
         showToast('Nuova chiave dispositivo generata!');
     } catch (err) {
         alert('Errore: ' + err.message);
@@ -3672,6 +3709,61 @@ function copyDeviceKey() {
     if (key === 'Non ancora generata') { alert('Genera prima una chiave'); return; }
     navigator.clipboard.writeText(key);
     showToast('Chiave dispositivo copiata!');
+}
+
+// ========== TURNSTILE QR SCANNER SETTINGS ==========
+
+async function loadTurnstileSettings() {
+    try {
+        const res = await fetch('/api/owner/shower-settings', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const gateEl = document.getElementById('turnstile-gate-input');
+        if (gateEl) gateEl.value = data.turnstile_gate_seconds || 5;
+
+        // Build the pi setup command
+        updatePiSetupCommand(data.device_api_key);
+    } catch (err) {
+        console.error('Error loading turnstile settings:', err);
+    }
+}
+
+function updatePiSetupCommand(deviceKey) {
+    const cmdEl = document.getElementById('pi-setup-command');
+    if (!cmdEl) return;
+    if (!deviceKey) {
+        cmdEl.value = 'Genera prima una chiave API dispositivo nella sezione sopra';
+        return;
+    }
+    const serverUrl = window.location.origin;
+    cmdEl.value = `curl -sSL ${serverUrl}/api/device/pi-setup | bash -s -- --server ${serverUrl} --key ${deviceKey}`;
+}
+
+async function saveTurnstileSettings() {
+    const gate = parseInt(document.getElementById('turnstile-gate-input').value);
+    if (isNaN(gate) || gate < 2 || gate > 15) { alert('La durata deve essere tra 2-15 secondi'); return; }
+
+    try {
+        const res = await fetch('/api/owner/shower-settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ turnstile_gate_seconds: gate })
+        });
+
+        if (!res.ok) throw new Error('Impossibile salvare');
+        showToast('Impostazioni tornello salvate!');
+    } catch (err) {
+        alert('Errore: ' + err.message);
+    }
+}
+
+function copyPiSetupCommand() {
+    const cmd = document.getElementById('pi-setup-command').value;
+    if (cmd.startsWith('Genera prima')) { alert('Genera prima una chiave API dispositivo'); return; }
+    navigator.clipboard.writeText(cmd);
+    showToast('Comando Pi copiato!');
 }
 
 // ========== CLIENT CSV IMPORT ==========
@@ -4175,6 +4267,7 @@ if (currentMode === 'settings') {
     // Load terminal status after a short delay so Connect status is resolved first
     setTimeout(loadTerminalStatus, 1000);
     loadShowerSettings();
+    loadTurnstileSettings();
 } else if (currentMode === 'crm') {
     loadPipeline();
     loadRetentionAnalytics();

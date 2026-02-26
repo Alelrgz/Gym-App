@@ -57,6 +57,9 @@ class UserORM(Base):
     shower_daily_limit = Column(Integer, nullable=True)  # Max showers per member per day
     device_api_key = Column(String, nullable=True, unique=True, index=True)  # UUID for ESP32 device auth
 
+    # Turnstile/QR system settings (for owners)
+    turnstile_gate_seconds = Column(Integer, nullable=True)  # Gate open duration in seconds (default 5)
+
 # --- EXERCISE & WORKOUT LIBRARY (Global + Personal) ---
 
 class ExerciseORM(Base):

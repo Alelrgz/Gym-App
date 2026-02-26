@@ -87,6 +87,24 @@ async def delete_subscription_plan(
     return service.delete_plan(plan_id, user.id)
 
 
+# --- STAFF ENDPOINT (view plans for their gym) ---
+
+@router.get("/api/staff/subscription-plans")
+async def get_staff_plans(
+    user = Depends(get_current_user),
+    service: SubscriptionService = Depends(get_subscription_service)
+):
+    """Get subscription plans for the staff member's gym."""
+    if user.role == "owner":
+        gym_id = user.id
+    elif user.role in ("staff", "trainer") and user.gym_owner_id:
+        gym_id = user.gym_owner_id
+    else:
+        raise HTTPException(status_code=403, detail="Staff or owner access required")
+
+    return service.get_gym_plans(gym_id, include_inactive=False)
+
+
 # --- PLAN OFFERS (Promotional Discounts) ---
 
 @router.post("/api/owner/offers")

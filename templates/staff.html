@@ -840,16 +840,11 @@
             <!-- Payment Method -->
             <div id="payment-method-section">
                 <p class="text-xs text-gray-400 mb-3">Seleziona metodo di pagamento:</p>
-                <div id="payment-grid" class="grid grid-cols-3 gap-3 mb-4">
+                <div id="payment-grid" class="grid grid-cols-2 gap-3 mb-4">
                     <button onclick="selectPaymentMethod('cash')" id="pay-cash-btn"
                         class="p-4 rounded-xl border-2 border-white/20 hover:border-green-500/50 transition text-center">
                         <i data-lucide="banknote" class="w-6 h-6 block mb-1 mx-auto stroke-current"></i>
                         <span class="text-sm font-semibold text-white">Contanti</span>
-                    </button>
-                    <button onclick="selectPaymentMethod('card')" id="pay-card-btn"
-                        class="p-4 rounded-xl border-2 border-white/20 hover:border-blue-500/50 transition text-center">
-                        <i data-lucide="credit-card" class="w-6 h-6 block mb-1"></i>
-                        <span class="text-sm font-semibold text-white">Carta</span>
                     </button>
                     <button onclick="selectPaymentMethod('terminal')" id="pay-terminal-btn"
                         class="p-4 rounded-xl border-2 border-white/20 hover:border-orange-500/50 transition text-center">
@@ -936,28 +931,7 @@ let allTrainers = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadStaffData();
-    checkTerminalAvailability();
 });
-
-async function checkTerminalAvailability() {
-    try {
-        const res = await fetch('/api/terminal/readers', { credentials: 'include' });
-        if (res.ok) {
-            const data = await res.json();
-            if (!data.readers || data.readers.length === 0) {
-                // No reader configured — hide POS button and keep 2-column grid
-                document.getElementById('pay-terminal-btn')?.classList.add('hidden');
-                document.getElementById('payment-grid')?.classList.remove('grid-cols-3');
-                document.getElementById('payment-grid')?.classList.add('grid-cols-2');
-            }
-        }
-    } catch (e) {
-        // Terminal not available — hide POS button
-        document.getElementById('pay-terminal-btn')?.classList.add('hidden');
-        document.getElementById('payment-grid')?.classList.remove('grid-cols-3');
-        document.getElementById('payment-grid')?.classList.add('grid-cols-2');
-    }
-}
 
 async function loadStaffData() {
     try {
@@ -2288,8 +2262,19 @@ async function loadWaiverTemplate() {
     }
 }
 
-function loadOnboardingPlans() {
+function formatCurrencySymbol(code) {
+    if (!code) return '€';
+    const symbols = { eur: '€', usd: '$', gbp: '£' };
+    return symbols[code.toLowerCase()] || code.toUpperCase() + ' ';
+}
+
+async function loadOnboardingPlans() {
     const listEl = document.getElementById('onboard-plans-list');
+
+    // Fetch plans if not loaded yet
+    if (availablePlans.length === 0) {
+        await loadSubscriptionPlans();
+    }
 
     if (availablePlans.length === 0) {
         listEl.innerHTML = `
@@ -2303,13 +2288,13 @@ function loadOnboardingPlans() {
 
     listEl.innerHTML = availablePlans.map(plan => `
         <div class="glass-card p-4 cursor-pointer border-2 transition ${onboardingState.data.planId === plan.id ? 'border-primary bg-primary/10' : 'border-transparent hover:border-white/20'}"
-            onclick="selectOnboardPlan('${plan.id}', '${plan.name}', ${plan.price}, '${plan.currency || '€'}')">
+            onclick="selectOnboardPlan('${plan.id}', '${plan.name}', ${plan.price}, '${formatCurrencySymbol(plan.currency)}')">
             <div class="flex justify-between items-start">
                 <div>
                     <h4 class="font-bold text-white">${plan.name}</h4>
                     <p class="text-xs text-gray-400">${plan.description || 'Membership plan'}</p>
                 </div>
-                <span class="text-primary font-bold">${plan.currency || '€'}${plan.price}/${plan.billing_interval === 'year' ? 'yr' : 'mo'}</span>
+                <span class="text-primary font-bold">${formatCurrencySymbol(plan.currency)}${plan.price}/${plan.billing_interval === 'year' ? 'yr' : 'mo'}</span>
             </div>
         </div>
     `).join('');
@@ -2353,33 +2338,24 @@ function selectPaymentMethod(method) {
     onboardingState.data.paymentMethod = method;
 
     const cashBtn = document.getElementById('pay-cash-btn');
-    const cardBtn = document.getElementById('pay-card-btn');
     const terminalBtn = document.getElementById('pay-terminal-btn');
-    const cardForm = document.getElementById('card-payment-form');
     const terminalForm = document.getElementById('terminal-payment-form');
 
     // Reset all button styles
     cashBtn.classList.remove('border-green-500', 'bg-green-500/10');
-    cardBtn.classList.remove('border-blue-500', 'bg-blue-500/10');
     terminalBtn?.classList.remove('border-orange-500', 'bg-orange-500/10');
 
     // Update selected button style
     if (method === 'cash') {
         cashBtn.classList.add('border-green-500', 'bg-green-500/10');
-    } else if (method === 'card') {
-        cardBtn.classList.add('border-blue-500', 'bg-blue-500/10');
     } else if (method === 'terminal') {
         terminalBtn?.classList.add('border-orange-500', 'bg-orange-500/10');
     }
 
     // Show/hide payment forms
-    cardForm.classList.add('hidden');
     terminalForm?.classList.add('hidden');
 
-    if (method === 'card') {
-        cardForm.classList.remove('hidden');
-        initStripeElements();
-    } else if (method === 'terminal') {
+    if (method === 'terminal') {
         terminalForm?.classList.remove('hidden');
         // Reset terminal form to initial state
         document.getElementById('pos-initial').classList.remove('hidden');

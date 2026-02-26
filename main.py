@@ -406,6 +406,7 @@ def run_migrations(engine):
         ('shower_timer_minutes', 'INTEGER'),
         ('shower_daily_limit', 'INTEGER'),
         ('device_api_key', 'TEXT'),
+        ('turnstile_gate_seconds', 'INTEGER'),
     ])
 
     # Add health_score to client_daily_diet_summary
