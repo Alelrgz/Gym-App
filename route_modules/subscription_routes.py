@@ -28,7 +28,7 @@ async def create_subscription_plan(
     """Create a new subscription plan (owner only)."""
     try:
         logger.info(f"CREATE PLAN: Request received from user {user.username} (role: {user.role})")
-        logger.info(f"CREATE PLAN: Plan data - name: {plan_data.name}, price: {plan_data.price}")
+        logger.info(f"CREATE PLAN: Plan data - name: {plan_data.name}, billing_type: {plan_data.billing_type}, annual_price: {plan_data.annual_price}, monthly_price: {plan_data.monthly_price}, installments: {plan_data.installment_count}")
 
         if user.role != "owner":
             logger.warning(f"CREATE PLAN: Access denied - user {user.username} is not an owner")
@@ -85,6 +85,24 @@ async def delete_subscription_plan(
         raise HTTPException(status_code=403, detail="Only gym owners can delete subscription plans")
 
     return service.delete_plan(plan_id, user.id)
+
+
+# --- STAFF ENDPOINT (view plans for their gym) ---
+
+@router.get("/api/staff/subscription-plans")
+async def get_staff_plans(
+    user = Depends(get_current_user),
+    service: SubscriptionService = Depends(get_subscription_service)
+):
+    """Get subscription plans for the staff member's gym."""
+    if user.role == "owner":
+        gym_id = user.id
+    elif user.role in ("staff", "trainer") and user.gym_owner_id:
+        gym_id = user.gym_owner_id
+    else:
+        raise HTTPException(status_code=403, detail="Staff or owner access required")
+
+    return service.get_gym_plans(gym_id, include_inactive=False)
 
 
 # --- PLAN OFFERS (Promotional Discounts) ---

@@ -194,6 +194,11 @@ app.include_router(crm_router)
 from route_modules.shower_routes import router as shower_router
 app.include_router(shower_router)
 
+# Include client import routes
+from route_modules.client_import_routes import router as client_import_router
+app.include_router(client_import_router)
+
+# Include terminal routes
 from route_modules.terminal_routes import router as terminal_router
 app.include_router(terminal_router)
 
@@ -365,6 +370,16 @@ def run_migrations(engine):
         ("gems", "INTEGER DEFAULT 0"),
         ("nutritionist_id", "TEXT"),
         ("weight_goal", "DOUBLE PRECISION"),
+        ("height_cm", "DOUBLE PRECISION"),
+        ("gender", "TEXT"),
+        ("activity_level", "TEXT"),
+        ("allergies", "TEXT"),
+        ("medical_conditions", "TEXT"),
+        ("supplements", "TEXT"),
+        ("sleep_hours", "DOUBLE PRECISION"),
+        ("meal_frequency", "TEXT"),
+        ("food_preferences", "TEXT"),
+        ("occupation_type", "TEXT"),
         ("current_split_id", "TEXT"),
         ("split_expiry_date", "TEXT"),
     ])
@@ -391,6 +406,7 @@ def run_migrations(engine):
         ('shower_timer_minutes', 'INTEGER'),
         ('shower_daily_limit', 'INTEGER'),
         ('device_api_key', 'TEXT'),
+        ('turnstile_gate_seconds', 'INTEGER'),
     ])
 
     # Add health_score to client_daily_diet_summary
@@ -446,6 +462,24 @@ def run_migrations(engine):
                     logger.info("Added column stripe_coupon_id to plan_offers table")
                 except Exception as e:
                     logger.debug(f"Column stripe_coupon_id may already exist: {e}")
+
+    # Add installment billing columns to subscription_plans table
+    if 'subscription_plans' in inspector.get_table_names():
+        columns = [col['name'] for col in inspector.get_columns('subscription_plans')]
+        installment_cols = [
+            ('annual_price', 'REAL'),
+            ('installment_count', 'INTEGER DEFAULT 1'),
+            ('billing_type', "VARCHAR DEFAULT 'annual'"),
+        ]
+        for col_name, col_type in installment_cols:
+            if col_name not in columns:
+                with engine.connect() as conn:
+                    try:
+                        conn.execute(text(f"ALTER TABLE subscription_plans ADD COLUMN {col_name} {col_type}"))
+                        conn.commit()
+                        logger.info(f"Added column {col_name} to subscription_plans table")
+                    except Exception as e:
+                        logger.debug(f"Column {col_name} may already exist: {e}")
 
     # Add stripe_payment_intent_id to client_subscriptions table
     if 'client_subscriptions' in inspector.get_table_names():

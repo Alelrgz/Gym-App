@@ -352,13 +352,13 @@
     {% call card(classes="p-4 mb-5") %}
     <div class="flex items-center justify-between mb-3">
         <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Tornello / Kiosk</h3>
-        <i data-lucide="scan" class="w-4 h-4 text-purple-400"></i>
+        <i data-lucide="scan-line" class="w-4 h-4 text-emerald-400"></i>
     </div>
 
     <p class="text-xs text-gray-500 mb-4">Configura il Raspberry Pi all'ingresso della palestra per la scansione QR e l'apertura del tornello.</p>
 
-    <!-- Device API Key -->
-    <div class="space-y-3">
+    <div class="space-y-4">
+        <!-- Device API Key -->
         <div>
             <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Chiave API Dispositivo</label>
             <div class="flex gap-2">
@@ -371,24 +371,110 @@
             </div>
         </div>
 
-        <!-- Setup Command -->
-        <div id="setup-command-section" class="hidden">
-            <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Comando Setup (per l'elettricista)</label>
-            <div class="flex gap-2">
-                <input type="text" id="setup-command-display" readonly
-                    class="flex-1 bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-purple-300 font-mono opacity-80">
-                <button onclick="copySetupCommand()" title="Copia comando" class="px-3 py-2 bg-purple-500/20 hover:bg-purple-500/30 rounded-lg transition">
-                    <i data-lucide="clipboard" class="w-4 h-4 text-purple-400"></i>
-                </button>
-            </div>
-            <p class="text-xs text-gray-500 mt-1">L'elettricista esegue questo comando sul Raspberry Pi via SSH.</p>
+        <!-- Gate Duration -->
+        <div>
+            <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Durata Apertura Cancello (secondi)</label>
+            <input type="number" id="turnstile-gate-input" min="2" max="15" value="5"
+                class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-emerald-500/50 transition">
         </div>
 
-        <button onclick="generateDeviceKey()"
-            class="w-full bg-purple-500/20 hover:bg-purple-500/30 text-purple-400 py-2.5 rounded-xl font-bold transition text-sm">
-            Genera Nuova Chiave
-        </button>
+        <div class="flex gap-2">
+            <button onclick="generateDeviceKey()"
+                class="flex-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-400 py-2.5 rounded-xl font-bold transition text-sm">
+                Genera Nuova Chiave
+            </button>
+            <button onclick="saveTurnstileSettings()"
+                class="flex-1 bg-white/10 hover:bg-white/20 text-white py-2.5 rounded-xl font-bold transition text-sm">
+                Salva Impostazioni
+            </button>
+        </div>
         <p class="text-xs text-gray-500">Rigenerare la chiave disconnetterà tutti i dispositivi attualmente configurati.</p>
+    </div>
+
+    <!-- Pi Setup Command -->
+    <div class="mt-5 pt-4 border-t border-white/10">
+        <label class="text-xs text-gray-400 uppercase tracking-wider mb-2 block">Comando Setup Raspberry Pi</label>
+        <p class="text-xs text-gray-500 mb-2">L'elettricista esegue questo comando sul Raspberry Pi via SSH.</p>
+        <div class="relative">
+            <textarea id="pi-setup-command" readonly rows="3"
+                class="w-full bg-black/30 border border-white/10 rounded-lg px-3 py-2 text-xs text-emerald-300 font-mono opacity-80 resize-none"
+                >Genera prima una chiave API dispositivo</textarea>
+            <button onclick="copyPiSetupCommand()" title="Copia"
+                class="absolute top-2 right-2 px-2 py-1 bg-white/10 hover:bg-white/20 rounded-lg transition">
+                <i data-lucide="clipboard" class="w-3.5 h-3.5 text-gray-400"></i>
+            </button>
+        </div>
+    </div>
+    {% endcall %}
+
+    <!-- Client Import Card -->
+    {% call card(classes="p-4 mb-5") %}
+    <div class="flex items-center justify-between mb-3">
+        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Client Import</h3>
+        <i data-lucide="upload" class="w-4 h-4 text-orange-400"></i>
+    </div>
+
+    <p class="text-sm text-gray-400 mb-4">
+        Bulk import clients from a CSV file. Each client will receive a temporary password and must change it on first login.
+    </p>
+
+    <div class="space-y-4">
+        <!-- CSV Format Info -->
+        <div class="bg-black/20 border border-white/10 rounded-lg p-3">
+            <p class="text-xs text-gray-400 mb-1 font-semibold">Required columns (at least one):</p>
+            <p class="text-xs text-gray-500 font-mono">name, email</p>
+            <p class="text-xs text-gray-400 mt-2 mb-1 font-semibold">Optional columns:</p>
+            <p class="text-xs text-gray-500 font-mono">phone, weight, body_fat, height, gender, date_of_birth, plan</p>
+        </div>
+
+        <!-- DPA Consent Checkbox -->
+        <label class="flex items-start gap-3 cursor-pointer">
+            <input type="checkbox" id="import-dpa-consent"
+                class="mt-1 w-4 h-4 rounded accent-orange-500">
+            <span class="text-xs text-gray-400 leading-relaxed">
+                I confirm I have the right to upload this data and have obtained necessary consent from clients
+                in accordance with applicable data protection regulations (GDPR).
+            </span>
+        </label>
+
+        <!-- Upload Button -->
+        <button type="button" onclick="triggerClientImport()" id="import-clients-btn"
+            class="w-full bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 py-2.5 rounded-xl font-bold transition text-sm">
+            Upload CSV File
+        </button>
+        <input type="file" id="client-csv-input" accept=".csv" class="hidden" onchange="handleClientCsvUpload(this)">
+    </div>
+
+    <!-- Import Results (hidden by default) -->
+    <div id="import-results" class="hidden mt-4 bg-black/20 border border-white/10 rounded-lg p-4">
+        <h4 class="text-sm font-bold text-white mb-3">Import Results</h4>
+        <div class="grid grid-cols-2 gap-3 mb-3">
+            <div class="text-center p-2 bg-green-500/10 rounded-lg">
+                <p class="text-2xl font-bold text-green-400" id="import-created-count">0</p>
+                <p class="text-xs text-gray-400">Created</p>
+            </div>
+            <div class="text-center p-2 bg-yellow-500/10 rounded-lg">
+                <p class="text-2xl font-bold text-yellow-400" id="import-skipped-count">0</p>
+                <p class="text-xs text-gray-400">Skipped</p>
+            </div>
+        </div>
+
+        <!-- Error Details -->
+        <div id="import-errors-section" class="hidden">
+            <p class="text-xs text-red-400 font-semibold mb-1">Issues:</p>
+            <div id="import-errors-list" class="max-h-40 overflow-y-auto space-y-1"></div>
+        </div>
+
+        <!-- Created Clients Table -->
+        <div id="import-clients-section" class="hidden mt-3">
+            <div class="flex items-center justify-between mb-2">
+                <p class="text-xs text-green-400 font-semibold">Created Accounts:</p>
+                <button type="button" onclick="copyImportCredentials()" class="text-xs bg-white/10 hover:bg-white/20 px-2 py-1 rounded transition text-gray-300">
+                    Copy All Credentials
+                </button>
+            </div>
+            <div id="import-clients-list" class="max-h-60 overflow-y-auto space-y-1 text-xs"></div>
+        </div>
     </div>
     {% endcall %}
 
@@ -879,20 +965,68 @@
                     placeholder="Breve descrizione del piano"></textarea>
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Prezzo (€)</label>
-                    <input type="number" id="plan-price" required step="0.01" min="0"
-                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
-                        placeholder="29.99">
+            <!-- Billing type toggle -->
+            <div>
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Tipo di Fatturazione</label>
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" id="btn-billing-monthly"
+                        onclick="setBillingType('monthly')"
+                        class="px-3 py-2 rounded-lg text-sm font-semibold border transition text-center
+                               bg-black/20 border-white/10 text-gray-400 hover:border-white/30">
+                        Mensile
+                    </button>
+                    <button type="button" id="btn-billing-annual"
+                        onclick="setBillingType('annual')"
+                        class="px-3 py-2 rounded-lg text-sm font-semibold border transition text-center
+                               bg-primary/20 border-primary/50 text-primary">
+                        Annuale
+                    </button>
                 </div>
-                <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Fatturazione</label>
-                    <select id="plan-interval"
-                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition">
-                        <option value="month">Mensile</option>
-                        <option value="year">Annuale</option>
-                    </select>
+                <input type="hidden" id="plan-billing-type" value="annual">
+            </div>
+
+            <!-- Monthly price (shown for monthly) -->
+            <div id="monthly-price-section" class="hidden">
+                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Prezzo Mensile (€)</label>
+                <input type="number" id="plan-monthly-price" step="0.01" min="0"
+                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                    placeholder="49.90">
+            </div>
+
+            <!-- Annual price + installments (shown for annual) -->
+            <div id="annual-price-section">
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Prezzo Annuale (€)</label>
+                        <input type="number" id="plan-annual-price" step="0.01" min="0"
+                            class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                            placeholder="600.00" oninput="updateInstallmentPreview()">
+                    </div>
+                    <div>
+                        <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Rate</label>
+                        <select id="plan-installments"
+                            class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                            onchange="updateInstallmentPreview()">
+                            <option value="1">1 (pagamento unico)</option>
+                            <option value="2">2 rate</option>
+                            <option value="3">3 rate</option>
+                            <option value="4">4 rate</option>
+                            <option value="6">6 rate</option>
+                            <option value="12" selected>12 rate (mensile)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Installment preview -->
+                <div id="installment-preview" class="bg-purple-500/10 border border-purple-500/20 rounded-lg p-3 text-sm hidden mt-3">
+                    <div class="flex justify-between text-gray-300">
+                        <span>Importo per rata:</span>
+                        <span class="font-bold text-white" id="per-installment-amount">--</span>
+                    </div>
+                    <div class="flex justify-between text-gray-400 text-xs mt-1">
+                        <span>Frequenza pagamento:</span>
+                        <span id="payment-frequency">--</span>
+                    </div>
                 </div>
             </div>
 
@@ -1334,7 +1468,7 @@ function displayPlans(plans) {
                         <h4 class="font-bold text-sm truncate">${escapeHtml(plan.name)}</h4>
                         ${!plan.is_active ? '<span class="text-[10px] bg-red-500/20 text-red-400 px-1.5 py-0.5 rounded">Disattivo</span>' : ''}
                     </div>
-                    <p class="text-xs text-gray-400 mt-0.5">€${plan.price}/${plan.billing_interval === 'year' ? 'anno' : 'mese'} · ${plan.active_subscriptions || 0} abb.</p>
+                    <p class="text-xs text-gray-400 mt-0.5">${plan.billing_type === 'monthly' ? `€${plan.price}/mese` : `€${plan.annual_price || plan.price}/anno${plan.installment_count > 1 ? ` (${plan.installment_count} rate da €${plan.price})` : ''}`} · ${plan.active_subscriptions || 0} abb.</p>
                 </div>
                 <div class="flex gap-1 flex-shrink-0">
                     <button onclick="editPlan('${plan.id}')" class="p-1.5 rounded hover:bg-white/10 transition text-gray-400 hover:text-white">
@@ -1366,6 +1500,37 @@ function updateRevenue(plans) {
     subsEl.textContent = totalSubs;
 }
 
+// Billing type toggle
+function setBillingType(type) {
+    document.getElementById('plan-billing-type').value = type;
+    const btnMonthly = document.getElementById('btn-billing-monthly');
+    const btnAnnual = document.getElementById('btn-billing-annual');
+    const monthlySection = document.getElementById('monthly-price-section');
+    const annualSection = document.getElementById('annual-price-section');
+    const monthlyInput = document.getElementById('plan-monthly-price');
+    const annualInput = document.getElementById('plan-annual-price');
+
+    // Reset both button styles first
+    const activeClass = 'bg-primary/20 border-primary/50 text-primary';
+    const inactiveClass = 'bg-black/20 border-white/10 text-gray-400 hover:border-white/30';
+
+    if (type === 'monthly') {
+        btnMonthly.className = `px-3 py-2 rounded-lg text-sm font-semibold border transition text-center ${activeClass}`;
+        btnAnnual.className = `px-3 py-2 rounded-lg text-sm font-semibold border transition text-center ${inactiveClass}`;
+        monthlySection.classList.remove('hidden');
+        annualSection.classList.add('hidden');
+        monthlyInput.required = true;
+        annualInput.required = false;
+    } else {
+        btnAnnual.className = `px-3 py-2 rounded-lg text-sm font-semibold border transition text-center ${activeClass}`;
+        btnMonthly.className = `px-3 py-2 rounded-lg text-sm font-semibold border transition text-center ${inactiveClass}`;
+        annualSection.classList.remove('hidden');
+        monthlySection.classList.add('hidden');
+        annualInput.required = true;
+        monthlyInput.required = false;
+    }
+}
+
 // Modal functions
 function openCreatePlanModal() {
     currentPlanId = null;
@@ -1373,12 +1538,38 @@ function openCreatePlanModal() {
     document.getElementById('plan-submit-btn').textContent = 'Crea Piano';
     document.getElementById('plan-form').reset();
     document.getElementById('plan-id').value = '';
+    setBillingType('annual');
     document.getElementById('plan-modal').classList.remove('hidden');
 }
 
 function closePlanModal() {
     document.getElementById('plan-modal').classList.add('hidden');
     currentPlanId = null;
+}
+
+function updateInstallmentPreview() {
+    const annualPrice = parseFloat(document.getElementById('plan-annual-price').value);
+    const installments = parseInt(document.getElementById('plan-installments').value);
+    const preview = document.getElementById('installment-preview');
+
+    if (!annualPrice || !installments) {
+        preview.classList.add('hidden');
+        return;
+    }
+
+    const perInstallment = (annualPrice / installments).toFixed(2);
+    const frequencyMap = {
+        1: 'Annuale (pagamento unico)',
+        2: 'Ogni 6 mesi',
+        3: 'Ogni 4 mesi',
+        4: 'Trimestrale',
+        6: 'Bimestrale',
+        12: 'Mensile'
+    };
+
+    document.getElementById('per-installment-amount').textContent = `€${perInstallment}`;
+    document.getElementById('payment-frequency').textContent = frequencyMap[installments];
+    preview.classList.remove('hidden');
 }
 
 async function editPlan(planId) {
@@ -1397,8 +1588,17 @@ async function editPlan(planId) {
         document.getElementById('plan-submit-btn').textContent = 'Aggiorna Piano';
         document.getElementById('plan-name').value = plan.name;
         document.getElementById('plan-description').value = plan.description || '';
-        document.getElementById('plan-price').value = plan.price;
-        document.getElementById('plan-interval').value = plan.billing_interval;
+
+        const bt = plan.billing_type || 'annual';
+        setBillingType(bt);
+        if (bt === 'monthly') {
+            document.getElementById('plan-monthly-price').value = plan.price;
+        } else {
+            document.getElementById('plan-annual-price').value = plan.annual_price || plan.price;
+            document.getElementById('plan-installments').value = plan.installment_count || 1;
+            updateInstallmentPreview();
+        }
+
         document.getElementById('plan-trial').value = plan.trial_period_days || 0;
         document.getElementById('plan-features').value = plan.features ? plan.features.join('\n') : '';
         document.getElementById('plan-modal').classList.remove('hidden');
@@ -1433,24 +1633,50 @@ async function deletePlan(planId, planName) {
 }
 
 // Handle form submission
+let planFormSubmitting = false;
 const planForm = document.getElementById('plan-form');
 if (planForm) {
     planForm.addEventListener('submit', async (e) => {
         e.preventDefault();
+        if (planFormSubmitting) return;
+        planFormSubmitting = true;
+        const submitBtn = document.getElementById('plan-submit-btn');
+        const originalText = submitBtn.textContent;
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Salvando...';
 
         const features = document.getElementById('plan-features').value
             .split('\n')
             .map(f => f.trim())
             .filter(f => f.length > 0);
 
+        const billingType = document.getElementById('plan-billing-type').value;
         const planData = {
             name: document.getElementById('plan-name').value,
             description: document.getElementById('plan-description').value,
-            price: parseFloat(document.getElementById('plan-price').value),
+            billing_type: billingType,
             features: features,
-            trial_period_days: parseInt(document.getElementById('plan-trial').value) || 0,
-            billing_interval: document.getElementById('plan-interval').value
+            trial_period_days: parseInt(document.getElementById('plan-trial').value) || 0
         };
+
+        if (billingType === 'monthly') {
+            const mp = parseFloat(document.getElementById('plan-monthly-price').value);
+            if (!mp || mp <= 0) {
+                showToast('Inserisci un prezzo mensile valido', 'error');
+                return;
+            }
+            planData.monthly_price = mp;
+        } else {
+            const ap = parseFloat(document.getElementById('plan-annual-price').value);
+            if (!ap || ap <= 0) {
+                showToast('Inserisci un prezzo annuale valido', 'error');
+                return;
+            }
+            planData.annual_price = ap;
+            planData.installment_count = parseInt(document.getElementById('plan-installments').value);
+        }
+
+        console.log('Submitting plan:', JSON.stringify(planData));
 
         try {
             const url = currentPlanId
@@ -1469,8 +1695,15 @@ if (planForm) {
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Impossibile salvare il piano');
+                const errorText = await response.text();
+                console.error('Plan save error:', response.status, errorText);
+                try {
+                    const error = JSON.parse(errorText);
+                    throw new Error(error.detail || 'Impossibile salvare il piano');
+                } catch(e) {
+                    if (e.message.includes('Impossibile')) throw e;
+                    throw new Error(`Errore server (${response.status})`);
+                }
             }
 
             showToast(currentPlanId ? 'Piano aggiornato con successo' : 'Piano creato con successo', 'success');
@@ -1479,6 +1712,10 @@ if (planForm) {
         } catch (error) {
             console.error('Error saving plan:', error);
             showToast(error.message, 'error');
+        } finally {
+            planFormSubmitting = false;
+            submitBtn.disabled = false;
+            submitBtn.textContent = originalText;
         }
     });
 }
@@ -3433,25 +3670,6 @@ async function loadShowerSettings() {
     }
 }
 
-function updateSetupCommand(key) {
-    const section = document.getElementById('setup-command-section');
-    const cmdEl = document.getElementById('setup-command-display');
-    if (!section || !cmdEl) return;
-    if (key) {
-        const server = window.location.origin;
-        cmdEl.value = `curl -sL ${server}/api/pi-setup/${key} | sudo bash`;
-        section.classList.remove('hidden');
-    } else {
-        section.classList.add('hidden');
-    }
-}
-
-function copySetupCommand() {
-    const cmd = document.getElementById('setup-command-display').value;
-    if (!cmd) return;
-    navigator.clipboard.writeText(cmd);
-    showToast('Comando setup copiato!');
-}
 
 async function saveShowerSettings() {
     const timer = parseInt(document.getElementById('shower-timer-input').value);
@@ -3487,7 +3705,7 @@ async function generateDeviceKey() {
         if (!res.ok) throw new Error(data.detail || 'Failed');
 
         document.getElementById('device-api-key-display').value = data.device_api_key;
-        updateSetupCommand(data.device_api_key);
+        updatePiSetupCommand(data.device_api_key);
         showToast('Nuova chiave dispositivo generata!');
     } catch (err) {
         alert('Errore: ' + err.message);
@@ -3499,6 +3717,194 @@ function copyDeviceKey() {
     if (key === 'Non ancora generata') { alert('Genera prima una chiave'); return; }
     navigator.clipboard.writeText(key);
     showToast('Chiave dispositivo copiata!');
+}
+
+// ========== TURNSTILE QR SCANNER SETTINGS ==========
+
+async function loadTurnstileSettings() {
+    try {
+        const res = await fetch('/api/owner/shower-settings', { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+
+        const gateEl = document.getElementById('turnstile-gate-input');
+        if (gateEl) gateEl.value = data.turnstile_gate_seconds || 5;
+
+        // Build the pi setup command
+        updatePiSetupCommand(data.device_api_key);
+    } catch (err) {
+        console.error('Error loading turnstile settings:', err);
+    }
+}
+
+function updatePiSetupCommand(deviceKey) {
+    const cmdEl = document.getElementById('pi-setup-command');
+    if (!cmdEl) return;
+    if (!deviceKey) {
+        cmdEl.value = 'Genera prima una chiave API dispositivo nella sezione sopra';
+        return;
+    }
+    const serverUrl = window.location.origin;
+    cmdEl.value = `curl -sSL ${serverUrl}/api/device/pi-setup | bash -s -- --server ${serverUrl} --key ${deviceKey}`;
+}
+
+async function saveTurnstileSettings() {
+    const gate = parseInt(document.getElementById('turnstile-gate-input').value);
+    if (isNaN(gate) || gate < 2 || gate > 15) { alert('La durata deve essere tra 2-15 secondi'); return; }
+
+    try {
+        const res = await fetch('/api/owner/shower-settings', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ turnstile_gate_seconds: gate })
+        });
+
+        if (!res.ok) throw new Error('Impossibile salvare');
+        showToast('Impostazioni tornello salvate!');
+    } catch (err) {
+        alert('Errore: ' + err.message);
+    }
+}
+
+function copyPiSetupCommand() {
+    const cmd = document.getElementById('pi-setup-command').value;
+    if (cmd.startsWith('Genera prima')) { alert('Genera prima una chiave API dispositivo'); return; }
+    navigator.clipboard.writeText(cmd);
+    showToast('Comando Pi copiato!');
+}
+
+// ========== CLIENT CSV IMPORT ==========
+
+function triggerClientImport() {
+    const consent = document.getElementById('import-dpa-consent');
+    if (!consent || !consent.checked) {
+        if (typeof showToast === 'function') showToast('You must confirm data protection consent before importing', 'error');
+        return;
+    }
+    document.getElementById('client-csv-input').click();
+}
+
+async function handleClientCsvUpload(input) {
+    if (!input.files[0]) return;
+
+    const file = input.files[0];
+    if (!file.name.toLowerCase().endsWith('.csv')) {
+        if (typeof showToast === 'function') showToast('Please select a CSV file', 'error');
+        input.value = '';
+        return;
+    }
+
+    const consent = document.getElementById('import-dpa-consent');
+    if (!consent || !consent.checked) {
+        if (typeof showToast === 'function') showToast('Consent checkbox must be checked', 'error');
+        input.value = '';
+        return;
+    }
+
+    const btn = document.getElementById('import-clients-btn');
+    const originalText = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = 'Importing...';
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+        const response = await fetch('/api/owner/import-clients', {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (!response.ok) {
+            throw new Error(data.detail || 'Import failed');
+        }
+
+        displayImportResults(data);
+
+        if (data.created > 0) {
+            if (typeof showToast === 'function') showToast(`${data.created} client(s) imported successfully!`, 'success');
+        } else {
+            if (typeof showToast === 'function') showToast('No new clients were created', 'error');
+        }
+
+    } catch (error) {
+        console.error('Client import error:', error);
+        if (typeof showToast === 'function') showToast(error.message || 'Import failed', 'error');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalText;
+        input.value = '';
+    }
+}
+
+function displayImportResults(data) {
+    const resultsDiv = document.getElementById('import-results');
+    resultsDiv.classList.remove('hidden');
+
+    document.getElementById('import-created-count').textContent = data.created || 0;
+    document.getElementById('import-skipped-count').textContent = data.skipped || 0;
+
+    const errorsSection = document.getElementById('import-errors-section');
+    const errorsList = document.getElementById('import-errors-list');
+    if (data.errors && data.errors.length > 0) {
+        errorsSection.classList.remove('hidden');
+        errorsList.innerHTML = data.errors.map(e =>
+            `<div class="text-xs text-red-300/70 bg-red-500/10 px-2 py-1 rounded">
+                Row ${e.row}: ${typeof escapeHtml === 'function' ? escapeHtml(e.reason) : e.reason}
+            </div>`
+        ).join('');
+    } else {
+        errorsSection.classList.add('hidden');
+    }
+
+    const clientsSection = document.getElementById('import-clients-section');
+    const clientsList = document.getElementById('import-clients-list');
+    if (data.created_clients && data.created_clients.length > 0) {
+        clientsSection.classList.remove('hidden');
+        clientsList.innerHTML = data.created_clients.map(c =>
+            `<div class="bg-green-500/10 px-2 py-1.5 rounded flex justify-between items-center">
+                <span class="text-gray-300">${typeof escapeHtml === 'function' ? escapeHtml(c.name) : c.name}</span>
+                <span class="text-gray-500 font-mono">${typeof escapeHtml === 'function' ? escapeHtml(c.username) : c.username} / ${typeof escapeHtml === 'function' ? escapeHtml(c.temp_password) : c.temp_password}</span>
+            </div>`
+        ).join('');
+    } else {
+        clientsSection.classList.add('hidden');
+    }
+}
+
+function copyImportCredentials() {
+    const clientsList = document.getElementById('import-clients-list');
+    if (!clientsList) return;
+
+    const rows = clientsList.querySelectorAll('div');
+    let text = 'Name\tUsername\tTemporary Password\n';
+    rows.forEach(row => {
+        const spans = row.querySelectorAll('span');
+        if (spans.length >= 2) {
+            const name = spans[0].textContent.trim();
+            const creds = spans[1].textContent.trim();
+            text += `${name}\t${creds.replace(' / ', '\t')}\n`;
+        }
+    });
+
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(text).then(() => {
+            if (typeof showToast === 'function') showToast('Credentials copied to clipboard!', 'success');
+        });
+    } else {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand('copy'); showToast('Credentials copied!', 'success'); } catch (e) {}
+        document.body.removeChild(ta);
+    }
 }
 
 // ========== FACILITY MANAGEMENT ==========
@@ -3869,6 +4275,7 @@ if (currentMode === 'settings') {
     // Load terminal status after a short delay so Connect status is resolved first
     setTimeout(loadTerminalStatus, 1000);
     loadShowerSettings();
+    loadTurnstileSettings();
 } else if (currentMode === 'crm') {
     loadPipeline();
     loadRetentionAnalytics();

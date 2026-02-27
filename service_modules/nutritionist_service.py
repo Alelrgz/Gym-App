@@ -106,6 +106,38 @@ class NutritionistService:
             if not profile:
                 raise HTTPException(status_code=404, detail="Client not found")
 
+            # Compute BMI, BMR, TDEE if data available
+            bmi = None
+            bmr = None
+            tdee = None
+            if profile.weight and profile.height_cm:
+                height_m = profile.height_cm / 100
+                bmi = round(profile.weight / (height_m ** 2), 1)
+
+                # Mifflin-St Jeor BMR
+                age = None
+                if profile.date_of_birth:
+                    try:
+                        dob = datetime.strptime(profile.date_of_birth, "%Y-%m-%d").date()
+                        age = (date.today() - dob).days // 365
+                    except Exception:
+                        pass
+
+                if age:
+                    if profile.gender == "male":
+                        bmr = round(10 * profile.weight + 6.25 * profile.height_cm - 5 * age + 5)
+                    elif profile.gender == "female":
+                        bmr = round(10 * profile.weight + 6.25 * profile.height_cm - 5 * age - 161)
+                    else:
+                        bmr = round(10 * profile.weight + 6.25 * profile.height_cm - 5 * age - 78)
+
+                    if bmr and profile.activity_level:
+                        multipliers = {
+                            "sedentary": 1.2, "light": 1.375, "moderate": 1.55,
+                            "active": 1.725, "very_active": 1.9
+                        }
+                        tdee = round(bmr * multipliers.get(profile.activity_level, 1.2))
+
             return {
                 "id": client_id,
                 "name": profile.name or (user.username if user else ""),
@@ -115,6 +147,22 @@ class NutritionistService:
                 "fat_mass": profile.fat_mass,
                 "lean_mass": profile.lean_mass,
                 "weight_goal": profile.weight_goal,
+                # Health data
+                "height_cm": profile.height_cm,
+                "gender": profile.gender,
+                "date_of_birth": profile.date_of_birth,
+                "activity_level": profile.activity_level,
+                "allergies": profile.allergies,
+                "medical_conditions": profile.medical_conditions,
+                "supplements": profile.supplements,
+                "sleep_hours": profile.sleep_hours,
+                "meal_frequency": profile.meal_frequency,
+                "food_preferences": profile.food_preferences,
+                "occupation_type": profile.occupation_type,
+                # Computed
+                "bmi": bmi,
+                "bmr": bmr,
+                "tdee": tdee,
                 "diet": {
                     "fitness_goal": diet.fitness_goal if diet else "maintain",
                     "calories_target": diet.calories_target if diet else 2000,
@@ -189,6 +237,36 @@ class NutritionistService:
             profile.weight_goal = weight_goal
             db.commit()
             return {"status": "success", "message": f"Weight goal set to {weight_goal}kg"}
+        except HTTPException:
+            db.rollback()
+            raise
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            db.close()
+
+
+    def update_client_health_data(self, nutritionist_id: str, data) -> dict:
+        """Update nutritionist-only health fields on a client profile."""
+        db = get_db_session()
+        try:
+            profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == data.client_id).first()
+            if not profile:
+                raise HTTPException(status_code=404, detail="Client not found")
+
+            fields = [
+                "height_cm", "gender", "date_of_birth", "activity_level",
+                "allergies", "medical_conditions", "supplements", "sleep_hours",
+                "meal_frequency", "food_preferences", "occupation_type"
+            ]
+            for field in fields:
+                value = getattr(data, field, None)
+                if value is not None:
+                    setattr(profile, field, value)
+
+            db.commit()
+            return {"status": "success", "message": "Health data updated"}
         except HTTPException:
             db.rollback()
             raise

@@ -9,9 +9,9 @@ from service_modules.notes_service import NotesService, get_notes_service
 router = APIRouter()
 
 
-def require_trainer(user: UserORM):
-    if user.role not in ("trainer", "owner"):
-        raise HTTPException(status_code=403, detail="Only trainers can access this endpoint")
+def require_staff(user: UserORM):
+    if user.role not in ("trainer", "nutritionist", "owner"):
+        raise HTTPException(status_code=403, detail="Only staff can access this endpoint")
 
 
 @router.get("/api/trainer/notes")
@@ -20,7 +20,7 @@ async def get_trainer_notes(
     current_user: UserORM = Depends(get_current_user)
 ):
     """Get all notes for the current trainer."""
-    require_trainer(current_user)
+    require_staff(current_user)
     return service.get_trainer_notes(current_user.id)
 
 
@@ -31,7 +31,7 @@ async def save_trainer_note(
     current_user: UserORM = Depends(get_current_user)
 ):
     """Create a new note."""
-    require_trainer(current_user)
+    require_staff(current_user)
     title = note_data.get("title", "Untitled Note")
     content = note_data.get("content", "")
     return service.save_trainer_note(current_user.id, title, content)
@@ -45,7 +45,7 @@ async def update_trainer_note(
     current_user: UserORM = Depends(get_current_user)
 ):
     """Update an existing note."""
-    require_trainer(current_user)
+    require_staff(current_user)
     title = note_data.get("title", "Untitled Note")
     content = note_data.get("content", "")
     return service.update_trainer_note(note_id, current_user.id, title, content)
@@ -58,5 +58,5 @@ async def delete_trainer_note(
     current_user: UserORM = Depends(get_current_user)
 ):
     """Delete a note."""
-    require_trainer(current_user)
+    require_staff(current_user)
     return service.delete_trainer_note(note_id, current_user.id)

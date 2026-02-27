@@ -6043,13 +6043,13 @@ async function finishWorkout() {
                         const clientData = await clientDataRes.json();
                         console.log("Refreshed client data after workout:", clientData);
 
-                        // Update display name
-                        const refreshedName = clientData.name || clientData.username;
-                        if (refreshedName) {
+                        // Update display name with profile name (fallback to username)
+                        const refreshDisplayName = clientData.name || clientData.username;
+                        if (refreshDisplayName) {
                             const displayNameEl = document.getElementById('client-display-name');
                             const welcomeNameEl = document.getElementById('client-welcome-name');
-                            if (displayNameEl) displayNameEl.textContent = refreshedName;
-                            if (welcomeNameEl) welcomeNameEl.textContent = refreshedName;
+                            if (displayNameEl) displayNameEl.textContent = refreshDisplayName;
+                            if (welcomeNameEl) welcomeNameEl.textContent = refreshDisplayName;
                         }
 
                         // Update streak display (week streak)
@@ -12669,6 +12669,9 @@ window.openSubscriptionPlans = async function() {
 
 // Load available subscription plans
 async function loadSubscriptionPlans() {
+    // Skip for owner role - owner.html defines its own version
+    if (window.APP_CONFIG && window.APP_CONFIG.role === 'owner') return;
+
     const plansList = document.getElementById('subscription-plans-list');
     const currentBanner = document.getElementById('current-subscription-banner');
 
@@ -12759,7 +12762,7 @@ async function loadSubscriptionPlans() {
 
             return `
                 <div class="relative p-4 rounded-2xl border ${isCurrentPlan ? 'border-green-500/50 bg-green-500/10' : hasOffer ? 'border-green-500/30 bg-gradient-to-r from-green-500/5 to-transparent' : 'border-white/10 bg-white/5'} hover:bg-white/10 transition cursor-pointer group"
-                    onclick="${isCurrentPlan ? '' : `selectPlan('${plan.id}', '${plan.name}', ${plan.price}, '${plan.currency}', '${plan.billing_interval}')`}">
+                    onclick="${isCurrentPlan ? '' : `selectPlan('${plan.id}', '${plan.name}', ${plan.price}, '${plan.currency}', '${plan.billing_interval}', ${plan.installment_count || 1}, ${plan.annual_price || plan.price}, '${plan.billing_type || 'annual'}')`}">
                     ${isCurrentPlan ? '<div class="absolute top-2 right-2 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full">Current</div>' : ''}
                     ${hasOffer ? `<div class="absolute top-2 right-2 text-xs bg-green-500 text-white px-2 py-0.5 rounded-full animate-pulse">${icon('gift', 12)} ${planOffer.discount_type === 'percent' ? planOffer.discount_value + '% OFF' : '€' + planOffer.discount_value + ' OFF'}</div>` : ''}
                     <div class="flex justify-between items-start mb-3">
@@ -12769,7 +12772,8 @@ async function loadSubscriptionPlans() {
                         </div>
                         <div class="text-right">
                             <div class="text-2xl font-bold text-primary">${formatCurrency(plan.price, plan.currency)}</div>
-                            <div class="text-xs text-white/40">/${plan.billing_interval}</div>
+                            <div class="text-xs text-white/40">${plan.billing_type === 'monthly' ? '/mese' : plan.installment_count > 1 ? `/${plan.installment_count} rate` : '/anno'}</div>
+                            ${plan.billing_type !== 'monthly' && plan.installment_count > 1 ? `<div class="text-xs text-white/30 mt-0.5">Totale: ${formatCurrency(plan.annual_price, plan.currency)}/anno</div>` : ''}
                         </div>
                     </div>
                     ${features.length > 0 ? `
@@ -12920,14 +12924,20 @@ function resetPriceDisplay() {
     const originalPriceEl = document.getElementById('selected-plan-original-price');
     const discountInfoEl = document.getElementById('applied-discount-info');
 
-    priceEl.textContent = `${formatCurrency(selectedPlanData.price, selectedPlanData.currency)}/${selectedPlanData.interval}`;
+    let installInfo = '';
+    if (selectedPlanData.billing_type === 'monthly') {
+        installInfo = '/mese';
+    } else if ((selectedPlanData.installment_count || 1) > 1) {
+        installInfo = ` (${selectedPlanData.installment_count} rate - totale ${formatCurrency(selectedPlanData.annual_price, selectedPlanData.currency)}/anno)`;
+    }
+    priceEl.textContent = `${formatCurrency(selectedPlanData.price, selectedPlanData.currency)}${installInfo}`;
     priceEl.classList.remove('text-green-400');
     originalPriceEl.classList.add('hidden');
     discountInfoEl.classList.add('hidden');
 }
 
 // Select a plan and show payment form
-window.selectPlan = function(planId, planName, price, currency, interval) {
+window.selectPlan = function(planId, planName, price, currency, interval, installmentCount, annualPrice, billingType) {
     if (!stripeInstance) {
         initStripe();
         if (!stripeInstance) {
@@ -12944,7 +12954,10 @@ window.selectPlan = function(planId, planName, price, currency, interval) {
         name: planName,
         price: price,
         currency: currency,
-        interval: interval
+        interval: interval,
+        billing_type: billingType || 'annual',
+        installment_count: installmentCount || 1,
+        annual_price: annualPrice || price
     };
 
     // Reset coupon state
@@ -12972,7 +12985,13 @@ window.selectPlan = function(planId, planName, price, currency, interval) {
     document.getElementById('active-offers-banner')?.classList.add('hidden');
     document.getElementById('payment-form-section').classList.remove('hidden');
     document.getElementById('selected-plan-name').textContent = planName;
-    document.getElementById('selected-plan-price').textContent = `${formatCurrency(price, currency)}/${interval}`;
+    let installmentInfo = '';
+    if (billingType === 'monthly') {
+        installmentInfo = '/mese';
+    } else if ((installmentCount || 1) > 1) {
+        installmentInfo = ` (${installmentCount} rate - totale ${formatCurrency(annualPrice, currency)}/anno)`;
+    }
+    document.getElementById('selected-plan-price').textContent = `${formatCurrency(price, currency)}${installmentInfo}`;
 
     // Initialize Stripe Elements
     if (!cardElement) {

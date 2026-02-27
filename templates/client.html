@@ -301,7 +301,7 @@ async function openMemberProfile(memberId) {
         const member = await response.json();
         currentProfileMember = member;
 
-        document.getElementById('member-profile-name').textContent = member.username;
+        document.getElementById('member-profile-name').textContent = member.name || member.username;
         document.getElementById('member-profile-bio').textContent = member.bio || '';
         document.getElementById('member-profile-streak').textContent = member.streak || 0;
         document.getElementById('member-profile-gems').textContent = member.gems || 0;
@@ -349,7 +349,7 @@ function messageFromLeaderboard() {
     if (!currentProfileMember) return;
     closeMemberProfileModal();
     if (typeof window.openChatWithUser === 'function') {
-        window.openChatWithUser(currentProfileMember.id, currentProfileMember.username, currentProfileMember.profile_picture);
+        window.openChatWithUser(currentProfileMember.id, currentProfileMember.name || currentProfileMember.username, currentProfileMember.profile_picture);
     }
 }
 
@@ -391,7 +391,7 @@ function handleFriendAction() {
     switch (status) {
         case 'none':
             console.log('Opening friend request modal for:', currentProfileMember.id);
-            openFriendRequestModal(currentProfileMember.id, currentProfileMember.username, currentProfileMember.profile_picture);
+            openFriendRequestModal(currentProfileMember.id, currentProfileMember.name || currentProfileMember.username, currentProfileMember.profile_picture);
             break;
         case 'pending_outgoing':
             if (typeof showToast === 'function') showToast('Richiesta di amicizia già inviata', 'info');
@@ -2687,7 +2687,7 @@ async function loadTrainersForSelection(gymId) {
                 class="w-full bg-white/10 hover:bg-primary/30 border border-white/10 hover:border-primary px-4 py-3 rounded-lg text-left transition tap-effect">
                 <div class="flex justify-between items-center">
                     <div>
-                        <p class="font-bold text-white">${trainer.username}</p>
+                        <p class="font-bold text-white">${trainer.name || trainer.username}</p>
                         <p class="text-xs text-gray-400">${trainer.client_count} clienti</p>
                     </div>
                     <span class="text-primary text-xl">→</span>
@@ -3721,6 +3721,19 @@ async function selectFitnessGoal(goal) {
                 </div>
             </button>
 
+            <!-- Nutritionist Consultation Option -->
+            <button id="booking-choice-nutritionist-btn" onclick="selectBookingType('nutritionist')" class="w-full bg-gradient-to-r from-cyan-500 to-blue-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                        <i data-lucide="apple" class="w-6 h-6 stroke-current"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white">Nutritionist Consultation</h4>
+                        <p class="text-sm text-white/70">Diet & nutrition guidance</p>
+                    </div>
+                </div>
+            </button>
+
             <!-- Book Facility Option -->
             <button onclick="selectBookingType('facility')" class="w-full bg-gradient-to-r from-green-500 to-teal-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
                 <div class="flex items-center gap-4">
@@ -4624,7 +4637,7 @@ async function loadTrainersForSelection(gymId) {
                 class="w-full bg-white/10 hover:bg-primary/30 border border-white/10 hover:border-primary px-4 py-3 rounded-lg text-left transition tap-effect">
                 <div class="flex justify-between items-center">
                     <div>
-                        <p class="font-bold text-white">${trainer.username}</p>
+                        <p class="font-bold text-white">${trainer.name || trainer.username}</p>
                         <p class="text-xs text-gray-400">${trainer.client_count} clienti</p>
                     </div>
                     <span class="text-primary text-xl">→</span>
@@ -4744,7 +4757,7 @@ async function openTrainerSelectionModal() {
         }
 
         list.innerHTML = trainers.map(trainer => `
-            <button onclick="selectTrainerFromHome('${trainer.id}', '${trainer.username}')"
+            <button onclick="selectTrainerFromHome('${trainer.id}', '${trainer.name || trainer.username}')"
                 class="w-full bg-white/10 hover:bg-primary/30 border border-white/10 hover:border-primary p-4 rounded-xl text-left transition tap-effect">
                 <div class="flex items-center justify-between">
                     <div class="flex items-center space-x-3">
@@ -4752,7 +4765,7 @@ async function openTrainerSelectionModal() {
                             <i data-lucide="user" class="w-5 h-5"></i>
                         </div>
                         <div>
-                            <p class="font-bold text-white">${trainer.username}</p>
+                            <p class="font-bold text-white">${trainer.name || trainer.username}</p>
                             <p class="text-xs text-gray-400">${trainer.client_count} clienti</p>
                         </div>
                     </div>
@@ -5086,37 +5099,10 @@ function bookWithTrainerFromProfile() {
 var bookingChoiceTrainerId = null;
 var bookingChoiceTrainerName = null;
 
-function openBookingChoiceModal(trainerId, trainerName) {
-    bookingChoiceTrainerId = trainerId;
-    bookingChoiceTrainerName = trainerName;
-    // Show/hide 1-on-1 option based on whether a trainer is available
-    const personalBtn = document.getElementById('booking-choice-personal-btn');
-    if (personalBtn) {
-        if (trainerId) {
-            personalBtn.classList.remove('hidden');
-        } else {
-            personalBtn.classList.add('hidden');
-        }
-    }
-    // Show/hide nutritionist option based on whether client has a nutritionist
-    const nutritionBtn = document.getElementById('booking-choice-nutrition-btn');
-    if (nutritionBtn) {
-        if (window.selectedNutritionistId) {
-            nutritionBtn.classList.remove('hidden');
-        } else {
-            nutritionBtn.classList.add('hidden');
-        }
-    }
-    document.getElementById('booking-choice-modal').classList.remove('hidden');
-}
-
-async function openBookingChoiceForMyTrainer() {
-    // Use the client's assigned trainer
-    let trainerName = document.getElementById('trainer-name')?.textContent || 'Trainer';
+async function bookDirectWithMyTrainer() {
+    // Go straight to 1-on-1 booking with the assigned trainer
     let trainerId = selectedTrainerId;
-
-    // If no trainer ID yet, try to fetch it
-    if (!trainerId || !window.selectedNutritionistId) {
+    if (!trainerId) {
         try {
             const response = await fetch('/api/client/gym-info', { credentials: 'include' });
             if (response.ok) {
@@ -5124,7 +5110,6 @@ async function openBookingChoiceForMyTrainer() {
                 if (info.has_trainer && info.trainer_id) {
                     trainerId = info.trainer_id;
                     selectedTrainerId = trainerId;
-                    if (info.trainer_name) trainerName = info.trainer_name;
                 }
                 if (info.has_nutritionist && info.nutritionist_id) {
                     window.selectedNutritionistId = info.nutritionist_id;
@@ -5137,13 +5122,62 @@ async function openBookingChoiceForMyTrainer() {
                     };
                 }
             }
-        } catch (e) {
-            console.log('Could not fetch trainer/nutritionist info for booking');
+        } catch (e) {}
+    }
+    if (trainerId) {
+        selectedTrainerId = trainerId;
+        if (typeof openBookingModal === 'function') openBookingModal();
+    } else {
+        showToast('Nessun trainer assegnato', 'error');
+    }
+}
+
+function openBookingChoiceModal(trainerId, trainerName, nutritionistId, nutritionistName) {
+    bookingChoiceTrainerId = trainerId;
+    bookingChoiceTrainerName = trainerName;
+    window._bookingNutritionistId = nutritionistId || window._bookingNutritionistId;
+    window._bookingNutritionistName = nutritionistName || window._bookingNutritionistName;
+
+    document.getElementById('booking-choice-trainer-name').textContent = trainerName || 'your trainer';
+    // Hide 1-on-1 option if no trainer assigned
+    const personalBtn = document.getElementById('booking-choice-personal-btn');
+    if (personalBtn) personalBtn.style.display = trainerId ? '' : 'none';
+    // Hide nutritionist option if no nutritionist assigned
+    const nutriBtn = document.getElementById('booking-choice-nutritionist-btn');
+    if (nutriBtn) nutriBtn.style.display = window._bookingNutritionistId ? '' : 'none';
+
+    document.getElementById('booking-choice-modal').classList.remove('hidden');
+}
+
+async function openBookingChoiceForMyTrainer() {
+    // Fetch gym info to get trainer and nutritionist
+    let trainerName = document.getElementById('trainer-name')?.textContent || 'Trainer';
+    let trainerId = selectedTrainerId;
+    let nutritionistId = window._bookingNutritionistId || null;
+    let nutritionistName = window._bookingNutritionistName || null;
+
+    try {
+        const response = await fetch('/api/client/gym-info', { credentials: 'include' });
+        if (response.ok) {
+            const info = await response.json();
+            if (info.has_trainer && info.trainer_id) {
+                trainerId = info.trainer_id;
+                selectedTrainerId = trainerId;
+                if (info.trainer_name) trainerName = info.trainer_name;
+            }
+            if (info.has_nutritionist && info.nutritionist_id) {
+                nutritionistId = info.nutritionist_id;
+                nutritionistName = info.nutritionist_name || 'Nutritionist';
+                window._bookingNutritionistId = nutritionistId;
+                window._bookingNutritionistName = nutritionistName;
+            }
         }
+    } catch (e) {
+        console.log('Could not fetch gym info for booking');
     }
 
-    // Always show choice modal (courses + facilities always available)
-    openBookingChoiceModal(trainerId || null, trainerId ? trainerName : null);
+    if (trainerId) selectedTrainerId = trainerId;
+    openBookingChoiceModal(trainerId, trainerName, nutritionistId, nutritionistName);
 }
 
 function closeBookingChoiceModal() {
@@ -5153,17 +5187,27 @@ function closeBookingChoiceModal() {
 }
 
 function selectBookingType(type) {
-    // Save trainer ID BEFORE closing modal (closeBookingChoiceModal nullifies it)
+    // Save IDs BEFORE closing modal (closeBookingChoiceModal nullifies them)
     const savedTrainerId = bookingChoiceTrainerId;
     const savedTrainerName = bookingChoiceTrainerName;
+    const savedNutritionistId = window._bookingNutritionistId;
     closeBookingChoiceModal();
 
     if (type === 'personal') {
-        // Book 1-on-1 session - use the saved trainer ID
+        // Book 1-on-1 session with trainer
         selectedTrainerId = savedTrainerId;
-
         if (typeof openBookingModal === 'function') {
             openBookingModal();
+        }
+    } else if (type === 'nutritionist') {
+        // Book consultation with nutritionist - reuse same booking flow
+        if (savedNutritionistId) {
+            selectedTrainerId = savedNutritionistId;
+            if (typeof openBookingModal === 'function') {
+                openBookingModal();
+            }
+        } else {
+            showToast('No nutritionist assigned yet', 'error');
         }
     } else if (type === 'course') {
         // Show all gym courses
@@ -6114,7 +6158,7 @@ async function loadGymMembersList() {
                             ${avatarHtml}
                         </div>
                         <div>
-                            <p class="font-bold text-white">${member.username}</p>
+                            <p class="font-bold text-white">${member.name || member.username}</p>
                         </div>
                     </div>
                     <span class="text-gray-400 text-sm">Vedi &rarr;</span>
@@ -6368,7 +6412,7 @@ async function loadFriendsModalData() {
                             : '<i data-lucide="user" class="w-5 h-5"></i>'}
                     </div>
                     <div>
-                        <p class="font-medium text-white">${friend.username}</p>
+                        <p class="font-medium text-white">${friend.name || friend.username}</p>
                         <div class="flex items-center gap-2 text-xs text-gray-400">
                             <span>${icon('flame', 12)} ${friend.streak || 0}</span>
                             <span>🔶 ${friend.gems || 0}</span>
@@ -6376,11 +6420,11 @@ async function loadFriendsModalData() {
                     </div>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="messageFromFriendsList('${friend.id}', '${friend.username}')"
+                    <button onclick="messageFromFriendsList('${friend.id}', '${friend.name || friend.username}')"
                         class="p-2 bg-orange-500/20 text-orange-400 rounded-lg hover:bg-orange-500/30 transition">
                         <i data-lucide="message-circle" class="w-5 h-5"></i>
                     </button>
-                    <button onclick="confirmUnfriend('${friend.id}', '${friend.username}')"
+                    <button onclick="confirmUnfriend('${friend.id}', '${friend.name || friend.username}')"
                         class="p-2 bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 transition">
                         ✕
                     </button>
@@ -6442,7 +6486,7 @@ function renderFriendRequests() {
                             : '<i data-lucide="user" class="w-4 h-4"></i>'}
                     </div>
                     <div>
-                        <p class="font-medium text-white text-sm">${req.username}</p>
+                        <p class="font-medium text-white text-sm">${req.name || req.username}</p>
                         ${req.message ? `<p class="text-xs text-gray-400 truncate max-w-[150px]">"${req.message}"</p>` : ''}
                     </div>
                 </div>
@@ -6475,7 +6519,7 @@ function renderFriendRequests() {
                             : '<i data-lucide="user" class="w-4 h-4"></i>'}
                     </div>
                     <div>
-                        <p class="font-medium text-white text-sm">${req.username}</p>
+                        <p class="font-medium text-white text-sm">${req.name || req.username}</p>
                         <p class="text-xs text-gray-500">In attesa...</p>
                     </div>
                 </div>
@@ -6598,7 +6642,7 @@ async function loadCoopFriends() {
         }
 
         list.innerHTML = friends.map(friend => `
-            <div onclick="startCoopWorkout('${friend.id}', '${friend.username}', '${friend.profile_picture || ''}')"
+            <div onclick="startCoopWorkout('${friend.id}', '${friend.name || friend.username}', '${friend.profile_picture || ''}')"
                 class="flex items-center gap-3 p-4 bg-white/5 rounded-xl hover:bg-purple-500/20 border border-transparent hover:border-purple-500/30 transition cursor-pointer tap-effect">
                 <div class="w-14 h-14 rounded-full bg-gradient-to-tr from-purple-500 to-pink-500 flex items-center justify-center overflow-hidden flex-shrink-0">
                     ${friend.profile_picture
@@ -6606,7 +6650,7 @@ async function loadCoopFriends() {
                         : '<i data-lucide="user" class="w-5 h-5"></i>'}
                 </div>
                 <div class="flex-1">
-                    <p class="font-bold text-white">${friend.username}</p>
+                    <p class="font-bold text-white">${friend.name || friend.username}</p>
                     <div class="flex items-center gap-3 text-sm text-gray-400">
                         <span>${icon('flame', 12)} ${friend.streak || 0} streak</span>
                         <span>${icon('heart', 12)} ${friend.health_score || 0}%</span>
@@ -6857,7 +6901,7 @@ function handleFriendAction() {
             console.log('Opening friend request modal');
             openFriendRequestModal(
                 currentProfileMember.id,
-                currentProfileMember.username,
+                currentProfileMember.name || currentProfileMember.username,
                 currentProfileMember.profile_picture
             );
             break;
@@ -6874,7 +6918,7 @@ function handleFriendAction() {
             }
             break;
         case 'friends':
-            if (confirm(`Remove ${currentProfileMember.username} from friends?`)) {
+            if (confirm(`Remove ${currentProfileMember.name || currentProfileMember.username} from friends?`)) {
                 removeFriendAndUpdate(currentProfileMember.id);
             }
             break;
@@ -7268,7 +7312,7 @@ async function openMemberProfile(memberId) {
         currentProfileMember = member;
 
         // Update modal content
-        document.getElementById('member-profile-name').textContent = member.username;
+        document.getElementById('member-profile-name').textContent = member.name || member.username;
         document.getElementById('member-profile-bio').textContent = member.bio || '';
         document.getElementById('member-profile-streak').textContent = member.streak || 0;
         document.getElementById('member-profile-gems').textContent = member.gems || 0;
@@ -7354,7 +7398,7 @@ async function messageFromProfile() {
     if (!currentProfileMember) return;
 
     const userId = currentProfileMember.id;
-    const username = currentProfileMember.username;
+    const username = currentProfileMember.name || currentProfileMember.username;
     const profilePicture = currentProfileMember.profile_picture;
 
     try {
@@ -7547,7 +7591,7 @@ loadFriendsPreview();
 
         <div class="space-y-3">
             <!-- 1-on-1 Session Option -->
-            <button onclick="selectBookingType('personal')" class="w-full bg-gradient-to-r from-orange-500 to-red-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
+            <button id="booking-choice-personal-btn-shared" onclick="selectBookingType('personal')" class="w-full bg-gradient-to-r from-orange-500 to-red-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
                 <div class="flex items-center gap-4">
                     <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
                         <i data-lucide="user" class="w-6 h-6 stroke-current"></i>
@@ -7555,6 +7599,19 @@ loadFriendsPreview();
                     <div>
                         <h4 class="font-bold text-white">Sessione 1-a-1</h4>
                         <p class="text-sm text-white/70">Allenamento personale su misura per te</p>
+                    </div>
+                </div>
+            </button>
+
+            <!-- Nutritionist Consultation Option -->
+            <button id="booking-choice-nutritionist-btn-shared" onclick="selectBookingType('nutritionist')" class="w-full bg-gradient-to-r from-cyan-500 to-blue-500 p-4 rounded-xl text-left hover:scale-[1.02] transition tap-effect">
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
+                        <i data-lucide="apple" class="w-6 h-6 stroke-current"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-bold text-white">Nutritionist Consultation</h4>
+                        <p class="text-sm text-white/70">Diet & nutrition guidance</p>
                     </div>
                 </div>
             </button>
@@ -8076,25 +8133,23 @@ window.confirmBooking = async function() {
 // ==================== Shared Booking Choice Functions ====================
 // Only define functions if not already defined by mode-specific scripts
 if (typeof openBookingChoiceModal !== 'function') {
-    window.openBookingChoiceModal = function(trainerId, trainerName) {
+    window.openBookingChoiceModal = function(trainerId, trainerName, nutritionistId, nutritionistName) {
         bookingChoiceTrainerId = trainerId;
         bookingChoiceTrainerName = trainerName;
+        window._bookingNutritionistId = nutritionistId || window._bookingNutritionistId;
+        window._bookingNutritionistName = nutritionistName || window._bookingNutritionistName;
 
         // Try both modal IDs (mode-specific and shared)
         const modal = document.getElementById('booking-choice-modal') || document.getElementById('booking-choice-modal-shared');
         const nameEl = document.getElementById('booking-choice-trainer-name') || document.getElementById('booking-choice-trainer-name-shared');
 
         if (nameEl) nameEl.textContent = trainerName || 'Trainer';
-
-        // Show/hide nutritionist option
-        const nutritionBtn = document.getElementById('booking-choice-nutrition-btn') || document.getElementById('booking-choice-nutrition-btn-shared');
-        if (nutritionBtn) {
-            if (window.selectedNutritionistId) {
-                nutritionBtn.classList.remove('hidden');
-            } else {
-                nutritionBtn.classList.add('hidden');
-            }
-        }
+        // Hide 1-on-1 option if no trainer assigned
+        const personalBtn = document.getElementById('booking-choice-personal-btn') || document.getElementById('booking-choice-personal-btn-shared');
+        if (personalBtn) personalBtn.style.display = trainerId ? '' : 'none';
+        // Hide nutritionist option if no nutritionist assigned
+        const nutriBtn = document.getElementById('booking-choice-nutritionist-btn') || document.getElementById('booking-choice-nutritionist-btn-shared');
+        if (nutriBtn) nutriBtn.style.display = window._bookingNutritionistId ? '' : 'none';
 
         if (modal) modal.classList.remove('hidden');
     };
@@ -8142,28 +8197,36 @@ if (typeof closeBookingChoiceModal !== 'function') {
 
 if (typeof selectBookingType !== 'function') {
     window.selectBookingType = function(type) {
-        // Save trainer ID BEFORE closing modal (closeBookingChoiceModal nullifies it)
+        // Save IDs BEFORE closing modal (closeBookingChoiceModal nullifies them)
         const savedTrainerId = bookingChoiceTrainerId;
+        const savedNutritionistId = window._bookingNutritionistId;
         closeBookingChoiceModal();
 
         if (type === 'personal') {
-            // Book 1-on-1 session - use the saved trainer ID
             if (typeof selectedTrainerId !== 'undefined') {
                 selectedTrainerId = savedTrainerId;
             }
-
             if (typeof openBookingModal === 'function') {
                 openBookingModal();
             }
+        } else if (type === 'nutritionist') {
+            if (savedNutritionistId) {
+                if (typeof selectedTrainerId !== 'undefined') {
+                    selectedTrainerId = savedNutritionistId;
+                }
+                if (typeof openBookingModal === 'function') {
+                    openBookingModal();
+                }
+            } else {
+                if (typeof showToast === 'function') showToast('No nutritionist assigned yet', 'error');
+            }
         } else if (type === 'course') {
-            // Show all gym courses
             if (typeof openGymCoursesModal === 'function') {
                 openGymCoursesModal();
             } else if (typeof openGymCoursesModalShared === 'function') {
                 openGymCoursesModalShared();
             }
         } else if (type === 'facility') {
-            // Book a facility (court, field, room)
             if (typeof openFacilityBookingModal === 'function') {
                 openFacilityBookingModal();
             }
