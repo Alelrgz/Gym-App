@@ -2120,16 +2120,16 @@ if (mealForm) {
         <div>
             <label class="text-xs text-gray-500 uppercase font-bold block mb-2">Data di Scadenza</label>
             <input type="date" id="cert-expiration-date"
-                class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-white focus:border-primary outline-none transition">
+                class="w-full bg-black/20 border border-white/10 rounded-xl p-3 text-white text-sm focus:border-primary outline-none transition">
         </div>
         <input type="file" id="cert-file-input" accept=".pdf,.png,.jpg,.jpeg" class="hidden"
             onchange="uploadCertificate()">
         <button onclick="document.getElementById('cert-file-input').click()"
-            class="w-full py-4 bg-primary text-black font-bold rounded-xl tap-effect hover:bg-primary/90 transition flex items-center justify-center gap-2">
-            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
-            CARICA CERTIFICATO
+            class="w-full py-3 bg-primary/15 text-primary border border-primary/30 font-bold rounded-xl tap-effect hover:bg-primary/25 transition flex items-center justify-center gap-2 text-sm">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+            Carica Certificato
         </button>
-        <p class="text-xs text-gray-500 text-center">PDF, PNG, or JPG — max 10MB</p>
+        <p class="text-xs text-gray-500 text-center">PDF, PNG o JPG — max 10MB</p>
     </div>
     {% endcall %}
 
@@ -2731,26 +2731,7 @@ setTimeout(() => loadGymAndTrainerInfo(), 100);
 </script>
 
 {% elif mode == "client_dashboard" %}
-<div class="p-6 pt-10 flex justify-between items-center bg-black/50 z-10">
-    <div class="flex items-center space-x-3">
-        <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
-            class="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center tap-effect">←</a>
-        <h2 class="font-bold text-xl">Dashboard Cliente</h2>
-    </div>
-    <div class="flex space-x-2">
-        <div onclick="openBookingChoiceForMyTrainer()" class="relative w-10 h-10 rounded-full bg-orange-500/20 border border-orange-500/30 flex items-center justify-center tap-effect cursor-pointer" title="Prenota Sessione">
-            <i data-lucide="calendar" class="w-5 h-5"></i>
-        </div>
-        <div onclick="openClientChatModal()" class="relative w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect cursor-pointer">
-            <i data-lucide="message-circle" class="w-5 h-5"></i>
-        </div>
-        <div data-action="showModal" data-target="notification-modal"
-            class="notification-bell w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center tap-effect relative">
-            <i data-lucide="bell" class="w-5 h-5"></i>
-            <span class="notification-badge hidden absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">0</span>
-        </div>
-    </div>
-</div>
+<div class="pt-6"></div>
 <div class="flex-1 p-4 space-y-6">
     <!-- User Profile Card -->
     {% call card(classes="p-6 flex flex-col items-center relative overflow-hidden") %}

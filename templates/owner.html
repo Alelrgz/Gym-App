@@ -373,107 +373,107 @@
     {% elif mode == 'crm' %}
     <!-- ==================== CRM MODE ==================== -->
 
-    <!-- Retention Analytics Summary -->
-    {% call card(classes="p-5 mb-5 relative overflow-hidden") %}
-    <div class="absolute inset-0 bg-gradient-to-br from-blue-500/10 to-transparent"></div>
-    <div class="relative z-10">
-        <div class="flex items-center justify-between mb-4">
-            <div>
-                <p class="text-xs text-gray-400 uppercase tracking-wider">Panoramica Fidelizzazione</p>
-                <h2 class="text-2xl font-bold mt-1">Salute Clienti</h2>
-            </div>
-            <select id="analytics-period" onchange="loadRetentionAnalytics()"
-                class="bg-black/20 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white outline-none">
-                <option value="week">Ultimi 7 giorni</option>
-                <option value="month" selected>Ultimi 30 giorni</option>
-            </select>
-        </div>
-        <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
-            <div class="text-center p-3 bg-white/5 rounded-xl">
-                <p class="text-3xl font-bold text-green-400" id="engagement-rate">--%</p>
-                <p class="text-xs text-gray-400 mt-1">Tasso di Coinvolgimento</p>
-            </div>
-            <div class="text-center p-3 bg-white/5 rounded-xl">
-                <p class="text-3xl font-bold text-yellow-400" id="at-risk-count">--</p>
-                <p class="text-xs text-gray-400 mt-1">A Rischio</p>
-            </div>
-            <div class="text-center p-3 bg-white/5 rounded-xl">
-                <p class="text-3xl font-bold text-red-400" id="churn-rate">--%</p>
-                <p class="text-xs text-gray-400 mt-1">Tasso Abbandono</p>
-            </div>
-            <div class="text-center p-3 bg-white/5 rounded-xl">
-                <p class="text-3xl font-bold text-blue-400" id="avg-health">--</p>
-                <p class="text-xs text-gray-400 mt-1">Punteggio Salute Medio</p>
-            </div>
-        </div>
-    </div>
-    {% endcall %}
+    <!-- Hidden elements for analytics API compatibility -->
+    <span id="at-risk-count" class="hidden"></span>
+    <span id="churn-rate" class="hidden"></span>
+    <select id="analytics-period" class="hidden"><option value="month" selected></option></select>
 
-    <!-- Client Pipeline / Funnel -->
-    <div class="mb-5">
-        <h3 class="text-sm font-bold text-white uppercase tracking-wider mb-3">Pipeline Clienti</h3>
-        <div class="grid grid-cols-4 gap-3">
-            <div class="glass-card p-4 text-center border-t-4 border-green-400">
-                <p class="text-2xl font-bold text-green-400" id="pipeline-new">--</p>
-                <p class="text-xs text-gray-400 mt-1">Nuovi</p>
-                <p class="text-[10px] text-gray-500">&lt; 14 giorni</p>
+    <!-- Client Pipeline -->
+    <div class="mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2 border-l-4 border-orange-400 pl-3">
+                <div>
+                    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Pipeline Clienti</h3>
+                    <p class="text-[11px] text-gray-500">Stato dei membri</p>
+                </div>
             </div>
-            <div class="glass-card p-4 text-center border-t-4 border-blue-400">
-                <p class="text-2xl font-bold text-blue-400" id="pipeline-active">--</p>
-                <p class="text-xs text-gray-400 mt-1">Attivi</p>
-                <p class="text-[10px] text-gray-500">Coinvolti</p>
+            <div class="flex items-center gap-4">
+                <div class="text-right">
+                    <p class="text-sm font-bold text-green-400" id="engagement-rate">--%</p>
+                    <p class="text-[10px] text-gray-500">Coinvolgimento</p>
+                </div>
+                <div class="text-right">
+                    <p class="text-sm font-bold text-blue-400" id="avg-health">--</p>
+                    <p class="text-[10px] text-gray-500">Salute Media</p>
+                </div>
             </div>
-            <div class="glass-card p-4 text-center border-t-4 border-yellow-400">
-                <p class="text-2xl font-bold text-yellow-400" id="pipeline-at-risk">--</p>
-                <p class="text-xs text-gray-400 mt-1">A Rischio</p>
-                <p class="text-[10px] text-gray-500">5-14 giorni</p>
+        </div>
+        <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+            <div class="p-4 rounded-xl text-center" style="background:#1a1a1a;border-left:3px solid #4ade80;">
+                <p class="text-2xl font-bold text-white" id="pipeline-new">--</p>
+                <p class="text-[11px] text-gray-500 mt-1">Nuovi</p>
+                <p class="text-[10px] text-gray-600">&lt; 14 giorni</p>
             </div>
-            <div class="glass-card p-4 text-center border-t-4 border-red-400">
-                <p class="text-2xl font-bold text-red-400" id="pipeline-churning">--</p>
-                <p class="text-xs text-gray-400 mt-1">In Abbandono</p>
-                <p class="text-[10px] text-gray-500">&gt; 14 giorni</p>
+            <div class="p-4 rounded-xl text-center" style="background:#1a1a1a;border-left:3px solid #60a5fa;">
+                <p class="text-2xl font-bold text-white" id="pipeline-active">--</p>
+                <p class="text-[11px] text-gray-500 mt-1">Attivi</p>
+                <p class="text-[10px] text-gray-600">Coinvolti</p>
+            </div>
+            <div class="p-4 rounded-xl text-center" style="background:#1a1a1a;border-left:3px solid #facc15;">
+                <p class="text-2xl font-bold text-white" id="pipeline-at-risk">--</p>
+                <p class="text-[11px] text-gray-500 mt-1">A Rischio</p>
+                <p class="text-[10px] text-gray-600">5-14 giorni</p>
+            </div>
+            <div class="p-4 rounded-xl text-center" style="background:#1a1a1a;border-left:3px solid #f87171;">
+                <p class="text-2xl font-bold text-white" id="pipeline-churning">--</p>
+                <p class="text-[11px] text-gray-500 mt-1">In Abbandono</p>
+                <p class="text-[10px] text-gray-600">&gt; 14 giorni</p>
             </div>
         </div>
     </div>
 
     <!-- At-Risk Clients List -->
-    <div class="mb-5">
-        <div class="flex justify-between items-center mb-3">
-            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Clienti a Rischio</h3>
-            <span class="text-xs text-yellow-400"><i data-lucide="alert-triangle" class="w-3 h-3 inline-block align-middle"></i> Richiede attenzione</span>
+    <div class="mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2 border-l-4 border-yellow-400 pl-3">
+                <div>
+                    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Clienti a Rischio</h3>
+                    <p class="text-[11px] text-gray-500">Richiede attenzione</p>
+                </div>
+            </div>
         </div>
         <div id="at-risk-list" class="space-y-2 max-h-96 overflow-y-auto">
-            <div class="glass-card p-3 text-center text-gray-400 text-sm">
+            <div class="p-3 rounded-xl text-center text-gray-500 text-sm" style="background:#1a1a1a;">
                 Caricamento...
             </div>
         </div>
     </div>
 
     <!-- Recent Interactions -->
-    <div class="mb-5">
-        <div class="flex justify-between items-center mb-3">
-            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Attività Recenti</h3>
-            <button onclick="loadInteractions()" class="text-xs bg-white/10 px-3 py-1.5 rounded-lg hover:bg-white/20 transition font-semibold">
-                ↻ Aggiorna
+    <div class="mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2 border-l-4 border-slate-500 pl-3">
+                <div>
+                    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Attività Recenti</h3>
+                    <p class="text-[11px] text-gray-500">Interazioni dei clienti</p>
+                </div>
+            </div>
+            <button onclick="loadInteractions()" class="text-xs text-orange-400 hover:text-orange-300 transition font-semibold">
+                Aggiorna
             </button>
         </div>
         <div id="interactions-list" class="space-y-2 max-h-64 overflow-y-auto">
-            <div class="glass-card p-3 text-center text-gray-400 text-sm">
+            <div class="p-3 rounded-xl text-center text-gray-500 text-sm" style="background:#1a1a1a;">
                 Caricamento attività...
             </div>
         </div>
     </div>
 
     <!-- Medical Certificates Overview -->
-    <div class="mb-5">
-        <div class="flex justify-between items-center mb-3">
-            <h3 class="text-sm font-bold text-white uppercase tracking-wider">Certificati Medici</h3>
-            <button onclick="loadCertificatesOverview()" class="text-xs bg-white/10 px-3 py-1.5 rounded-lg hover:bg-white/20 transition font-semibold">
-                ↻ Aggiorna
+    <div class="mb-6">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2 border-l-4 border-green-400 pl-3">
+                <div>
+                    <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider">Certificati Medici</h3>
+                    <p class="text-[11px] text-gray-500">Stato certificati dei membri</p>
+                </div>
+            </div>
+            <button onclick="loadCertificatesOverview()" class="text-xs text-orange-400 hover:text-orange-300 transition font-semibold">
+                Aggiorna
             </button>
         </div>
         <div id="certificates-overview" class="space-y-2 max-h-64 overflow-y-auto">
-            <div class="glass-card p-3 text-center text-gray-400 text-sm">Caricamento...</div>
+            <div class="p-3 rounded-xl text-center text-gray-500 text-sm" style="background:#1a1a1a;">Caricamento...</div>
         </div>
     </div>
 
@@ -831,38 +831,37 @@
 </div><!-- /owner-layout -->
 
 <!-- Create/Edit Plan Modal -->
-<div id="plan-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="glass-card p-6 rounded-2xl max-w-md w-full">
-        <h3 class="text-xl font-bold mb-4" id="plan-modal-title">Crea Piano di Abbonamento</h3>
-
-        <form id="plan-form" class="space-y-4">
+<div id="plan-modal" class="owner-modal-overlay hidden"
+    onclick="closePlanModal()">
+    <div class="trainer-modal-card w-full max-w-[380px] slide-up" onclick="event.stopPropagation()">
+        <div class="trainer-modal-header">
+            <h3 id="plan-modal-title">Crea Piano</h3>
+            <button onclick="closePlanModal()">✕</button>
+        </div>
+        <form id="plan-form" class="trainer-modal-body">
             <input type="hidden" id="plan-id">
 
             <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Nome Piano</label>
-                <input type="text" id="plan-name" required
-                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                <label class="trainer-modal-label">Nome Piano</label>
+                <input type="text" id="plan-name" required class="trainer-modal-input"
                     placeholder="es. Base, Premium, VIP">
             </div>
 
             <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Descrizione</label>
-                <textarea id="plan-description" rows="2"
-                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                <label class="trainer-modal-label">Descrizione</label>
+                <textarea id="plan-description" rows="2" class="trainer-modal-input" style="resize:none;"
                     placeholder="Breve descrizione del piano"></textarea>
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;">
                 <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Prezzo (€)</label>
-                    <input type="number" id="plan-price" required step="0.01" min="0"
-                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                    <label class="trainer-modal-label">Prezzo (€)</label>
+                    <input type="number" id="plan-price" required step="0.01" min="0" class="trainer-modal-input"
                         placeholder="29.99">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Fatturazione</label>
-                    <select id="plan-interval"
-                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition">
+                    <label class="trainer-modal-label">Fatturazione</label>
+                    <select id="plan-interval" class="trainer-modal-input">
                         <option value="month">Mensile</option>
                         <option value="year">Annuale</option>
                     </select>
@@ -870,177 +869,146 @@
             </div>
 
             <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Periodo di Prova (giorni)</label>
-                <input type="number" id="plan-trial" min="0" value="0"
-                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                <label class="trainer-modal-label">Periodo di Prova (giorni)</label>
+                <input type="number" id="plan-trial" min="0" value="0" class="trainer-modal-input"
                     placeholder="0">
             </div>
 
             <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Caratteristiche (una per riga)</label>
-                <textarea id="plan-features" rows="3"
-                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-primary/50 transition"
+                <label class="trainer-modal-label">Caratteristiche (una per riga)</label>
+                <textarea id="plan-features" rows="3" class="trainer-modal-input" style="resize:none;"
                     placeholder="Allenamenti illimitati&#10;Piani alimentari&#10;Coaching 1-a-1"></textarea>
             </div>
 
-            <div class="flex space-x-3 pt-2">
-                <button type="button" onclick="closePlanModal()"
-                    class="flex-1 bg-white/10 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white/20 transition">
-                    Annulla
-                </button>
-                <button type="submit"
-                    class="flex-1 bg-primary px-4 py-2 rounded-lg text-sm font-semibold hover:bg-primary/80 transition">
-                    <span id="plan-submit-btn">Crea Piano</span>
-                </button>
-            </div>
+            <button type="submit" class="trainer-modal-btn" style="width:100%;margin-top:0.25rem;">
+                <span id="plan-submit-btn">Crea Piano</span>
+            </button>
         </form>
     </div>
 </div>
 
 <!-- Create/Edit Offer Modal -->
-<div id="offer-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="glass-card p-6 rounded-2xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-        <h3 class="text-xl font-bold mb-4" id="offer-modal-title">Crea Offerta Promozionale</h3>
-
-        <form id="offer-form" class="space-y-4">
+<div id="offer-modal" class="owner-modal-overlay hidden" onclick="closeOfferModal()">
+    <div class="trainer-modal-card w-full max-w-[400px] max-h-[90vh] flex flex-col slide-up" onclick="event.stopPropagation()">
+        <div class="trainer-modal-header">
+            <h3 id="offer-modal-title">Crea Offerta</h3>
+            <button onclick="closeOfferModal()">✕</button>
+        </div>
+        <form id="offer-form" class="trainer-modal-body" style="overflow-y:auto;">
             <input type="hidden" id="offer-id">
 
             <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Titolo Offerta</label>
-                <div class="relative">
-                    <input type="text" id="offer-title" required
-                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 pr-10 text-sm text-white outline-none focus:border-green-500/50 transition"
+                <label class="trainer-modal-label">Titolo Offerta</label>
+                <div style="position:relative;">
+                    <input type="text" id="offer-title" required class="trainer-modal-input" style="padding-right:2.5rem;"
                         placeholder="es. Offerta Capodanno, Saldi Estivi">
                     <button type="button" onclick="toggleEmojiPicker('offer-title')"
-                        class="absolute right-2 top-1/2 -translate-y-1/2 hover:scale-110 transition" title="Add emoji">
-                        <i data-lucide="smile-plus" class="w-5 h-5 stroke-current text-gray-400"></i>
+                        style="position:absolute;right:0.5rem;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;opacity:0.4;">
+                        <i data-lucide="smile-plus" class="w-4 h-4"></i>
                     </button>
                 </div>
             </div>
 
             <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Descrizione</label>
-                <div class="relative">
-                    <textarea id="offer-description" rows="2"
-                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 pr-10 text-sm text-white outline-none focus:border-green-500/50 transition"
+                <label class="trainer-modal-label">Descrizione</label>
+                <div style="position:relative;">
+                    <textarea id="offer-description" rows="2" class="trainer-modal-input" style="resize:none;padding-right:2.5rem;"
                         placeholder="Descrivi l'offerta per attirare clienti"></textarea>
                     <button type="button" onclick="toggleEmojiPicker('offer-description')"
-                        class="absolute right-2 top-2 hover:scale-110 transition" title="Add emoji">
-                        <i data-lucide="smile-plus" class="w-5 h-5 stroke-current text-gray-400"></i>
+                        style="position:absolute;right:0.5rem;top:0.6rem;background:none;border:none;cursor:pointer;opacity:0.4;">
+                        <i data-lucide="smile-plus" class="w-4 h-4"></i>
                     </button>
                 </div>
             </div>
 
             <div>
-                <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Applica al Piano (opzionale)</label>
-                <select id="offer-plan-id"
-                    class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition">
+                <label class="trainer-modal-label">Applica al Piano</label>
+                <select id="offer-plan-id" class="trainer-modal-input">
                     <option value="">Tutti i Piani</option>
-                    <!-- Plans will be loaded dynamically -->
                 </select>
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;">
                 <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Tipo Sconto</label>
-                    <select id="offer-discount-type" required
-                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition">
+                    <label class="trainer-modal-label">Tipo Sconto</label>
+                    <select id="offer-discount-type" required class="trainer-modal-input">
                         <option value="percent">Percentuale (%)</option>
                         <option value="fixed">Importo Fisso (€)</option>
                     </select>
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Valore Sconto</label>
-                    <input type="number" id="offer-discount-value" required step="0.01" min="0"
-                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition"
-                        placeholder="e.g., 20">
+                    <label class="trainer-modal-label">Valore Sconto</label>
+                    <input type="number" id="offer-discount-value" required step="0.01" min="0" class="trainer-modal-input"
+                        placeholder="es. 20">
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;">
                 <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Durata (mesi)</label>
-                    <input type="number" id="offer-duration" min="1" value="1"
-                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition"
-                        placeholder="1">
+                    <label class="trainer-modal-label">Durata (mesi)</label>
+                    <input type="number" id="offer-duration" min="1" value="1" class="trainer-modal-input">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Codice Coupon (opzionale)</label>
-                    <input type="text" id="offer-coupon"
-                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition uppercase"
-                        placeholder="e.g., SUMMER50">
+                    <label class="trainer-modal-label">Codice Coupon</label>
+                    <input type="text" id="offer-coupon" class="trainer-modal-input" style="text-transform:uppercase;"
+                        placeholder="es. SUMMER50">
                 </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;">
                 <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Scade il (opzionale)</label>
-                    <input type="date" id="offer-expires"
-                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition">
+                    <label class="trainer-modal-label">Scade il</label>
+                    <input type="date" id="offer-expires" class="trainer-modal-input">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400 uppercase tracking-wider mb-1 block">Limite Utilizzo (opzionale)</label>
-                    <input type="number" id="offer-max-uses" min="1"
-                        class="w-full bg-black/20 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none focus:border-green-500/50 transition"
+                    <label class="trainer-modal-label">Limite Utilizzo</label>
+                    <input type="number" id="offer-max-uses" min="1" class="trainer-modal-input"
                         placeholder="Illimitato">
                 </div>
             </div>
 
-            <div class="flex gap-2 mt-6">
-                <button type="button" onclick="closeOfferModal()"
-                    class="flex-1 bg-white/10 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-white/20 transition">
-                    Annulla
-                </button>
-                <button type="submit"
-                    class="flex-1 bg-green-500 px-4 py-2 rounded-lg text-sm font-semibold hover:bg-green-500/80 transition">
-                    <span id="offer-submit-btn">Crea Offerta</span>
-                </button>
-            </div>
+            <button type="submit" class="trainer-modal-btn" style="width:100%;margin-top:0.25rem;">
+                <span id="offer-submit-btn">Crea Offerta</span>
+            </button>
         </form>
     </div>
 </div>
 
 <!-- Trainers Modal -->
-<div id="trainers-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="glass-card rounded-2xl max-w-lg w-full max-h-[80vh] flex flex-col">
-        <!-- Header -->
-        <div class="p-5 border-b border-white/10 flex justify-between items-center">
-            <h3 class="text-xl font-bold">Gestione Team</h3>
-            <button onclick="closeTrainersModal()" class="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 transition flex items-center justify-center">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                </svg>
-            </button>
+<div id="trainers-modal" class="owner-modal-overlay hidden"
+    onclick="closeTrainersModal()">
+    <div class="trainer-modal-card w-full max-w-[420px] slide-up" onclick="event.stopPropagation()" style="max-height:80vh;display:flex;flex-direction:column;">
+        <div class="trainer-modal-header">
+            <h3>Gestione Team</h3>
+            <button onclick="closeTrainersModal()">&#10005;</button>
         </div>
 
-        <!-- Content -->
-        <div class="p-5 overflow-y-auto flex-1">
+        <div class="trainer-modal-body" style="overflow-y:auto;flex:1;padding:16px 20px;">
             <!-- Pending Approvals Section -->
             <div id="modal-pending-section" class="mb-5 hidden">
-                <h4 class="text-sm font-bold text-yellow-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-yellow-400 animate-pulse"></span>
+                <h4 class="text-[11px] font-bold text-yellow-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse"></span>
                     Approvazioni in Attesa
                 </h4>
                 <div id="modal-pending-trainers" class="space-y-2">
-                    <!-- Pending trainers loaded here -->
                 </div>
             </div>
 
             <!-- Active Trainers Section -->
             <div>
-                <h4 class="text-sm font-bold text-white uppercase tracking-wider mb-3">Trainer Attivi</h4>
+                <h4 class="text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-3">Trainer Attivi</h4>
                 <div id="modal-approved-trainers" class="space-y-2">
-                    <div class="p-3 text-center text-gray-400 text-sm">Caricamento...</div>
+                    <div class="p-3 text-center text-gray-500 text-sm">Caricamento...</div>
                 </div>
             </div>
         </div>
 
         <!-- Footer with gym code -->
-        <div class="p-4 border-t border-white/10 bg-white/5">
-            <p class="text-xs text-gray-400 text-center">Condividi il codice palestra per invitare trainer</p>
-            <div class="flex items-center justify-center gap-2 mt-2">
-                <code class="bg-black/30 px-3 py-1.5 rounded-lg text-primary font-mono text-sm" id="modal-gym-code">{{ gym_id[:8] if gym_id else '...' }}</code>
-                <button onclick="copyGymCode()" class="text-xs bg-primary/20 text-primary px-3 py-1.5 rounded-lg hover:bg-primary/30 transition">
+        <div style="padding:12px 20px;border-top:1px solid rgba(255,255,255,0.06);background:#1a1a1a;border-radius:0 0 16px 16px;">
+            <p class="text-[11px] text-gray-500 text-center mb-2">Condividi il codice palestra per invitare trainer</p>
+            <div class="flex items-center justify-center gap-2">
+                <code style="background:#252525;padding:6px 12px;border-radius:8px;font-size:13px;color:var(--primary);font-family:monospace;" id="modal-gym-code">{{ gym_id[:8] if gym_id else '...' }}</code>
+                <button onclick="copyGymCode()" style="font-size:12px;padding:6px 12px;border-radius:8px;background:rgba(249,115,22,0.12);color:var(--primary);border:none;cursor:pointer;">
                     Copia
                 </button>
             </div>
@@ -1097,7 +1065,7 @@
 </div>
 
 <!-- Create/Edit Template Modal -->
-<div id="template-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+<div id="template-modal" class="owner-modal-overlay hidden">
     <div class="glass-card p-6 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
         <h3 class="text-xl font-bold mb-4" id="template-modal-title">Crea Messaggio Automatico</h3>
 
@@ -2441,8 +2409,8 @@ function displayDashboardTrainers(trainers) {
 
     if (!trainers || trainers.length === 0) {
         list.innerHTML = `
-            <div class="glass-card p-3 text-center text-gray-400 text-sm">
-                <p>No trainers yet</p>
+            <div class="p-4 rounded-xl text-center text-gray-500 text-sm" style="background:#1a1a1a;">
+                <p>Nessun trainer</p>
                 <p class="text-xs mt-1">Condividi il codice palestra per invitare trainer</p>
             </div>
         `;
@@ -2454,35 +2422,31 @@ function displayDashboardTrainers(trainers) {
     const totalClients = trainers.reduce((sum, t) => sum + (t.client_count || 0), 0);
 
     list.innerHTML = `
-        <div class="glass-card p-3 mb-2">
-            <div class="flex justify-between items-center text-sm">
-                <span class="text-gray-400">Staff Totale</span>
-                <span class="font-bold text-white">${trainers.length}</span>
-            </div>
-            <div class="flex justify-between items-center text-sm mt-1">
-                <span class="text-gray-400">Gestisce</span>
-                <span class="font-bold text-primary">${totalClients} clienti</span>
-            </div>
+        <div class="flex items-center justify-between text-xs text-gray-500 mb-3 px-1">
+            <span>${trainers.length} staff</span>
+            <span>${totalClients} clienti totali</span>
         </div>
         ${displayTrainers.map(trainer => {
             const initials = trainer.username.substring(0, 2).toUpperCase();
             const clientCount = trainer.client_count || 0;
+            const role = trainer.role === 'nutritionist' ? 'Nutrizionista' : 'Trainer';
             return `
-            <div class="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition">
-                <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-primary/30 to-orange-500/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
-                    <span class="text-xs font-bold text-primary">${initials}</span>
+            <div class="flex items-center gap-3 p-3 rounded-xl" style="background:#1a1a1a;">
+                <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(249,115,22,0.12);">
+                    <span class="text-xs font-bold" style="color:var(--primary);">${initials}</span>
                 </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-white truncate">${trainer.username}</p>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold text-white">${trainer.username}</p>
+                    <p class="text-[11px] text-gray-500">${role}</p>
                 </div>
-                <div class="flex items-center gap-1">
-                    <span class="text-sm font-bold text-primary">${clientCount}</span>
-                    <span class="text-xs text-gray-500">${icon('users', 12)}</span>
+                <div class="text-right">
+                    <span class="text-sm font-bold text-white">${clientCount}</span>
+                    <span class="text-[11px] text-gray-500 block">clienti</span>
                 </div>
             </div>
         `}).join('')}
         ${trainers.length > 5 ? `
-            <button onclick="openTrainersModal()" class="block w-full text-center text-xs text-primary hover:text-primary/80 transition mt-2">
+            <button onclick="openTrainersModal()" class="block w-full text-center text-xs text-orange-400 hover:text-orange-300 transition mt-2 font-semibold">
                 +${trainers.length - 5} altri trainer
             </button>
         ` : ''}
@@ -2556,32 +2520,30 @@ function displayModalPendingTrainers(trainers) {
     container.innerHTML = trainers.map(trainer => {
         const initials = trainer.username.substring(0, 2).toUpperCase();
         return `
-        <div class="glass-card p-3 border border-yellow-500/20">
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-yellow-500/30 to-orange-500/20 border border-yellow-500/30 flex items-center justify-center flex-shrink-0">
-                    <span class="text-sm font-bold text-yellow-400">${initials}</span>
+        <div class="flex items-center gap-3 p-3 rounded-xl" style="background:#252525;border:1px solid rgba(234,179,8,0.15);">
+            <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(234,179,8,0.12);">
+                <span class="text-xs font-bold text-yellow-400">${initials}</span>
+            </div>
+            <div class="flex-1 min-w-0">
+                <div class="flex items-center gap-2">
+                    <h4 class="font-semibold text-white text-sm">${trainer.username}</h4>
+                    <span class="text-[10px] px-1.5 py-0.5 rounded-full ${getRoleBadgeClass(trainer)}">${getRoleLabel(trainer)}</span>
                 </div>
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2">
-                        <h4 class="font-semibold text-white text-sm">${trainer.username}</h4>
-                        <span class="text-[10px] px-1.5 py-0.5 rounded-full ${getRoleBadgeClass(trainer)}">${getRoleLabel(trainer)}</span>
-                    </div>
-                    <p class="text-xs text-gray-400 truncate">${trainer.email || 'Nessuna email'}</p>
-                </div>
-                <div class="flex gap-1.5">
-                    <button onclick="approveTrainerFromModal('${trainer.id}')"
-                        class="w-8 h-8 rounded-lg bg-green-500/20 hover:bg-green-500/30 text-green-400 flex items-center justify-center transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
-                        </svg>
-                    </button>
-                    <button onclick="rejectTrainerFromModal('${trainer.id}', '${trainer.username}')"
-                        class="w-8 h-8 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 flex items-center justify-center transition">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
-                        </svg>
-                    </button>
-                </div>
+                <p class="text-[11px] text-gray-500 truncate">${trainer.email || 'Nessuna email'}</p>
+            </div>
+            <div class="flex gap-1.5">
+                <button onclick="approveTrainerFromModal('${trainer.id}')"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center transition" style="background:rgba(34,197,94,0.12);color:#4ade80;">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
+                    </svg>
+                </button>
+                <button onclick="rejectTrainerFromModal('${trainer.id}', '${trainer.username}')"
+                    class="w-8 h-8 rounded-lg flex items-center justify-center transition" style="background:rgba(239,68,68,0.12);color:#f87171;">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
             </div>
         </div>
     `}).join('');
@@ -2593,9 +2555,9 @@ function displayModalApprovedTrainers(trainers) {
 
     if (!trainers || trainers.length === 0) {
         container.innerHTML = `
-            <div class="text-center text-gray-400 text-sm py-4">
-                <p>No active trainers yet</p>
-                <p class="text-xs mt-1">Condividi il codice palestra per invitare trainer</p>
+            <div class="text-center text-gray-500 text-sm py-4">
+                <p>Nessun trainer attivo</p>
+                <p class="text-[11px] mt-1">Condividi il codice palestra per invitare trainer</p>
             </div>
         `;
         return;
@@ -2604,21 +2566,19 @@ function displayModalApprovedTrainers(trainers) {
     container.innerHTML = trainers.map(trainer => {
         const initials = trainer.username.substring(0, 2).toUpperCase();
         const clientCount = trainer.client_count || 0;
+        const role = trainer.role === 'nutritionist' ? 'Nutrizionista' : 'Trainer';
         return `
-        <div class="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition">
-            <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/30 to-orange-500/20 border border-primary/30 flex items-center justify-center flex-shrink-0">
-                <span class="text-sm font-bold text-primary">${initials}</span>
+        <div class="flex items-center gap-3 p-3 rounded-xl" style="background:#252525;">
+            <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(249,115,22,0.12);">
+                <span class="text-xs font-bold" style="color:var(--primary);">${initials}</span>
             </div>
             <div class="flex-1 min-w-0">
-                <div class="flex items-center gap-2">
-                    <h4 class="font-semibold text-white text-sm">${trainer.username}</h4>
-                    <span class="w-1.5 h-1.5 rounded-full bg-green-400"></span>
-                </div>
-                <p class="text-xs text-gray-400 truncate">${trainer.email || 'Nessuna email'}</p>
+                <h4 class="font-semibold text-white text-sm">${trainer.username}</h4>
+                <p class="text-[11px] text-gray-500">${trainer.email || role}</p>
             </div>
             <div class="text-right">
-                <p class="text-lg font-bold text-primary">${clientCount}</p>
-                <p class="text-[10px] text-gray-500">clienti</p>
+                <span class="text-sm font-bold text-white">${clientCount}</span>
+                <span class="text-[11px] text-gray-500 block">clienti</span>
             </div>
         </div>
     `}).join('');
@@ -3143,8 +3103,8 @@ function displayAtRiskClients(clients) {
 
     if (!clients || clients.length === 0) {
         container.innerHTML = `
-            <div class="glass-card p-4 text-center text-green-400 text-sm flex items-center justify-center gap-2">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div class="p-4 rounded-xl text-center text-green-400 text-sm flex items-center justify-center gap-2" style="background:#1a1a1a;">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                 </svg>
                 Nessun cliente a rischio! Ottima fidelizzazione.
@@ -3154,24 +3114,22 @@ function displayAtRiskClients(clients) {
     }
 
     container.innerHTML = clients.map(client => `
-        <div class="glass-card p-3 flex items-center gap-3 hover:bg-white/5 transition">
-            <div class="w-10 h-10 rounded-full bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center flex-shrink-0">
-                <span class="text-sm font-bold text-yellow-400">${(client.name || 'U').substring(0, 2).toUpperCase()}</span>
+        <div class="flex items-center gap-3 p-3 rounded-xl" style="background:#1a1a1a;">
+            <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(234,179,8,0.12);">
+                <span class="text-xs font-bold text-yellow-400">${(client.name || 'U').substring(0, 2).toUpperCase()}</span>
             </div>
             <div class="flex-1 min-w-0">
-                <p class="font-semibold text-sm truncate">${escapeHtml(client.name)}</p>
-                <p class="text-xs text-gray-400">
-                    ${client.days_inactive} giorni inattivo ·
-                    ${client.trainer_name ? `Trainer: ${client.trainer_name}` : 'Nessun trainer'}
+                <p class="font-semibold text-sm text-white truncate">${escapeHtml(client.name)}</p>
+                <p class="text-[11px] text-gray-500">
+                    ${client.days_inactive}g inattivo · ${client.trainer_name ? client.trainer_name : 'Nessun trainer'}
                 </p>
             </div>
             <div class="text-right flex-shrink-0">
-                <span class="text-xs px-2 py-1 rounded-full ${
-                    client.days_inactive > 10 ? 'bg-red-500/20 text-red-400' : 'bg-yellow-500/20 text-yellow-400'
+                <span class="text-[11px] px-2 py-0.5 rounded-full" style="background:${
+                    client.days_inactive > 10 ? 'rgba(239,68,68,0.12);color:#f87171' : 'rgba(234,179,8,0.12);color:#facc15'
                 }">
                     ${client.days_inactive > 10 ? 'Critico' : 'A Rischio'}
                 </span>
-                <p class="text-xs text-gray-500 mt-1">Salute: ${client.health_score || 0}</p>
             </div>
         </div>
     `).join('');
@@ -3197,7 +3155,7 @@ function displayInteractions(interactions) {
 
     if (!interactions || interactions.length === 0) {
         container.innerHTML = `
-            <div class="glass-card p-3 text-center text-gray-400 text-sm">
+            <div class="p-3 rounded-xl text-center text-gray-500 text-sm" style="background:#1a1a1a;">
                 Nessuna attività recente
             </div>
         `;
@@ -3212,24 +3170,24 @@ function displayInteractions(interactions) {
         'subscription': 'credit-card'
     };
 
-    const typeColors = {
-        'workout': 'bg-green-500/20 text-green-400',
-        'appointment': 'bg-blue-500/20 text-blue-400',
-        'message': 'bg-purple-500/20 text-purple-400',
-        'automated_message': 'bg-orange-500/20 text-orange-400',
-        'subscription': 'bg-yellow-500/20 text-yellow-400'
+    const typeColorMap = {
+        'workout': 'rgba(34,197,94,0.12)',
+        'appointment': 'rgba(96,165,250,0.12)',
+        'message': 'rgba(167,139,250,0.12)',
+        'automated_message': 'rgba(249,115,22,0.12)',
+        'subscription': 'rgba(234,179,8,0.12)'
     };
 
     container.innerHTML = interactions.map(i => `
-        <div class="glass-card p-3 flex items-center gap-3">
-            <div class="w-8 h-8 rounded-full ${typeColors[i.type] || 'bg-gray-500/20'} flex items-center justify-center flex-shrink-0">
-                ${icon(typeIcons[i.type] || 'pin', 16)}
+        <div class="flex items-center gap-3 p-3 rounded-xl" style="background:#1a1a1a;">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:${typeColorMap[i.type] || 'rgba(107,114,128,0.12)'};">
+                ${icon(typeIcons[i.type] || 'pin', 14)}
             </div>
             <div class="flex-1 min-w-0">
-                <p class="text-sm font-semibold truncate">${escapeHtml(i.client_name)}</p>
-                <p class="text-xs text-gray-400 truncate">${escapeHtml(i.description)}</p>
+                <p class="text-sm font-semibold text-white truncate">${escapeHtml(i.client_name)}</p>
+                <p class="text-[11px] text-gray-500 truncate">${escapeHtml(i.description)}</p>
             </div>
-            <div class="text-xs text-gray-500 flex-shrink-0">
+            <div class="text-[11px] text-gray-600 flex-shrink-0">
                 ${i.timestamp ? i.timestamp.split('T')[0] : ''}
             </div>
         </div>
@@ -3257,7 +3215,7 @@ function displayCertificatesOverview(clients) {
 
     if (!clients || clients.length === 0) {
         container.innerHTML = `
-            <div class="glass-card p-4 text-center text-gray-400 text-sm">
+            <div class="p-4 rounded-xl text-center text-gray-500 text-sm" style="background:#1a1a1a;">
                 Nessun cliente trovato.
             </div>
         `;
@@ -3265,29 +3223,29 @@ function displayCertificatesOverview(clients) {
     }
 
     const statusConfig = {
-        valid: { icon: '&#10003;', bg: 'bg-green-500/20', border: 'border-green-500/30', text: 'text-green-400', label: 'Valido' },
-        expiring: { icon: '&#9888;', bg: 'bg-yellow-500/20', border: 'border-yellow-500/30', text: 'text-yellow-400', label: 'In Scadenza' },
-        expired: { icon: '&#10007;', bg: 'bg-red-500/20', border: 'border-red-500/30', text: 'text-red-400', label: 'Scaduto' },
-        missing: { icon: '&mdash;', bg: 'bg-gray-500/20', border: 'border-gray-500/30', text: 'text-gray-400', label: 'Mancante' }
+        valid:    { icon: '&#10003;', bg: 'rgba(34,197,94,0.12)',  color: '#4ade80', label: 'Valido' },
+        expiring: { icon: '&#9888;',  bg: 'rgba(234,179,8,0.12)',  color: '#facc15', label: 'In Scadenza' },
+        expired:  { icon: '&#10007;', bg: 'rgba(239,68,68,0.12)',  color: '#f87171', label: 'Scaduto' },
+        missing:  { icon: '&mdash;',  bg: 'rgba(107,114,128,0.12)', color: '#9ca3af', label: 'Mancante' }
     };
 
     container.innerHTML = clients.map(c => {
         const cfg = statusConfig[c.status] || statusConfig.missing;
         const expiryInfo = c.expiration_date ? new Date(c.expiration_date).toLocaleDateString() : '';
-        const viewBtn = c.file_url ? `<a href="${c.file_url}" target="_blank" class="text-xs ${cfg.text} hover:underline">Vedi</a>` : '';
+        const viewBtn = c.file_url ? `<a href="${c.file_url}" target="_blank" style="font-size:11px;color:${cfg.color};" class="hover:underline">Vedi</a>` : '';
 
         return `
-            <div class="glass-card p-3 flex items-center gap-3">
-                <div class="w-8 h-8 rounded-full ${cfg.bg} border ${cfg.border} flex items-center justify-center flex-shrink-0">
-                    <span class="text-sm font-bold ${cfg.text}">${cfg.icon}</span>
+            <div class="flex items-center gap-3 p-3 rounded-xl" style="background:#1a1a1a;">
+                <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:${cfg.bg};">
+                    <span class="text-sm font-bold" style="color:${cfg.color};">${cfg.icon}</span>
                 </div>
                 <div class="flex-1 min-w-0">
-                    <p class="text-sm font-semibold truncate">${escapeHtml(c.name)}</p>
-                    <p class="text-xs text-gray-400">${expiryInfo ? `Scade: ${expiryInfo}` : 'Nessun certificato'}</p>
+                    <p class="text-sm font-semibold text-white truncate">${escapeHtml(c.name)}</p>
+                    <p class="text-[11px] text-gray-500">${expiryInfo ? `Scade: ${expiryInfo}` : 'Nessun certificato'}</p>
                 </div>
                 <div class="flex items-center gap-2">
                     ${viewBtn}
-                    <span class="text-xs px-2 py-1 rounded-full ${cfg.bg} ${cfg.text}">${cfg.label}</span>
+                    <span class="text-[11px] px-2 py-0.5 rounded-full" style="background:${cfg.bg};color:${cfg.color};">${cfg.label}</span>
                 </div>
             </div>
         `;

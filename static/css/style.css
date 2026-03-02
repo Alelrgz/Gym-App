@@ -88,7 +88,7 @@ body {
     -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--glass-border-2);
     border-radius: var(--radius-2xl);
-    box-shadow: var(--shadow-md), var(--glass-inner-glow);
+    box-shadow: none;
     transition: all var(--transition-base);
 }
 
@@ -103,7 +103,7 @@ body {
     -webkit-backdrop-filter: blur(24px);
     border: 1px solid var(--glass-border-3);
     border-radius: var(--radius-2xl);
-    box-shadow: var(--shadow-lg), var(--glass-inner-glow-strong);
+    box-shadow: none;
 }
 
 /* Secondary Card - Supporting content */
@@ -528,6 +528,22 @@ body {
     animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Fullscreen modal slide from bottom */
+.modal-slide-panel {
+    transform: translateY(100%);
+    transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.modal-slide-panel.modal-slide-visible {
+    transform: translateY(0);
+}
+.modal-slide-backdrop {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+.modal-slide-backdrop.modal-slide-visible {
+    opacity: 1;
+}
+
 /* League tier badge glow */
 .league-tier-active {
     box-shadow: 0 0 18px var(--tier-glow, rgba(255, 215, 0, 0.3));
@@ -818,10 +834,10 @@ select option {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    gap: 4px;
+    gap: 3px;
     flex: 1;
-    padding: 8px 0;
-    color: rgba(255, 255, 255, 0.35);
+    padding: 6px 0;
+    color: #555555;
     text-decoration: none;
     transition: color 0.2s ease;
     -webkit-tap-highlight-color: transparent;
@@ -829,12 +845,12 @@ select option {
 
 .bottom-nav-item i,
 .bottom-nav-item svg {
-    width: 26px;
-    height: 26px;
+    width: 22px;
+    height: 22px;
 }
 
 .bottom-nav-item span {
-    font-size: 11px;
+    font-size: 10px;
     font-weight: 600;
     letter-spacing: 0.3px;
 }
@@ -1757,10 +1773,683 @@ body:has(.staff-layout) > nav {
 
 /* ============ TRAINER LAYOUT (reuses staff- classes) ============ */
 
+/* --- Trainer Color Scheme --- */
+.trainer-layout {
+    --primary: #F74100;
+    --primary-hover: #d93800;
+    --primary-glow: rgba(247, 65, 0, 0.4);
+    --primary-subtle: rgba(247, 65, 0, 0.15);
+    --bg-base: #1E1E1E;
+    --bg-elevated: #232323;
+    --bg-surface: #282828;
+    --glass-bg-1: #2a2a2a;
+    --glass-bg-2: #252525;
+    --glass-bg-3: #2f2f2f;
+    --glass-border-1: rgba(255, 255, 255, 0.06);
+    --glass-border-2: rgba(255, 255, 255, 0.08);
+}
+
+/* --- Trainer Modal Card --- */
+.trainer-modal-card {
+    background: #1E1E1E;
+    border-radius: 20px;
+    overflow: hidden;
+    max-height: 90vh;
+    overflow-y: auto;
+}
+.trainer-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1.1rem;
+    background: #252525;
+}
+.trainer-modal-header h3 {
+    font-size: 0.85rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    color: white;
+    margin: 0;
+}
+.trainer-modal-header button {
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.9rem;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 0;
+}
+.trainer-modal-header button:hover {
+    color: white;
+}
+.trainer-modal-body {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.trainer-modal-label {
+    display: block;
+    font-size: 0.65rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    color: rgba(255, 255, 255, 0.45);
+    text-transform: uppercase;
+    margin-bottom: 0.35rem;
+}
+.trainer-modal-input {
+    width: 100%;
+    padding: 0.6rem 0.8rem;
+    background: #252525;
+    border: none;
+    border-radius: 10px;
+    color: white;
+    font-size: 0.8rem;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    box-sizing: border-box;
+}
+input[type="time"].trainer-modal-input {
+    color-scheme: dark;
+    -webkit-appearance: none;
+    appearance: none;
+    text-align: left;
+    line-height: 1.2;
+}
+input[type="time"].trainer-modal-input::-webkit-calendar-picker-indicator {
+    filter: invert(0.5);
+    cursor: pointer;
+}
+input[type="time"].trainer-modal-input::-webkit-datetime-edit {
+    padding: 0;
+}
+input[type="time"].trainer-modal-input::-webkit-datetime-edit-fields-wrapper {
+    padding: 0;
+}
+.trainer-modal-input::placeholder {
+    color: rgba(255, 255, 255, 0.25);
+}
+.trainer-modal-input:focus {
+    box-shadow: 0 0 0 1px var(--primary, #F74100);
+}
+select.trainer-modal-input {
+    cursor: pointer;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='rgba(255,255,255,0.4)' stroke-width='2.5'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    padding-right: 2rem;
+}
+select.trainer-modal-input option {
+    background: #252525;
+    color: white;
+}
+.trainer-modal-btn {
+    width: 100%;
+    padding: 0.75rem;
+    background: var(--primary, #F74100);
+    color: white;
+    font-size: 0.8rem;
+    font-weight: 800;
+    letter-spacing: 0.5px;
+    border: none;
+    border-radius: 12px;
+    cursor: pointer;
+    margin-top: 0.35rem;
+    transition: opacity 0.15s;
+}
+.trainer-modal-btn:active {
+    opacity: 0.85;
+}
+/* Border-radius for workout wizard modal */
+#create-workout-modal .trainer-modal-card { border-radius: 0; }
+@media (min-width: 768px) {
+    #create-workout-modal .trainer-modal-card { border-radius: 20px; }
+}
+
+/* --- Button Wiggle --- */
+@keyframes wiggle {
+    0%, 100% { transform: translateX(0); }
+    15% { transform: translateX(-6px); }
+    30% { transform: translateX(5px); }
+    45% { transform: translateX(-4px); }
+    60% { transform: translateX(3px); }
+    75% { transform: translateX(-2px); }
+    90% { transform: translateX(1px); }
+}
+.wiggle {
+    animation: wiggle 0.5s ease;
+}
+
+/* --- Settings Page --- */
+.settings-wrapper {
+    max-width: 480px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.settings-card {
+    background: #1a1a1a;
+    border: 1px solid rgba(255,255,255,0.06);
+    border-radius: 14px;
+    padding: 1.1rem 1.25rem;
+}
+.settings-profile-header {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+}
+.settings-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), #e04e1a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #fff;
+    flex-shrink: 0;
+    overflow: hidden;
+}
+.settings-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.settings-name {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    line-height: 1.2;
+}
+.settings-role {
+    font-size: 0.65rem;
+    color: rgba(255,255,255,0.35);
+    margin: 0.1rem 0 0;
+}
+.settings-photo-btn {
+    background: #252525;
+    border: none;
+    color: rgba(255,255,255,0.5);
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.4rem 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+.settings-photo-btn:hover { background: #303030; color: #fff; }
+.settings-section-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0 0 0.85rem;
+}
+.settings-field {
+    margin-bottom: 0.75rem;
+}
+.settings-field:last-of-type {
+    margin-bottom: 0;
+}
+.settings-save-btn {
+    display: inline-block;
+    margin-top: 0.85rem;
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.5rem 1.5rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+.settings-save-btn:hover { opacity: 0.85; }
+.settings-chip {
+    display: inline-block;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.65rem;
+    border-radius: 8px;
+    background: #252525;
+    color: rgba(255,255,255,0.5);
+    border: 1.5px solid transparent;
+    transition: all 0.15s;
+    cursor: pointer;
+}
+.specialty-checkbox:checked + .settings-chip {
+    background: rgba(241, 90, 36, 0.15);
+    color: var(--primary);
+    border-color: var(--primary);
+}
+.settings-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+.settings-row-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: rgba(255,255,255,0.7);
+    display: block;
+}
+.settings-row-sub {
+    font-size: 0.6rem;
+    color: rgba(255,255,255,0.25);
+    display: block;
+    margin-top: 0.1rem;
+}
+.settings-action-btn {
+    background: #252525;
+    border: none;
+    color: var(--primary);
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.45rem 1rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    flex-shrink: 0;
+}
+.settings-action-btn:hover { background: #303030; }
+.settings-logout-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    background: rgba(239, 68, 68, 0.1);
+    color: #ef4444;
+    border: none;
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.45rem 0.85rem;
+    border-radius: 8px;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.15s;
+}
+.settings-logout-btn:hover { background: rgba(239, 68, 68, 0.2); }
+
+/* --- Chat Panel (Trainer) --- */
+.chat-panel {
+    position: fixed;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 100%;
+    z-index: 200;
+    background: #141414;
+    display: flex;
+    flex-direction: column;
+}
+@media (min-width: 768px) {
+    .chat-panel {
+        width: 380px;
+        border-left: 1px solid rgba(255,255,255,0.06);
+    }
+}
+.chat-panel-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0.85rem 1rem;
+    background: #1a1a1a;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+}
+.chat-panel-avatar {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--primary), #e04e1a);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+.chat-panel-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.chat-panel-name {
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #fff;
+    margin: 0;
+    line-height: 1.2;
+}
+.chat-panel-status {
+    font-size: 0.6rem;
+    color: rgba(255,255,255,0.3);
+    margin: 0;
+}
+.chat-panel-back,
+.chat-panel-close {
+    background: none;
+    border: none;
+    color: rgba(255,255,255,0.4);
+    font-size: 1.3rem;
+    cursor: pointer;
+    padding: 0;
+    line-height: 1;
+    transition: color 0.15s;
+}
+.chat-panel-back:hover,
+.chat-panel-close:hover { color: #fff; }
+.chat-panel-footer {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 1rem;
+    background: #1a1a1a;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+}
+.chat-send-btn {
+    background: var(--primary);
+    color: #fff;
+    border: none;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.55rem 1rem;
+    border-radius: 10px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: opacity 0.15s;
+}
+.chat-send-btn:hover { opacity: 0.85; }
+
+/* --- Drag & Drop Client to Agenda --- */
+.dragging-client {
+    opacity: 0.4;
+}
+.drag-over-highlight {
+    border: 2px dashed var(--primary) !important;
+    border-radius: 12px;
+    background: rgba(241, 90, 36, 0.06);
+    transition: all 0.2s ease;
+}
+
+/* --- Workout Wizard --- */
+.workout-wizard-steps {
+    display: flex;
+    justify-content: center;
+    gap: 0.4rem;
+    width: 100%;
+    padding: 0.1rem 0 0.2rem;
+}
+.workout-step-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.15);
+    transition: all 0.3s ease;
+}
+.workout-step-dot.active {
+    background: #F15A24;
+    width: 24px;
+    border-radius: 4px;
+}
+.workout-step-dot.completed {
+    background: #22c55e;
+}
+.workout-wizard-content {
+    animation: wizardFadeIn 0.25s ease;
+}
+@keyframes wizardFadeIn {
+    from { opacity: 0; transform: translateX(8px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+.workout-wizard-content.wizard-back {
+    animation: wizardFadeInReverse 0.25s ease;
+}
+@keyframes wizardFadeInReverse {
+    from { opacity: 0; transform: translateX(-8px); }
+    to { opacity: 1; transform: translateX(0); }
+}
+
+/* Compact exercise list item (Step 2) */
+.workout-ex-compact {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.55rem 0.7rem;
+    background: #252525;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+    border: 1px solid transparent;
+}
+.workout-ex-compact:active {
+    transform: scale(0.98);
+}
+.workout-ex-compact.selected {
+    border-color: #F15A24;
+    background: rgba(241, 90, 36, 0.08);
+}
+.workout-ex-compact .ex-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: rgba(255, 255, 255, 0.06);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 14px;
+}
+.workout-ex-compact .ex-info {
+    flex: 1;
+    min-width: 0;
+}
+.workout-ex-compact .ex-name {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: white;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.workout-ex-compact .ex-meta {
+    font-size: 0.6rem;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+.workout-ex-compact .ex-add-indicator {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: #F15A24;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 14px;
+    font-weight: 800;
+    color: white;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+}
+.workout-ex-compact:hover .ex-add-indicator {
+    opacity: 1;
+}
+
+/* Selected count badge */
+.workout-wizard-badge {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    padding: 0.5rem;
+    background: rgba(241, 90, 36, 0.1);
+    border: 1px solid rgba(241, 90, 36, 0.2);
+    border-radius: 10px;
+    color: #F15A24;
+    font-size: 0.72rem;
+    font-weight: 700;
+}
+.workout-wizard-badge span {
+    font-size: 0.85rem;
+    font-weight: 800;
+}
+
+/* Step 3: Exercise config card */
+.workout-config-card {
+    background: #252525;
+    border-radius: 12px;
+    padding: 0.75rem;
+    position: relative;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+}
+.workout-config-card .config-remove {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.3);
+    cursor: pointer;
+    padding: 0.2rem;
+    font-size: 0.8rem;
+}
+.workout-config-card .config-remove:hover {
+    color: #ef4444;
+}
+.workout-config-card .config-header {
+    padding-right: 1.5rem;
+    margin-bottom: 0.6rem;
+}
+.workout-config-card .config-name {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: white;
+}
+.workout-config-card .config-meta {
+    font-size: 0.58rem;
+    color: rgba(255, 255, 255, 0.35);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+.workout-config-card .config-inputs {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 0.5rem;
+}
+.workout-config-card .config-inputs label {
+    display: block;
+    font-size: 0.55rem;
+    font-weight: 700;
+    color: rgba(255, 255, 255, 0.4);
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 0.25rem;
+}
+.workout-config-card .config-inputs .trainer-modal-input {
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 700;
+    padding: 0.5rem 0.4rem;
+}
+
+/* --- Trainer Client Modal --- */
+.trainer-client-status-card {
+    background: #252525;
+    border-radius: 12px;
+    padding: 0.75rem 0.9rem;
+    cursor: pointer;
+    transition: background 0.15s;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+}
+.trainer-client-status-card:hover {
+    background: #2a2a2a;
+}
+.trainer-client-action-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem;
+    background: #252525;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.78rem;
+    font-weight: 700;
+    border: 1px solid rgba(255, 255, 255, 0.06);
+    border-radius: 12px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.trainer-client-action-btn:hover {
+    background: #2a2a2a;
+}
+.trainer-client-action-btn--accent {
+    background: rgba(247, 65, 0, 0.12);
+    color: #F74100;
+    border-color: rgba(247, 65, 0, 0.2);
+}
+.trainer-client-action-btn--accent:hover {
+    background: rgba(247, 65, 0, 0.2);
+}
+.trainer-client-action-btn--primary {
+    background: #F15A24;
+    color: white;
+    border-color: transparent;
+}
+.trainer-client-action-btn--primary:hover {
+    background: #d94e1f;
+}
+
+/* Trainer: search bars match card background exactly */
+.trainer-layout .staff-search-bar input {
+    background: #252525;
+    border: none;
+}
+.trainer-layout .staff-search-bar input:focus {
+    background: #252525;
+    border: none;
+}
+
+/* Trainer: integrated search (inside cards) */
+.trainer-integrated-search {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.trainer-integrated-search input {
+    flex: 1;
+    background: none;
+    border: none;
+    outline: none;
+    color: white;
+    font-size: 0.82rem;
+    font-weight: 500;
+    padding: 0;
+}
+.trainer-integrated-search input::placeholder {
+    color: rgba(255, 255, 255, 0.25);
+}
+
+/* Inactive clients modal rows */
+.trainer-inactive-row {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0.5rem;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.trainer-inactive-row:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
 /* Override body when trainer layout is active */
 body:has(.trainer-layout) {
     padding-bottom: 0 !important;
     overflow: hidden;
+    background-color: #1E1E1E !important;
 }
 
 /* On desktop, hide the base.html bottom nav for trainer */
@@ -1772,28 +2461,13 @@ body:has(.trainer-layout) {
     /* Conversations & chat modals: side panel on desktop */
     body:has(.trainer-layout) #conversations-modal,
     body:has(.trainer-layout) #chat-modal {
-        left: auto;
-        right: 0;
-        width: 420px;
-        background: var(--bg-elevated);
-        backdrop-filter: blur(32px);
-        -webkit-backdrop-filter: blur(32px);
-        border-left: 1px solid var(--glass-border-2);
-    }
-
-    body:has(.trainer-layout) #conversations-modal > div:first-child,
-    body:has(.trainer-layout) #chat-modal > div:first-child {
-        border-bottom-color: var(--glass-border-1);
-    }
-
-    body:has(.trainer-layout) #chat-modal > div:last-child {
-        border-top-color: var(--glass-border-1);
+        width: 380px;
     }
 
     body:has(.trainer-layout) #conversations-list > div {
-        background: var(--glass-bg-2);
-        border: 1px solid var(--glass-border-1);
-        border-radius: var(--radius-md);
+        background: #252525;
+        border: none;
+        border-radius: 10px;
     }
 
     body:has(.trainer-layout) #conversations-list > div:hover {
@@ -1810,6 +2484,13 @@ body:has(.trainer-layout) {
     overflow: hidden;
 }
 
+/* Desktop: modals only cover the main content area, not the sidebar */
+@media (min-width: 1025px) {
+    body:has(.trainer-layout) .fixed.inset-0 {
+        left: 200px !important;
+    }
+}
+
 .trainer-main-new {
     padding: 2rem 2.5rem;
     overflow-y: auto;
@@ -1822,42 +2503,190 @@ body:has(.trainer-layout) {
 }
 
 /* Trainer Utenti page grid */
+/* Make sections flex columns filling viewport (desktop) */
+@media (min-width: 769px) {
+    #section-dashboard,
+    #section-workouts {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 3rem);
+        overflow: hidden;
+    }
+}
 .trainer-utenti-grid {
     display: grid;
     grid-template-columns: 1.4fr 1fr;
     gap: 1.5rem;
     align-items: stretch;
-    max-height: calc(100vh - 280px);
+    flex: 1;
+    min-height: 0;
 }
 
-/* Client table: fill height and scroll */
-.trainer-utenti-grid > .staff-table-card {
+/* Both columns: fill grid height */
+.trainer-utenti-grid > .trainer-panel-content {
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Client table card: fill parent and scroll */
+.trainer-utenti-grid .staff-table-card {
+    flex: 1;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
 }
 
-.trainer-utenti-grid > .staff-table-card .staff-table {
+.trainer-utenti-grid .staff-table-card .staff-table {
     width: 100%;
 }
 
-/* Right column: fit viewport, scroll internally */
-.trainer-utenti-grid > div:last-child {
+/* Agenda glass-card: fill available space */
+.trainer-utenti-grid #utenti-panel-agenda > .glass-card:first-child {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
     overflow-y: auto;
-    max-height: 100%;
+    box-shadow: none;
 }
 
 /* Appointments schedule list: flexible */
 #d-schedule-container {
-    max-height: 30vh;
+    flex: 1;
     overflow-y: auto;
 }
 
-.trainer-dual-search {
+.trainer-stats-compact {
+    display: inline-flex;
+    background: none;
+    border: none;
+    width: auto;
+}
+
+/* --- Trainer Weekly Overview Stats --- */
+.trainer-weekly-overview {
     display: grid;
-    grid-template-columns: 1.4fr 1fr;
-    gap: 1.5rem;
-    margin-bottom: 1.5rem;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+}
+.trainer-overview-card {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    background: var(--glass-bg-2, #252525);
+    border: 1px solid var(--glass-border-1, rgba(255,255,255,0.06));
+    border-radius: 14px;
+    padding: 0.85rem 1rem;
+}
+.trainer-overview-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+.trainer-overview-content {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.trainer-overview-value {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: white;
+    line-height: 1.2;
+}
+.trainer-overview-label {
+    font-size: 0.68rem;
+    color: rgba(255,255,255,0.4);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* --- Trainer Needs Attention --- */
+.trainer-needs-attention {
+    margin-bottom: 0.5rem;
+}
+.trainer-needs-attention-title {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+    color: rgba(255,255,255,0.4);
+    margin-bottom: 0.6rem;
+}
+.trainer-needs-attention-list {
+    display: flex;
+    gap: 0.6rem;
+    overflow-x: auto;
+    padding-bottom: 0.25rem;
+    scrollbar-width: none;
+}
+.trainer-needs-attention-list::-webkit-scrollbar {
+    display: none;
+}
+.trainer-attention-card {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    background: var(--glass-bg-2, #252525);
+    border: 1px solid var(--glass-border-1, rgba(255,255,255,0.06));
+    border-radius: 12px;
+    padding: 0.6rem 0.85rem;
+    flex-shrink: 0;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+.trainer-attention-card:hover {
+    background: var(--glass-bg-3, #2f2f2f);
+}
+.trainer-attention-avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    object-fit: cover;
+    flex-shrink: 0;
+}
+.trainer-attention-info {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+.trainer-attention-name {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: white;
+    white-space: nowrap;
+}
+.trainer-attention-badge {
+    font-size: 0.65rem;
+    font-weight: 600;
+    padding: 0.15rem 0.45rem;
+    border-radius: 6px;
+    white-space: nowrap;
+    margin-top: 0.15rem;
+    display: inline-block;
+    width: fit-content;
+}
+.trainer-attention-badge.badge-inactive {
+    background: rgba(239,68,68,0.15);
+    color: #f87171;
+}
+.trainer-attention-badge.badge-expiring {
+    background: rgba(251,191,36,0.15);
+    color: #fbbf24;
+}
+.trainer-attention-badge.badge-unread {
+    background: rgba(59,130,246,0.15);
+    color: #60a5fa;
 }
 
 /* Trainer mobile panel tabs (hidden on desktop) */
@@ -1896,15 +2725,16 @@ body:has(.trainer-layout) {
     display: grid;
     grid-template-columns: 1fr 1.2fr 1fr;
     gap: 1.5rem;
-    align-items: start;
+    align-items: stretch;
+    flex: 1;
+    min-height: 0;
 }
 
 .allenamenti-column {
-    background: var(--glass-bg-1);
-    border: 1px solid var(--glass-border-1);
+    background: var(--glass-bg-2);
+    border: 1px solid var(--glass-border-2);
     border-radius: var(--radius-xl);
     padding: 1rem;
-    max-height: calc(100vh - 260px);
     overflow-y: auto;
 }
 
@@ -1913,7 +2743,7 @@ body:has(.trainer-layout) {
     position: sticky;
     top: -1rem;
     z-index: 5;
-    background: #141414;
+    background: var(--glass-bg-2);
     padding-top: 1rem;
     margin-top: -1rem;
     padding-bottom: 0.25rem;
@@ -2046,7 +2876,7 @@ tr.workout-drag-card.dragging {
 }
 
 tr.workout-drag-card.selected {
-    background: rgba(249, 115, 22, 0.12);
+    background: var(--primary-subtle);
     border-left: 3px solid var(--primary);
 }
 
@@ -2089,8 +2919,8 @@ tr.workout-expand-tr td {
 
 .client-drop-target.drag-over {
     border-color: var(--primary);
-    background: rgba(249, 115, 22, 0.08);
-    box-shadow: 0 0 12px rgba(249, 115, 22, 0.15);
+    background: var(--primary-subtle);
+    box-shadow: 0 0 12px var(--primary-glow);
 }
 
 /* ============ TRAINER MOBILE RESPONSIVE ============ */
@@ -2098,6 +2928,13 @@ tr.workout-expand-tr td {
     /* Show mobile header and bottom nav for trainer */
     body:has(.trainer-layout) .staff-mobile-header {
         display: flex;
+        background: #1E1E1E;
+    }
+
+    /* Trainer bottom nav background */
+    body:has(.trainer-layout) nav > div:first-child {
+        background: #252525 !important;
+        border-color: rgba(255, 255, 255, 0.06) !important;
     }
 
     /* Hide desktop sidebar */
@@ -2170,49 +3007,94 @@ tr.workout-expand-tr td {
         display: none !important;
     }
 
-    /* Show mobile panel tabs */
+    /* Show mobile panel tabs — fused with the card below */
     .trainer-panel-tabs {
         display: flex;
-        background: var(--glass-bg-1);
-        border: 1px solid var(--glass-border-1);
-        border-radius: var(--radius-lg);
-        margin-bottom: 1rem;
+        background: var(--glass-bg-2);
+        border: 1px solid var(--glass-border-2);
+        border-bottom: none;
+        border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+        margin-bottom: 0;
         overflow: hidden;
     }
 
-    /* Allenamenti page: single panel visible at a time */
+    /* Card below tabs: fuse top border with tabs */
+    .trainer-panel-tabs + .trainer-utenti-grid > .trainer-panel-content:not(.trainer-panel-hidden) > .glass-card:first-child {
+        border-top: none !important;
+        border-top-left-radius: 0 !important;
+        border-top-right-radius: 0 !important;
+    }
+
+    /* UTENTI panel: wrap in matching card style */
+    .trainer-panel-tabs + .trainer-utenti-grid > #utenti-panel-clients:not(.trainer-panel-hidden) {
+        background: var(--glass-bg-2);
+        border: 1px solid var(--glass-border-2);
+        border-top: none;
+        border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+        padding: 0;
+    }
+
+    /* UTENTI search bar: seamless inside card */
+    .trainer-utenti-search {
+        display: flex !important;
+        align-items: center;
+        gap: 0.75rem;
+        padding: 0.75rem 1rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+    .trainer-utenti-search input {
+        flex: 1;
+        background: transparent;
+        border: none;
+        color: white;
+        font-size: 0.9rem;
+        outline: none;
+        min-width: 0;
+    }
+    .trainer-utenti-search input::placeholder {
+        color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Allenamenti page: single panel visible at a time, fused with tabs */
     .trainer-workouts-grid {
         display: block;
     }
     .trainer-workouts-grid .trainer-panel-hidden {
         display: none !important;
     }
+    .trainer-workouts-grid > .allenamenti-column:not(.trainer-panel-hidden) {
+        border-top: none !important;
+        border-top-left-radius: 0 !important;
+        border-top-right-radius: 0 !important;
+    }
 
-    /* Corsi page: single panel visible at a time */
+    /* Corsi page: single panel visible at a time, fused with tabs */
     .trainer-courses-grid {
         display: block;
     }
     .trainer-courses-grid .trainer-panel-hidden {
         display: none !important;
     }
-    .trainer-courses-grid > .trainer-panel-content {
-        background: var(--glass-bg-1);
-        border: 1px solid var(--glass-border-1);
-        border-radius: var(--radius-xl);
+    .trainer-courses-grid > .trainer-panel-content:not(.trainer-panel-hidden) {
+        background: var(--glass-bg-2);
+        border: 1px solid var(--glass-border-2);
+        border-top: none;
+        border-top-left-radius: 0;
+        border-top-right-radius: 0;
+        border-bottom-left-radius: var(--radius-xl);
+        border-bottom-right-radius: var(--radius-xl);
         padding: 1rem;
         margin-bottom: 1rem;
     }
 
-    .trainer-dual-search {
-        display: none !important;
-    }
-
-    /* Fix broken max-heights on mobile */
+    /* Fix broken heights on mobile */
     .trainer-utenti-grid {
-        max-height: none;
+        height: auto;
+        min-height: 0;
     }
     .allenamenti-column {
-        max-height: none;
+        max-height: calc(100vh - 220px);
+        overflow-y: auto;
     }
     #courses-page-list,
     #shared-courses-list,
@@ -2331,8 +3213,8 @@ tr.workout-expand-tr td {
 }
 .trainer-schedule-time {
     flex-shrink: 0;
-    background: rgba(249, 115, 22, 0.15);
-    color: var(--primary);
+    background: var(--primary);
+    color: white;
     font-size: 0.8rem;
     font-weight: 700;
     padding: 0.35rem 0.65rem;
@@ -2366,7 +3248,7 @@ tr.workout-expand-tr td {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: rgba(249, 115, 22, 0.1);
+    background: var(--primary-subtle);
     border-radius: var(--radius-lg);
 }
 .trainer-pr-content {
@@ -2394,24 +3276,31 @@ tr.workout-expand-tr td {
     #trainer-clients-mobile-list {
         flex-direction: column;
     }
+    #trainer-clients-mobile-list {
+        padding: 0 0.25rem;
+    }
     #trainer-clients-mobile-list .staff-mobile-card {
-        padding: 0.65rem 0.75rem;
+        padding: 1rem 1rem;
         border: none;
-        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
         border-radius: 0;
         background: transparent;
+        align-items: center;
     }
     #trainer-clients-mobile-list .staff-mobile-card:last-child {
         border-bottom: none;
     }
     #trainer-clients-mobile-list .staff-mobile-card-avatar {
-        width: 44px;
-        height: 44px;
-        font-size: 0.9rem;
+        width: 50px;
+        height: 50px;
+        font-size: 1rem;
         background: rgba(255, 255, 255, 0.12);
     }
     /* Hide chevron arrow and secondary info on mobile homepage */
     #trainer-clients-mobile-list .staff-mobile-card > svg {
+        display: none;
+    }
+    #trainer-clients-mobile-list .staff-mobile-card .trainer-mobile-secondary {
         display: none;
     }
 }
@@ -2520,6 +3409,7 @@ body:has(.nutritionist-layout) {
     padding: 2rem 2.5rem;
     overflow-y: auto;
     max-height: 100vh;
+    max-width: 1100px;
 }
 
 /* Nutritionist sections: remove max-width constraint when inside layout */
@@ -2614,6 +3504,29 @@ body:has(.owner-layout) {
 .owner-main {
     overflow-y: auto;
     max-height: 100vh;
+}
+
+/* Owner modals: offset by sidebar on desktop */
+.owner-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.8);
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1rem;
+}
+.owner-modal-overlay.hidden {
+    display: none;
+}
+@media (min-width: 1025px) {
+    .owner-modal-overlay {
+        left: 200px;
+    }
 }
 
 /* ============ OWNER MOBILE RESPONSIVE ============ */

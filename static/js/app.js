@@ -196,31 +196,7 @@ async function saveSpecialties() {
 }
 
 // --- MODAL UTILS ---
-window.showModal = function (id) {
-    const el = document.getElementById(id);
-    if (el) {
-        el.classList.remove('hidden');
-
-        // Load bio and specialties when profile-modal opens (for trainers)
-        if (id === 'profile-modal') {
-            if (typeof loadTrainerBio === 'function') {
-                loadTrainerBio();
-            }
-            if (typeof loadTrainerSpecialties === 'function') {
-                loadTrainerSpecialties();
-            }
-        }
-    } else {
-        console.error("Modal not found:", id);
-    }
-};
-
-window.hideModal = function (id) {
-    const el = document.getElementById(id);
-    if (el) {
-        el.classList.add('hidden');
-    }
-};
+// Defined later in the file as function showModal / hideModal with slide support
 
 window.showToast = function (message, duration = 3000) {
     let container = document.getElementById('toast-container');
@@ -299,6 +275,8 @@ if (role === 'client') {
 
 let workoutState = null;
 let selectedExercisesList = []; // Global state for workout creation
+let workoutWizardStep = 1; // Current wizard step
+let _workoutExLibraryRender = null; // Reference to re-render exercise library
 let allClients = []; // Global state for client roster
 
 // --- WEBSOCKET CONNECTION ---
@@ -706,6 +684,89 @@ async function loadClientCertificates() {
     }
 }
 
+// --- TRAINER WEEKLY OVERVIEW (desktop) ---
+async function loadTrainerWeeklyOverview() {
+    try {
+        const res = await fetch(`${apiBase}/api/trainer/weekly-overview`, { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+
+        // Update stat cards
+        const sessionsEl = document.getElementById('overview-sessions');
+        const activeEl = document.getElementById('overview-active');
+        const messagesEl = document.getElementById('overview-messages');
+        const expiringEl = document.getElementById('overview-expiring');
+
+        if (sessionsEl) sessionsEl.textContent = `${data.sessions_completed}/${data.sessions_total}`;
+        if (activeEl) activeEl.textContent = `${data.active_clients}/${data.total_clients}`;
+        if (messagesEl) messagesEl.textContent = data.messages_to_reply;
+        if (expiringEl) expiringEl.textContent = data.expiring_plans;
+
+        // Render needs attention
+        const container = document.getElementById('trainer-needs-attention');
+        const list = document.getElementById('trainer-attention-list');
+        if (!container || !list) return;
+
+        if (!data.needs_attention || data.needs_attention.length === 0) {
+            container.style.display = 'none';
+            return;
+        }
+
+        container.style.display = '';
+        list.innerHTML = '';
+
+        data.needs_attention.forEach(client => {
+            const avatarUrl = client.profile_picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(client.name)}`;
+            const badgeClass = client.reason === 'inactive' ? 'badge-inactive' : client.reason === 'expiring' ? 'badge-expiring' : 'badge-unread';
+
+            const card = document.createElement('div');
+            card.className = 'trainer-attention-card';
+            card.onclick = () => {
+                const c = allClients.find(cl => cl.id === client.id);
+                if (c) showClientModal(c.name, c.plan, c.status, c.id, c.is_premium);
+            };
+            card.innerHTML = `
+                <img class="trainer-attention-avatar" src="${avatarUrl}" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(client.name)}'">
+                <div class="trainer-attention-info">
+                    <span class="trainer-attention-name">${client.name}</span>
+                    <span class="trainer-attention-badge ${badgeClass}">${client.reason_detail}</span>
+                </div>
+            `;
+            list.appendChild(card);
+        });
+
+        if (typeof lucide !== 'undefined') lucide.createIcons();
+    } catch (e) {
+        console.log('Could not load weekly overview:', e);
+    }
+}
+
+function showInactiveClientsModal() {
+    const inactive = (allClients || []).filter(c => c.status === 'A Rischio');
+    const list = document.getElementById('inactive-clients-list');
+    if (!list) return;
+
+    if (inactive.length === 0) {
+        list.innerHTML = '<p style="text-align:center;color:rgba(255,255,255,0.4);padding:2rem;font-size:0.85rem;">Nessun cliente inattivo</p>';
+    } else {
+        list.innerHTML = inactive.map(c => {
+            const avatarUrl = c.profile_picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(c.name)}`;
+            const detail = c.days_inactive != null ? `Inattivo da ${c.days_inactive}gg` : 'Mai allenato';
+            return `<div class="trainer-inactive-row" onclick="hideModal('inactive-clients-modal');showClientModal('${c.name.replace(/'/g,"\\'")}','${(c.plan||'').replace(/'/g,"\\'")}','${c.status}',${c.id},${!!c.is_premium})">
+                <img src="${avatarUrl}" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(c.name)}'" style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+                <div style="flex:1;min-width:0;">
+                    <div style="font-size:0.82rem;font-weight:600;color:white;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${c.name}</div>
+                    <div style="font-size:0.7rem;color:rgba(255,255,255,0.4);">${detail}</div>
+                </div>
+                <span style="font-size:0.65rem;font-weight:600;color:#f87171;background:rgba(239,68,68,0.12);padding:0.15rem 0.5rem;border-radius:6px;white-space:nowrap;">${detail}</span>
+            </div>`;
+        }).join('');
+    }
+
+    showModal('inactive-clients-modal');
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
 function renderClientList(clients) {
     // Table-based rendering for Utenti page
     const tbody = document.getElementById('trainer-clients-table-body');
@@ -746,6 +807,18 @@ function renderClientList(clients) {
         // Desktop table row
         const tr = document.createElement('tr');
         tr.style.cursor = 'pointer';
+        tr.draggable = true;
+        tr.dataset.clientId = c.id;
+        tr.dataset.clientName = c.name;
+        tr.addEventListener('dragstart', function(e) {
+            e.dataTransfer.setData('text/plain', JSON.stringify({ id: c.id, name: c.name }));
+            e.dataTransfer.effectAllowed = 'copy';
+            tr.classList.add('dragging-client');
+        });
+        tr.addEventListener('dragend', function() {
+            tr.classList.remove('dragging-client');
+            document.querySelectorAll('.drag-over-highlight').forEach(el => el.classList.remove('drag-over-highlight'));
+        });
         tr.onclick = function () {
             showClientModal(c.name, c.plan, c.status, c.id, c.is_premium);
         };
@@ -769,6 +842,12 @@ function renderClientList(clients) {
 
         // Mobile card
         if (mobileList) {
+            // Format name as "First L." for mobile
+            const nameParts = c.name.trim().split(/\s+/);
+            const shortName = nameParts.length > 1
+                ? `${nameParts[0]} ${nameParts[nameParts.length - 1][0]}.`
+                : nameParts[0];
+
             const card = document.createElement('div');
             card.className = 'staff-mobile-card';
             card.onclick = function() {
@@ -779,8 +858,8 @@ function renderClientList(clients) {
                     <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.parentElement.textContent='${initials}';">
                 </div>
                 <div style="flex:1;min-width:0;">
-                    <div class="staff-mobile-card-name">${c.name}</div>
-                    <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);display:flex;gap:0.75rem;margin-top:2px;">
+                    <div class="staff-mobile-card-name">${shortName}</div>
+                    <div class="trainer-mobile-secondary" style="font-size:0.75rem;color:rgba(255,255,255,0.4);display:flex;gap:0.75rem;margin-top:2px;">
                         <span>${c.assigned_split || 'Nessuna scheda'}</span>
                         ${expiryDisplay ? `<span>${expiryDisplay}</span>` : ''}
                     </div>
@@ -1288,6 +1367,9 @@ async function init() {
                 }
             }
 
+            // Load weekly overview stats (desktop)
+            loadTrainerWeeklyOverview();
+
             const vidLib = document.getElementById('video-library');
             if (vidLib && data.video_library) {
                 data.video_library.forEach(v => {
@@ -1593,22 +1675,45 @@ document.body.addEventListener('click', e => {
 
 // --- MODAL SYSTEM & HELPERS ---
 
-function showModal(id) {
-    console.log('[DEBUG] showModal called for:', id);
+window.showModal = function(id) {
     const modal = document.getElementById(id);
     if (!modal) {
         console.error('[ERROR] Modal not found:', id);
-        alert('ERROR: Modal not found: ' + id);
         return;
     }
-    console.log('[DEBUG] Modal found, removing hidden class');
     modal.classList.remove('hidden');
-    console.log('[DEBUG] Modal classes after remove:', modal.className);
-}
 
-function hideModal(id) {
-    document.getElementById(id).classList.add('hidden');
-}
+    // Load bio and specialties when profile-modal opens (for trainers)
+    if (id === 'profile-modal') {
+        if (typeof loadTrainerBio === 'function') loadTrainerBio();
+        if (typeof loadTrainerSpecialties === 'function') loadTrainerSpecialties();
+    }
+
+    // Trigger slide animation if modal uses slide panel
+    if (modal.classList.contains('modal-slide-backdrop')) {
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                modal.classList.add('modal-slide-visible');
+                const panel = modal.querySelector('.modal-slide-panel');
+                if (panel) panel.classList.add('modal-slide-visible');
+            });
+        });
+    }
+};
+
+window.hideModal = function(id) {
+    const modal = document.getElementById(id);
+    if (!modal) return;
+    // Animate out if slide panel
+    if (modal.classList.contains('modal-slide-backdrop')) {
+        modal.classList.remove('modal-slide-visible');
+        const panel = modal.querySelector('.modal-slide-panel');
+        if (panel) panel.classList.remove('modal-slide-visible');
+        setTimeout(() => modal.classList.add('hidden'), 350);
+    } else {
+        modal.classList.add('hidden');
+    }
+};
 
 // Flying gems animation
 function animateFlyingGems(fromEl, toEl, gemCount, onComplete) {
@@ -1980,7 +2085,7 @@ function showClientModal(name, plan, status, clientId, isPremium = false) {
     document.getElementById('modal-client-name').innerText = name;
     document.getElementById('modal-client-plan').innerText = plan;
     document.getElementById('modal-client-status').innerText = status;
-    document.getElementById('modal-client-status').className = `text-lg font-bold ${status === 'At Risk' ? 'text-red-400' : 'text-green-400'}`;
+    document.getElementById('modal-client-status').className = `text-base font-bold ${status === 'A Rischio' ? 'text-red-400' : 'text-green-400'}`;
     document.getElementById('client-modal').dataset.clientId = clientId;
     document.getElementById('client-modal').dataset.clientName = name;
 
@@ -5129,9 +5234,39 @@ async function initializeExerciseList(config) {
 
         filtered.forEach(ex => {
             const div = document.createElement('div');
+
+            // Compact mode for workout wizard Step 2
+            if (config.compact && onClick === 'addToWorkout') {
+                const exIcon = icon(muscleIcons[ex.muscle] || 'dumbbell', 16);
+                const isSelected = selectedExercisesList.some(s => s.id === ex.id);
+                div.className = `workout-ex-compact${isSelected ? ' selected' : ''}`;
+                div.innerHTML = `
+                    <div class="ex-icon">${exIcon}</div>
+                    <div class="ex-info">
+                        <div class="ex-name">${ex.name}</div>
+                        <div class="ex-meta">${ex.muscle} • ${ex.type}</div>
+                    </div>
+                    <div class="ex-add-indicator">${isSelected ? '✓' : '+'}</div>
+                `;
+                div.addEventListener('click', () => {
+                    const existingIdx = selectedExercisesList.findIndex(s => s.id === ex.id);
+                    if (existingIdx !== -1) {
+                        selectedExercisesList.splice(existingIdx, 1);
+                        updateSelectedCountBadge();
+                        render();
+                        return;
+                    }
+                    if (typeof window.addExerciseToWorkout === 'function') {
+                        window.addExerciseToWorkout(ex);
+                    }
+                });
+                container.appendChild(div);
+                return;
+            }
+
+            // Full glass-card mode (exercises page)
             div.className = "glass-card p-4 flex flex-col justify-between relative overflow-hidden group tap-effect slide-up min-h-[120px]";
 
-            // CLICK TO ADD TO WORKOUT
             if (onClick === 'addToWorkout') {
                 div.style.cursor = 'pointer';
                 div.addEventListener('click', () => {
@@ -5161,7 +5296,7 @@ async function initializeExerciseList(config) {
 
             div.innerHTML = `
                 ${videoBackground}
-                
+
                 <div class="absolute -right-2 -top-2 opacity-10 group-hover:opacity-0 transition transform group-hover:scale-110 pointer-events-none">
                     <span class="text-8xl">${exIcon}</span>
                 </div>
@@ -5182,7 +5317,6 @@ async function initializeExerciseList(config) {
                 </div>
             `;
 
-            // Video Hover Logic
             if (videoBackground) {
                 const video = div.querySelector('video');
                 div.addEventListener('mouseenter', () => {
@@ -5193,15 +5327,12 @@ async function initializeExerciseList(config) {
                 });
             }
 
-            // Attach click listener to the edit button
             const editBtn = div.querySelector('.edit-btn');
             editBtn.addEventListener('click', (e) => {
-                e.stopPropagation(); // Prevent card click
+                e.stopPropagation();
                 openEditExerciseModal(ex);
             });
-            // div.appendChild(editBtn); // REMOVED: This breaks the layout by moving the button out of the header
 
-            // If no specific onClick action (Main List), do nothing (only edit button works)
             if (!onClick) {
                 div.style.cursor = 'default';
             }
@@ -5209,6 +5340,9 @@ async function initializeExerciseList(config) {
             container.appendChild(div);
         });
     };
+
+    // Store render reference for compact mode re-rendering
+    if (config.compact) _workoutExLibraryRender = render;
 
     render();
 
@@ -5606,37 +5740,31 @@ window.renderSelectedExercises = function () {
     container.innerHTML = '';
 
     if (selectedExercisesList.length === 0) {
-        container.innerHTML = '<p class="text-xs text-gray-500 text-center py-4 italic">No exercises selected.</p>';
+        container.innerHTML = '<p style="font-size:0.7rem;color:rgba(255,255,255,0.35);text-align:center;padding:1rem 0;font-style:italic;">Nessun esercizio selezionato.</p>';
         return;
     }
 
     selectedExercisesList.forEach((ex, idx) => {
         const div = document.createElement('div');
-        div.className = "bg-white/5 rounded-xl p-3 relative animate-fade-in border border-white/5";
-
+        div.className = 'workout-config-card';
         div.innerHTML = `
-            <button onclick="removeExerciseFromWorkout(${idx})" class="absolute top-2 right-2 text-gray-500 hover:text-red-500 transition p-1">✕</button>
-            
-            <div class="pr-8 mb-3">
-                <p class="text-sm font-bold text-white truncate">${ex.name}</p>
-                <p class="text-[10px] text-gray-400 uppercase tracking-wider">${ex.muscle} • ${ex.type}</p>
+            <button onclick="removeExerciseFromWorkout(${idx})" class="config-remove">✕</button>
+            <div class="config-header">
+                <p class="config-name">${ex.name}</p>
+                <p class="config-meta">${ex.muscle}${ex.type ? ' • ' + ex.type : ''}</p>
             </div>
-
-            <div class="grid grid-cols-3 gap-3">
+            <div class="config-inputs">
                 <div>
-                    <label class="text-[9px] text-gray-500 uppercase font-bold block mb-1 text-center">Sets</label>
-                    <input type="number" value="${ex.sets}" onchange="updateExerciseDetails(${idx}, 'sets', this.value)" 
-                        class="w-full bg-black/30 border border-white/10 rounded-lg text-center text-sm text-white py-2 focus:border-primary outline-none transition">
+                    <label>Sets</label>
+                    <input type="number" value="${ex.sets}" onchange="updateExerciseDetails(${idx}, 'sets', this.value)" class="trainer-modal-input">
                 </div>
                 <div>
-                    <label class="text-[9px] text-gray-500 uppercase font-bold block mb-1 text-center">Reps</label>
-                    <input type="text" value="${ex.reps}" onchange="updateExerciseDetails(${idx}, 'reps', this.value)" 
-                        class="w-full bg-black/30 border border-white/10 rounded-lg text-center text-sm text-white py-2 focus:border-primary outline-none transition">
+                    <label>Reps</label>
+                    <input type="text" value="${ex.reps}" onchange="updateExerciseDetails(${idx}, 'reps', this.value)" class="trainer-modal-input">
                 </div>
                 <div>
-                    <label class="text-[9px] text-gray-500 uppercase font-bold block mb-1 text-center">Rest (s)</label>
-                    <input type="number" value="${ex.rest}" onchange="updateExerciseDetails(${idx}, 'rest', this.value)" 
-                        class="w-full bg-black/30 border border-white/10 rounded-lg text-center text-sm text-white py-2 focus:border-primary outline-none transition">
+                    <label>Riposo (s)</label>
+                    <input type="number" value="${ex.rest}" step="30" min="0" onchange="updateExerciseDetails(${idx}, 'rest', this.value)" class="trainer-modal-input">
                 </div>
             </div>
         `;
@@ -5645,24 +5773,26 @@ window.renderSelectedExercises = function () {
 }
 
 window.addExerciseToWorkout = function (exercise) {
-    // Add new instance allowing duplicates (e.g. for supersets or multiple sets of same exercise)
     selectedExercisesList.push({
         id: exercise.id,
         name: exercise.name,
         muscle: exercise.muscle,
+        type: exercise.type,
         video_id: exercise.video_id,
         sets: 3,
         reps: "10",
         rest: 60
     });
 
-    renderSelectedExercises();
-    showToast(`Added ${exercise.name}`);
+    updateSelectedCountBadge();
+    if (_workoutExLibraryRender) _workoutExLibraryRender();
+    showToast(`Aggiunto: ${exercise.name}`);
 }
 
 window.removeExerciseFromWorkout = function (idx) {
     selectedExercisesList.splice(idx, 1);
     renderSelectedExercises();
+    updateSelectedCountBadge();
 }
 
 window.updateExerciseDetails = function (idx, field, value) {
@@ -5677,48 +5807,46 @@ window.updateExerciseDetails = function (idx, field, value) {
 window.openCreateWorkoutModal = function () {
     document.getElementById('new-workout-id').value = '';
     document.getElementById('modal-workout-title').innerText = 'Nuovo Allenamento';
-    document.getElementById('btn-save-workout').innerText = 'Crea Allenamento';
 
     document.getElementById('new-workout-title').value = '';
     document.getElementById('new-workout-duration').value = '';
-    document.getElementById('new-workout-difficulty').value = 'Intermediate';
+    document.getElementById('new-workout-difficulty').value = 'Intermedio';
 
     selectedExercisesList = [];
-    renderSelectedExercises();
+    showWorkoutWizardStep(1, 'forward');
 
     showModal('create-workout-modal');
 
-    // Initialize Exercise List for Modal
     initializeExerciseList({
         containerId: 'modal-exercise-library',
         searchId: 'modal-ex-search',
         muscleId: 'modal-ex-filter-muscle',
         typeId: 'modal-ex-filter-type',
-        onClick: 'addToWorkout'
+        onClick: 'addToWorkout',
+        compact: true
     });
 }
 
 window.openEditWorkout = function (workout) {
     document.getElementById('new-workout-id').value = workout.id;
     document.getElementById('modal-workout-title').innerText = 'Modifica Allenamento';
-    document.getElementById('btn-save-workout').innerText = 'Aggiorna Allenamento';
 
     document.getElementById('new-workout-title').value = workout.title;
     document.getElementById('new-workout-duration').value = workout.duration;
     document.getElementById('new-workout-difficulty').value = workout.difficulty;
 
-    selectedExercisesList = JSON.parse(JSON.stringify(workout.exercises)); // Deep copy
-    renderSelectedExercises();
+    selectedExercisesList = JSON.parse(JSON.stringify(workout.exercises));
+    showWorkoutWizardStep(1, 'forward');
 
     showModal('create-workout-modal');
 
-    // Initialize Exercise List for Modal
     initializeExerciseList({
         containerId: 'modal-exercise-library',
         searchId: 'modal-ex-search',
         muscleId: 'modal-ex-filter-muscle',
         typeId: 'modal-ex-filter-type',
-        onClick: 'addToWorkout'
+        onClick: 'addToWorkout',
+        compact: true
     });
 }
 
@@ -5767,7 +5895,7 @@ window.createWorkout = async function () {
             document.getElementById('new-workout-title').value = '';
             document.getElementById('new-workout-id').value = '';
             selectedExercisesList = [];
-            renderSelectedExercises();
+            workoutWizardStep = 1;
 
             fetchAndRenderWorkouts();
             if (window.refreshWorkoutsPage) window.refreshWorkoutsPage();
@@ -5781,6 +5909,88 @@ window.createWorkout = async function () {
         showToast('Errore nel salvataggio dell\'allenamento', 'error');
         // alert(e.message); // Debug
     }
+}
+
+// --- WORKOUT WIZARD NAVIGATION ---
+window.workoutWizardNext = function () {
+    if (!validateWorkoutWizardStep(workoutWizardStep)) return;
+    if (workoutWizardStep < 3) {
+        showWorkoutWizardStep(workoutWizardStep + 1, 'forward');
+    } else {
+        createWorkout();
+    }
+};
+
+window.workoutWizardBack = function () {
+    if (workoutWizardStep > 1) {
+        showWorkoutWizardStep(workoutWizardStep - 1, 'backward');
+    }
+};
+
+function showWorkoutWizardStep(step, direction) {
+    workoutWizardStep = step;
+
+    document.querySelectorAll('.workout-wizard-content').forEach(el => {
+        el.classList.add('hidden');
+        el.classList.remove('wizard-back');
+    });
+
+    const stepEl = document.getElementById(`workout-wizard-step-${step}`);
+    stepEl.classList.remove('hidden');
+    if (direction === 'backward') stepEl.classList.add('wizard-back');
+
+    // Update dots
+    document.querySelectorAll('.workout-step-dot').forEach(dot => {
+        const ds = parseInt(dot.dataset.step);
+        dot.classList.remove('active', 'completed');
+        if (ds < step) dot.classList.add('completed');
+        else if (ds === step) dot.classList.add('active');
+    });
+
+    // Update footer buttons
+    const backBtn = document.getElementById('workout-wizard-back');
+    const nextBtn = document.getElementById('workout-wizard-next');
+    backBtn.classList.toggle('hidden', step === 1);
+
+    if (step === 3) {
+        const isEdit = document.getElementById('new-workout-id').value;
+        nextBtn.innerText = isEdit ? 'Aggiorna Allenamento' : 'Crea Allenamento';
+    } else {
+        nextBtn.innerText = 'Avanti';
+    }
+
+    if (step === 3) renderSelectedExercises();
+    if (step === 2) updateSelectedCountBadge();
+    if (typeof lucide !== 'undefined') lucide.createIcons();
+}
+
+function validateWorkoutWizardStep(step) {
+    if (step === 1) {
+        const title = document.getElementById('new-workout-title').value.trim();
+        if (!title) {
+            showToast('Inserisci un titolo per l\'allenamento');
+            document.getElementById('new-workout-title').focus();
+            return false;
+        }
+        return true;
+    }
+    if (step === 2) {
+        if (selectedExercisesList.length === 0) {
+            showToast('Seleziona almeno un esercizio');
+            return false;
+        }
+        return true;
+    }
+    return true;
+}
+
+function updateSelectedCountBadge() {
+    const badge = document.getElementById('workout-selected-count');
+    const num = document.getElementById('workout-selected-count-num');
+    if (!badge || !num) return;
+    const count = selectedExercisesList.length;
+    num.innerText = count;
+    badge.classList.toggle('hidden', count === 0);
 }
 
 async function populateWorkoutSelector() {
@@ -6649,10 +6859,12 @@ async function fetchAndRenderWeightChart(clientId) {
             const change = current - first;
 
             if (currentEl) currentEl.textContent = current.toFixed(1);
+            const currentLabelEl = document.getElementById('metrics-weight-current-label');
+            if (currentLabelEl) currentLabelEl.textContent = current.toFixed(1);
             if (goalEl) goalEl.textContent = data.goal_weight || '--';
             if (changeEl) {
                 changeEl.textContent = (change >= 0 ? '+' : '') + change.toFixed(1) + ' kg';
-                changeEl.className = 'text-sm font-bold ' + (change >= 0 ? 'text-green-400' : 'text-red-400');
+                changeEl.className = 'text-xs font-bold ' + (change >= 0 ? 'text-green-400' : 'text-red-400');
             }
         }
 
@@ -6725,8 +6937,8 @@ async function fetchAndRenderStrengthChart(clientId) {
 
             const avgProgress = (upper + lower + cardio) / 3;
             if (trendEl) {
-                trendEl.textContent = avgProgress >= 0 ? '↑ Gaining' : '↓ Declining';
-                trendEl.className = 'text-sm font-bold ' + (avgProgress >= 0 ? 'text-green-400' : 'text-red-400');
+                trendEl.textContent = avgProgress >= 0 ? '↑ ' + avgProgress.toFixed(0) + '%' : '↓ ' + avgProgress.toFixed(0) + '%';
+                trendEl.className = 'text-lg font-bold block ' + (avgProgress >= 0 ? 'text-blue-400' : 'text-red-400');
             }
         }
 
@@ -6880,6 +7092,8 @@ async function fetchAndRenderDietChart(clientId) {
 
         if (streakEl) streakEl.textContent = (data.current_streak || 0) + ' day streak';
         if (avgEl) avgEl.textContent = data.average_score || 0;
+        const avgLabelEl = document.getElementById('metrics-diet-avg-label');
+        if (avgLabelEl) avgLabelEl.textContent = data.average_score || 0;
         if (daysEl) daysEl.textContent = data.total_days || 0;
 
         // Render chart
@@ -8654,8 +8868,8 @@ function renderChatMessages() {
         container.innerHTML = `
             <div class="text-center text-gray-500 py-8">
                 <div class="mb-2">${icon('message-circle', 32)}</div>
-                <p>No messages yet</p>
-                <p class="text-xs mt-1">Start the conversation!</p>
+                <p>Nessun messaggio</p>
+                <p class="text-xs mt-1">Inizia la conversazione!</p>
             </div>
         `;
         return;
@@ -8857,13 +9071,13 @@ window.openConversationsModal = async function() {
 
         if (conversations.length === 0) {
             list.innerHTML = `
-                <div class="text-center text-gray-500 py-8">
+                <div class="text-center py-8" style="color:rgba(255,255,255,0.25);">
                     <div class="mb-2">${icon('message-circle', 32)}</div>
-                    <p>No conversations yet</p>
-                    <p class="text-xs mt-1 mb-4">Start chatting with someone!</p>
-                    <button onclick="closeConversationsModal(); if(typeof openGymMembersModal === 'function') openGymMembersModal();"
-                        class="px-4 py-2 bg-orange-500 text-white text-sm font-bold rounded-xl hover:bg-orange-400 transition">
-                        Find Gym Members
+                    <p style="font-size:0.8rem;font-weight:600;">Nessuna conversazione</p>
+                    <p style="font-size:0.65rem;margin-top:0.25rem;margin-bottom:1rem;color:rgba(255,255,255,0.2);">Inizia a chattare con qualcuno!</p>
+                    <button onclick="if(typeof openNewChatPicker==='function') openNewChatPicker(); else if(typeof openGymMembersModal==='function'){closeConversationsModal();openGymMembersModal();}"
+                        class="chat-send-btn" style="padding:0.5rem 1.5rem;">
+                        Nuova Chat
                     </button>
                 </div>
             `;
@@ -8873,7 +9087,8 @@ window.openConversationsModal = async function() {
         list.innerHTML = '';
         conversations.forEach(conv => {
             const div = document.createElement('div');
-            div.className = 'bg-white/5 hover:bg-white/10 p-4 rounded-xl cursor-pointer transition tap-effect';
+            div.className = 'p-3 rounded-xl cursor-pointer transition tap-effect';
+            div.style.cssText = 'background:#1E1E1E;';
             div.onclick = () => {
                 closeConversationsModal();
                 window.openChatModal(conv.other_user_id, conv.other_user_name, conv.other_user_profile_picture);
@@ -8893,7 +9108,7 @@ window.openConversationsModal = async function() {
                         ${avatarHtml}
                         <div>
                             <p class="font-bold text-white">${conv.other_user_name}</p>
-                            <p class="text-xs text-gray-400 truncate max-w-[200px]">${conv.last_message_preview || 'No messages yet'}</p>
+                            <p class="text-xs text-gray-400 truncate max-w-[200px]">${conv.last_message_preview || 'Nessun messaggio'}</p>
                         </div>
                     </div>
                     <div class="text-right">
@@ -8908,6 +9123,52 @@ window.openConversationsModal = async function() {
     } catch (e) {
         console.error('Error loading conversations:', e);
         list.innerHTML = '<div class="text-center text-red-400 py-8">Impossibile caricare le conversazioni</div>';
+    }
+};
+
+window.openNewChatPicker = async function() {
+    const list = document.getElementById('conversations-list');
+    if (!list) return;
+
+    list.innerHTML = '<div class="text-center py-8" style="color:rgba(255,255,255,0.3);font-size:0.75rem;">Caricamento clienti...</div>';
+
+    try {
+        const trainerId = localStorage.getItem('trainer_id') || '';
+        const res = await fetch(`${apiBase}/api/trainer/clients`, {
+            headers: { 'x-trainer-id': trainerId },
+            credentials: 'include'
+        });
+        if (!res.ok) throw new Error('Failed');
+        const clients = await res.json();
+
+        if (clients.length === 0) {
+            list.innerHTML = '<div class="text-center py-8" style="color:rgba(255,255,255,0.25);font-size:0.75rem;">Nessun cliente trovato</div>';
+            return;
+        }
+
+        list.innerHTML = '<p style="font-size:0.65rem;color:rgba(255,255,255,0.3);margin-bottom:0.5rem;padding:0 0.25rem;">Seleziona un cliente per iniziare una chat</p>';
+        clients.forEach(c => {
+            const avatarUrl = c.profile_picture || `https://api.dicebear.com/7.x/avataaars/svg?seed=${c.name}`;
+            const div = document.createElement('div');
+            div.className = 'p-3 rounded-xl cursor-pointer transition tap-effect';
+            div.style.cssText = 'background:#1E1E1E;';
+            div.innerHTML = `
+                <div style="display:flex;align-items:center;gap:0.65rem;">
+                    <div style="width:36px;height:36px;border-radius:50%;overflow:hidden;flex-shrink:0;background:#252525;">
+                        <img src="${avatarUrl}" style="width:100%;height:100%;object-fit:cover;" onerror="this.style.display='none';this.parentElement.textContent='${c.name.charAt(0).toUpperCase()}';">
+                    </div>
+                    <span style="font-size:0.8rem;font-weight:600;color:#fff;">${c.name}</span>
+                </div>
+            `;
+            div.onclick = () => {
+                closeConversationsModal();
+                window.openChatModal(c.id, c.name, c.profile_picture);
+            };
+            list.appendChild(div);
+        });
+    } catch (e) {
+        console.error('Error loading clients for chat:', e);
+        list.innerHTML = '<div class="text-center py-8" style="color:#ef4444;font-size:0.75rem;">Errore nel caricamento</div>';
     }
 };
 
@@ -8954,21 +9215,13 @@ window.openBookAppointmentModal = function() {
     dateInput.value = today;
 
     // Clear fields
-    document.getElementById('book-appt-time').innerHTML = '<option value="">Seleziona orario...</option>';
+    document.getElementById('book-appt-time').value = '09:00';
     document.getElementById('book-appt-duration').value = '60';
     document.getElementById('book-appt-workout').innerHTML = '<option value="">Nessuno - Sessione generale</option>';
     document.getElementById('book-appt-notes').value = '';
 
-    // Load available slots for today
-    loadTrainerAvailableSlots(today);
-
     // Load workouts for selection
     loadWorkoutsForAppointment();
-
-    // Listen for date changes
-    dateInput.onchange = function() {
-        loadTrainerAvailableSlots(this.value);
-    };
 
     hideModal('client-modal');
     showModal('book-appointment-modal');
@@ -9047,13 +9300,23 @@ async function confirmBookAppointment() {
     const workoutId = document.getElementById('book-appt-workout').value;
     let notes = document.getElementById('book-appt-notes').value;
 
+    const confirmBtn = document.getElementById('book-appt-confirm-btn');
+    function wiggleBtn() {
+        if (!confirmBtn) return;
+        confirmBtn.classList.remove('wiggle');
+        void confirmBtn.offsetWidth;
+        confirmBtn.classList.add('wiggle');
+    }
+
     if (!date || !time) {
         showToast('Seleziona data e orario');
+        wiggleBtn();
         return;
     }
 
     if (!currentBookingClientId) {
         showToast('Nessun cliente selezionato');
+        wiggleBtn();
         return;
     }
 
@@ -9129,6 +9392,7 @@ async function confirmBookAppointment() {
     } catch (e) {
         console.error('Error booking appointment:', e);
         showToast('Impossibile prenotare l\'appuntamento: ' + e.message);
+        wiggleBtn();
     }
 }
 

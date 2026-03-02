@@ -145,6 +145,13 @@ async def get_trainer_data_direct(
     data = service.get_trainer(current_user.id)
     return data
 
+@app.get("/api/trainer/weekly-overview")
+async def get_trainer_weekly_overview(
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    return service.get_trainer_weekly_overview(current_user.id)
+
 @app.get("/api/stripe/publishable-key")
 async def get_stripe_publishable_key():
     """Get Stripe publishable key for frontend."""
@@ -720,6 +727,11 @@ async def log_requests(request: Request, call_next):
         raise e
 
 # Removed conflicting login/register routes (now handled by simple_auth with /auth prefix)
+
+# --- DEV: Modal Preview ---
+@app.get("/dev/modals", response_class=HTMLResponse)
+async def dev_modals_page(request: Request):
+    return templates.TemplateResponse("dev_modals.html", {"request": request})
 
 # --- LEGAL PAGES ---
 @app.get("/terms", response_class=HTMLResponse)

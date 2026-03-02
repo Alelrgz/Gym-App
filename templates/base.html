@@ -41,7 +41,7 @@
     </script>
 </head>
 
-<body class="bg-gray-900 flex flex-col min-h-screen w-full pb-24">
+<body class="flex flex-col min-h-screen w-full pb-20" style="background-color:#0f0f0f;">
     <script>
         // Ensure body scroll is always reset on page load (prevents stuck overflow:hidden from modals)
         // Skip for sidebar layouts (owner/trainer/staff) where body must stay overflow:hidden
@@ -61,7 +61,7 @@
     <!-- Bottom Navigation Bar (mobile only) -->
     <nav class="fixed bottom-0 left-0 right-0 z-[65] lg:hidden">
         <div class="bg-black/95 backdrop-blur-xl border-t border-white/10 rounded-t-3xl">
-            <div class="flex justify-around items-center h-24 px-4 max-w-lg mx-auto">
+            <div class="flex justify-around items-center h-[72px] px-4 max-w-lg mx-auto">
                 {% if role == 'owner' %}
                 <a href="{{ 'owner.html' if static_build else '/?gym_id=' + gym_id + '&role=owner' }}"
                     class="bottom-nav-item {% if mode in ['dashboard', none] %}active{% endif %}">
@@ -129,7 +129,7 @@
                 {% else %}
                 <!-- Client -->
                 <a href="{{ 'client.html' if static_build else '/?gym_id=' + gym_id + '&role=client' }}"
-                    class="bottom-nav-item {% if not mode or mode == 'home' %}active{% endif %}">
+                    class="bottom-nav-item {% if not mode or mode in ['home', 'dashboard'] %}active{% endif %}">
                     <i data-lucide="home"></i>
                     <span>Home</span>
                 </a>
@@ -140,8 +140,8 @@
                 </a>
                 <!-- Center Quick Action Button -->
                 <div class="flex-1 flex items-center justify-center">
-                    <button id="fab-btn" onclick="toggleQuickActions()" class="quick-action-fab w-14 h-14 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30 active:scale-90 transition-all duration-200">
-                        <i data-lucide="plus" class="w-7 h-7 text-white"></i>
+                    <button id="fab-btn" onclick="toggleQuickActions()" class="quick-action-fab w-12 h-12 rounded-2xl bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center active:scale-90 transition-all duration-200">
+                        <i data-lucide="plus" class="w-6 h-6 text-white"></i>
                     </button>
                 </div>
                 <a href="{{ 'client_leaderboard.html' if static_build else '/?gym_id=' + gym_id + '&role=client&mode=leaderboard' }}"

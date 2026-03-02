@@ -7,7 +7,7 @@ from datetime import date, datetime, timedelta
 from data import GYMS_DB, CLIENT_DATA, TRAINER_DATA, OWNER_DATA, LEADERBOARD_DATA, EXERCISE_LIBRARY, WORKOUTS_DB, SPLITS_DB
 from models import GymConfig, ClientData, TrainerData, OwnerData, LeaderboardData, WorkoutAssignment, AssignDietRequest, ClientProfileUpdate, ExerciseTemplate
 from database import get_db_session, Base, engine
-from models_orm import ExerciseORM, WorkoutORM, WeeklySplitORM, UserORM, ClientProfileORM, ClientScheduleORM, ClientDietSettingsORM, ClientExerciseLogORM, ClientDietLogORM, TrainerScheduleORM
+from models_orm import ExerciseORM, WorkoutORM, WeeklySplitORM, UserORM, ClientProfileORM, ClientScheduleORM, ClientDietSettingsORM, ClientExerciseLogORM, ClientDietLogORM, TrainerScheduleORM, ConversationORM
 from auth import verify_password, get_password_hash
 
 # Import modular services for delegation
@@ -297,9 +297,9 @@ class UserService:
                     days_inactive = 99 # No workouts ever
                 
                 # Determine Status
-                status = "Active"
+                status = "Attivo"
                 if days_inactive > 5:
-                    status = "At Risk"
+                    status = "A Rischio"
                 
                 # Override if manually set to something specific? 
                 # For now, let's trust the calculated status as primary, 
@@ -308,7 +308,7 @@ class UserService:
                 # It's better to calculate distinct status on read to be always up to date.
                 
                 # Update counters
-                if status == "At Risk":
+                if status == "A Rischio":
                     at_risk_count += 1
                 else:
                     active_count += 1
@@ -336,6 +336,7 @@ class UserService:
                     "id": c.id,
                     "name": profile.name if profile and profile.name else c.username,
                     "status": status,
+                    "days_inactive": days_inactive,
                     "last_seen": f"{days_inactive} days ago" if days_inactive < 99 else "Never",
                     "plan": profile.plan if profile and profile.plan else "Standard",
                     "is_premium": is_my_client,
@@ -435,6 +436,136 @@ class UserService:
                 splits=self.get_splits(trainer_id),
                 streak=streak
             )
+        finally:
+            db.close()
+
+    def get_trainer_weekly_overview(self, trainer_id: str) -> dict:
+        db = get_db_session()
+        try:
+            trainer = db.query(UserORM).filter(UserORM.id == trainer_id).first()
+            gym_owner_id = trainer.gym_owner_id if trainer else None
+
+            # Get all gym clients
+            if gym_owner_id:
+                clients_orm = db.query(UserORM).join(
+                    ClientProfileORM, UserORM.id == ClientProfileORM.id
+                ).filter(
+                    UserORM.role == "client",
+                    ClientProfileORM.gym_id == gym_owner_id
+                ).all()
+            else:
+                clients_orm = []
+
+            today = date.today()
+            # Monday of current week
+            week_start = today - timedelta(days=today.weekday())
+            week_end = week_start + timedelta(days=6)
+            week_start_str = week_start.isoformat()
+            week_end_str = week_end.isoformat()
+
+            client_ids = [c.id for c in clients_orm]
+
+            # --- Weekly sessions ---
+            sessions_total = 0
+            sessions_completed = 0
+            active_client_ids = set()
+            if client_ids:
+                week_schedules = db.query(ClientScheduleORM).filter(
+                    ClientScheduleORM.client_id.in_(client_ids),
+                    ClientScheduleORM.type == "workout",
+                    ClientScheduleORM.date >= week_start_str,
+                    ClientScheduleORM.date <= week_end_str,
+                ).all()
+                sessions_total = len(week_schedules)
+                for s in week_schedules:
+                    if s.completed:
+                        sessions_completed += 1
+                        active_client_ids.add(s.client_id)
+
+            # --- Unread messages ---
+            unread_conversations = db.query(ConversationORM).filter(
+                ConversationORM.trainer_id == trainer_id,
+                ConversationORM.trainer_unread_count > 0
+            ).all()
+            messages_to_reply = len(unread_conversations)
+            # Map client_id -> unread for needs attention
+            unread_by_client = {conv.client_id: conv.trainer_unread_count for conv in unread_conversations}
+
+            # --- Build needs attention + expiring count ---
+            needs_attention = []
+            seen_ids = set()
+            expiring_count = 0
+            in7days = today + timedelta(days=7)
+
+            for c in clients_orm:
+                profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == c.id).first()
+                client_name = profile.name if profile and profile.name else c.username
+
+                # Check inactivity
+                last_workout = db.query(ClientScheduleORM).filter(
+                    ClientScheduleORM.client_id == c.id,
+                    ClientScheduleORM.type == "workout",
+                    ClientScheduleORM.completed == True
+                ).order_by(ClientScheduleORM.date.desc()).first()
+
+                days_inactive = 99
+                if last_workout:
+                    try:
+                        last_date = datetime.strptime(last_workout.date, "%Y-%m-%d").date()
+                        days_inactive = (today - last_date).days
+                    except:
+                        pass
+
+                if days_inactive >= 5 and c.id not in seen_ids:
+                    seen_ids.add(c.id)
+                    needs_attention.append({
+                        "id": c.id,
+                        "name": client_name,
+                        "profile_picture": c.profile_picture,
+                        "reason": "inactive",
+                        "reason_detail": f"Inattivo da {days_inactive}gg" if days_inactive < 99 else "Mai allenato"
+                    })
+
+                # Check plan expiry
+                plan_expiry = profile.split_expiry_date if profile else None
+                if plan_expiry:
+                    try:
+                        exp_date = datetime.strptime(plan_expiry, "%Y-%m-%d").date()
+                        if exp_date >= today and exp_date <= in7days:
+                            expiring_count += 1
+                            if c.id not in seen_ids:
+                                seen_ids.add(c.id)
+                                days_left = (exp_date - today).days
+                                needs_attention.append({
+                                    "id": c.id,
+                                    "name": client_name,
+                                    "profile_picture": c.profile_picture,
+                                    "reason": "expiring",
+                                    "reason_detail": f"Scade tra {days_left}gg" if days_left > 0 else "Scade oggi"
+                                })
+                    except:
+                        pass
+
+                # Check unread messages
+                if c.id in unread_by_client and c.id not in seen_ids:
+                    seen_ids.add(c.id)
+                    needs_attention.append({
+                        "id": c.id,
+                        "name": client_name,
+                        "profile_picture": c.profile_picture,
+                        "reason": "unread",
+                        "reason_detail": "Messaggio non letto"
+                    })
+
+            return {
+                "sessions_completed": sessions_completed,
+                "sessions_total": sessions_total,
+                "active_clients": len(active_client_ids),
+                "total_clients": len(client_ids),
+                "messages_to_reply": messages_to_reply,
+                "expiring_plans": expiring_count,
+                "needs_attention": needs_attention
+            }
         finally:
             db.close()
 

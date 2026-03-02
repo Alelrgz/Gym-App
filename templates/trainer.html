@@ -82,14 +82,24 @@
             </select>
 
             <!-- Page Header (hidden on mobile) -->
-            <div class="staff-page-header staff-desktop-only">
-                <h1>Utenti</h1>
-                <p>Da qui puoi registrare, cercare o gestire i clienti e i loro dati</p>
+            <div class="staff-page-header staff-desktop-only" style="display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                    <h1>Utenti</h1>
+                    <p>Da qui puoi registrare, cercare o gestire i clienti e i loro dati</p>
+                </div>
+                <div class="flex gap-3">
+                    <div onclick="openConversationsModal()" class="relative w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center cursor-pointer">
+                        <i data-lucide="message-circle" class="w-5 h-5"></i>
+                    </div>
+                    <div data-action="showModal" data-target="notification-modal" class="w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center cursor-pointer">
+                        <i data-lucide="bell" class="w-5 h-5"></i>
+                    </div>
+                </div>
             </div>
 
             <!-- Stats Bar -->
-            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1rem;flex-wrap:wrap;gap:1rem;">
-                <div class="staff-stats-bar" style="margin-bottom:0;flex:1;width:100%;">
+            <div style="margin-bottom:1rem;">
+                <div class="staff-stats-bar trainer-stats-compact" style="margin-bottom:0;">
                     <div class="staff-stat-item">
                         <span class="staff-stat-value" id="total-clients-count">0</span>
                         <span class="staff-stat-label">clienti</span>
@@ -98,37 +108,55 @@
                         <span class="staff-stat-value text-primary" id="expiring-clients-count">0</span>
                         <span class="staff-stat-label">in scad.</span>
                     </div>
-                    <div class="staff-stat-item">
+                    <div class="staff-stat-item" style="cursor:pointer;" onclick="showInactiveClientsModal()">
                         <span class="staff-stat-value" style="color:#f87171;" id="at-risk-clients-count">0</span>
-                        <span class="staff-stat-label">A rischio</span>
+                        <span class="staff-stat-label">inattivi</span>
                     </div>
                 </div>
+            </div>
 
-                <!-- Desktop only: message & notification icons -->
-                <div class="hidden lg:flex gap-3">
-                    <div onclick="openConversationsModal()" class="relative w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center">
+            <!-- Weekly Overview Stats (desktop only) -->
+            <div class="trainer-weekly-overview staff-desktop-only" id="trainer-weekly-overview">
+                <div class="trainer-overview-card">
+                    <div class="trainer-overview-icon" style="background:rgba(247,65,0,0.12);color:#F74100;">
+                        <i data-lucide="dumbbell" class="w-5 h-5"></i>
+                    </div>
+                    <div class="trainer-overview-content">
+                        <span class="trainer-overview-value" id="overview-sessions">-</span>
+                        <span class="trainer-overview-label">Sessioni questa settimana</span>
+                    </div>
+                </div>
+                <div class="trainer-overview-card">
+                    <div class="trainer-overview-icon" style="background:rgba(34,197,94,0.12);color:#22c55e;">
+                        <i data-lucide="users" class="w-5 h-5"></i>
+                    </div>
+                    <div class="trainer-overview-content">
+                        <span class="trainer-overview-value" id="overview-active">-</span>
+                        <span class="trainer-overview-label">Clienti attivi</span>
+                    </div>
+                </div>
+                <div class="trainer-overview-card">
+                    <div class="trainer-overview-icon" style="background:rgba(59,130,246,0.12);color:#3b82f6;">
                         <i data-lucide="message-circle" class="w-5 h-5"></i>
                     </div>
-                    <div data-action="showModal" data-target="notification-modal" class="w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center">
-                        <i data-lucide="bell" class="w-5 h-5"></i>
+                    <div class="trainer-overview-content">
+                        <span class="trainer-overview-value" id="overview-messages">-</span>
+                        <span class="trainer-overview-label">Messaggi da rispondere</span>
+                    </div>
+                </div>
+                <div class="trainer-overview-card">
+                    <div class="trainer-overview-icon" style="background:rgba(251,191,36,0.12);color:#fbbf24;">
+                        <i data-lucide="clock" class="w-5 h-5"></i>
+                    </div>
+                    <div class="trainer-overview-content">
+                        <span class="trainer-overview-value" id="overview-expiring">-</span>
+                        <span class="trainer-overview-label">Piani in scadenza</span>
                     </div>
                 </div>
             </div>
 
             <!-- Latest Message Card (mobile, populated by JS) -->
             <div id="trainer-latest-message" class="trainer-mobile-only" style="display:none;margin-bottom:1rem;"></div>
-
-            <!-- Dual Search Row (desktop) -->
-            <div class="trainer-dual-search">
-                <div class="staff-search-bar" style="margin-bottom:0;">
-                    <i data-lucide="search" class="w-4 h-4 search-icon"></i>
-                    <input type="text" id="trainer-client-search" placeholder="Cerca clienti">
-                </div>
-                <div class="staff-search-bar" style="margin-bottom:0;">
-                    <i data-lucide="search" class="w-4 h-4 search-icon"></i>
-                    <input type="text" id="trainer-appointment-search" placeholder="Appuntamenti">
-                </div>
-            </div>
 
             <!-- Mobile Panel Tabs (hidden on desktop) -->
             <div class="trainer-panel-tabs" id="utenti-panel-tabs">
@@ -141,18 +169,18 @@
                 <!-- LEFT: Client Table (desktop) -->
                 <div class="trainer-panel-content trainer-panel-hidden" id="utenti-panel-clients">
                     <!-- Mobile search bar (inside UTENTI tab) -->
-                    <div class="staff-mobile-only" style="margin-bottom:0.75rem;">
-                        <div style="display:flex;align-items:center;gap:0.5rem;">
-                            <div class="staff-search-bar" style="margin-bottom:0;flex:1;">
-                                <i data-lucide="search" class="w-4 h-4 search-icon"></i>
-                                <input type="text" id="trainer-client-search-mobile" placeholder="Cerca clienti...">
-                            </div>
-                            <button style="width:40px;height:40px;background:var(--glass-bg-2);border:1px solid var(--glass-border-1);border-radius:var(--radius-md);color:rgba(255,255,255,0.4);display:flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;">
-                                <i data-lucide="sliders-horizontal" class="w-4 h-4"></i>
-                            </button>
-                        </div>
+                    <div class="staff-mobile-only trainer-utenti-search">
+                        <i data-lucide="search" style="width:20px;height:20px;color:rgba(255,255,255,0.5);flex-shrink:0;"></i>
+                        <input type="text" id="trainer-client-search-mobile" placeholder="Cerca clienti...">
+                        <button style="background:none;border:none;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0;padding:0;display:flex;align-items:center;">
+                            <i data-lucide="sliders-horizontal" style="width:20px;height:20px;"></i>
+                        </button>
                     </div>
-                    <div class="staff-table-card staff-desktop-only">
+                    <div class="staff-table-card staff-desktop-only" style="padding:1rem;">
+                        <div class="trainer-integrated-search">
+                            <i data-lucide="search" class="w-4 h-4" style="color:rgba(255,255,255,0.25);flex-shrink:0;"></i>
+                            <input type="text" id="trainer-client-search" placeholder="Cerca clienti...">
+                        </div>
                         <table class="staff-table">
                             <thead>
                                 <tr>
@@ -198,9 +226,13 @@
                 </div>
 
                 <!-- RIGHT: Appointments + My Workout -->
-                <div class="trainer-panel-content" id="utenti-panel-agenda" style="display:flex;flex-direction:column;gap:1.5rem;">
+                <div class="trainer-panel-content" id="utenti-panel-agenda" style="display:flex;flex-direction:column;gap:0.75rem;">
                     <!-- Appointments Widget -->
                     <div class="glass-card" style="padding:1rem;border-radius:var(--radius-xl);">
+                        <div class="trainer-integrated-search staff-desktop-only" style="margin-bottom:0.75rem;">
+                            <i data-lucide="search" class="w-4 h-4" style="color:rgba(255,255,255,0.25);flex-shrink:0;"></i>
+                            <input type="text" id="trainer-appointment-search" placeholder="Cerca appuntamenti...">
+                        </div>
                         <div style="display:flex;justify-content:center;align-items:center;gap:1rem;margin-bottom:1rem;">
                             <button onclick="changeWeek(-1)" style="width:32px;height:32px;border-radius:50%;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);color:rgba(255,255,255,0.5);font-size:0.9rem;cursor:pointer;display:flex;align-items:center;justify-content:center;">
                                 <i data-lucide="chevron-left" class="w-4 h-4"></i>
@@ -216,7 +248,7 @@
                         <!-- Day tabs -->
                         <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:1rem;" id="d-calendar-strip"></div>
                         <!-- Events for selected day -->
-                        <div id="d-schedule-container" style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:0.75rem;"></div>
+                        <div id="d-schedule-container" style="display:flex;flex-direction:column;gap:0.5rem;margin-bottom:0.75rem;padding:0 16px;"></div>
                     </div>
 
                     <!-- My Workout Card (hidden by default, shown by JS when workout assigned) -->
@@ -260,14 +292,24 @@
         <section id="section-workouts" class="trainer-section hidden p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
 
             <!-- Page Header -->
-            <div class="staff-page-header">
-                <h1>Allenamenti</h1>
-                <p>Da qui puoi creare e assegnare allenamenti ai tuoi clienti</p>
+            <div class="staff-page-header staff-desktop-only" style="display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                    <h1>Allenamenti</h1>
+                    <p>Da qui puoi creare e assegnare allenamenti ai tuoi clienti</p>
+                </div>
+                <div class="flex gap-3">
+                    <div onclick="openConversationsModal()" class="relative w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center cursor-pointer">
+                        <i data-lucide="message-circle" class="w-5 h-5"></i>
+                    </div>
+                    <div data-action="showModal" data-target="notification-modal" class="w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center cursor-pointer">
+                        <i data-lucide="bell" class="w-5 h-5"></i>
+                    </div>
+                </div>
             </div>
 
             <!-- Stats + Actions row -->
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.5rem;flex-wrap:wrap;gap:1rem;">
-                <div class="staff-stats-bar" style="margin-bottom:0;">
+                <div class="staff-stats-bar trainer-stats-compact" style="margin-bottom:0;">
                     <div class="staff-stat-item">
                         <span class="staff-stat-value text-primary" id="workouts-total-count">0</span>
                         <span class="staff-stat-label">Allenamenti</span>
@@ -297,15 +339,16 @@
                 <!-- COL 1: Exercise Library (accordion rows) -->
                 <div class="allenamenti-column trainer-panel-content" id="workouts-panel-exercises">
                     <div class="allenamenti-sticky-header">
-                        <p class="allenamenti-col-header">Esercizi</p>
-                        <div class="staff-search-bar" style="margin-bottom:0.75rem;">
-                            <i data-lucide="search" class="w-4 h-4 search-icon"></i>
-                            <input type="text" id="allenamenti-ex-search" placeholder="Cerca esercizi" oninput="filterAllenamentiExercises()">
+                        <p class="allenamenti-col-header staff-desktop-only">Esercizi</p>
+                        <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.65rem;">
+                            <div class="staff-search-bar" style="margin-bottom:0;flex:1;">
+                                <i data-lucide="search" class="w-4 h-4 search-icon"></i>
+                                <input type="text" id="allenamenti-ex-search" placeholder="Cerca esercizi" oninput="filterAllenamentiExercises()">
+                            </div>
+                            <button onclick="showModal('create-exercise-modal')" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:rgba(255,255,255,0.5);cursor:pointer;transition:all 0.18s;" onmouseover="this.style.background='rgba(255,255,255,0.12)';this.style.color='white'" onmouseout="this.style.background='rgba(255,255,255,0.06)';this.style.color='rgba(255,255,255,0.5)'">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                            </button>
                         </div>
-                        <button onclick="showModal('create-exercise-modal')" style="width:100%;display:flex;align-items:center;justify-content:center;gap:0.4rem;padding:0.45rem 0;margin-bottom:0.65rem;background:rgba(255,255,255,0.05);border:1px dashed rgba(255,255,255,0.15);border-radius:8px;color:rgba(255,255,255,0.45);font-size:0.78rem;cursor:pointer;transition:all 0.18s;" onmouseover="this.style.background='rgba(255,255,255,0.09)';this.style.color='rgba(255,255,255,0.7)'" onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.color='rgba(255,255,255,0.45)'">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                            Aggiungi esercizio
-                        </button>
                     </div>
                     <div id="allenamenti-exercise-list">
                         <div class="staff-skeleton" style="width:100%;height:32px;border-radius:6px;margin-bottom:0.4rem;"></div>
@@ -317,11 +360,16 @@
                 </div>
 
                 <!-- COL 2: Workouts / Splits -->
-                <div class="allenamenti-column trainer-panel-content" id="workouts-panel-workouts">
-                    <p class="allenamenti-col-header">Allenamenti</p>
-                    <div class="staff-search-bar" style="margin-bottom:0.75rem;">
-                        <i data-lucide="search" class="w-4 h-4 search-icon"></i>
-                        <input type="text" id="workouts-search" placeholder="Cerca allenamento">
+                <div class="allenamenti-column trainer-panel-content trainer-panel-hidden" id="workouts-panel-workouts">
+                    <p class="allenamenti-col-header staff-desktop-only">Allenamenti</p>
+                    <div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;">
+                        <div class="staff-search-bar" style="margin-bottom:0;flex:1;">
+                            <i data-lucide="search" class="w-4 h-4 search-icon"></i>
+                            <input type="text" id="workouts-search" placeholder="Cerca allenamento">
+                        </div>
+                        <button id="workouts-add-btn" onclick="openCreateWorkoutModal()" style="width:36px;height:36px;display:flex;align-items:center;justify-content:center;flex-shrink:0;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:10px;color:rgba(255,255,255,0.5);cursor:pointer;transition:all 0.18s;" onmouseover="this.style.background='rgba(255,255,255,0.12)';this.style.color='white'" onmouseout="this.style.background='rgba(255,255,255,0.06)';this.style.color='rgba(255,255,255,0.5)'">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+                        </button>
                     </div>
                     <!-- Tab Bar -->
                     <div class="trainer-tab-bar" style="margin-bottom:0.75rem;">
@@ -331,10 +379,6 @@
 
                     <!-- Workout List -->
                     <div id="workouts-tab" class="trainer-tab-content">
-                        <button onclick="openCreateWorkoutModal()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:0.4rem;padding:0.45rem 0;margin-bottom:0.65rem;background:rgba(255,255,255,0.05);border:1px dashed rgba(255,255,255,0.15);border-radius:8px;color:rgba(255,255,255,0.45);font-size:0.78rem;cursor:pointer;transition:all 0.18s;" onmouseover="this.style.background='rgba(255,255,255,0.09)';this.style.color='rgba(255,255,255,0.7)'" onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.color='rgba(255,255,255,0.45)'">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                            Crea allenamento
-                        </button>
                         <div class="staff-table-card" style="margin-bottom:0;">
                             <table class="staff-table">
                                 <thead>
@@ -354,10 +398,6 @@
 
                     <!-- Split List -->
                     <div id="splits-tab" class="trainer-tab-content hidden">
-                        <button id="create-split-btn" onclick="_toggleCreateSplitForm()" style="width:100%;display:flex;align-items:center;justify-content:center;gap:0.4rem;padding:0.45rem 0;margin-bottom:0.65rem;background:rgba(255,255,255,0.05);border:1px dashed rgba(255,255,255,0.15);border-radius:8px;color:rgba(255,255,255,0.45);font-size:0.78rem;cursor:pointer;transition:all 0.18s;" onmouseover="this.style.background='rgba(255,255,255,0.09)';this.style.color='rgba(255,255,255,0.7)'" onmouseout="this.style.background='rgba(255,255,255,0.05)';this.style.color='rgba(255,255,255,0.45)'">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
-                            Aggiungi split
-                        </button>
                         <div id="create-split-form-container"></div>
                         <div class="staff-table-card" style="margin-bottom:0;">
                             <table class="staff-table">
@@ -377,7 +417,7 @@
                 </div>
 
                 <!-- COL 3: Client Drop Targets -->
-                <div class="allenamenti-column trainer-panel-content" id="workouts-panel-clients">
+                <div class="allenamenti-column trainer-panel-content trainer-panel-hidden" id="workouts-panel-clients">
                     <p class="allenamenti-col-header">Clienti</p>
                     <div class="staff-search-bar" style="margin-bottom:0.75rem;">
                         <i data-lucide="search" class="w-4 h-4 search-icon"></i>
@@ -535,9 +575,19 @@
         <section id="section-courses" class="trainer-section hidden p-4 md:p-6 lg:p-8 max-w-[1400px] mx-auto">
 
             <!-- Page Header -->
-            <div class="staff-page-header">
-                <h1>Corsi</h1>
-                <p>Da qui puoi registrare, cercare o gestire i clienti e i loro dati</p>
+            <div class="staff-page-header staff-desktop-only" style="display:flex;align-items:center;justify-content:space-between;">
+                <div>
+                    <h1>Corsi</h1>
+                    <p>Gestisci i tuoi corsi di gruppo</p>
+                </div>
+                <div class="flex gap-3">
+                    <div onclick="openConversationsModal()" class="relative w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center cursor-pointer">
+                        <i data-lucide="message-circle" class="w-5 h-5"></i>
+                    </div>
+                    <div data-action="showModal" data-target="notification-modal" class="w-11 h-11 rounded-xl glass-card-interactive flex items-center justify-center cursor-pointer">
+                        <i data-lucide="bell" class="w-5 h-5"></i>
+                    </div>
+                </div>
             </div>
 
             <!-- Stats + Actions row -->
@@ -647,88 +697,80 @@
         </section>
 
         <!-- ==================== SECTION: SETTINGS ==================== -->
-        <section id="section-settings" class="trainer-section hidden p-4 md:p-6 lg:p-8 max-w-[1000px] mx-auto">
-            <div class="mb-8">
-                <p class="label-uppercase mb-1">Account</p>
-                <h2 class="heading-page">Impostazioni</h2>
-            </div>
+        <section id="section-settings" class="trainer-section hidden p-4 md:p-6">
+            <div class="settings-wrapper">
 
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                <!-- Profile Card -->
-                <div class="lg:col-span-1">
-                    <div class="glass-card-primary p-8 text-center">
-                        <div id="settings-profile-pic" class="w-28 h-28 rounded-full bg-gradient-to-br from-primary to-orange-600 flex items-center justify-center mx-auto mb-5 text-4xl font-bold text-white shadow-lg">
-                            T
-                        </div>
-                        <h3 class="text-xl font-bold text-white mb-1" id="settings-trainer-name">Trainer</h3>
-                        <p class="text-sm text-muted">Trainer Personale</p>
-                        <button onclick="document.getElementById('profile-picture-input').click()"
-                            class="mt-5 btn-glass">
-                            Cambia Foto
-                        </button>
-                        <input type="file" id="profile-picture-input" accept="image/*" class="hidden" onchange="uploadProfilePicture(this)">
+                <!-- Profile Header -->
+                <div class="settings-card settings-profile-header">
+                    <div id="settings-profile-pic" class="settings-avatar">T</div>
+                    <div style="flex:1;min-width:0;">
+                        <h2 class="settings-name" id="settings-trainer-name">Trainer</h2>
+                        <p class="settings-role">Trainer Personale</p>
                     </div>
+                    <button onclick="document.getElementById('profile-picture-input').click()" class="settings-photo-btn">Cambia Foto</button>
+                    <input type="file" id="profile-picture-input" accept="image/*" class="hidden" onchange="uploadProfilePicture(this)">
                 </div>
 
-                <!-- Settings Options -->
-                <div class="lg:col-span-2 space-y-4">
-                    <!-- Bio -->
-                    <div class="glass-card p-5">
-                        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Bio</h3>
+                <!-- Profilo Card: Bio + Specialties grouped -->
+                <div class="settings-card">
+                    <h3 class="settings-section-title">Profilo</h3>
+
+                    <div class="settings-field">
+                        <label class="trainer-modal-label">Bio</label>
                         <textarea id="settings-bio" placeholder="Racconta ai clienti di te, la tua esperienza e il tuo stile di allenamento..."
-                            class="w-full bg-black/20 text-white text-sm rounded-xl p-3 border border-white/10 focus:border-primary/50 outline-none resize-none h-24 transition"></textarea>
-                        <button onclick="saveBio()" class="mt-2 text-xs bg-primary/20 hover:bg-primary/30 text-primary px-4 py-2 rounded-lg transition">Salva Bio</button>
+                            class="trainer-modal-input" style="resize:none;height:5rem;"></textarea>
                     </div>
 
-                    <!-- Specialties -->
-                    <div class="glass-card p-5">
-                        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Specializzazioni</h3>
-                        <div id="specialties-container" class="flex flex-wrap gap-2">
+                    <div class="settings-field">
+                        <label class="trainer-modal-label">Specializzazioni</label>
+                        <div id="specialties-container" style="display:flex;flex-wrap:wrap;gap:0.4rem;">
                             <label class="specialty-tag cursor-pointer">
                                 <input type="checkbox" value="Weight Loss" class="hidden specialty-checkbox">
-                                <span class="px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition inline-block">Dimagrimento</span>
+                                <span class="settings-chip">Dimagrimento</span>
                             </label>
                             <label class="specialty-tag cursor-pointer">
                                 <input type="checkbox" value="Muscle Building" class="hidden specialty-checkbox">
-                                <span class="px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition inline-block">Massa Muscolare</span>
+                                <span class="settings-chip">Massa Muscolare</span>
                             </label>
                             <label class="specialty-tag cursor-pointer">
                                 <input type="checkbox" value="Strength Training" class="hidden specialty-checkbox">
-                                <span class="px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition inline-block">Allenamento Forza</span>
+                                <span class="settings-chip">Allenamento Forza</span>
                             </label>
                             <label class="specialty-tag cursor-pointer">
                                 <input type="checkbox" value="HIIT" class="hidden specialty-checkbox">
-                                <span class="px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition inline-block">HIIT</span>
+                                <span class="settings-chip">HIIT</span>
                             </label>
                             <label class="specialty-tag cursor-pointer">
                                 <input type="checkbox" value="Yoga" class="hidden specialty-checkbox">
-                                <span class="px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition inline-block">Yoga</span>
+                                <span class="settings-chip">Yoga</span>
                             </label>
                             <label class="specialty-tag cursor-pointer">
                                 <input type="checkbox" value="Nutrition" class="hidden specialty-checkbox">
-                                <span class="px-3 py-1.5 text-xs rounded-full bg-white/5 text-white/60 border border-white/10 hover:bg-white/10 transition inline-block">Nutrizione</span>
+                                <span class="settings-chip">Nutrizione</span>
                             </label>
                         </div>
-                        <button onclick="saveSpecialties()" class="mt-3 text-xs bg-primary/20 hover:bg-primary/30 text-primary px-4 py-2 rounded-lg transition">Salva Specializzazioni</button>
                     </div>
 
-                    <!-- Availability -->
-                    <div class="glass-card p-5">
-                        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Disponibilit&agrave; 1-on-1</h3>
-                        <p class="text-xs text-gray-400 mb-3">Imposta i tuoi orari settimanali per le prenotazioni</p>
-                        <button onclick="openAvailabilityModal()" class="text-xs bg-orange-500/20 hover:bg-orange-500/30 text-orange-400 px-4 py-2 rounded-lg transition">
-                            Configura Disponibilit&agrave;
-                        </button>
-                    </div>
-
-                    <!-- Account Actions -->
-                    <div class="glass-card p-5">
-                        <h3 class="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Account</h3>
-                        <a href="/auth/logout" class="inline-flex items-center gap-2 text-xs bg-red-500/20 hover:bg-red-500/30 text-red-400 px-4 py-2 rounded-lg transition">
-                            <i data-lucide="log-out" class="w-5 h-5 inline-block align-middle"></i> Esci
-                        </a>
-                    </div>
+                    <button onclick="saveBio(); saveSpecialties();" class="settings-save-btn">Salva Profilo</button>
                 </div>
+
+                <!-- Availability Row -->
+                <div class="settings-card settings-row">
+                    <div>
+                        <span class="settings-row-label">Disponibilit&agrave; 1-on-1</span>
+                        <span class="settings-row-sub">Orari settimanali per le prenotazioni</span>
+                    </div>
+                    <button onclick="openAvailabilityModal()" class="settings-action-btn">Configura</button>
+                </div>
+
+                <!-- Account Row -->
+                <div class="settings-card settings-row">
+                    <span class="settings-row-label">Account</span>
+                    <a href="/auth/logout" class="settings-logout-btn">
+                        <i data-lucide="log-out" class="w-4 h-4"></i> Esci
+                    </a>
+                </div>
+
             </div>
         </section>
 
@@ -738,34 +780,29 @@
 <!-- Bottom nav is in base.html for trainer role -->
 
 <!-- Add Event Modal -->
-<div id="add-event-modal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 backdrop-blur-sm">
-    <div class="glass-card w-full max-w-sm mx-4 p-6 rounded-2xl relative">
-        <button onclick="document.getElementById('add-event-modal').classList.add('hidden')"
-            class="absolute top-4 right-4 text-white/50 hover:text-white">✕</button>
-        <h3 class="text-xl font-bold mb-4 text-center">Aggiungi Evento</h3>
-        <form id="add-event-form" class="space-y-4">
+<div id="add-event-modal" class="fixed inset-0 bg-black/80 hidden flex items-center justify-center z-50 backdrop-blur-sm" style="padding: 2.5rem 2rem;">
+    <div class="trainer-modal-card" style="width: 100%; max-width: 300px;">
+        <div class="trainer-modal-header">
+            <h3>AGGIUNGI EVENTO</h3>
+            <button onclick="document.getElementById('add-event-modal').classList.add('hidden')">X</button>
+        </div>
+        <form id="add-event-form" class="trainer-modal-body">
             <div>
-                <label class="text-xs text-gray-400 uppercase">Titolo</label>
-                <input type="text" name="title" required
-                    class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none"
-                    placeholder="es. Consulenza Cliente">
+                <label class="trainer-modal-label">TITOLO</label>
+                <input type="text" name="title" required class="trainer-modal-input" placeholder="Consulenza Cliente">
             </div>
             <div>
-                <label class="text-xs text-gray-400 uppercase">Sottotitolo / Dettagli</label>
-                <input type="text" name="subtitle"
-                    class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none"
-                    placeholder="es. Mario Rossi - Gambe">
+                <label class="trainer-modal-label">SOTTOTITOLO / DETTAGLI</label>
+                <input type="text" name="subtitle" class="trainer-modal-input" placeholder="Esecuzioni ex. gambe">
             </div>
-            <div class="grid grid-cols-2 gap-4">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem;">
                 <div>
-                    <label class="text-xs text-gray-400 uppercase">Orario</label>
-                    <input type="time" name="time" required
-                        class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none">
+                    <label class="trainer-modal-label">ORARIO</label>
+                    <input type="time" name="time" required class="trainer-modal-input">
                 </div>
                 <div>
-                    <label class="text-xs text-gray-400 uppercase">Tipo</label>
-                    <select name="type"
-                        class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none">
+                    <label class="trainer-modal-label">TIPO</label>
+                    <select name="type" class="trainer-modal-input">
                         <option value="personal">Personale</option>
                         <option value="consultation">Consulenza</option>
                         <option value="class">Corso</option>
@@ -773,22 +810,17 @@
                 </div>
             </div>
             <div id="workout-selector-container" class="hidden">
-                <label class="text-xs text-gray-400 uppercase">Seleziona Allenamento</label>
-                <select name="workout_id" id="event-workout-select"
-                    class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none">
+                <label class="trainer-modal-label">SELEZIONA ALLENAMENTO</label>
+                <select name="workout_id" id="event-workout-select" class="trainer-modal-input">
                     <option value="">Nessuno</option>
                 </select>
             </div>
             <div>
-                <label class="text-xs text-gray-400 uppercase">Durata (minuti)</label>
-                <input type="number" name="duration" value="60" min="15" step="15"
-                    class="w-full bg-white/5 border border-white/10 rounded-lg p-3 text-white focus:border-primary outline-none">
+                <label class="trainer-modal-label">DURATA (MINUTI)</label>
+                <input type="number" name="duration" value="30" min="15" step="15" class="trainer-modal-input">
             </div>
             <input type="hidden" name="date" id="event-date-input">
-            <button type="submit"
-                class="w-full py-3 bg-primary text-white font-bold rounded-xl hover:bg-primary/80 transition">
-                Aggiungi all'Agenda
-            </button>
+            <button type="submit" class="trainer-modal-btn">AGGIUNGI</button>
         </form>
     </div>
 </div>
@@ -2233,6 +2265,16 @@ function switchWorkoutTab(tabId) {
     const tabBtn = document.querySelector(`.trainer-tab[data-tab="${tabId}"]`);
     if (tabBtn) tabBtn.classList.add('active');
 
+    // Update the + button action based on active tab
+    const addBtn = document.getElementById('workouts-add-btn');
+    if (addBtn) {
+        if (tabId === 'splits-tab') {
+            addBtn.onclick = function() { _toggleCreateSplitForm(); };
+        } else {
+            addBtn.onclick = function() { openCreateWorkoutModal(); };
+        }
+    }
+
     // Re-apply search filter for the new tab
     const workoutSearch = document.getElementById('workouts-search');
     if (workoutSearch && workoutSearch.value.trim()) {
@@ -2889,6 +2931,52 @@ function renderScheduleInto(dateStr, containerId, dateElId) {
         addDiv.innerHTML = `<span class="text-sm text-white/40">+ Aggiungi appuntamento</span>`;
     }
     container.appendChild(addDiv);
+
+    // Drag-and-drop: make dashboard schedule a drop zone for client rows
+    if (isDashboard) {
+        container.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'copy';
+            container.classList.add('drag-over-highlight');
+        });
+        container.addEventListener('dragleave', function(e) {
+            if (!container.contains(e.relatedTarget)) {
+                container.classList.remove('drag-over-highlight');
+            }
+        });
+        container.addEventListener('drop', function(e) {
+            e.preventDefault();
+            container.classList.remove('drag-over-highlight');
+            try {
+                const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+                if (data.id && data.name) {
+                    openBookAppointmentForClient(data.id, data.name, dateStr);
+                }
+            } catch(err) {}
+        });
+    }
+}
+
+// Open booking modal directly for a dragged client
+function openBookAppointmentForClient(clientId, clientName, dateStr) {
+    currentBookingClientId = clientId;
+    currentBookingClientName = clientName;
+
+    document.getElementById('book-appt-client-name').innerText = clientName;
+
+    const dateInput = document.getElementById('book-appt-date');
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.min = today;
+    dateInput.value = dateStr || today;
+
+    document.getElementById('book-appt-time').value = '09:00';
+    document.getElementById('book-appt-duration').value = '60';
+    document.getElementById('book-appt-workout').innerHTML = '<option value="">Nessuno - Sessione generale</option>';
+    document.getElementById('book-appt-notes').value = '';
+
+    loadWorkoutsForAppointment();
+
+    showModal('book-appointment-modal');
 }
 
 function renderSchedule(dateStr) {
@@ -3068,19 +3156,7 @@ function initSettingsSection() {
     loadBio();
     loadSpecialties();
 
-    // Specialty checkbox styling
-    document.querySelectorAll('.specialty-checkbox').forEach(cb => {
-        cb.addEventListener('change', function() {
-            const span = this.nextElementSibling;
-            if (this.checked) {
-                span.classList.remove('bg-white/5', 'text-white/60');
-                span.classList.add('bg-primary/20', 'text-primary', 'border-primary/30');
-            } else {
-                span.classList.add('bg-white/5', 'text-white/60');
-                span.classList.remove('bg-primary/20', 'text-primary', 'border-primary/30');
-            }
-        });
-    });
+    // Specialty checkbox styling handled by CSS (.specialty-checkbox:checked + .settings-chip)
 }
 
 async function loadBio() {
