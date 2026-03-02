@@ -366,7 +366,7 @@
 <script src="/static/trainer_notes.js"></script>
 <script>
     let currentSchedule = [];
-    const username = localStorage.getItem('username') || 'Trainer';
+    const username = sessionStorage.getItem('username') || 'Trainer';
     const { gymId: localGymId } = window.APP_CONFIG;
 
     // Fallback for modal utils if app.js fails or is late

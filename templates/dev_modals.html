@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DEV - Modal Preview</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800;900&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    <link rel="stylesheet" href="/static/css/style.css?v=dev">
+    <style>
+        .dev-page {
+            background: #1E1E1E;
+            color: white;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            padding: 2rem;
+            min-height: 100vh;
+        }
+        .dev-page h1 { font-size: 1.5rem; font-weight: 800; margin-bottom: 0.5rem; }
+        .dev-subtitle { color: rgba(255,255,255,0.4); font-size: 0.85rem; margin-bottom: 2rem; }
+        .modal-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 0.75rem;
+            margin-bottom: 2rem;
+        }
+        .modal-btn {
+            padding: 0.7rem 1rem;
+            background: #252525;
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s;
+            text-align: left;
+        }
+        .modal-btn:hover { background: #2a2a2a; }
+        .modal-btn .modal-id { color: rgba(255,255,255,0.35); font-size: 0.7rem; font-weight: 400; display: block; margin-top: 0.2rem; }
+
+        /* Override modals to not offset for sidebar */
+        .fixed.inset-0 { left: 0 !important; }
+    </style>
+</head>
+<body>
+    <div class="dev-page trainer-layout" style="display:block;height:auto;overflow:auto;">
+        <h1>Modal Preview</h1>
+        <p class="dev-subtitle">Click any button to open the modal. Press X or click backdrop to close.</p>
+
+        <div class="modal-grid">
+            <button class="modal-btn" onclick="openModal('create-exercise-modal')">
+                Create Exercise<span class="modal-id">create-exercise-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('edit-exercise-modal')">
+                Edit Exercise<span class="modal-id">edit-exercise-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('create-workout-modal')">
+                Create Workout<span class="modal-id">create-workout-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('assign-workout-modal')">
+                Assign Workout<span class="modal-id">assign-workout-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('notification-modal')">
+                Notifications<span class="modal-id">notification-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('booking-modal')">
+                Booking<span class="modal-id">booking-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('shop-modal')">
+                Shop<span class="modal-id">shop-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('profile-modal')">
+                Profile<span class="modal-id">profile-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('inactive-clients-modal')">
+                Inactive Clients<span class="modal-id">inactive-clients-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('client-modal')">
+                Client Actions<span class="modal-id">client-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('chat-modal')">
+                Chat<span class="modal-id">chat-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('conversations-modal')">
+                Conversations<span class="modal-id">conversations-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('calendar-modal')">
+                Calendar<span class="modal-id">calendar-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('assign-diet-modal')">
+                Assign Diet<span class="modal-id">assign-diet-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('create-split-modal')">
+                Create Split<span class="modal-id">create-split-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('assign-split-modal')">
+                Assign Split<span class="modal-id">assign-split-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('edit-split-modal')">
+                Edit Split<span class="modal-id">edit-split-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('metrics-modal')">
+                Metrics<span class="modal-id">metrics-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('book-appointment-modal')">
+                Book Appointment (Trainer)<span class="modal-id">book-appointment-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('client-book-appointment-modal')">
+                Book Appointment (Client)<span class="modal-id">client-book-appointment-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('create-course-modal')">
+                Create Course<span class="modal-id">create-course-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('course-detail-modal')">
+                Course Detail<span class="modal-id">course-detail-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('schedule-lesson-modal')">
+                Schedule Lesson<span class="modal-id">schedule-lesson-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('complete-lesson-modal')">
+                Complete Lesson<span class="modal-id">complete-lesson-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('live-class-modal')">
+                Live Class<span class="modal-id">live-class-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('custom-timer-modal')">
+                Custom Timer<span class="modal-id">custom-timer-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('course-exercise-modal')">
+                Course Exercise<span class="modal-id">course-exercise-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('course-exercise-detail-modal')">
+                Course Exercise Detail<span class="modal-id">course-exercise-detail-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('subscription-plans-modal')">
+                Subscription Plans<span class="modal-id">subscription-plans-modal</span>
+            </button>
+            <button class="modal-btn" onclick="openModal('cancel-subscription-modal')">
+                Cancel Subscription<span class="modal-id">cancel-subscription-modal</span>
+            </button>
+        </div>
+
+        <!-- Include all modals -->
+        {% include 'modals.html' %}
+    </div>
+
+    <script>
+        // Simple open/close without needing app.js
+        function openModal(id) {
+            const modal = document.getElementById(id);
+            if (!modal) { alert('Modal not found: ' + id); return; }
+            modal.classList.remove('hidden');
+            if (modal.classList.contains('modal-slide-backdrop')) {
+                requestAnimationFrame(() => {
+                    requestAnimationFrame(() => {
+                        modal.classList.add('modal-slide-visible');
+                        const panel = modal.querySelector('.modal-slide-panel');
+                        if (panel) panel.classList.add('modal-slide-visible');
+                    });
+                });
+            }
+        }
+
+        function closeModal(id) {
+            const modal = document.getElementById(id);
+            if (!modal) return;
+            if (modal.classList.contains('modal-slide-backdrop')) {
+                modal.classList.remove('modal-slide-visible');
+                const panel = modal.querySelector('.modal-slide-panel');
+                if (panel) panel.classList.remove('modal-slide-visible');
+                setTimeout(() => modal.classList.add('hidden'), 350);
+            } else {
+                modal.classList.add('hidden');
+            }
+        }
+
+        window.showModal = openModal;
+        window.hideModal = closeModal;
+
+        // Close on backdrop click
+        document.addEventListener('click', function(e) {
+            const target = e.target.closest('[data-action="hideModal"]');
+            if (target) {
+                const modalId = target.dataset.target;
+                if (modalId) closeModal(modalId);
+            }
+        });
+
+        // Close on Escape
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                document.querySelectorAll('.fixed:not(.hidden)').forEach(m => {
+                    if (m.id && m.id.includes('modal')) closeModal(m.id);
+                });
+            }
+        });
+
+        // Init lucide icons
+        lucide.createIcons();
+    </script>
+</body>
+</html>

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from typing import List, Optional, Dict, Union
 
 # --- GYM CONFIG ---
@@ -256,11 +256,14 @@ class SubscriptionPlan(BaseModel):
     name: str
     description: Optional[str] = None
     price: float
-    currency: str = "usd"
+    currency: str = "eur"
     features: Optional[List[str]] = []
     is_active: bool = True
     trial_period_days: int = 0
     billing_interval: str = "month"
+    billing_type: str = "annual"
+    annual_price: Optional[float] = None
+    installment_count: int = 1
     stripe_price_id: Optional[str] = None
     stripe_product_id: Optional[str] = None
     created_at: Optional[str] = None
@@ -269,18 +272,53 @@ class SubscriptionPlan(BaseModel):
 class CreateSubscriptionPlanRequest(BaseModel):
     name: str
     description: Optional[str] = None
-    price: float
+    billing_type: str = "annual"  # "monthly" or "annual"
+    monthly_price: Optional[float] = None  # For monthly plans
+    annual_price: Optional[float] = None  # For annual plans
+    installment_count: int = 1
     features: Optional[List[str]] = []
     trial_period_days: int = 0
-    billing_interval: str = "month"  # month or year
+
+    @validator('installment_count')
+    def validate_installments(cls, v):
+        allowed = [1, 2, 3, 4, 6, 12]
+        if v not in allowed:
+            raise ValueError(f'installment_count must be one of {allowed}')
+        return v
+
+    @validator('billing_type')
+    def validate_billing_type(cls, v):
+        if v not in ('monthly', 'annual'):
+            raise ValueError('billing_type must be "monthly" or "annual"')
+        return v
 
 class UpdateSubscriptionPlanRequest(BaseModel):
     name: Optional[str] = None
     description: Optional[str] = None
-    price: Optional[float] = None
+    billing_type: Optional[str] = None
+    monthly_price: Optional[float] = None
+    annual_price: Optional[float] = None
+    installment_count: Optional[int] = None
     features: Optional[List[str]] = None
     is_active: Optional[bool] = None
     trial_period_days: Optional[int] = None
+
+    @validator('installment_count')
+    def validate_installments(cls, v):
+        if v is None:
+            return v
+        allowed = [1, 2, 3, 4, 6, 12]
+        if v not in allowed:
+            raise ValueError(f'installment_count must be one of {allowed}')
+        return v
+
+    @validator('billing_type')
+    def validate_billing_type(cls, v):
+        if v is None:
+            return v
+        if v not in ('monthly', 'annual'):
+            raise ValueError('billing_type must be "monthly" or "annual"')
+        return v
 
 class ClientSubscription(BaseModel):
     id: Optional[str] = None
@@ -410,6 +448,20 @@ class AddBodyCompositionRequest(BaseModel):
 class SetWeightGoalRequest(BaseModel):
     client_id: str
     weight_goal: float
+
+class UpdateClientHealthDataRequest(BaseModel):
+    client_id: str
+    height_cm: Optional[float] = None
+    gender: Optional[str] = None
+    date_of_birth: Optional[str] = None
+    activity_level: Optional[str] = None
+    allergies: Optional[str] = None
+    medical_conditions: Optional[str] = None
+    supplements: Optional[str] = None
+    sleep_hours: Optional[float] = None
+    meal_frequency: Optional[str] = None
+    food_preferences: Optional[str] = None
+    occupation_type: Optional[str] = None
 
 class TrainerInfo(BaseModel):
     id: str

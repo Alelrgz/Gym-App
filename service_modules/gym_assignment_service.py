@@ -196,23 +196,33 @@ class GymAssignmentService:
                     if trainer.specialties:
                         trainer_specialties = [s.strip() for s in trainer.specialties.split(",") if s.strip()]
 
+            # Get nutritionist info
             nutritionist_name = None
             nutritionist_profile_picture = None
             nutritionist_bio = None
             nutritionist_specialties = []
-            if profile.nutritionist_id:
-                nutri = db.query(UserORM).filter(UserORM.id == profile.nutritionist_id).first()
+            nutritionist_id = getattr(profile, 'nutritionist_id', None)
+            if not nutritionist_id and profile.gym_id:
+                # Find any nutritionist assigned to this gym
+                nutri = db.query(UserORM).filter(
+                    UserORM.gym_owner_id == profile.gym_id,
+                    UserORM.role == "nutritionist"
+                ).first()
                 if nutri:
-                    nutritionist_name = nutri.username
-                    nutritionist_profile_picture = nutri.profile_picture
-                    nutritionist_bio = nutri.bio
-                    if nutri.specialties:
-                        nutritionist_specialties = [s.strip() for s in nutri.specialties.split(",") if s.strip()]
+                    nutritionist_id = nutri.id
+            if nutritionist_id:
+                nutri_user = db.query(UserORM).filter(UserORM.id == nutritionist_id).first()
+                if nutri_user:
+                    nutritionist_name = nutri_user.username
+                    nutritionist_profile_picture = nutri_user.profile_picture
+                    nutritionist_bio = nutri_user.bio
+                    if nutri_user.specialties:
+                        nutritionist_specialties = [s.strip() for s in nutri_user.specialties.split(",") if s.strip()]
 
             return {
                 "has_gym": profile.gym_id is not None,
                 "has_trainer": profile.trainer_id is not None,
-                "has_nutritionist": profile.nutritionist_id is not None,
+                "has_nutritionist": nutritionist_id is not None,
                 "gym_id": profile.gym_id,
                 "gym_name": gym_name,
                 "trainer_id": profile.trainer_id,
@@ -220,7 +230,7 @@ class GymAssignmentService:
                 "trainer_profile_picture": trainer_profile_picture,
                 "trainer_bio": trainer_bio,
                 "trainer_specialties": trainer_specialties,
-                "nutritionist_id": profile.nutritionist_id,
+                "nutritionist_id": nutritionist_id,
                 "nutritionist_name": nutritionist_name,
                 "nutritionist_profile_picture": nutritionist_profile_picture,
                 "nutritionist_bio": nutritionist_bio,

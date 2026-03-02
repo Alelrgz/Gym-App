@@ -620,6 +620,7 @@ async def get_gym_members(current_user: UserORM = Depends(get_current_user)):
                 members.append({
                     "id": user.id,
                     "username": user.username,
+                    "name": profile.name or user.username,
                     "profile_picture": user.profile_picture,
                     "privacy_mode": profile.privacy_mode or "public",
                     "friendship_status": friendship["status"]
@@ -666,6 +667,7 @@ async def get_member_profile(
         return {
             "id": member_user.id,
             "username": member_user.username,
+            "name": member_profile.name or member_user.username,
             "profile_picture": member_user.profile_picture,
             "bio": member_user.bio,
             "streak": member_profile.streak or 0,

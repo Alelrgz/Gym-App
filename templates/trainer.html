@@ -176,7 +176,7 @@
                             <i data-lucide="sliders-horizontal" style="width:20px;height:20px;"></i>
                         </button>
                     </div>
-                    <div class="staff-table-card staff-desktop-only" style="padding:1rem;">
+                    <div class="staff-table-card staff-desktop-only" style="padding:1rem;max-height:550px;overflow-y:auto;">
                         <div class="trainer-integrated-search">
                             <i data-lucide="search" class="w-4 h-4" style="color:rgba(255,255,255,0.25);flex-shrink:0;"></i>
                             <input type="text" id="trainer-client-search" placeholder="Cerca clienti...">
@@ -200,7 +200,7 @@
                     </div>
 
                     <!-- Client Cards (mobile) -->
-                    <div class="staff-mobile-only" id="trainer-clients-mobile-list">
+                    <div class="staff-mobile-only" id="trainer-clients-mobile-list" style="max-height:550px;overflow-y:auto;">
                         <div class="staff-mobile-card" style="pointer-events:none;opacity:0.5;">
                             <div class="staff-skeleton" style="width:36px;height:36px;border-radius:50%;flex-shrink:0;"></div>
                             <div style="flex:1;">
@@ -226,7 +226,7 @@
                 </div>
 
                 <!-- RIGHT: Appointments + My Workout -->
-                <div class="trainer-panel-content" id="utenti-panel-agenda" style="display:flex;flex-direction:column;gap:0.75rem;">
+                <div class="trainer-panel-content" id="utenti-panel-agenda" style="display:flex;flex-direction:column;gap:0.75rem;max-height:550px;overflow-y:auto;">
                     <!-- Appointments Widget -->
                     <div class="glass-card" style="padding:1rem;border-radius:var(--radius-xl);">
                         <div class="trainer-integrated-search staff-desktop-only" style="margin-bottom:0.75rem;">
@@ -2649,7 +2649,7 @@ const toLocalISO = (d) => {
 };
 
 function initScheduleSection() {
-    const username = localStorage.getItem('username') || 'Trainer';
+    const username = sessionStorage.getItem('username') || 'Trainer';
     const nameEl = document.getElementById('personal-name');
     if (nameEl) nameEl.textContent = username;
 
@@ -3148,7 +3148,7 @@ window.switchCourseTab = switchCourseTab;
 
 // ============ SETTINGS SECTION ============
 function initSettingsSection() {
-    const username = localStorage.getItem('username') || 'Trainer';
+    const username = sessionStorage.getItem('username') || 'Trainer';
     document.getElementById('settings-trainer-name').textContent = username;
     document.getElementById('settings-profile-pic').textContent = username.charAt(0).toUpperCase();
 
@@ -3231,7 +3231,7 @@ window.uploadProfilePicture = async function(input) {
 // ============ INITIALIZATION ============
 document.addEventListener('DOMContentLoaded', () => {
     // Update sidebar name
-    const username = localStorage.getItem('username') || 'Trainer';
+    const username = sessionStorage.getItem('username') || 'Trainer';
     const sidebarName = document.getElementById('sidebar-trainer-name');
     if (sidebarName) sidebarName.textContent = `Coach ${username}`;
 

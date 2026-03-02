@@ -57,6 +57,9 @@ class UserORM(Base):
     shower_daily_limit = Column(Integer, nullable=True)  # Max showers per member per day
     device_api_key = Column(String, nullable=True, unique=True, index=True)  # UUID for ESP32 device auth
 
+    # Turnstile/QR system settings (for owners)
+    turnstile_gate_seconds = Column(Integer, nullable=True)  # Gate open duration in seconds (default 5)
+
 # --- EXERCISE & WORKOUT LIBRARY (Global + Personal) ---
 
 class ExerciseORM(Base):
@@ -146,6 +149,18 @@ class ClientProfileORM(Base):
 
     # Weight goal set by nutritionist
     weight_goal = Column(Float, nullable=True)  # Target weight in kg
+
+    # Nutritionist-only health data
+    height_cm = Column(Float, nullable=True)
+    gender = Column(String, nullable=True)  # male / female / other
+    activity_level = Column(String, nullable=True)  # sedentary / light / moderate / active / very_active
+    allergies = Column(String, nullable=True)
+    medical_conditions = Column(String, nullable=True)
+    supplements = Column(String, nullable=True)
+    sleep_hours = Column(Float, nullable=True)
+    meal_frequency = Column(String, nullable=True)  # 3_meals / 5_small / intermittent_fasting / custom
+    food_preferences = Column(String, nullable=True)  # none / vegan / vegetarian / halal / kosher / other
+    occupation_type = Column(String, nullable=True)  # sedentary / light_physical / heavy_physical
 
     # Current assigned split tracking
     current_split_id = Column(String, nullable=True)  # WeeklySplitORM.id
@@ -342,6 +357,11 @@ class SubscriptionPlanORM(Base):
     is_active = Column(Boolean, default=True)
     trial_period_days = Column(Integer, default=0)  # Free trial days
     billing_interval = Column(String, default="month")  # month, year
+
+    # Billing type & installment billing
+    billing_type = Column(String, default="annual")  # "monthly" or "annual"
+    annual_price = Column(Float, nullable=True)  # Total annual price (for annual plans)
+    installment_count = Column(Integer, default=1)  # Number of installments (1,2,3,4,6,12)
 
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
     updated_at = Column(String, default=lambda: datetime.utcnow().isoformat())

@@ -628,6 +628,23 @@
     </div>
 </div>
 
+<!-- QR Scanner Modal (USB/DS Reader) -->
+<div id="qr-scanner-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4"
+    onclick="if(event.target === this) closeQrScanner()">
+    <div class="bg-[#1a1a1a] p-6 rounded-2xl max-w-sm w-full border border-white/10 text-center">
+        <div class="flex justify-between items-center mb-6">
+            <h3 class="text-lg font-bold text-white">Scansione QR</h3>
+            <button onclick="closeQrScanner()" class="text-2xl text-gray-400 hover:text-white">&times;</button>
+        </div>
+        <div id="qr-scan-icon" class="w-24 h-24 rounded-2xl border-2 border-purple-500/50 bg-purple-500/20 flex items-center justify-center mx-auto mb-4 animate-pulse transition-all">
+            <i data-lucide="scan" class="w-10 h-10 text-white"></i>
+        </div>
+        <p id="qr-scan-status" class="text-white font-semibold text-lg mb-2">In attesa della scansione...</p>
+        <p class="text-gray-500 text-sm mb-4">Scansiona il QR code del membro con il lettore</p>
+        <input type="text" id="qr-scanner-input" class="opacity-0 absolute" autocomplete="off">
+    </div>
+</div>
+
 <div id="onboarding-wizard-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] hidden flex items-center justify-center p-4">
     <div class="glass-card p-6 rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto">
         <!-- Header -->
@@ -840,16 +857,11 @@
             <!-- Payment Method -->
             <div id="payment-method-section">
                 <p class="text-xs text-gray-400 mb-3">Seleziona metodo di pagamento:</p>
-                <div id="payment-grid" class="grid grid-cols-3 gap-3 mb-4">
+                <div id="payment-grid" class="grid grid-cols-2 gap-3 mb-4">
                     <button onclick="selectPaymentMethod('cash')" id="pay-cash-btn"
                         class="p-4 rounded-xl border-2 border-white/20 hover:border-green-500/50 transition text-center">
                         <i data-lucide="banknote" class="w-6 h-6 block mb-1 mx-auto stroke-current"></i>
                         <span class="text-sm font-semibold text-white">Contanti</span>
-                    </button>
-                    <button onclick="selectPaymentMethod('card')" id="pay-card-btn"
-                        class="p-4 rounded-xl border-2 border-white/20 hover:border-blue-500/50 transition text-center">
-                        <i data-lucide="credit-card" class="w-6 h-6 block mb-1"></i>
-                        <span class="text-sm font-semibold text-white">Carta</span>
                     </button>
                     <button onclick="selectPaymentMethod('terminal')" id="pay-terminal-btn"
                         class="p-4 rounded-xl border-2 border-white/20 hover:border-orange-500/50 transition text-center">
@@ -936,28 +948,7 @@ let allTrainers = [];
 
 document.addEventListener('DOMContentLoaded', async () => {
     await loadStaffData();
-    checkTerminalAvailability();
 });
-
-async function checkTerminalAvailability() {
-    try {
-        const res = await fetch('/api/terminal/readers', { credentials: 'include' });
-        if (res.ok) {
-            const data = await res.json();
-            if (!data.readers || data.readers.length === 0) {
-                // No reader configured — hide POS button and keep 2-column grid
-                document.getElementById('pay-terminal-btn')?.classList.add('hidden');
-                document.getElementById('payment-grid')?.classList.remove('grid-cols-3');
-                document.getElementById('payment-grid')?.classList.add('grid-cols-2');
-            }
-        }
-    } catch (e) {
-        // Terminal not available — hide POS button
-        document.getElementById('pay-terminal-btn')?.classList.add('hidden');
-        document.getElementById('payment-grid')?.classList.remove('grid-cols-3');
-        document.getElementById('payment-grid')?.classList.add('grid-cols-2');
-    }
-}
 
 async function loadStaffData() {
     try {
@@ -1016,27 +1007,32 @@ async function loadStaffData() {
 }
 
 async function loadTrainers() {
+    const listEl = document.getElementById('trainers-list');
     try {
         const res = await fetch('/api/staff/trainers', { credentials: 'include' });
-        const listEl = document.getElementById('trainers-list');
 
-        if (res.ok) {
-            allTrainers = await res.json();
+        if (!res.ok) {
+            console.error('loadTrainers failed:', res.status, res.statusText);
+            if (listEl) listEl.innerHTML = '<p style="color:rgba(255,255,255,0.35);font-size:0.85rem;padding:1rem 0;">Nessun trainer trovato</p>';
+            return;
+        }
 
-            // Update trainers count stat
-            const trainersCountEl = document.getElementById('trainers-count');
-            if (trainersCountEl) trainersCountEl.textContent = allTrainers.length;
+        allTrainers = await res.json();
 
-            if (allTrainers.length === 0) {
-                listEl.innerHTML = `
-                    <div class="glass-card p-3 text-center">
-                        <p class="text-gray-400 text-sm">Nessun trainer</p>
-                    </div>
-                `;
-                return;
-            }
+        // Update trainers count stat
+        const trainersCountEl = document.getElementById('trainers-count');
+        if (trainersCountEl) trainersCountEl.textContent = allTrainers.length;
 
-            listEl.innerHTML = allTrainers.map(trainer => `
+        if (allTrainers.length === 0) {
+            if (listEl) listEl.innerHTML = `
+                <div class="glass-card p-3 text-center">
+                    <p class="text-gray-400 text-sm">Nessun trainer</p>
+                </div>
+            `;
+            return;
+        }
+
+        if (listEl) listEl.innerHTML = allTrainers.map(trainer => `
                 <div class="glass-card p-3 hover:bg-white/10 transition cursor-pointer" onclick="viewTrainerSchedule('${trainer.id}', '${trainer.username}')">
                     <div class="flex items-center gap-3">
                         <div class="w-10 h-10 rounded-full bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center text-white font-bold">
@@ -1058,9 +1054,9 @@ async function loadTrainers() {
                     </div>
                 </div>
             `).join('');
-        }
     } catch (error) {
         console.error('Error loading trainers:', error);
+        if (listEl) listEl.innerHTML = '<p style="color:rgba(255,255,255,0.35);font-size:0.85rem;padding:1rem 0;">Nessun trainer trovato</p>';
     }
 }
 
@@ -1373,7 +1369,7 @@ async function loadTodaysAppointments() {
 
             listEl.innerHTML = `
                 <div class="glass-card p-3 text-center">
-                    <p class="text-gray-400 text-sm">No appointments today</p>
+                    <p class="text-gray-400 text-sm">Nessun appuntamento oggi</p>
                 </div>
             `;
         }
@@ -1627,8 +1623,13 @@ function messageFromModal() {
     if (!currentMemberData) return;
     const memberId = currentMemberData.id;
     const memberName = currentMemberData.name || currentMemberData.username;
+    const memberPic = currentMemberData.profile_picture || null;
     closeMemberModal();
-    openChatModal(memberId, memberName);
+    if (typeof openChatModal === 'function') {
+        openChatModal(memberId, memberName, memberPic);
+    } else {
+        showToast('Chat non disponibile', 'error');
+    }
 }
 
 // Close modal on background click
@@ -2288,8 +2289,19 @@ async function loadWaiverTemplate() {
     }
 }
 
-function loadOnboardingPlans() {
+function formatCurrencySymbol(code) {
+    if (!code) return '€';
+    const symbols = { eur: '€', usd: '$', gbp: '£' };
+    return symbols[code.toLowerCase()] || code.toUpperCase() + ' ';
+}
+
+async function loadOnboardingPlans() {
     const listEl = document.getElementById('onboard-plans-list');
+
+    // Fetch plans if not loaded yet
+    if (availablePlans.length === 0) {
+        await loadSubscriptionPlans();
+    }
 
     if (availablePlans.length === 0) {
         listEl.innerHTML = `
@@ -2303,13 +2315,13 @@ function loadOnboardingPlans() {
 
     listEl.innerHTML = availablePlans.map(plan => `
         <div class="glass-card p-4 cursor-pointer border-2 transition ${onboardingState.data.planId === plan.id ? 'border-primary bg-primary/10' : 'border-transparent hover:border-white/20'}"
-            onclick="selectOnboardPlan('${plan.id}', '${plan.name}', ${plan.price}, '${plan.currency || '€'}')">
+            onclick="selectOnboardPlan('${plan.id}', '${plan.name}', ${plan.price}, '${formatCurrencySymbol(plan.currency)}')">
             <div class="flex justify-between items-start">
                 <div>
                     <h4 class="font-bold text-white">${plan.name}</h4>
                     <p class="text-xs text-gray-400">${plan.description || 'Membership plan'}</p>
                 </div>
-                <span class="text-primary font-bold">${plan.currency || '€'}${plan.price}/${plan.billing_interval === 'year' ? 'yr' : 'mo'}</span>
+                <span class="text-primary font-bold">${formatCurrencySymbol(plan.currency)}${plan.price}/${plan.billing_interval === 'year' ? 'yr' : 'mo'}</span>
             </div>
         </div>
     `).join('');
@@ -2353,33 +2365,24 @@ function selectPaymentMethod(method) {
     onboardingState.data.paymentMethod = method;
 
     const cashBtn = document.getElementById('pay-cash-btn');
-    const cardBtn = document.getElementById('pay-card-btn');
     const terminalBtn = document.getElementById('pay-terminal-btn');
-    const cardForm = document.getElementById('card-payment-form');
     const terminalForm = document.getElementById('terminal-payment-form');
 
     // Reset all button styles
     cashBtn.classList.remove('border-green-500', 'bg-green-500/10');
-    cardBtn.classList.remove('border-blue-500', 'bg-blue-500/10');
     terminalBtn?.classList.remove('border-orange-500', 'bg-orange-500/10');
 
     // Update selected button style
     if (method === 'cash') {
         cashBtn.classList.add('border-green-500', 'bg-green-500/10');
-    } else if (method === 'card') {
-        cardBtn.classList.add('border-blue-500', 'bg-blue-500/10');
     } else if (method === 'terminal') {
         terminalBtn?.classList.add('border-orange-500', 'bg-orange-500/10');
     }
 
     // Show/hide payment forms
-    cardForm.classList.add('hidden');
     terminalForm?.classList.add('hidden');
 
-    if (method === 'card') {
-        cardForm.classList.remove('hidden');
-        initStripeElements();
-    } else if (method === 'terminal') {
+    if (method === 'terminal') {
         terminalForm?.classList.remove('hidden');
         // Reset terminal form to initial state
         document.getElementById('pos-initial').classList.remove('hidden');
@@ -3301,13 +3304,17 @@ async function loadStaffConversations() {
         container.innerHTML = conversations.slice(0, 20).map(conv => {
             const name = conv.other_user_name || conv.other_username || 'Unknown';
             const initial = name.charAt(0).toUpperCase();
-            const preview = conv.last_message || '';
-            const time = conv.last_message_time ? formatMessageTime(conv.last_message_time) : '';
+            const preview = conv.last_message_preview || '';
+            const time = conv.last_message_at ? formatMessageTime(conv.last_message_at) : '';
             const unread = conv.unread_count > 0;
+            const pic = conv.other_user_profile_picture;
+            const avatarHtml = pic
+                ? `<img src="${pic}" class="w-full h-full object-cover" style="border-radius:50%;" />`
+                : initial;
 
             return `
-                <div class="staff-message-item" onclick="openChatModal('${conv.other_user_id}', '${escapeHtml(name).replace(/'/g, "\\'")}')">
-                    <div class="staff-message-avatar">${initial}</div>
+                <div class="staff-message-item" onclick="openChatModal('${conv.other_user_id}', '${escapeHtml(name).replace(/'/g, "\\'")}', ${pic ? "'" + pic.replace(/'/g, "\\'") + "'" : 'null'})">
+                    <div class="staff-message-avatar">${avatarHtml}</div>
                     <div class="staff-message-content">
                         <div class="staff-message-name">${escapeHtml(name)}</div>
                         <div class="staff-message-preview">${escapeHtml(preview)}</div>
@@ -3375,7 +3382,17 @@ function toggleMobileMessages() {
 }
 
 // Load conversations on page load
-document.addEventListener('DOMContentLoaded', loadStaffConversations);
+document.addEventListener('DOMContentLoaded', () => {
+    loadStaffConversations();
+    // Override closeChatModal to refresh conversations list after closing chat
+    const _origClose = window.closeChatModal;
+    if (_origClose) {
+        window.closeChatModal = function() {
+            _origClose();
+            setTimeout(loadStaffConversations, 300);
+        };
+    }
+});
 
 // ========== MEMBER SEARCH (new table layout) ==========
 document.getElementById('member-search')?.addEventListener('input', (e) => {
