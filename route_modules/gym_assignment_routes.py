@@ -268,3 +268,129 @@ async def delete_gym_logo(user: UserORM = Depends(get_current_user)):
         db.close()
 
     return {"success": True, "message": "Gym logo deleted"}
+
+
+# --- COMMISSION ENDPOINTS ---
+
+class CommissionRateRequest(BaseModel):
+    commission_rate: float  # 0-100 percentage
+
+
+@router.put("/api/owner/trainers/{trainer_id}/commission")
+async def set_trainer_commission(
+    trainer_id: str,
+    body: CommissionRateRequest,
+    user: UserORM = Depends(get_current_user)
+):
+    """Set the commission rate for a trainer."""
+    if user.role != "owner":
+        raise HTTPException(status_code=403, detail="Only gym owners can set commission rates")
+    if not (0 <= body.commission_rate <= 100):
+        raise HTTPException(status_code=400, detail="Commission rate must be between 0 and 100")
+
+    db = get_db_session()
+    try:
+        trainer = db.query(UserORM).filter(
+            UserORM.id == trainer_id,
+            UserORM.gym_owner_id == user.id,
+            UserORM.role.in_(["trainer", "staff", "nutritionist"])
+        ).first()
+        if not trainer:
+            raise HTTPException(status_code=404, detail="Trainer not found in your gym")
+        trainer.commission_rate = body.commission_rate
+        db.commit()
+        return {"success": True, "commission_rate": body.commission_rate}
+    finally:
+        db.close()
+
+
+@router.get("/api/owner/commissions")
+async def get_trainer_commissions(
+    period: str = "month",  # "month", "last_month", "year", "all"
+    user: UserORM = Depends(get_current_user)
+):
+    """Get all trainers with their commission calculations."""
+    if user.role != "owner":
+        raise HTTPException(status_code=403, detail="Only gym owners can view commissions")
+
+    from models_orm import AppointmentORM, PaymentORM, ClientProfileORM
+    from datetime import datetime, date
+    db = get_db_session()
+    try:
+        # Date filter
+        now = datetime.utcnow()
+        if period == "month":
+            start = now.replace(day=1, hour=0, minute=0, second=0).isoformat()
+        elif period == "last_month":
+            if now.month == 1:
+                start = now.replace(year=now.year - 1, month=12, day=1, hour=0, minute=0, second=0).isoformat()
+            else:
+                start = now.replace(month=now.month - 1, day=1, hour=0, minute=0, second=0).isoformat()
+            # end = first day of current month
+            end_dt = now.replace(day=1, hour=0, minute=0, second=0)
+        elif period == "year":
+            start = now.replace(month=1, day=1, hour=0, minute=0, second=0).isoformat()
+        else:
+            start = None
+
+        trainers = db.query(UserORM).filter(
+            UserORM.gym_owner_id == user.id,
+            UserORM.role.in_(["trainer", "staff", "nutritionist"]),
+            UserORM.is_approved == True
+        ).all()
+
+        result = []
+        for trainer in trainers:
+            # --- Appointment revenue (direct trainer link) ---
+            appt_query = db.query(AppointmentORM).filter(
+                AppointmentORM.trainer_id == trainer.id,
+                AppointmentORM.payment_status == "paid"
+            )
+            if start:
+                appt_query = appt_query.filter(AppointmentORM.created_at >= start)
+            if period == "last_month":
+                appt_query = appt_query.filter(AppointmentORM.created_at < end_dt.isoformat())
+            appts = appt_query.all()
+            appt_revenue = sum((a.price or 0) for a in appts)
+            appt_count = len(appts)
+
+            # --- Subscription revenue (via clients assigned to this trainer) ---
+            client_ids = [r[0] for r in db.query(ClientProfileORM.id).filter(
+                ClientProfileORM.trainer_id == trainer.id
+            ).all()]
+            sub_revenue = 0.0
+            sub_count = 0
+            if client_ids:
+                pay_query = db.query(PaymentORM).filter(
+                    PaymentORM.client_id.in_(client_ids),
+                    PaymentORM.gym_id == user.id,
+                    PaymentORM.status == "succeeded"
+                )
+                if start:
+                    pay_query = pay_query.filter(PaymentORM.paid_at >= start)
+                if period == "last_month":
+                    pay_query = pay_query.filter(PaymentORM.paid_at < end_dt.isoformat())
+                payments = pay_query.all()
+                sub_revenue = sum((p.amount or 0) for p in payments)
+                sub_count = len(payments)
+
+            rate = trainer.commission_rate or 0.0
+            total_revenue = appt_revenue + sub_revenue
+            commission_due = round(total_revenue * rate / 100, 2)
+
+            result.append({
+                "id": trainer.id,
+                "username": trainer.username,
+                "role": trainer.role,
+                "commission_rate": rate,
+                "appt_revenue": round(appt_revenue, 2),
+                "appt_count": appt_count,
+                "sub_revenue": round(sub_revenue, 2),
+                "sub_count": sub_count,
+                "total_revenue": round(total_revenue, 2),
+                "commission_due": commission_due,
+            })
+
+        return result
+    finally:
+        db.close()

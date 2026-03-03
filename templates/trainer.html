@@ -169,13 +169,24 @@
                 <!-- LEFT: Client Table (desktop) -->
                 <div class="trainer-panel-content trainer-panel-hidden" id="utenti-panel-clients">
                     <!-- Mobile search bar (inside UTENTI tab) -->
-                    <div class="staff-mobile-only trainer-utenti-search">
+                    <div class="staff-mobile-only trainer-utenti-search" style="position:relative;">
                         <i data-lucide="search" style="width:20px;height:20px;color:rgba(255,255,255,0.5);flex-shrink:0;"></i>
                         <input type="text" id="trainer-client-search-mobile" placeholder="Cerca clienti...">
-                        <button style="background:none;border:none;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0;padding:0;display:flex;align-items:center;">
+                        <button id="client-filter-btn" onclick="toggleClientFilter()" style="background:none;border:none;color:rgba(255,255,255,0.4);cursor:pointer;flex-shrink:0;padding:0;display:flex;align-items:center;">
                             <i data-lucide="sliders-horizontal" style="width:20px;height:20px;"></i>
                         </button>
+                        <!-- Filter dropdown -->
+                        <div id="client-filter-dropdown" style="display:none;position:absolute;top:calc(100% + 4px);right:0;z-index:100;background:rgba(25,25,25,0.98);border:1px solid rgba(255,255,255,0.12);border-radius:10px;padding:0.35rem;min-width:140px;box-shadow:0 8px 24px rgba(0,0,0,0.5);">
+                            <button class="client-filter-opt active" onclick="setClientFilter('all',this)">Tutti</button>
+                            <button class="client-filter-opt" onclick="setClientFilter('with_split',this)">Con scheda</button>
+                            <button class="client-filter-opt" onclick="setClientFilter('no_split',this)">Senza scheda</button>
+                        </div>
                     </div>
+                    <style>
+                        .client-filter-opt{display:block;width:100%;text-align:left;background:none;border:none;color:rgba(255,255,255,0.6);font-size:0.82rem;padding:0.45rem 0.75rem;border-radius:7px;cursor:pointer;}
+                        .client-filter-opt:hover{background:rgba(255,255,255,0.07);color:white;}
+                        .client-filter-opt.active{background:rgba(255,80,0,0.18);color:var(--primary);font-weight:600;}
+                    </style>
                     <div class="staff-table-card staff-desktop-only" style="padding:1rem;max-height:550px;overflow-y:auto;">
                         <div class="trainer-integrated-search">
                             <i data-lucide="search" class="w-4 h-4" style="color:rgba(255,255,255,0.25);flex-shrink:0;"></i>
@@ -1038,17 +1049,48 @@ async function loadTrainerPRCard() {
     } catch(e) { card.style.display = 'none'; }
 }
 
+// ---- Client filter (mobile) ----
+let clientFilterState = 'all';
+
+function toggleClientFilter() {
+    const dd = document.getElementById('client-filter-dropdown');
+    if (!dd) return;
+    dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+    // Close on outside click
+    if (dd.style.display === 'block') {
+        setTimeout(() => {
+            document.addEventListener('click', function handler(e) {
+                if (!dd.contains(e.target) && e.target.id !== 'client-filter-btn') {
+                    dd.style.display = 'none';
+                    document.removeEventListener('click', handler);
+                }
+            });
+        }, 10);
+    }
+}
+
+function setClientFilter(filter, btn) {
+    clientFilterState = filter;
+    document.querySelectorAll('.client-filter-opt').forEach(b => b.classList.remove('active'));
+    if (btn) btn.classList.add('active');
+    document.getElementById('client-filter-dropdown').style.display = 'none';
+    applyClientFilters();
+}
+
+function applyClientFilters() {
+    let filtered = (typeof allClients !== 'undefined' ? allClients : []);
+    const q = (document.getElementById('trainer-client-search-mobile')?.value || '').toLowerCase().trim();
+    if (q) filtered = filtered.filter(c => (c.name || '').toLowerCase().includes(q));
+    if (clientFilterState === 'with_split') filtered = filtered.filter(c => c.assigned_split);
+    else if (clientFilterState === 'no_split') filtered = filtered.filter(c => !c.assigned_split);
+    if (typeof renderClientList === 'function') renderClientList(filtered);
+}
+
 // Mobile UTENTI search sync
 document.addEventListener('DOMContentLoaded', () => {
     const mobileSearch = document.getElementById('trainer-client-search-mobile');
     if (mobileSearch) {
-        mobileSearch.addEventListener('input', () => {
-            const desktopSearch = document.getElementById('trainer-client-search');
-            if (desktopSearch) {
-                desktopSearch.value = mobileSearch.value;
-                desktopSearch.dispatchEvent(new Event('input'));
-            }
-        });
+        mobileSearch.addEventListener('input', applyClientFilters);
     }
     // Load mobile homepage cards
     setTimeout(() => {
@@ -2969,10 +3011,12 @@ function openBookAppointmentForClient(clientId, clientName, dateStr) {
     dateInput.min = today;
     dateInput.value = dateStr || today;
 
-    document.getElementById('book-appt-time').value = '09:00';
     document.getElementById('book-appt-duration').value = '60';
     document.getElementById('book-appt-workout').innerHTML = '<option value="">Nessuno - Sessione generale</option>';
     document.getElementById('book-appt-notes').value = '';
+
+    loadTrainerAvailableSlots(dateStr || today);
+    dateInput.onchange = function() { loadTrainerAvailableSlots(this.value); };
 
     loadWorkoutsForAppointment();
 

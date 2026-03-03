@@ -8894,27 +8894,64 @@ function renderChatMessages() {
     container.innerHTML = '';
 
     currentChatState.messages.forEach(msg => {
-        // If sender is not the other user, it must be from me
-        // Also handle temp messages with sender_id === 'me'
         const isMe = msg.sender_id === 'me' || msg.sender_id !== currentChatState.otherUserId;
         const div = document.createElement('div');
         div.className = `flex ${isMe ? 'justify-end' : 'justify-start'}`;
 
         const time = new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const ticks = isMe && msg.is_read ? '<span class="text-[10px]">✓✓</span>' : '';
+        const timeColor = isMe ? 'text-black/60' : 'text-gray-400';
+        const bubbleBase = `max-w-[80%] ${isMe ? 'bg-primary text-black' : 'bg-white/10 text-white'} rounded-2xl ${isMe ? 'rounded-br-sm' : 'rounded-bl-sm'}`;
 
-        div.innerHTML = `
-            <div class="max-w-[80%] ${isMe ? 'bg-primary text-black' : 'bg-white/10 text-white'} rounded-2xl px-4 py-2 ${isMe ? 'rounded-br-sm' : 'rounded-bl-sm'}">
-                <p class="text-sm">${escapeHtml(msg.content)}</p>
-                <div class="flex items-center justify-end gap-1 mt-1">
-                    <span class="text-[10px] ${isMe ? 'text-black/60' : 'text-gray-400'}">${time}</span>
-                    ${isMe && msg.is_read ? '<span class="text-[10px]">✓✓</span>' : ''}
-                </div>
-            </div>
-        `;
+        let innerHtml;
+        if (msg.media_type === 'image' && msg.file_url) {
+            innerHtml = `
+                <div class="${bubbleBase} overflow-hidden p-1">
+                    <img src="${msg.file_url}" alt="Immagine" class="chat-media-img" onclick="window.open('${msg.file_url}','_blank')" onerror="this.style.display='none'">
+                    <div class="flex justify-end gap-1 px-2 pb-1 pt-0.5">
+                        <span class="text-[10px] ${timeColor}">${time}</span>${ticks}
+                    </div>
+                </div>`;
+        } else if (msg.media_type === 'video' && msg.file_url) {
+            innerHtml = `
+                <div class="${bubbleBase} overflow-hidden p-1">
+                    <video src="${msg.file_url}" class="chat-media-video" controls playsinline></video>
+                    <div class="flex justify-end gap-1 px-2 pb-1 pt-0.5">
+                        <span class="text-[10px] ${timeColor}">${time}</span>${ticks}
+                    </div>
+                </div>`;
+        } else if (msg.media_type === 'voice' && msg.file_url) {
+            const dur = formatVoiceDuration(msg.duration || 0);
+            const audioId = 'va-' + (msg.id || Date.now() + Math.random()).toString().replace(/[^a-z0-9]/gi,'');
+            const safeUrl = msg.file_url.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+            const safeMime = (msg.mime_type || 'audio/webm').replace(/'/g,"\\'");
+            innerHtml = `
+                <div class="${bubbleBase} px-3 py-2">
+                    <div class="chat-voice-bubble">
+                        <button class="chat-voice-play-btn" onclick="toggleVoicePlay('${safeUrl}','${safeMime}','prog-${audioId}','dur-${audioId}',this)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                        </button>
+                        <div class="chat-voice-waveform"><div class="chat-voice-progress" id="prog-${audioId}"></div></div>
+                        <span class="chat-voice-duration" id="dur-${audioId}">${dur}</span>
+                    </div>
+                    <div class="flex justify-end gap-1 mt-1">
+                        <span class="text-[10px] ${timeColor}">${time}</span>${ticks}
+                    </div>
+                </div>`;
+        } else {
+            innerHtml = `
+                <div class="${bubbleBase} px-4 py-2">
+                    <p class="text-sm" style="word-break:break-word;">${escapeHtml(msg.content || '')}</p>
+                    <div class="flex items-center justify-end gap-1 mt-1">
+                        <span class="text-[10px] ${timeColor}">${time}</span>${ticks}
+                    </div>
+                </div>`;
+        }
+
+        div.innerHTML = innerHtml;
         container.appendChild(div);
     });
 
-    // Scroll to bottom
     container.scrollTop = container.scrollHeight;
 }
 
@@ -8923,6 +8960,303 @@ function escapeHtml(text) {
     div.textContent = text;
     return div.innerHTML;
 }
+
+function formatVoiceDuration(seconds) {
+    const s = Math.floor(seconds || 0);
+    return `${Math.floor(s / 60)}:${(s % 60).toString().padStart(2, '0')}`;
+}
+
+// Web Audio API voice player — bypasses autoplay policy entirely
+// AudioContext is unlocked synchronously on click, decode+play happens async
+let _voiceAudioCtx = null;
+const _voiceBuffers  = {};   // fileUrl -> AudioBuffer (decoded, reusable)
+const _voicePausedAt = {};   // fileUrl -> seconds paused at
+let _voiceCurrent = null;    // { source, btn, progId, durId, startAt, duration, interval, fileUrl }
+
+function _getVoiceCtx() {
+    if (!_voiceAudioCtx) _voiceAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    return _voiceAudioCtx;
+}
+
+function _stopCurrentVoice(playIcon) {
+    if (!_voiceCurrent) return;
+    try { _voiceCurrent.source.stop(); } catch(e) {}
+    clearInterval(_voiceCurrent.interval);
+    if (_voiceCurrent.btn) _voiceCurrent.btn.innerHTML = playIcon;
+    _voiceCurrent = null;
+}
+
+window.toggleVoicePlay = async function(fileUrl, mimeType, progId, durId, btn) {
+    const playIcon  = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
+    const pauseIcon = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+
+    // --- Unlock AudioContext in user gesture and WAIT until running ---
+    const ctx = _getVoiceCtx();
+    if (ctx.state === 'suspended') await ctx.resume();
+
+    // Tapping the same message that is playing → pause (store position)
+    if (_voiceCurrent && _voiceCurrent.progId === progId) {
+        _voicePausedAt[fileUrl] = ctx.currentTime - _voiceCurrent.startAt;
+        _stopCurrentVoice(playIcon);
+        return;
+    }
+
+    // Stop whatever else was playing
+    _stopCurrentVoice(playIcon);
+
+    const progEl = document.getElementById(progId);
+    const durEl  = document.getElementById(durId);
+
+    function _startPlayback(buffer, resumeFrom) {
+        resumeFrom = resumeFrom || 0;
+        const source = ctx.createBufferSource();
+        source.buffer = buffer;
+        source.connect(ctx.destination);
+        source.start(0, resumeFrom);
+
+        const startAt = ctx.currentTime - resumeFrom;
+        const duration = buffer.duration;
+
+        const interval = setInterval(() => {
+            const elapsed = Math.min(ctx.currentTime - startAt, duration);
+            if (progEl) progEl.style.width = (elapsed / duration * 100) + '%';
+            if (durEl)  durEl.textContent  = formatVoiceDuration(elapsed);
+        }, 80);
+
+        _voiceCurrent = { source, btn, progId, durId, startAt, duration, interval, fileUrl };
+        btn.innerHTML = pauseIcon;
+
+        source.onended = () => {
+            if (_voiceCurrent && _voiceCurrent.source === source) {
+                clearInterval(interval);
+                btn.innerHTML = playIcon;
+                if (progEl) progEl.style.width = '0%';
+                if (durEl)  durEl.textContent  = formatVoiceDuration(duration);
+                _voiceCurrent = null;
+            }
+        };
+    }
+
+    // Buffer already decoded → play immediately (resuming from paused position if any)
+    if (_voiceBuffers[fileUrl]) {
+        const resumeFrom = _voicePausedAt[fileUrl] || 0;
+        _voicePausedAt[fileUrl] = 0;
+        _startPlayback(_voiceBuffers[fileUrl], resumeFrom);
+        return;
+    }
+
+    // First time: fetch → decode → play
+    btn.style.opacity = '0.5';
+    fetch(fileUrl, { credentials: 'include' })
+        .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.arrayBuffer(); })
+        .then(buf => {
+            return ctx.decodeAudioData(buf);
+        })
+        .then(decoded => {
+            btn.style.opacity = '';
+            _voiceBuffers[fileUrl] = decoded;
+            _voicePausedAt[fileUrl] = 0;
+            _startPlayback(decoded, 0);
+        })
+        .catch(err => {
+            console.error('[VOICE] load/decode error:', err);
+            btn.style.opacity = '';
+            btn.innerHTML = playIcon;
+            showToast('Audio non disponibile: ' + err.message, 'error');
+        });
+};
+
+window.updateChatSendBtn = function() {
+    const input = document.getElementById('chat-input');
+    const micIcon = document.getElementById('chat-mic-icon');
+    const sendIcon = document.getElementById('chat-send-icon');
+    const btn = document.getElementById('chat-send-or-mic-btn');
+    if (!btn) return;
+    const hasText = input && input.value.trim().length > 0;
+    if (micIcon) micIcon.style.display = hasText ? 'none' : '';
+    if (sendIcon) sendIcon.style.display = hasText ? '' : 'none';
+    if (hasText) btn.classList.add('chat-send-mode');
+    else btn.classList.remove('chat-send-mode');
+};
+
+window.handleChatSendOrMic = function() {
+    const input = document.getElementById('chat-input');
+    if (input && input.value.trim()) {
+        window.sendChatMessage();
+    } else {
+        startVoiceRecording();
+    }
+};
+
+let _chatMediaRecorder = null, _chatRecChunks = [], _chatRecTimer = null, _chatRecSeconds = 0;
+
+async function startVoiceRecording() {
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        _chatRecChunks = [];
+        _chatRecSeconds = 0;
+        // Pick best supported mimeType
+        const preferredMime = ['audio/webm;codecs=opus','audio/webm','audio/ogg;codecs=opus','audio/mp4']
+            .find(t => MediaRecorder.isTypeSupported(t)) || '';
+        _chatMediaRecorder = new MediaRecorder(stream, preferredMime ? { mimeType: preferredMime } : {});
+        _chatMediaRecorder.ondataavailable = e => { if (e.data.size > 0) _chatRecChunks.push(e.data); };
+        _chatMediaRecorder.onstop = () => {
+            stream.getTracks().forEach(t => t.stop());
+            const actualMime = _chatMediaRecorder.mimeType || preferredMime || 'audio/webm';
+            const blob = new Blob(_chatRecChunks, { type: actualMime });
+            window.sendMediaMessage(blob, actualMime, _chatRecSeconds);
+        };
+        _chatMediaRecorder.start();
+        document.getElementById('chat-footer-main')?.classList.add('hidden');
+        document.getElementById('chat-recording-bar')?.classList.remove('hidden');
+        const timerEl = document.getElementById('chat-rec-timer');
+        _chatRecTimer = setInterval(() => {
+            _chatRecSeconds++;
+            const m = Math.floor(_chatRecSeconds / 60);
+            const s = _chatRecSeconds % 60;
+            if (timerEl) timerEl.textContent = `${m}:${s.toString().padStart(2, '0')}`;
+        }, 1000);
+    } catch (e) {
+        showToast('Impossibile accedere al microfono', 'error');
+    }
+}
+
+window.stopAndSendVoice = function() {
+    if (_chatMediaRecorder && _chatMediaRecorder.state !== 'inactive') _chatMediaRecorder.stop();
+    clearInterval(_chatRecTimer);
+    document.getElementById('chat-footer-main')?.classList.remove('hidden');
+    document.getElementById('chat-recording-bar')?.classList.add('hidden');
+};
+
+window.cancelVoiceRecording = function() {
+    if (_chatMediaRecorder && _chatMediaRecorder.state !== 'inactive') {
+        const saved = _chatMediaRecorder.onstop;
+        _chatMediaRecorder.ondataavailable = null;
+        _chatMediaRecorder.onstop = null;
+        _chatMediaRecorder.stop();
+        _chatMediaRecorder.stream?.getTracks().forEach(t => t.stop());
+    }
+    _chatRecChunks = [];
+    clearInterval(_chatRecTimer);
+    document.getElementById('chat-footer-main')?.classList.remove('hidden');
+    document.getElementById('chat-recording-bar')?.classList.add('hidden');
+};
+
+window.onChatFileSelected = function(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    event.target.value = '';
+    window.sendMediaMessage(file, file.type);
+};
+
+// --- In-app camera (getUserMedia) ---
+let _chatCameraStream = null;
+let _chatCameraFacing = 'environment';
+
+window.openChatCamera = async function() {
+    const modal = document.getElementById('chat-camera-modal');
+    const video = document.getElementById('chat-camera-preview');
+    if (!modal || !video) return;
+    try {
+        _chatCameraFacing = 'environment';
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: _chatCameraFacing } });
+        _chatCameraStream = stream;
+        video.srcObject = stream;
+        modal.style.display = 'flex';
+        lockBodyScroll();
+    } catch (e) {
+        // Fallback: try any available camera
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            _chatCameraStream = stream;
+            video.srcObject = stream;
+            modal.style.display = 'flex';
+            lockBodyScroll();
+        } catch (e2) {
+            showToast('Fotocamera non disponibile', 'error');
+        }
+    }
+};
+
+window.closeChatCamera = function() {
+    if (_chatCameraStream) {
+        _chatCameraStream.getTracks().forEach(t => t.stop());
+        _chatCameraStream = null;
+    }
+    const modal = document.getElementById('chat-camera-modal');
+    if (modal) modal.style.display = 'none';
+    unlockBodyScroll();
+};
+
+window.flipChatCamera = async function() {
+    if (_chatCameraStream) _chatCameraStream.getTracks().forEach(t => t.stop());
+    _chatCameraFacing = _chatCameraFacing === 'environment' ? 'user' : 'environment';
+    try {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: _chatCameraFacing } });
+        _chatCameraStream = stream;
+        const video = document.getElementById('chat-camera-preview');
+        if (video) video.srcObject = stream;
+    } catch (e) {
+        showToast('Impossibile cambiare fotocamera', 'error');
+    }
+};
+
+window.capturePhoto = function() {
+    const video = document.getElementById('chat-camera-preview');
+    const canvas = document.getElementById('chat-camera-canvas');
+    if (!video || !canvas) return;
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    canvas.getContext('2d').drawImage(video, 0, 0);
+    canvas.toBlob(blob => {
+        closeChatCamera();
+        if (blob) window.sendMediaMessage(blob, 'image/jpeg');
+    }, 'image/jpeg', 0.9);
+};
+
+window.sendMediaMessage = async function(fileOrBlob, mimeType, duration) {
+    if (!currentChatState.otherUserId) { showToast('Nessun destinatario'); return; }
+    const isImg = mimeType.startsWith('image/');
+    const isVid = mimeType.startsWith('video/');
+    const mediaType = isImg ? 'image' : isVid ? 'video' : 'voice';
+    const ext = isImg ? (mimeType.split('/')[1] || 'jpg').replace('jpeg','jpg') : isVid ? 'mp4' : 'webm';
+    const formData = new FormData();
+    formData.append('receiver_id', currentChatState.otherUserId);
+    formData.append('file', fileOrBlob, `chat_${Date.now()}.${ext}`);
+    if (duration != null) formData.append('duration', String(duration));
+    // Optimistic preview
+    const previewUrl = (fileOrBlob instanceof Blob) ? URL.createObjectURL(fileOrBlob) : null;
+    const tempMsg = {
+        id: 'temp-' + Date.now(),
+        sender_id: 'me',
+        sender_role: (typeof APP_CONFIG !== 'undefined' ? APP_CONFIG.role : '') || '',
+        content: '',
+        media_type: mediaType,
+        file_url: previewUrl,
+        duration: duration || null,
+        is_read: false,
+        created_at: new Date().toISOString()
+    };
+    currentChatState.messages.push(tempMsg);
+    renderChatMessages();
+    try {
+        const res = await fetch(`${apiBase}/api/messages/upload-media`, {
+            method: 'POST',
+            credentials: 'include',
+            body: formData
+        });
+        if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'Upload fallito'); }
+        const result = await res.json();
+        if (result.conversation_id && !currentChatState.conversationId) currentChatState.conversationId = result.conversation_id;
+        const idx = currentChatState.messages.findIndex(m => m.id === tempMsg.id);
+        if (idx !== -1 && result.message) { currentChatState.messages[idx] = result.message; renderChatMessages(); }
+    } catch (e) {
+        console.error('Media upload error:', e);
+        showToast(e.message || 'Impossibile inviare', 'error');
+        currentChatState.messages = currentChatState.messages.filter(m => m.id !== tempMsg.id);
+        renderChatMessages();
+    }
+};
 
 window.sendChatMessage = async function() {
     const input = document.getElementById('chat-input');
@@ -8938,6 +9272,7 @@ window.sendChatMessage = async function() {
 
     // Clear input immediately
     input.value = '';
+    updateChatSendBtn();
 
     // Optimistically add message to UI
     const tempMsg = {
@@ -9041,14 +9376,14 @@ async function updateUnreadBadge() {
     }
 }
 
-// Handle Enter key in chat input
+// Handle Enter key in chat input + initial state
 document.addEventListener('DOMContentLoaded', () => {
     const chatInput = document.getElementById('chat-input');
     if (chatInput) {
         chatInput.addEventListener('keypress', (e) => {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                window.sendChatMessage();
+                window.handleChatSendOrMic ? window.handleChatSendOrMic() : window.sendChatMessage();
             }
         });
     }
@@ -9231,10 +9566,17 @@ window.openBookAppointmentModal = function() {
     dateInput.value = today;
 
     // Clear fields
-    document.getElementById('book-appt-time').value = '09:00';
     document.getElementById('book-appt-duration').value = '60';
     document.getElementById('book-appt-workout').innerHTML = '<option value="">Nessuno - Sessione generale</option>';
     document.getElementById('book-appt-notes').value = '';
+
+    // Load available slots for today
+    loadTrainerAvailableSlots(today);
+
+    // Refresh slots when date changes
+    dateInput.onchange = function() {
+        loadTrainerAvailableSlots(this.value);
+    };
 
     // Load workouts for selection
     loadWorkoutsForAppointment();
@@ -9274,7 +9616,7 @@ async function loadTrainerAvailableSlots(date) {
 
     try {
         // Use trainer's own endpoint to get their available slots
-        const res = await fetch(`${apiBase}/api/trainer/available-slots?date=${date}`);
+        const res = await fetch(`${apiBase}/api/trainer/available-slots?date=${date}`, { credentials: 'include' });
 
         if (!res.ok) {
             throw new Error('Failed to load slots');
@@ -9282,14 +9624,24 @@ async function loadTrainerAvailableSlots(date) {
 
         const slots = await res.json();
 
-        timeSelect.innerHTML = '<option value="">Seleziona orario...</option>';
-
         if (slots.length === 0) {
+            // If today has no slots (all passed), auto-advance to tomorrow
+            const dateInput = document.getElementById('book-appt-date');
+            const today = new Date().toISOString().split('T')[0];
+            if (dateInput && date === today) {
+                const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                const tomorrowStr = tomorrow.toISOString().split('T')[0];
+                dateInput.value = tomorrowStr;
+                loadTrainerAvailableSlots(tomorrowStr);
+                return;
+            }
             timeSelect.innerHTML = '<option value="">Nessun orario disponibile</option>';
             return;
         }
 
-        slots.forEach(slot => {
+        timeSelect.innerHTML = '';
+        slots.forEach((slot, i) => {
             const option = document.createElement('option');
             option.value = slot.start_time;
 
@@ -9297,9 +9649,9 @@ async function loadTrainerAvailableSlots(date) {
             const [hour, min] = slot.start_time.split(':');
             const hour12 = hour % 12 || 12;
             const ampm = hour >= 12 ? 'PM' : 'AM';
-            const displayTime = `${hour12}:${min} ${ampm}`;
+            option.textContent = `${hour12}:${min} ${ampm}`;
 
-            option.textContent = displayTime;
+            if (i === 0) option.selected = true; // Auto-select first available
             timeSelect.appendChild(option);
         });
     } catch (e) {

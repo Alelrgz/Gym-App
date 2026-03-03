@@ -438,6 +438,7 @@ class GymAssignmentService:
                     "role": trainer.role,
                     "sub_role": trainer.sub_role,
                     "client_count": client_count,
+                    "commission_rate": trainer.commission_rate,
                     "created_at": trainer.created_at
                 })
 

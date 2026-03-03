@@ -13,8 +13,12 @@ logger = logging.getLogger("gym_app")
 
 ALLOWED_IMAGE_EXTENSIONS = {'png', 'jpg', 'jpeg', 'webp', 'gif'}
 ALLOWED_DOC_EXTENSIONS = {'pdf', 'png', 'jpg', 'jpeg'}
-MAX_IMAGE_SIZE = 5 * 1024 * 1024   # 5MB
-MAX_DOC_SIZE = 10 * 1024 * 1024    # 10MB
+ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'mov', 'avi'}
+ALLOWED_AUDIO_EXTENSIONS = {'webm', 'ogg', 'mp3', 'm4a', 'wav', 'opus'}
+MAX_IMAGE_SIZE = 5 * 1024 * 1024    # 5MB
+MAX_DOC_SIZE = 10 * 1024 * 1024     # 10MB
+MAX_VIDEO_SIZE = 100 * 1024 * 1024  # 100MB
+MAX_AUDIO_SIZE = 20 * 1024 * 1024   # 20MB
 
 
 def _is_cloudinary_ready() -> bool:
@@ -84,8 +88,13 @@ def _upload_cloudinary(content: bytes, folder: str, filename: str, upload_type: 
     import cloudinary.uploader
 
     name_without_ext = os.path.splitext(filename)[0]
-    ext = os.path.splitext(filename)[1].lower()
-    resource_type = "raw" if ext == ".pdf" else "image"
+    ext = os.path.splitext(filename)[1].lower().lstrip(".")
+    if ext == "pdf":
+        resource_type = "raw"
+    elif ext in ALLOWED_VIDEO_EXTENSIONS or ext in ALLOWED_AUDIO_EXTENSIONS or upload_type in ("video", "voice", "audio"):
+        resource_type = "video"  # Cloudinary uses "video" for both audio and video
+    else:
+        resource_type = "image"
 
     result = cloudinary.uploader.upload(
         content,

@@ -2158,6 +2158,109 @@ select.trainer-modal-input option {
 }
 .chat-send-btn:hover { opacity: 0.85; }
 
+/* Chat footer icon buttons (attach / mic / send) */
+.chat-icon-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.08);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: rgba(255,255,255,0.6);
+    transition: background 0.15s, color 0.15s;
+}
+.chat-icon-btn:hover { background: rgba(255,255,255,0.15); color: #fff; }
+.chat-icon-btn.chat-send-mode { background: var(--primary); color: #fff; }
+.chat-icon-btn.chat-send-mode:hover { opacity: 0.85; }
+
+/* Voice recording bar */
+.chat-recording-bar {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.75rem 1rem;
+    background: #1a1a1a;
+    border-top: 1px solid rgba(255,255,255,0.06);
+    flex-shrink: 0;
+}
+.chat-rec-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #f55;
+    flex-shrink: 0;
+    animation: chatRecPulse 1.2s ease-in-out infinite;
+}
+@keyframes chatRecPulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.35; transform: scale(0.6); }
+}
+
+/* Media message bubbles */
+.chat-media-img {
+    max-width: 220px;
+    max-height: 200px;
+    border-radius: 12px;
+    cursor: pointer;
+    display: block;
+    object-fit: cover;
+}
+.chat-media-video {
+    max-width: 220px;
+    border-radius: 12px;
+    display: block;
+    outline: none;
+}
+
+/* Voice message bubble */
+.chat-voice-bubble {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 170px;
+}
+.chat-voice-play-btn {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.18);
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    color: inherit;
+    transition: background 0.15s;
+}
+.chat-voice-play-btn:hover { background: rgba(255,255,255,0.3); }
+.chat-voice-waveform {
+    flex: 1;
+    height: 3px;
+    background: rgba(255,255,255,0.25);
+    border-radius: 2px;
+    overflow: hidden;
+}
+.chat-voice-progress {
+    height: 100%;
+    width: 0%;
+    background: rgba(255,255,255,0.85);
+    border-radius: 2px;
+    transition: width 0.1s linear;
+}
+.chat-voice-duration {
+    font-size: 0.65rem;
+    opacity: 0.7;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+    min-width: 2rem;
+    text-align: right;
+}
+
 /* --- Drag & Drop Client to Agenda --- */
 .dragging-client {
     opacity: 0.4;
@@ -3526,6 +3629,16 @@ body:has(.owner-layout) {
 @media (min-width: 1025px) {
     .owner-modal-overlay {
         left: 200px;
+    }
+}
+
+/* Owner settings grid: 1 column on mobile */
+@media (max-width: 640px) {
+    .owner-settings-grid {
+        grid-template-columns: 1fr !important;
+    }
+    .owner-settings-grid .settings-card[style*="grid-column"] {
+        grid-column: 1 !important;
     }
 }
 

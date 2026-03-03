@@ -163,8 +163,8 @@
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.6rem;">
                 <div>
                     <label class="trainer-modal-label">Durata</label>
-                    <input type="text" id="new-workout-duration" class="trainer-modal-input"
-                        placeholder="es. 60 min">
+                    <input type="number" id="new-workout-duration" class="trainer-modal-input"
+                        placeholder="es. 60" min="1" step="1">
                 </div>
                 <div>
                     <label class="trainer-modal-label">Difficoltà</label>
@@ -646,11 +646,73 @@
         <div class="text-center text-gray-500 text-sm py-8">Caricamento messaggi...</div>
     </div>
 
-    <div class="chat-panel-footer">
+    <div class="chat-panel-footer" id="chat-footer-main">
+        <!-- Hidden file input -->
+        <input type="file" id="chat-file-input" accept="image/*,video/*,audio/*" style="display:none" onchange="onChatFileSelected(event)">
+        <!-- Attach button -->
+        <button class="chat-icon-btn" onclick="document.getElementById('chat-file-input').click()" title="Allega file">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+            </svg>
+        </button>
+        <!-- Camera button -->
+        <button class="chat-icon-btn" onclick="openChatCamera()" title="Fotocamera">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/>
+                <circle cx="12" cy="13" r="3"/>
+            </svg>
+        </button>
+        <!-- Text input -->
         <input type="text" id="chat-input" placeholder="Scrivi un messaggio..."
             class="trainer-modal-input" style="flex:1;margin:0;"
-            onkeypress="if(event.key==='Enter') sendChatMessage()">
-        <button onclick="sendChatMessage()" class="chat-send-btn">Invia</button>
+            oninput="updateChatSendBtn()"
+            onkeypress="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();handleChatSendOrMic();}">
+        <!-- Mic / Send toggle -->
+        <button id="chat-send-or-mic-btn" class="chat-icon-btn" onclick="handleChatSendOrMic()" title="Vocale">
+            <svg id="chat-mic-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+                <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                <line x1="12" y1="19" x2="12" y2="22"/>
+            </svg>
+            <svg id="chat-send-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+                <line x1="22" y1="2" x2="11" y2="13"/>
+                <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+            </svg>
+        </button>
+    </div>
+    <!-- Voice recording bar (replaces footer while recording) -->
+    <div class="chat-recording-bar hidden" id="chat-recording-bar">
+        <button class="chat-icon-btn" onclick="cancelVoiceRecording()" style="background:rgba(255,80,80,0.15);color:#f55;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+        </button>
+        <span class="chat-rec-dot"></span>
+        <span id="chat-rec-timer" style="font-size:0.8rem;font-weight:600;color:#fff;min-width:2.5rem;">0:00</span>
+        <span style="flex:1;font-size:0.72rem;color:rgba(255,255,255,0.4);">Registrazione in corso...</span>
+        <button class="chat-send-btn" onclick="stopAndSendVoice()">Invia</button>
+    </div>
+</div>
+
+<!-- Chat Camera Modal -->
+<div id="chat-camera-modal" style="display:none;position:fixed;inset:0;z-index:300;background:#000;flex-direction:column;">
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:1rem 1.25rem;flex-shrink:0;">
+        <button onclick="closeChatCamera()" style="background:none;border:none;color:rgba(255,255,255,0.7);font-size:0.85rem;cursor:pointer;display:flex;align-items:center;gap:0.4rem;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            Annulla
+        </button>
+        <span style="color:#fff;font-weight:600;font-size:0.9rem;">Fotocamera</span>
+        <button id="chat-camera-flip-btn" onclick="flipChatCamera()" style="background:none;border:none;color:rgba(255,255,255,0.7);cursor:pointer;" title="Capovolgi">
+            <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 2v6h6"/><path d="M21 12A9 9 0 0 0 6 5.3L3 8"/>
+                <path d="M21 22v-6h-6"/><path d="M3 12a9 9 0 0 0 15 6.7l3-2.7"/>
+            </svg>
+        </button>
+    </div>
+    <video id="chat-camera-preview" autoplay playsinline muted style="flex:1;object-fit:cover;width:100%;display:block;"></video>
+    <canvas id="chat-camera-canvas" style="display:none;"></canvas>
+    <div style="padding:2rem;display:flex;justify-content:center;flex-shrink:0;background:#000;">
+        <button onclick="capturePhoto()" style="width:68px;height:68px;border-radius:50%;background:#fff;border:4px solid rgba(255,255,255,0.4);cursor:pointer;outline:none;transition:transform 0.1s;" onmousedown="this.style.transform='scale(0.92)'" onmouseup="this.style.transform='scale(1)'"></button>
     </div>
 </div>
 
@@ -1068,7 +1130,9 @@
                 </div>
                 <div>
                     <label class="trainer-modal-label">Orario</label>
-                    <input type="time" id="book-appt-time" class="trainer-modal-input" value="09:00">
+                    <select id="book-appt-time" class="trainer-modal-input">
+                        <option value="">Caricamento...</option>
+                    </select>
                 </div>
             </div>
 

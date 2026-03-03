@@ -359,6 +359,20 @@ def run_migrations(engine):
                 except Exception as e:
                     logger.debug(f"Column session_type may already exist: {e}")
 
+    # Add commission_rate to users (PostgreSQL-safe)
+    _safe_add_columns(engine, 'users', [
+        ("commission_rate", "DOUBLE PRECISION"),
+    ])
+
+    # Add media fields to messages
+    _safe_add_columns(engine, 'messages', [
+        ("media_type", "TEXT"),
+        ("file_url", "TEXT"),
+        ("file_size", "INTEGER"),
+        ("mime_type", "TEXT"),
+        ("duration", "DOUBLE PRECISION"),
+    ])
+
     # Add new columns to client_profile (PostgreSQL-safe)
     _safe_add_columns(engine, 'client_profile', [
         ("date_of_birth", "TEXT"),
@@ -754,7 +768,7 @@ async def log_requests(request: Request, call_next):
         response.headers["X-Frame-Options"] = "SAMEORIGIN"
         response.headers["X-XSS-Protection"] = "1; mode=block"
         response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-        response.headers["Permissions-Policy"] = "camera=(self), microphone=(), geolocation=()"
+        response.headers["Permissions-Policy"] = "geolocation=()"
         return response
     except Exception as e:
         logger.error(f"Request error: {request.method} {request.url.path} - {e}")

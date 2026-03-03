@@ -75,6 +75,24 @@ class MessageService:
                 logger.warning(f"can_message: User not found - user_id={user_id}, other_user_id={other_user_id}")
                 return False
 
+            # Case 0: Owner <-> anyone in their gym
+            if user.role == "owner":
+                if other.gym_owner_id and str(other.gym_owner_id) == str(user.id):
+                    return True
+                if other.role == "client":
+                    profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == other_user_id).first()
+                    if profile and profile.gym_id and str(profile.gym_id) == str(user.id):
+                        return True
+                return False
+            elif other.role == "owner":
+                if user.gym_owner_id and str(user.gym_owner_id) == str(other.id):
+                    return True
+                if user.role == "client":
+                    profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == user_id).first()
+                    if profile and profile.gym_id and str(profile.gym_id) == str(other.id):
+                        return True
+                return False
+
             # Case 1: Trainer <-> Client messaging
             if user.role == "trainer" and other.role == "client":
                 trainer_id, client_id = user_id, other_user_id
@@ -191,7 +209,10 @@ class MessageService:
         finally:
             db.close()
 
-    def send_message(self, sender_id: str, receiver_id: str, content: str) -> dict:
+    def send_message(self, sender_id: str, receiver_id: str, content: str,
+                     media_type: str = None, file_url: str = None,
+                     file_size: int = None, mime_type: str = None,
+                     duration: float = None) -> dict:
         """Send a message from sender to receiver."""
         db = get_db_session()
         try:
@@ -212,7 +233,7 @@ class MessageService:
 
             # Determine conversation type
             is_client_client = sender.role == "client" and receiver.role == "client"
-            is_staff_involved = sender.role == "staff" or receiver.role == "staff"
+            is_staff_involved = sender.role in ("staff", "owner") or receiver.role in ("staff", "owner")
 
             if is_client_client:
                 # Client-to-client conversation
@@ -234,8 +255,8 @@ class MessageService:
                     db.add(conversation)
                     db.flush()
             elif is_staff_involved:
-                # Staff conversation (staff in trainer_id slot, other user in client_id slot)
-                if sender.role == "staff":
+                # Staff/owner conversation (staff/owner in trainer_id slot, other user in client_id slot)
+                if sender.role in ("staff", "owner"):
                     staff_id, other_id = sender_id, receiver_id
                 else:
                     staff_id, other_id = receiver_id, sender_id
@@ -285,7 +306,12 @@ class MessageService:
                 conversation_id=conversation.id,
                 sender_id=sender_id,
                 sender_role=sender.role,
-                content=content,
+                content=content or "",
+                media_type=media_type,
+                file_url=file_url,
+                file_size=file_size,
+                mime_type=mime_type,
+                duration=duration,
                 is_read=False,
                 created_at=now
             )
@@ -293,7 +319,8 @@ class MessageService:
 
             # Update conversation metadata
             conversation.last_message_at = now
-            conversation.last_message_preview = content[:50] + "..." if len(content) > 50 else content
+            preview_text = content if content else f"[{media_type or 'media'}]"
+            conversation.last_message_preview = preview_text[:50] + "..." if len(preview_text) > 50 else preview_text
 
             # Update unread count for receiver
             if is_client_client:
@@ -304,7 +331,7 @@ class MessageService:
                     conversation.user1_unread_count = (conversation.user1_unread_count or 0) + 1
             else:
                 # For trainer-client (staff uses trainer_id slot)
-                if sender.role in ("trainer", "staff"):
+                if sender.role in ("trainer", "staff", "owner"):
                     conversation.client_unread_count = (conversation.client_unread_count or 0) + 1
                 else:
                     conversation.trainer_unread_count = (conversation.trainer_unread_count or 0) + 1
@@ -318,7 +345,12 @@ class MessageService:
                 "conversation_id": conversation.id,
                 "sender_id": sender_id,
                 "sender_role": sender.role,
-                "content": content,
+                "content": content or "",
+                "media_type": media_type,
+                "file_url": file_url,
+                "file_size": file_size,
+                "mime_type": mime_type,
+                "duration": duration,
                 "is_read": False,
                 "created_at": now
             }
@@ -343,8 +375,8 @@ class MessageService:
 
             result = []
 
-            if user.role in ("trainer", "staff"):
-                # Trainer/Staff: get trainer-client conversations
+            if user.role in ("trainer", "staff", "owner"):
+                # Trainer/Staff/Owner: get trainer-client conversations (owner uses trainer_id slot)
                 conversations = db.query(ConversationORM).filter(
                     ConversationORM.trainer_id == user_id
                 ).order_by(ConversationORM.last_message_at.desc()).all()
@@ -466,7 +498,12 @@ class MessageService:
                     "id": m.id,
                     "sender_id": m.sender_id,
                     "sender_role": m.sender_role,
-                    "content": m.content,
+                    "content": m.content or "",
+                    "media_type": m.media_type,
+                    "file_url": m.file_url,
+                    "file_size": m.file_size,
+                    "mime_type": m.mime_type,
+                    "duration": m.duration,
                     "is_read": m.is_read,
                     "read_at": m.read_at,
                     "created_at": m.created_at
@@ -509,7 +546,7 @@ class MessageService:
                     conversation.user2_unread_count = 0
             else:
                 user = db.query(UserORM).filter(UserORM.id == user_id).first()
-                if user and user.role in ("trainer", "staff"):
+                if user and user.role in ("trainer", "staff", "owner"):
                     conversation.trainer_unread_count = 0
                 else:
                     conversation.client_unread_count = 0
@@ -540,8 +577,8 @@ class MessageService:
 
             total = 0
 
-            if user.role in ("trainer", "staff"):
-                # Trainer/Staff: only trainer-client conversations (staff uses trainer_id slot)
+            if user.role in ("trainer", "staff", "owner"):
+                # Trainer/Staff/Owner: only trainer-client conversations (uses trainer_id slot)
                 result = db.query(ConversationORM).filter(
                     ConversationORM.trainer_id == user_id
                 ).all()

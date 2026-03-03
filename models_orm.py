@@ -35,6 +35,7 @@ class UserORM(Base):
 
     # Trainer pricing
     session_rate = Column(Float, nullable=True)  # Hourly rate for 1-on-1 sessions
+    commission_rate = Column(Float, nullable=True)  # Commission percentage (0-100) paid by gym to trainer
 
     # Gym branding (for owners)
     gym_name = Column(String, nullable=True)  # Custom gym name
@@ -648,6 +649,13 @@ class MessageORM(Base):
 
     # Message content
     content = Column(String)
+
+    # Media attachment (optional)
+    media_type = Column(String, nullable=True)       # 'image', 'video', 'voice'
+    file_url = Column(String, nullable=True)         # URL/path to uploaded file
+    file_size = Column(Integer, nullable=True)       # bytes
+    mime_type = Column(String, nullable=True)        # e.g. 'audio/webm', 'image/jpeg'
+    duration = Column(Float, nullable=True)          # seconds (voice/video)
 
     # Read status
     is_read = Column(Boolean, default=False)
