@@ -43,11 +43,12 @@ class NotesService:
             db.close()
 
     def get_trainer_notes(self, trainer_id: str) -> list:
-        """Get all notes for a trainer."""
+        """Get all personal notes for a trainer (excludes client-specific notes)."""
         db = get_db_session()
         try:
             notes = db.query(TrainerNoteORM).filter(
-                TrainerNoteORM.trainer_id == trainer_id
+                TrainerNoteORM.trainer_id == trainer_id,
+                TrainerNoteORM.client_id == None
             ).order_by(TrainerNoteORM.updated_at.desc()).all()
 
             return [{
@@ -90,6 +91,57 @@ class NotesService:
         except Exception as e:
             db.rollback()
             raise HTTPException(status_code=500, detail=f"Failed to update note: {str(e)}")
+        finally:
+            db.close()
+
+    def get_client_notes(self, trainer_id: str, client_id: str) -> list:
+        """Get all notes for a specific client."""
+        db = get_db_session()
+        try:
+            notes = db.query(TrainerNoteORM).filter(
+                TrainerNoteORM.trainer_id == trainer_id,
+                TrainerNoteORM.client_id == client_id
+            ).order_by(TrainerNoteORM.updated_at.desc()).all()
+            return [{
+                "id": n.id,
+                "title": n.title,
+                "content": n.content,
+                "client_id": n.client_id,
+                "created_at": n.created_at,
+                "updated_at": n.updated_at
+            } for n in notes]
+        finally:
+            db.close()
+
+    def save_client_note(self, trainer_id: str, client_id: str, title: str, content: str) -> dict:
+        """Create a note for a specific client."""
+        db = get_db_session()
+        try:
+            new_id = str(uuid.uuid4())
+            now = datetime.utcnow().isoformat()
+            note = TrainerNoteORM(
+                id=new_id,
+                trainer_id=trainer_id,
+                client_id=client_id,
+                title=title,
+                content=content,
+                created_at=now,
+                updated_at=now
+            )
+            db.add(note)
+            db.commit()
+            db.refresh(note)
+            return {
+                "id": note.id,
+                "title": note.title,
+                "content": note.content,
+                "client_id": note.client_id,
+                "created_at": note.created_at,
+                "updated_at": note.updated_at
+            }
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to save note: {str(e)}")
         finally:
             db.close()
 

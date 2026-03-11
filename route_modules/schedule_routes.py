@@ -35,6 +35,17 @@ async def get_client_history(
         raise HTTPException(status_code=500, detail=str(e))
 
 
+@router.get("/api/trainer/client/{client_id}/workout-log")
+async def get_client_workout_log(
+    client_id: str,
+    limit: int = 30,
+    service: ScheduleService = Depends(get_schedule_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Get detailed workout logs for a client (trainer access) with sets/reps/weights."""
+    return service.get_client_workout_log(client_id, limit)
+
+
 @router.post("/api/client/schedule/complete")
 async def complete_schedule_item(
     payload: dict,
@@ -98,6 +109,17 @@ async def update_trainer_event(
 ):
     """Update a trainer event (time, date, duration, etc)."""
     return service.update_trainer_event(event_id, updates, current_user.id)
+
+
+@router.put("/api/trainer/events/{event_id}/reschedule-series")
+async def reschedule_event_series(
+    event_id: str,
+    updates: dict,
+    service: ScheduleService = Depends(get_schedule_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Reschedule all future occurrences of a recurring event series."""
+    return service.reschedule_series(event_id, updates, current_user.id)
 
 
 @router.delete("/api/trainer/events/{event_id}")

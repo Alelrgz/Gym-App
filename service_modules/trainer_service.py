@@ -4,7 +4,7 @@ Trainer Service - handles trainer data retrieval, client roster, and streak calc
 from .base import (
     HTTPException, json, logging, date, datetime, timedelta,
     get_db_session, UserORM, ClientProfileORM, ClientScheduleORM,
-    TrainerScheduleORM, WorkoutORM
+    TrainerScheduleORM, WorkoutORM, ExerciseORM
 )
 from models import TrainerData
 from data import TRAINER_DATA
@@ -19,16 +19,9 @@ class TrainerService:
         """Get complete trainer data including clients, schedule, and streak."""
         db = get_db_session()
         try:
-            # Get trainer's gym (gym_owner_id)
+            # Get trainer's personal clients (assigned to this trainer)
             trainer = db.query(UserORM).filter(UserORM.id == trainer_id).first()
-            gym_id = trainer.gym_owner_id if trainer else None
-
-            # Get all clients from the same gym
-            if gym_id:
-                client_profiles = db.query(ClientProfileORM).filter(ClientProfileORM.gym_id == gym_id).all()
-            else:
-                # Fallback: if trainer has no gym, show clients assigned to this trainer
-                client_profiles = db.query(ClientProfileORM).filter(ClientProfileORM.trainer_id == trainer_id).all()
+            client_profiles = db.query(ClientProfileORM).filter(ClientProfileORM.trainer_id == trainer_id).all()
 
             client_ids = [p.id for p in client_profiles]
             clients_orm = db.query(UserORM).filter(UserORM.id.in_(client_ids)).all() if client_ids else []
@@ -51,7 +44,8 @@ class TrainerService:
                     "type": s.type,
                     "duration": s.duration if s.duration else 60,
                     "completed": s.completed,
-                    "course_id": s.course_id
+                    "course_id": s.course_id,
+                    "client_id": s.client_id
                 })
 
             # Create a lookup for profiles
@@ -121,6 +115,18 @@ class TrainerService:
                             except:
                                 pass
 
+                        # Sync video IDs from exercise library
+                        try:
+                            trainer_exercises = db.query(ExerciseORM).filter(
+                                (ExerciseORM.owner_id == None) | (ExerciseORM.owner_id == trainer_id)
+                            ).all()
+                            ex_map = {ex.name: ex.video_id for ex in trainer_exercises}
+                            for ex in exercises:
+                                if ex.get("name") in ex_map:
+                                    ex["video_id"] = ex_map[ex["name"]]
+                        except Exception as e:
+                            logger.error(f"Error syncing video IDs: {e}")
+
                         todays_workout = {
                             "id": w_orm.id,
                             "title": w_orm.title,
@@ -146,6 +152,10 @@ class TrainerService:
             video_library = TRAINER_DATA["video_library"]
             return TrainerData(
                 id=trainer_id,
+                name=trainer.username if trainer else None,
+                profile_picture=trainer.profile_picture if trainer else None,
+                bio=trainer.bio if trainer else None,
+                specialties=trainer.specialties if trainer else None,
                 clients=clients,
                 video_library=video_library,
                 active_clients=active_count,

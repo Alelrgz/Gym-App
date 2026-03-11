@@ -1522,15 +1522,13 @@
                     </label>
                     <span id="exercise-count-badge" class="text-[10px] bg-white/10 px-2 py-0.5 rounded-full text-white/60">0 selezionati</span>
                 </div>
-                <div id="course-selected-exercises" class="space-y-2 min-h-[60px]">
-                    <div class="text-center py-4">
-                        <span class="mb-2 block opacity-30"><i data-lucide="footprints" class="w-8 h-8"></i></span>
-                        <p class="text-xs text-gray-500">Nessun esercizio aggiunto</p>
-                    </div>
+                <div id="course-selected-exercises" class="space-y-2 min-h-[40px]">
+                    <!-- Filled by renderCourseExercises() -->
                 </div>
                 <button onclick="openCourseExercisePicker()" type="button"
-                    class="w-full mt-3 py-2.5 bg-white/10 rounded-xl text-sm hover:bg-white/20 transition flex items-center justify-center gap-2">
-                    <span>+</span> <span>Aggiungi Esercizi Yoga</span>
+                    class="w-full mt-3 py-3 rounded-xl text-sm transition flex items-center justify-center gap-2 font-semibold hover:opacity-90"
+                    style="background: linear-gradient(to right, rgba(249,115,22,0.15), rgba(168,85,247,0.15)); border: 1px solid rgba(249,115,22,0.3); color: var(--primary);">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Gestisci Esercizi
                 </button>
             </div>
 
@@ -1609,26 +1607,54 @@
     </div>
 </div>
 
-<!-- Course Exercise Picker Modal -->
+<!-- Course Exercise Picker Modal (Two-Panel: Library + Drag-and-Drop Selected) -->
 <div id="course-exercise-picker"
     class="fixed inset-0 bg-black/90 z-[60] hidden flex items-center justify-center p-4 backdrop-blur-sm">
-    <div class="bg-[#1E1E1E] w-full max-w-md h-[80vh] rounded-3xl border border-white/10 flex flex-col"
+    <div class="bg-[#1E1E1E] w-full max-w-3xl h-[85vh] rounded-3xl border border-white/10 flex flex-col"
         onclick="event.stopPropagation()">
-        <div class="p-4 border-b border-white/10 flex justify-between items-center">
-            <h3 class="text-lg font-bold text-white">Seleziona Esercizi</h3>
-            <button onclick="hideModal('course-exercise-picker')" class="text-gray-400 hover:text-white">X</button>
+        <!-- Header -->
+        <div class="p-4 border-b border-white/10 flex justify-between items-center flex-shrink-0">
+            <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                <i data-lucide="dumbbell" class="w-5 h-5"></i> Gestisci Esercizi
+            </h3>
+            <button onclick="hideModal('course-exercise-picker')" class="text-gray-400 hover:text-white text-xl">&times;</button>
         </div>
-        <div class="p-4">
-            <input type="text" id="course-ex-search" placeholder="Cerca esercizi..."
-                class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm text-white focus:border-primary outline-none">
+
+        <!-- Two-panel body -->
+        <div class="flex flex-1 overflow-hidden">
+            <!-- Left Panel: Exercise Library -->
+            <div class="w-1/2 border-r border-white/10 flex flex-col">
+                <div class="p-3 flex-shrink-0">
+                    <p class="text-[10px] uppercase font-bold text-gray-500 mb-2">Libreria Esercizi</p>
+                    <input type="text" id="course-ex-search" placeholder="Cerca esercizi..."
+                        class="w-full bg-white/5 border border-white/10 rounded-xl p-2.5 text-sm text-white focus:border-primary outline-none">
+                </div>
+                <div id="course-exercise-list" class="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5">
+                    <!-- Exercises populated here -->
+                </div>
+            </div>
+
+            <!-- Right Panel: Selected Exercises (Drag-and-Drop) -->
+            <div class="w-1/2 flex flex-col">
+                <div class="p-3 flex-shrink-0 flex justify-between items-center">
+                    <p class="text-[10px] uppercase font-bold text-gray-500">Esercizi Selezionati</p>
+                    <span id="picker-exercise-count" class="text-[10px] bg-primary/20 text-primary px-2 py-0.5 rounded-full font-bold">0</span>
+                </div>
+                <div id="course-picker-selected" class="flex-1 overflow-y-auto px-3 pb-3 space-y-1.5">
+                    <div class="text-center py-8">
+                        <i data-lucide="arrow-left" class="w-6 h-6 mx-auto mb-2 text-white/15"></i>
+                        <p class="text-xs text-gray-600">Seleziona esercizi dalla libreria</p>
+                        <p class="text-[10px] text-gray-700 mt-1">Trascinali per riordinare</p>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div id="course-exercise-list" class="flex-1 overflow-y-auto p-4 space-y-2">
-            <!-- Exercises populated here -->
-        </div>
-        <div class="p-4 border-t border-white/10">
+
+        <!-- Footer -->
+        <div class="p-4 border-t border-white/10 flex-shrink-0">
             <button onclick="confirmCourseExercises()"
-                class="w-full py-3 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition">
-                Fatto
+                class="w-full py-3 bg-primary text-black font-bold rounded-xl hover:bg-primary/90 transition flex items-center justify-center gap-2">
+                <i data-lucide="check" class="w-5 h-5"></i> Conferma
             </button>
         </div>
     </div>

@@ -157,6 +157,7 @@ class TrainerData(BaseModel):
     id: str # Self ID
     name: Optional[str] = None  # Trainer's display name (username)
     profile_picture: Optional[str] = None  # Profile picture URL
+    bio: Optional[str] = None  # Trainer bio/description
     specialties: Optional[str] = None  # Comma-separated specialties
     clients: List[ClientSummary]
     video_library: List[Video]
@@ -176,11 +177,17 @@ class Activity(BaseModel):
 
 class OwnerData(BaseModel):
     monthly_revenue: float = 0.0
+    subscription_revenue: float = 0.0
+    appointment_revenue: float = 0.0
+    nutrition_appointment_revenue: float = 0.0
+    appointment_count: int = 0
+    nutrition_appointment_count: int = 0
     currency: str = "eur"
     active_members: int = 0
     active_subscriptions: int = 0
     staff_active: int = 0
     recent_activity: List[Activity] = []
+    revenue_by_plan: list = []
 
 # --- LEADERBOARD ---
 class LeaderboardUser(BaseModel):

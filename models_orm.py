@@ -327,6 +327,7 @@ class TrainerNoteORM(Base):
 
     id = Column(String, primary_key=True, index=True)
     trainer_id = Column(String, ForeignKey("users.id"), index=True)
+    client_id = Column(String, nullable=True, index=True)  # NULL = general note, set = per-client note
     title = Column(String)
     content = Column(String)  # Note body
     created_at = Column(String)

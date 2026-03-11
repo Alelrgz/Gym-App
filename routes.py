@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status, File, Upl
 from fastapi.security import OAuth2PasswordRequestForm
 from models import GymConfig, ClientData, TrainerData, OwnerData, LeaderboardData, WorkoutAssignment, ExerciseTemplate, AssignDietRequest
 from services import GymService, UserService, LeaderboardService
+from datetime import timedelta
 from auth import create_access_token, get_current_user
 from models_orm import UserORM
 
@@ -66,8 +67,8 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), service: UserS
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = create_access_token(data={"sub": user.username, "role": user.role})
-    return {"access_token": access_token, "token_type": "bearer", "role": user.role, "username": user.username}
+    access_token = create_access_token(data={"sub": user.username, "role": user.role}, expires_delta=timedelta(hours=8))
+    return {"access_token": access_token, "token_type": "bearer", "role": user.role, "username": user.username, "user_id": user.id}
 
 @router.post("/api/auth/register")
 async def register(
@@ -113,7 +114,7 @@ async def get_owner_data(
     service: UserService = Depends(get_user_service),
     current_user: UserORM = Depends(get_current_user)
 ):
-    return service.get_owner()
+    return service.get_owner(owner_id=current_user.id)
 
 @router.get("/api/leaderboard/data", response_model=LeaderboardData)
 async def get_leaderboard_data(

@@ -240,17 +240,13 @@ class UserService:
             trainer = db.query(UserORM).filter(UserORM.id == trainer_id).first()
             gym_owner_id = trainer.gym_owner_id if trainer else None
 
-            # Get ALL clients in this gym (not just assigned to this trainer)
-            # Clients are linked to gym via their profile's gym_id
-            if gym_owner_id:
-                clients_orm = db.query(UserORM).join(
-                    ClientProfileORM, UserORM.id == ClientProfileORM.id
-                ).filter(
-                    UserORM.role == "client",
-                    ClientProfileORM.gym_id == gym_owner_id
-                ).all()
-            else:
-                clients_orm = []
+            # Get only clients assigned to this trainer (1-on-1 clients)
+            clients_orm = db.query(UserORM).join(
+                ClientProfileORM, UserORM.id == ClientProfileORM.id
+            ).filter(
+                UserORM.role == "client",
+                ClientProfileORM.trainer_id == trainer_id
+            ).all()
 
             clients = []
             active_count = 0
@@ -366,6 +362,18 @@ class UserService:
                             except:
                                 pass
                         
+                        # Sync video IDs from exercise library
+                        try:
+                            trainer_exercises = db.query(ExerciseORM).filter(
+                                (ExerciseORM.owner_id == None) | (ExerciseORM.owner_id == trainer_id)
+                            ).all()
+                            ex_map = {ex.name: ex.video_id for ex in trainer_exercises}
+                            for ex in exercises:
+                                if ex.get("name") in ex_map:
+                                    ex["video_id"] = ex_map[ex["name"]]
+                        except Exception:
+                            pass
+
                         todays_workout = {
                             "id": w_orm.id,
                             "title": w_orm.title,
@@ -374,7 +382,7 @@ class UserService:
                             "exercises": exercises,
                             "completed": my_event.completed
                         }
-                        
+
                         # PRIORITIZE SNAPSHOT FROM DB IF COMPLETED (like client)
                         if my_event.completed and my_event.details:
                             try:
@@ -569,45 +577,124 @@ class UserService:
         finally:
             db.close()
 
-    def get_owner(self) -> OwnerData:
+    def get_owner(self, owner_id: str = None) -> OwnerData:
         db = get_db_session()
         try:
-            # Count active clients
-            active_members = db.query(UserORM).filter(UserORM.role == "client").count()
+            from models_orm import ClientProfileORM, ClientSubscriptionORM, SubscriptionPlanORM, AppointmentORM, NutritionistAppointmentORM
+            from sqlalchemy import func
 
-            # Count staff (trainers + staff + nutritionists, excluding owner)
-            staff_active = db.query(UserORM).filter(
+            # Get trainer/staff IDs belonging to this gym
+            gym_staff_ids = []
+            if owner_id:
+                gym_staff = db.query(UserORM.id).filter(
+                    UserORM.gym_owner_id == owner_id,
+                    UserORM.role.in_(["trainer", "staff", "nutritionist"])
+                ).all()
+                gym_staff_ids = [s[0] for s in gym_staff]
+
+            # Count active clients for this gym
+            if owner_id:
+                active_members = db.query(ClientProfileORM).filter(
+                    ClientProfileORM.gym_id == owner_id
+                ).count()
+            else:
+                active_members = db.query(UserORM).filter(UserORM.role == "client").count()
+
+            # Count staff for this gym
+            staff_active = len(gym_staff_ids) if owner_id else db.query(UserORM).filter(
                 UserORM.role.in_(["trainer", "staff", "nutritionist"])
             ).count()
 
-            # Calculate monthly revenue from active subscriptions
-            from models_orm import ClientSubscriptionORM, SubscriptionPlanORM
-            from sqlalchemy import func
-
-            monthly_revenue = 0.0
+            subscription_revenue = 0.0
             active_subscriptions = 0
             currency = "eur"
+            revenue_by_plan = {}  # plan_name -> {revenue, count}
 
-            active_subs = db.query(ClientSubscriptionORM, SubscriptionPlanORM).join(
+            # Filter subscriptions by gym
+            subs_query = db.query(ClientSubscriptionORM, SubscriptionPlanORM).join(
                 SubscriptionPlanORM, ClientSubscriptionORM.plan_id == SubscriptionPlanORM.id
             ).filter(
                 ClientSubscriptionORM.status.in_(["active", "trialing"])
-            ).all()
+            )
+            if owner_id:
+                subs_query = subs_query.filter(ClientSubscriptionORM.gym_id == owner_id)
+            active_subs = subs_query.all()
 
             for sub, plan in active_subs:
                 active_subscriptions += 1
                 if plan.billing_interval == "year":
-                    monthly_revenue += plan.price / 12
+                    plan_monthly = plan.price / 12
                 else:
-                    monthly_revenue += plan.price
+                    plan_monthly = plan.price
+                subscription_revenue += plan_monthly
                 if plan.currency:
                     currency = plan.currency
+                # Track per-plan
+                pname = plan.name or "Sconosciuto"
+                if pname not in revenue_by_plan:
+                    revenue_by_plan[pname] = {"name": pname, "revenue": 0.0, "count": 0}
+                revenue_by_plan[pname]["revenue"] += plan_monthly
+                revenue_by_plan[pname]["count"] += 1
+
+            # Appointment revenue for current month — only from gym's trainers
+            now = datetime.now()
+            month_start = now.strftime("%Y-%m-01")
+            month_end = (now.replace(day=28) + timedelta(days=4)).replace(day=1).strftime("%Y-%m-%d")
+
+            appt_query = db.query(
+                func.coalesce(func.sum(AppointmentORM.price), 0),
+                func.count(AppointmentORM.id),
+            ).filter(
+                AppointmentORM.date >= month_start,
+                AppointmentORM.date < month_end,
+                AppointmentORM.payment_status == "paid",
+            )
+            if owner_id and gym_staff_ids:
+                appt_query = appt_query.filter(AppointmentORM.trainer_id.in_(gym_staff_ids))
+            elif owner_id:
+                # No staff => no appointments
+                appt_query = appt_query.filter(AppointmentORM.trainer_id == None)
+            appt_row = appt_query.first()
+            appt_revenue = float(appt_row[0]) if appt_row else 0.0
+            appt_count = int(appt_row[1]) if appt_row else 0
+
+            nutr_query = db.query(
+                func.coalesce(func.sum(NutritionistAppointmentORM.price), 0),
+                func.count(NutritionistAppointmentORM.id),
+            ).filter(
+                NutritionistAppointmentORM.date >= month_start,
+                NutritionistAppointmentORM.date < month_end,
+                NutritionistAppointmentORM.payment_status == "paid",
+            )
+            if owner_id and gym_staff_ids:
+                nutr_query = nutr_query.filter(NutritionistAppointmentORM.nutritionist_id.in_(gym_staff_ids))
+            elif owner_id:
+                nutr_query = nutr_query.filter(NutritionistAppointmentORM.nutritionist_id == None)
+            nutr_row = nutr_query.first()
+            nutr_appt_revenue = float(nutr_row[0]) if nutr_row else 0.0
+            nutr_appt_count = int(nutr_row[1]) if nutr_row else 0
+
+            monthly_revenue = subscription_revenue + appt_revenue + nutr_appt_revenue
+
+            # Build per-plan list sorted by revenue desc
+            plan_list = sorted(revenue_by_plan.values(), key=lambda x: x["revenue"], reverse=True)
+            for p in plan_list:
+                p["revenue"] = round(p["revenue"], 2)
 
             # Recent activity: last 10 new signups and subscriptions
             recent_activity = []
-            recent_users = db.query(UserORM).filter(
-                UserORM.role == "client"
-            ).order_by(UserORM.created_at.desc()).limit(5).all()
+            if owner_id:
+                # Get client IDs belonging to this gym
+                gym_client_ids = [c[0] for c in db.query(ClientProfileORM.id).filter(
+                    ClientProfileORM.gym_id == owner_id
+                ).all()]
+                recent_users = db.query(UserORM).filter(
+                    UserORM.id.in_(gym_client_ids) if gym_client_ids else UserORM.id == None
+                ).order_by(UserORM.created_at.desc()).limit(5).all()
+            else:
+                recent_users = db.query(UserORM).filter(
+                    UserORM.role == "client"
+                ).order_by(UserORM.created_at.desc()).limit(5).all()
 
             for u in recent_users:
                 created = u.created_at or ""
@@ -624,11 +711,17 @@ class UserService:
 
             return OwnerData(
                 monthly_revenue=round(monthly_revenue, 2),
+                subscription_revenue=round(subscription_revenue, 2),
+                appointment_revenue=round(appt_revenue, 2),
+                nutrition_appointment_revenue=round(nutr_appt_revenue, 2),
+                appointment_count=appt_count,
+                nutrition_appointment_count=nutr_appt_count,
                 currency=currency,
                 active_members=active_members,
                 active_subscriptions=active_subscriptions,
                 staff_active=staff_active,
-                recent_activity=recent_activity
+                recent_activity=recent_activity,
+                revenue_by_plan=plan_list,
             )
         finally:
             db.close()

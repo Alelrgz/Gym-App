@@ -678,7 +678,10 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
     username = None
     profile_picture = None
     try:
-        token = websocket.cookies.get("access_token")
+        # Query param token takes priority (Flutter passes token explicitly)
+        token = websocket.query_params.get("token")
+        if not token:
+            token = websocket.cookies.get("access_token")
         if token:
             payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
             # Note: "sub" contains the USERNAME, not the user_id
@@ -751,6 +754,15 @@ async def websocket_endpoint(websocket: WebSocket, client_id: str):
                     if inviter_id and manager.is_user_online(inviter_id):
                         await manager.send_to_user(inviter_id, {
                             "type": "coop_declined",
+                            "partner_name": username
+                        })
+
+                # CO-OP Completed: Notify partner that workout is done
+                elif msg_type == "coop_completed" and user_id:
+                    partner_id = msg.get("partner_id")
+                    if partner_id and manager.is_user_online(partner_id):
+                        await manager.send_to_user(partner_id, {
+                            "type": "coop_completed",
                             "partner_name": username
                         })
 

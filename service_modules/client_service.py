@@ -653,21 +653,34 @@ class ClientService:
                         "label": d["recorded"].strftime("%b %y")
                     })
             elif period == "month" and raw_data:
-                # Aggregate by day — use latest entry per day
-                from collections import OrderedDict
-                days = OrderedDict()
-                for d in raw_data:
-                    key = d["date"]
-                    days[key] = d
-                for key, d in days.items():
-                    data.append({
-                        "date": d["date"],
-                        "weight": d["weight"],
-                        "body_fat_pct": d["body_fat_pct"],
-                        "fat_mass": d["fat_mass"],
-                        "lean_mass": d["lean_mass"],
-                        "label": d["recorded"].strftime("%d %b")
-                    })
+                # If few entries or all same day, show all individually
+                unique_days = len(set(d["date"] for d in raw_data))
+                if len(raw_data) <= 31 or unique_days <= 1:
+                    for d in raw_data:
+                        data.append({
+                            "date": d["date"],
+                            "weight": d["weight"],
+                            "body_fat_pct": d["body_fat_pct"],
+                            "fat_mass": d["fat_mass"],
+                            "lean_mass": d["lean_mass"],
+                            "label": d["recorded"].strftime("%d %b %H:%M")
+                        })
+                else:
+                    # Aggregate by day — use latest entry per day
+                    from collections import OrderedDict
+                    days = OrderedDict()
+                    for d in raw_data:
+                        key = d["date"]
+                        days[key] = d
+                    for key, d in days.items():
+                        data.append({
+                            "date": d["date"],
+                            "weight": d["weight"],
+                            "body_fat_pct": d["body_fat_pct"],
+                            "fat_mass": d["fat_mass"],
+                            "lean_mass": d["lean_mass"],
+                            "label": d["recorded"].strftime("%d %b")
+                        })
             else:
                 # Week: show all entries
                 for d in raw_data:
@@ -700,9 +713,14 @@ class ClientService:
             body_fat_stats = calc_stats([d["body_fat_pct"] for d in data])
             lean_mass_stats = calc_stats([d["lean_mass"] for d in data])
 
+            # Get weight goal from profile
+            profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
+            weight_goal = profile.weight_goal if profile else None
+
             return {
                 "period": period,
                 "data": data,
+                "weight_goal": weight_goal,
                 "stats": {
                     "weight": weight_stats,
                     "body_fat_pct": body_fat_stats,
@@ -711,7 +729,7 @@ class ClientService:
             }
         except Exception as e:
             logger.error(f"Error getting weight history: {e}")
-            return {"period": period, "data": [], "stats": {}}
+            return {"period": period, "data": [], "weight_goal": None, "stats": {}}
         finally:
             db.close()
 

@@ -5763,29 +5763,63 @@ window.renderSelectedExercises = function () {
     selectedExercisesList.forEach((ex, idx) => {
         const div = document.createElement('div');
         div.className = 'workout-config-card';
+        div.setAttribute('data-idx', idx);
         div.innerHTML = `
-            <button onclick="removeExerciseFromWorkout(${idx})" class="config-remove">✕</button>
-            <div class="config-header">
-                <p class="config-name">${ex.name}</p>
-                <p class="config-meta">${ex.muscle}${ex.type ? ' • ' + ex.type : ''}</p>
-            </div>
-            <div class="config-inputs">
-                <div>
-                    <label>Sets</label>
-                    <input type="number" value="${ex.sets}" onchange="updateExerciseDetails(${idx}, 'sets', this.value)" class="trainer-modal-input">
-                </div>
-                <div>
-                    <label>Reps</label>
-                    <input type="text" value="${ex.reps}" onchange="updateExerciseDetails(${idx}, 'reps', this.value)" class="trainer-modal-input">
-                </div>
-                <div>
-                    <label>Riposo (s)</label>
-                    <input type="number" value="${ex.rest}" step="30" min="0" onchange="updateExerciseDetails(${idx}, 'rest', this.value)" class="trainer-modal-input">
+            <div style="display:flex;gap:0.5rem;align-items:flex-start;">
+                <div class="drag-handle" title="Trascina per riordinare">${icon('grip-vertical', 16)}</div>
+                <div style="flex:1;">
+                    <button onclick="removeExerciseFromWorkout(${idx})" class="config-remove">✕</button>
+                    <div class="config-header">
+                        <p class="config-name">${ex.name}</p>
+                        <p class="config-meta">${ex.muscle}${ex.type ? ' • ' + ex.type : ''}</p>
+                    </div>
+                    <div class="config-inputs">
+                        <div>
+                            <label>Sets</label>
+                            <input type="number" value="${ex.sets}" onchange="updateExerciseDetails(${idx}, 'sets', this.value)" class="trainer-modal-input">
+                        </div>
+                        <div>
+                            <label>Reps</label>
+                            <input type="text" value="${ex.reps}" onchange="updateExerciseDetails(${idx}, 'reps', this.value)" class="trainer-modal-input">
+                        </div>
+                        <div>
+                            <label>Riposo (s)</label>
+                            <input type="number" value="${ex.rest}" step="30" min="0" onchange="updateExerciseDetails(${idx}, 'rest', this.value)" class="trainer-modal-input">
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
         container.appendChild(div);
     });
+
+    // Initialize SortableJS for drag-and-drop reordering
+    if (window.Sortable && !container._sortable) {
+        container._sortable = new Sortable(container, {
+            handle: '.drag-handle',
+            animation: 200,
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            onEnd: function(evt) {
+                const item = selectedExercisesList.splice(evt.oldIndex, 1)[0];
+                selectedExercisesList.splice(evt.newIndex, 0, item);
+                renderSelectedExercises();
+            }
+        });
+    } else if (container._sortable) {
+        container._sortable.destroy();
+        container._sortable = new Sortable(container, {
+            handle: '.drag-handle',
+            animation: 200,
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            onEnd: function(evt) {
+                const item = selectedExercisesList.splice(evt.oldIndex, 1)[0];
+                selectedExercisesList.splice(evt.newIndex, 0, item);
+                renderSelectedExercises();
+            }
+        });
+    }
 }
 
 window.addExerciseToWorkout = function (exercise) {
@@ -11342,8 +11376,9 @@ function renderCourseExercises() {
     }
 
     container.innerHTML = courseExercisesList.map((ex, i) => `
-        <div class="bg-white/5 rounded-xl p-3 flex justify-between items-center group hover:bg-white/10 transition">
+        <div class="course-exercise-item bg-white/5 rounded-xl p-3 flex justify-between items-center group hover:bg-white/10 transition" data-idx="${i}">
             <div class="flex items-center gap-3">
+                <div class="drag-handle" title="Trascina per riordinare">${icon('grip-vertical', 14)}</div>
                 <span class="text-lg">${getCourseExerciseEmoji(ex)}</span>
                 <div>
                     <p class="text-sm font-medium text-white">${ex.name}</p>
@@ -11353,6 +11388,22 @@ function renderCourseExercises() {
             <button onclick="removeCourseExercise(${i})" class="text-white/30 hover:text-red-400 px-2 opacity-0 group-hover:opacity-100 transition">✕</button>
         </div>
     `).join('');
+
+    // Initialize SortableJS for drag-and-drop reordering
+    if (window.Sortable) {
+        if (container._sortable) container._sortable.destroy();
+        container._sortable = new Sortable(container, {
+            handle: '.drag-handle',
+            animation: 200,
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            onEnd: function(evt) {
+                const item = courseExercisesList.splice(evt.oldIndex, 1)[0];
+                courseExercisesList.splice(evt.newIndex, 0, item);
+                renderCourseExercises();
+            }
+        });
+    }
 }
 
 function getCourseExerciseEmoji(ex) {
@@ -11369,6 +11420,7 @@ window.removeCourseExercise = function(index) {
 window.openCourseExercisePicker = async function() {
     showModal('course-exercise-picker');
     await populateCourseExerciseList();
+    renderPickerSelectedExercises();
 
     // Setup search handler
     const searchInput = document.getElementById('course-ex-search');
@@ -11505,11 +11557,92 @@ window.selectCourseExercise = function(id, name, videoId) {
         video_id: videoId || ''
     });
     renderCourseExercises();
+    renderPickerSelectedExercises();
     showToast(`${name} aggiunto`);
+};
+
+// Render the right-panel selected exercises with drag handles
+function renderPickerSelectedExercises() {
+    const container = document.getElementById('course-picker-selected');
+    const countBadge = document.getElementById('picker-exercise-count');
+    if (!container) return;
+
+    if (countBadge) countBadge.innerText = courseExercisesList.length;
+
+    if (courseExercisesList.length === 0) {
+        container.innerHTML = `
+            <div class="text-center py-8">
+                ${icon('arrow-left', 24, 'mx-auto mb-2 text-white/15')}
+                <p class="text-xs text-gray-600">Seleziona esercizi dalla libreria</p>
+                <p class="text-[10px] text-gray-700 mt-1">Trascinali per riordinare</p>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = courseExercisesList.map((ex, i) => `
+        <div class="course-exercise-item bg-white/5 rounded-xl p-2.5 group hover:bg-white/10 transition" data-idx="${i}">
+            <div class="flex items-center gap-2 mb-2">
+                <div class="drag-handle flex-shrink-0">${icon('grip-vertical', 14)}</div>
+                <span class="text-xs font-bold text-white/30 w-5 text-center">${i + 1}</span>
+                <span class="text-sm">${getCourseExerciseEmoji(ex)}</span>
+                <p class="text-sm font-medium text-white flex-1 truncate">${ex.name}</p>
+                <button onclick="removePickerExercise(${i})" class="text-white/20 hover:text-red-400 text-sm px-1 opacity-0 group-hover:opacity-100 transition flex-shrink-0">&times;</button>
+            </div>
+            <div class="flex gap-2 ml-7">
+                <div class="flex-1">
+                    <label class="text-[9px] text-gray-500 uppercase font-bold block mb-0.5 text-center">Sets</label>
+                    <input type="number" value="${ex.sets || 3}" min="1" onchange="updatePickerExercise(${i},'sets',this.value)"
+                        class="w-full bg-white/5 border border-white/10 rounded-lg p-1.5 text-xs text-white text-center font-bold outline-none focus:border-primary">
+                </div>
+                <div class="flex-1">
+                    <label class="text-[9px] text-gray-500 uppercase font-bold block mb-0.5 text-center">Reps</label>
+                    <input type="text" value="${ex.reps || 10}" onchange="updatePickerExercise(${i},'reps',this.value)"
+                        class="w-full bg-white/5 border border-white/10 rounded-lg p-1.5 text-xs text-white text-center font-bold outline-none focus:border-primary">
+                </div>
+                <div class="flex-1">
+                    <label class="text-[9px] text-gray-500 uppercase font-bold block mb-0.5 text-center">Sec</label>
+                    <input type="number" value="${ex.duration || ex.rest || 60}" min="0" step="15" onchange="updatePickerExercise(${i},'duration',this.value)"
+                        class="w-full bg-white/5 border border-white/10 rounded-lg p-1.5 text-xs text-white text-center font-bold outline-none focus:border-primary">
+                </div>
+            </div>
+        </div>
+    `).join('');
+
+    // Initialize SortableJS
+    if (window.Sortable) {
+        if (container._sortable) container._sortable.destroy();
+        container._sortable = new Sortable(container, {
+            handle: '.drag-handle',
+            animation: 200,
+            ghostClass: 'sortable-ghost',
+            chosenClass: 'sortable-chosen',
+            onEnd: function(evt) {
+                const item = courseExercisesList.splice(evt.oldIndex, 1)[0];
+                courseExercisesList.splice(evt.newIndex, 0, item);
+                renderPickerSelectedExercises();
+                renderCourseExercises();
+            }
+        });
+    }
+}
+
+window.removePickerExercise = function(index) {
+    courseExercisesList.splice(index, 1);
+    renderPickerSelectedExercises();
+    renderCourseExercises();
+};
+
+window.updatePickerExercise = function(index, field, value) {
+    if (courseExercisesList[index]) {
+        if (field === 'reps') courseExercisesList[index][field] = value;
+        else courseExercisesList[index][field] = parseInt(value) || 0;
+    }
 };
 
 window.confirmCourseExercises = function() {
     hideModal('course-exercise-picker');
+    renderCourseExercises();
 };
 
 // Course detail view

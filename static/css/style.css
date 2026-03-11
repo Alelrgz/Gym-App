@@ -2403,6 +2403,48 @@ select.trainer-modal-input option {
     padding: 0.75rem;
     position: relative;
     border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.workout-config-card .drag-handle {
+    cursor: grab;
+    color: rgba(255, 255, 255, 0.2);
+    padding: 0 0.3rem;
+    display: flex;
+    align-items: center;
+    font-size: 1rem;
+    user-select: none;
+    touch-action: none;
+}
+.workout-config-card .drag-handle:active { cursor: grabbing; }
+.workout-config-card.sortable-ghost {
+    opacity: 0.4;
+    border: 1px dashed rgba(255,255,255,0.3);
+}
+.workout-config-card.sortable-chosen {
+    box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+    transform: scale(1.02);
+}
+.course-exercise-item {
+    transition: transform 0.15s, box-shadow 0.15s;
+}
+.course-exercise-item .drag-handle {
+    cursor: grab;
+    color: rgba(255, 255, 255, 0.2);
+    padding: 0 0.2rem;
+    display: flex;
+    align-items: center;
+    font-size: 1rem;
+    user-select: none;
+    touch-action: none;
+}
+.course-exercise-item .drag-handle:active { cursor: grabbing; }
+.course-exercise-item.sortable-ghost {
+    opacity: 0.4;
+    border: 1px dashed rgba(255,255,255,0.3);
+}
+.course-exercise-item.sortable-chosen {
+    box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+    transform: scale(1.02);
 }
 .workout-config-card .config-remove {
     position: absolute;

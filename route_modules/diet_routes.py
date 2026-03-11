@@ -4,10 +4,10 @@ Diet Routes - API endpoints for diet management, meal scanning, and logging.
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Query
 from auth import get_current_user
 from models import AssignDietRequest, SetWeeklyMealPlanRequest
-from models_orm import UserORM, WeeklyMealPlanORM, ClientDietLogORM
+from models_orm import UserORM, WeeklyMealPlanORM, ClientDietLogORM, ClientDietSettingsORM, WeightHistoryORM, ClientProfileORM
 from service_modules.diet_service import DietService, get_diet_service
 from database import get_db_session
-from datetime import datetime
+from datetime import datetime, date
 
 router = APIRouter()
 
@@ -67,6 +67,104 @@ async def assign_diet(
 ):
     """Assign a complete diet plan to a client."""
     return service.assign_diet(diet_req)
+
+
+# ==================== HYDRATION ====================
+
+@router.post("/api/client/add-water")
+async def add_water(
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Add 250ml of water to today's hydration."""
+    db = get_db_session()
+    try:
+        today_str = date.today().isoformat()
+        settings = db.query(ClientDietSettingsORM).filter(
+            ClientDietSettingsORM.id == current_user.id
+        ).first()
+
+        if not settings:
+            settings = ClientDietSettingsORM(
+                id=current_user.id,
+                last_reset_date=today_str,
+                hydration_current=0,
+                hydration_target=2500,
+            )
+            db.add(settings)
+
+        # Reset if new day
+        if settings.last_reset_date and settings.last_reset_date != today_str:
+            settings.hydration_current = 0
+            settings.last_reset_date = today_str
+
+        # Cap at 10L
+        if (settings.hydration_current or 0) >= 10000:
+            return {"status": "error", "message": "Daily limit reached (10000ml)"}
+
+        settings.hydration_current = (settings.hydration_current or 0) + 250
+        db.commit()
+
+        return {
+            "status": "success",
+            "current": settings.hydration_current,
+            "target": settings.hydration_target or 2500,
+        }
+    finally:
+        db.close()
+
+
+# ==================== WEIGHT LOGGING ====================
+
+@router.post("/api/client/log-weight")
+async def log_weight(
+    weight: float = Query(..., gt=0, lt=500),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Log a weight entry for the client."""
+    db = get_db_session()
+    try:
+        entry = WeightHistoryORM(
+            client_id=current_user.id,
+            weight=weight,
+            recorded_at=datetime.now().isoformat()
+        )
+        db.add(entry)
+
+        # Update current weight on profile
+        profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == current_user.id).first()
+        if profile:
+            profile.weight = weight
+
+        db.commit()
+        return {"status": "success", "weight": weight}
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@router.post("/api/client/weight-goal")
+async def set_weight_goal(
+    weight_goal: float = Query(..., gt=0, lt=500),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Set weight goal for the client."""
+    db = get_db_session()
+    try:
+        profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == current_user.id).first()
+        if profile:
+            profile.weight_goal = weight_goal
+            db.commit()
+            return {"status": "success", "weight_goal": weight_goal}
+        raise HTTPException(status_code=404, detail="Profile not found")
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
 
 
 # ==================== WEEKLY MEAL PLAN (Client) ====================

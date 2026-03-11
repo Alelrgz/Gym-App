@@ -1,0 +1,218 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
+
+class ApiConfig {
+  /// Override this at app startup to point native builds at your backend.
+  /// Web builds auto-detect the host from the browser URL.
+  /// For Android emulator use '10.0.2.2', for physical devices use your
+  /// machine's LAN IP (e.g. '192.168.1.5').
+  static String nativeHost = 'localhost';
+  static int port = 9008;
+
+  static String get wsUrl {
+    final base = baseUrl;
+    return base.replaceFirst('http', 'ws');
+  }
+
+  static String get baseUrl {
+    if (kIsWeb) {
+      // Use the same host the app was loaded from, so it works
+      // from both localhost and LAN IP on phones
+      final host = Uri.base.host;
+      return 'http://$host:$port';
+    }
+    return 'http://$nativeHost:$port';
+  }
+
+  // Auth
+  static const login = '/api/auth/login';
+  static const register = '/api/auth/register';
+
+  // Client
+  static const clientData = '/api/client/data';
+  static const clientProfile = '/api/client/profile';
+  static const clientPrivacy = '/api/client/privacy';
+  static const clientFitnessGoal = '/api/client/fitness-goal';
+  static const clientGymInfo = '/api/client/gym-info';
+  static const clientWeightHistory = '/api/client/weight-history';
+  static const clientStrengthProgress = '/api/client/strength-progress';
+  static const clientAccessToken = '/api/client/access-token';
+  static const clientGymTrainers = '/api/client/gym-trainers';
+  static const clientGymMembers = '/api/client/gym-members';
+  static const clientAppointments = '/api/client/appointments';
+  static const clientSubscriptionPlans = '/api/client/subscription-plans';
+  static const clientJoinGym = '/api/client/join-gym';
+  static const clientLeaveGym = '/api/client/leave-gym';
+  static const clientSelectTrainer = '/api/client/select-trainer';
+  static const clientQuestToggle = '/api/client/quest/toggle';
+
+  // Diet
+  static const dietScan = '/api/client/diet/scan';
+  static const dietLog = '/api/client/diet/log';
+  static const weeklyMealPlan = '/api/client/weekly-meal-plan';
+  static String dietLogForDate(String date) => '/api/client/diet-log/$date';
+  static String dietBarcode(String code) => '/api/client/diet/barcode/$code';
+
+  // Messages
+  static const conversations = '/api/messages/conversations';
+  static const sendMessage = '/api/messages/send';
+  static const unreadCount = '/api/messages/unread-count';
+  static const uploadMedia = '/api/messages/upload-media';
+  static String conversationMessages(String id) => '/api/messages/conversation/$id';
+  static String markRead(String id) => '/api/messages/conversation/$id/read';
+
+  // Friends
+  static const friends = '/api/friends';
+  static const friendRequest = '/api/friends/request';
+  static const friendRequestRespond = '/api/friends/request/respond';
+  static const friendRequestsIncoming = '/api/friends/requests/incoming';
+  static const friendRequestsOutgoing = '/api/friends/requests/outgoing';
+  static String friendRemove(String id) => '/api/friends/$id';
+  static String friendRequestCancel(int id) => '/api/friends/request/$id';
+
+  // Notifications
+  static const notifications = '/api/notifications';
+  static const notificationsUnreadCount = '/api/notifications/unread-count';
+  static const notificationsReadAll = '/api/notifications/read-all';
+  static String notificationRead(String id) => '/api/notifications/$id/read';
+
+  // Physique Photos
+  static const physiquePhotos = '/api/physique/photos';
+  static const physiquePhotoUpload = '/api/physique/photo';
+  static String physiquePhotoDelete(int id) => '/api/physique/photo/$id';
+
+  // Hydration
+  static const clientAddWater = '/api/client/add-water';
+
+  // Weight
+  static const clientLogWeight = '/api/client/log-weight';
+  static const clientWeightGoal = '/api/client/weight-goal';
+
+  // Profile
+  static const profilePicture = '/api/profile/picture';
+  static const profileBio = '/api/profile/bio';
+
+  // Schedule / Workout
+  static String clientSchedule(String date) => '/api/client/schedule?date=$date';
+  static const completeWorkout = '/api/client/schedule/complete';
+  static const completeCoopWorkout = '/api/client/schedule/complete-coop';
+  static const updateWorkoutSet = '/api/client/schedule/update_set';
+
+  // Leaderboard
+  static const leaderboardData = '/api/leaderboard/data';
+  static String memberProfile(String id) => '/api/client/member/$id';
+  static String friendStatus(String id) => '/api/friends/status/$id';
+  static String friendProgress(String id) => '/api/friends/$id/progress';
+
+  // Appointments
+  static String trainerAvailability(int id) => '/api/client/trainers/$id/availability';
+  static String trainerAvailableSlots(int id) => '/api/client/trainers/$id/available-slots';
+  static String trainerSessionTypes(int id) => '/api/client/trainers/$id/session-types';
+  static const appointmentCheckoutSession = '/api/client/appointment-checkout-session';
+
+  // ── Trainer ─────────────────────────────────────────────
+  static const trainerData = '/api/trainer/data';
+  static const trainerWeeklyOverview = '/api/trainer/weekly-overview';
+  static const trainerClients = '/api/trainer/clients';
+  static const trainerExercises = '/api/trainer/exercises';
+  static const trainerWorkouts = '/api/trainer/workouts';
+  static String trainerWorkout(String id) => '/api/trainer/workouts/$id';
+  static const trainerSplits = '/api/trainer/splits';
+  static String trainerSplit(String id) => '/api/trainer/splits/$id';
+  static const trainerAssignWorkout = '/api/trainer/assign_workout';
+  static const trainerAssignSplit = '/api/trainer/assign_split';
+  static const trainerCourses = '/api/trainer/courses';
+  static String trainerCourse(String id) => '/api/trainer/courses/$id';
+  static String trainerCourseLessons(String id) => '/api/trainer/courses/$id/lessons';
+  static String trainerCourseSchedule(String id) => '/api/trainer/courses/$id/schedule';
+  static String trainerLessonComplete(int id) => '/api/trainer/courses/lessons/$id/complete';
+  static String trainerLessonDelete(int id) => '/api/trainer/courses/lessons/$id';
+  static const trainerEvents = '/api/trainer/events';
+  static String trainerEvent(String id) => '/api/trainer/events/$id';
+  static String trainerEventRescheduleSeries(String id) => '/api/trainer/events/$id/reschedule-series';
+  static const trainerScheduleComplete = '/api/trainer/schedule/complete';
+  static const trainerAvailabilitySettings = '/api/trainer/availability';
+  static const trainerNotes = '/api/trainer/notes';
+  static const trainerBio = '/api/profile/bio';
+  static const trainerSpecialties = '/api/profile/specialties';
+  static const trainerMyCommissions = '/api/trainer/my-commissions';
+  static const exercises = '/api/exercises';
+  static String exercise(String id) => '/api/exercises/$id';
+
+  // ── Trainer Client Metrics ────────────────────────────────
+  static String trainerClientWeightHistory(String id) => '/api/trainer/client/$id/weight-history';
+  static String trainerClientStrengthProgress(String id) => '/api/trainer/client/$id/strength-progress';
+  static String trainerClientDietConsistency(String id) => '/api/trainer/client/$id/diet-consistency';
+  static String trainerClientWeekStreak(String id) => '/api/trainer/client/$id/week-streak';
+  static String trainerClientWorkoutLog(String id) => '/api/trainer/client/$id/workout-log';
+  static String trainerClientNotes(String id) => '/api/trainer/client/$id/notes';
+
+  // ── Owner ───────────────────────────────────────────────
+  // Dashboard / core
+  static const ownerData = '/api/owner/data';
+  static const ownerGymCode = '/api/owner/gym-code';
+  static const ownerGymSettings = '/api/owner/gym-settings';
+  static const ownerGymLogo = '/api/owner/gym-logo';
+  static const ownerActivityFeed = '/api/owner/activity-feed';
+
+  // Trainers & Commissions
+  static const ownerPendingTrainers = '/api/owner/pending-trainers';
+  static const ownerApprovedTrainers = '/api/owner/approved-trainers';
+  static String ownerApproveTrainer(String id) => '/api/owner/approve-trainer/$id';
+  static String ownerRejectTrainer(String id) => '/api/owner/reject-trainer/$id';
+  static const ownerCommissions = '/api/owner/commissions';
+  static String ownerTrainerCommission(String id) => '/api/owner/trainers/$id/commission';
+
+  // Subscription Plans
+  static const ownerSubscriptionPlans = '/api/owner/subscription-plans';
+  static String ownerSubscriptionPlan(String id) => '/api/owner/subscription-plans/$id';
+
+  // Offers
+  static const ownerOffers = '/api/owner/offers';
+  static String ownerOffer(String id) => '/api/owner/offers/$id';
+
+  // Automated Messages
+  static const ownerAutomatedMessages = '/api/owner/automated-messages';
+  static String ownerAutomatedMessage(String id) => '/api/owner/automated-messages/$id';
+  static String ownerAutomatedMessageToggle(String id) => '/api/owner/automated-messages/$id/toggle';
+  static String ownerAutomatedMessagePreview(String id) => '/api/owner/automated-messages/$id/preview';
+  static const ownerAutomatedMessagesLog = '/api/owner/automated-messages/log';
+  static const ownerAutomatedMessagesTrigger = '/api/owner/automated-messages/trigger-check';
+
+  // CRM
+  static const ownerCrmPipeline = '/api/owner/crm/pipeline';
+  static const ownerCrmAtRisk = '/api/owner/crm/at-risk';
+  static const ownerCrmAnalytics = '/api/owner/crm/analytics';
+  static const ownerCrmInteractions = '/api/owner/crm/interactions';
+
+  // Facilities
+  static const ownerActivityTypes = '/api/owner/activity-types';
+  static String ownerActivityType(String id) => '/api/owner/activity-types/$id';
+  static String ownerFacilitiesForType(String typeId) => '/api/owner/facilities/$typeId';
+  static const ownerFacilities = '/api/owner/facilities';
+  static String ownerFacility(String id) => '/api/owner/facilities/$id';
+  static String ownerFacilityAvailability(String id) => '/api/owner/facilities/$id/availability';
+  static const ownerFacilityBookings = '/api/owner/facility-bookings';
+
+  // Settings
+  static const ownerShowerSettings = '/api/owner/shower-settings';
+  static const ownerGenerateDeviceKey = '/api/owner/generate-device-key';
+  static const ownerImportClients = '/api/owner/import-clients';
+
+  // Stripe Connect
+  static const ownerStripeOnboard = '/api/owner/stripe-connect/onboard';
+  static const ownerStripeStatus = '/api/owner/stripe-connect/status';
+  static const ownerStripeDashboard = '/api/owner/stripe-connect/dashboard';
+
+  // POS Terminal
+  static const terminalTestMode = '/api/terminal/test-mode';
+  static const terminalCreateLocation = '/api/terminal/create-location';
+  static const terminalRegisterReader = '/api/terminal/register-reader';
+  static const terminalImportReader = '/api/terminal/import-reader';
+  static const terminalReaders = '/api/terminal/readers';
+
+  // ── Spotify ──────────────────────────────────────────────
+  static const String spotifyStatus = '/api/spotify/status';
+  static const String spotifyAuthorize = '/api/spotify/authorize';
+  static const String spotifyRefresh = '/api/spotify/refresh';
+  static const String spotifyDisconnect = '/api/spotify/disconnect';
+}

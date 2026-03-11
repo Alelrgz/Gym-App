@@ -6,6 +6,7 @@ from .base import (
     get_db_session, UserORM, ClientProfileORM, ClientScheduleORM,
     ClientSubscriptionORM, AppointmentORM, AutomatedMessageLogORM
 )
+from models_orm import SubscriptionPlanORM
 from typing import List, Optional
 
 logger = logging.getLogger("gym_app")
@@ -78,6 +79,17 @@ class CRMService:
                         ClientScheduleORM.completed == True
                     ).order_by(ClientScheduleORM.date.desc()).first()
 
+                    # Get active subscription/plan name
+                    plan_name = None
+                    active_sub = db.query(ClientSubscriptionORM).filter(
+                        ClientSubscriptionORM.client_id == client.id,
+                        ClientSubscriptionORM.gym_id == client.gym_id,
+                        ClientSubscriptionORM.status == "active"
+                    ).first()
+                    if active_sub and active_sub.plan_id:
+                        plan = db.query(SubscriptionPlanORM).filter(SubscriptionPlanORM.id == active_sub.plan_id).first()
+                        plan_name = plan.name if plan else None
+
                     at_risk_clients.append({
                         "id": client.id,
                         "name": user.username if user else "Unknown",
@@ -88,7 +100,9 @@ class CRMService:
                         "streak": client.streak or 0,
                         "trainer_id": client.trainer_id,
                         "trainer_name": trainer_name,
-                        "status": client.status
+                        "status": client.status,
+                        "plan_name": plan_name,
+                        "profile_picture": user.profile_picture if user else None,
                     })
 
             # Sort by days inactive (most inactive first)

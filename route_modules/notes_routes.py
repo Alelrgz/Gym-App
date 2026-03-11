@@ -60,3 +60,28 @@ async def delete_trainer_note(
     """Delete a note."""
     require_staff(current_user)
     return service.delete_trainer_note(note_id, current_user.id)
+
+
+@router.get("/api/trainer/client/{client_id}/notes")
+async def get_client_notes(
+    client_id: str,
+    service: NotesService = Depends(get_notes_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Get all notes for a specific client."""
+    require_staff(current_user)
+    return service.get_client_notes(current_user.id, client_id)
+
+
+@router.post("/api/trainer/client/{client_id}/notes")
+async def save_client_note(
+    client_id: str,
+    note_data: dict,
+    service: NotesService = Depends(get_notes_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Create a note for a specific client."""
+    require_staff(current_user)
+    title = note_data.get("title", "Nota")
+    content = note_data.get("content", "")
+    return service.save_client_note(current_user.id, client_id, title, content)
