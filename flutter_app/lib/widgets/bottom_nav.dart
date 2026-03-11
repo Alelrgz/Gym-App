@@ -118,6 +118,14 @@ class AppBottomNav extends StatelessWidget {
                 onFabAction?.call('log_weight');
               },
             ),
+            _QuickAction(
+              icon: Icons.calendar_month_rounded,
+              label: 'Prenota Appuntamento',
+              onTap: () {
+                Navigator.pop(ctx);
+                onFabAction?.call('book_appointment');
+              },
+            ),
           ],
         ),
       ),

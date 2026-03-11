@@ -6,7 +6,7 @@ from .base import (
     get_db_session, ClientScheduleORM, ClientProfileORM, UserORM,
     AutomatedMessageTemplateORM
 )
-from models_orm import AppointmentORM
+from models_orm import AppointmentORM, ClientSubscriptionORM, SubscriptionPlanORM
 from typing import List, Dict, Optional
 from .automated_message_service import get_automated_message_service
 from .message_dispatch_service import get_message_dispatch_service
@@ -85,6 +85,9 @@ class TriggerCheckService:
             matches = self.check_days_inactive(gym_id, threshold)
         elif template.trigger_type == "no_show_appointment":
             matches = self.check_no_show_appointments(gym_id)
+        elif template.trigger_type == "subscription_canceled":
+            days_since = trigger_config.get("days_since_cancellation", 7)
+            matches = self.check_subscription_canceled(gym_id, days_since)
         else:
             logger.warning(f"Unknown trigger type: {template.trigger_type}")
             return 0, 0
@@ -168,7 +171,10 @@ class TriggerCheckService:
             "workout_title": match.get("workout_title", ""),
             "trainer_name": match.get("trainer_name", ""),
             "appointment_date": match.get("appointment_date", ""),
-            "appointment_time": match.get("appointment_time", "")
+            "appointment_time": match.get("appointment_time", ""),
+            "plan_name": match.get("plan_name", ""),
+            "canceled_at": match.get("canceled_at", ""),
+            "days_since_cancellation": str(match.get("days_since_cancellation", "")),
         }
 
     def check_missed_workouts(self, gym_id: str) -> List[dict]:
@@ -327,6 +333,86 @@ class TriggerCheckService:
                 for a in no_shows
             ]
 
+        finally:
+            db.close()
+
+
+    def check_subscription_canceled(self, gym_id: str, days_since_threshold: int = 7) -> List[dict]:
+        """
+        Find clients whose subscription was recently canceled.
+        Returns list of {client_id, client_name, plan_name, canceled_at, days_since_cancellation, trigger_reference}
+        """
+        db = get_db_session()
+        try:
+            today = date.today()
+
+            clients = db.query(ClientProfileORM).filter(
+                ClientProfileORM.gym_id == gym_id
+            ).all()
+
+            if not clients:
+                return []
+
+            client_ids = [c.id for c in clients]
+
+            # Find canceled/past_due subscriptions
+            canceled_subs = db.query(ClientSubscriptionORM).filter(
+                ClientSubscriptionORM.client_id.in_(client_ids),
+                ClientSubscriptionORM.gym_id == gym_id,
+                ClientSubscriptionORM.status.in_(['canceled', 'past_due']),
+            ).all()
+
+            if not canceled_subs:
+                return []
+
+            # Get user names
+            users = db.query(UserORM).filter(UserORM.id.in_(client_ids)).all()
+            user_names = {u.id: u.username for u in users}
+
+            results = []
+            for sub in canceled_subs:
+                cancel_date_str = sub.canceled_at or sub.current_period_end or sub.created_at
+                if not cancel_date_str:
+                    continue
+
+                try:
+                    cancel_date = datetime.fromisoformat(
+                        cancel_date_str.replace('Z', '+00:00')
+                    ).date()
+                    days_since = (today - cancel_date).days
+                except:
+                    continue
+
+                if days_since > days_since_threshold:
+                    continue
+
+                # Verify no active subscription exists
+                active = db.query(ClientSubscriptionORM).filter(
+                    ClientSubscriptionORM.client_id == sub.client_id,
+                    ClientSubscriptionORM.gym_id == gym_id,
+                    ClientSubscriptionORM.status == "active"
+                ).first()
+                if active:
+                    continue
+
+                # Get plan name
+                plan_name = ""
+                if sub.plan_id:
+                    plan = db.query(SubscriptionPlanORM).filter(
+                        SubscriptionPlanORM.id == sub.plan_id
+                    ).first()
+                    plan_name = plan.name if plan else ""
+
+                results.append({
+                    "client_id": sub.client_id,
+                    "client_name": user_names.get(sub.client_id, ""),
+                    "plan_name": plan_name,
+                    "canceled_at": cancel_date_str,
+                    "days_since_cancellation": days_since,
+                    "trigger_reference": f"sub_canceled_{sub.id}"
+                })
+
+            return results
         finally:
             db.close()
 

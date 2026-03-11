@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../config/theme.dart';
 import '../../providers/client_provider.dart';
 import '../../providers/owner_provider.dart';
@@ -31,6 +32,9 @@ class _OwnerCrmScreenState extends ConsumerState<OwnerCrmScreen> {
   // Interactions
   List<Map<String, dynamic>> _interactions = [];
 
+  // Ex-clients
+  List<Map<String, dynamic>> _exClients = [];
+
   // Certificates
   List<Map<String, dynamic>> _certificates = [];
 
@@ -48,6 +52,7 @@ class _OwnerCrmScreenState extends ConsumerState<OwnerCrmScreen> {
         svc.getCrmAnalytics().catchError((_) => <String, dynamic>{}),
         svc.getAtRiskClients().catchError((_) => <Map<String, dynamic>>[]),
         svc.getCrmInteractions().catchError((_) => <Map<String, dynamic>>[]),
+        svc.getExClients().catchError((_) => <Map<String, dynamic>>[]),
       ]);
 
       if (!mounted) return;
@@ -66,6 +71,7 @@ class _OwnerCrmScreenState extends ConsumerState<OwnerCrmScreen> {
 
         _atRiskClients = results[2] as List<Map<String, dynamic>>;
         _interactions = results[3] as List<Map<String, dynamic>>;
+        _exClients = results[4] as List<Map<String, dynamic>>;
         _loading = false;
       });
     } catch (_) {
@@ -127,6 +133,10 @@ class _OwnerCrmScreenState extends ConsumerState<OwnerCrmScreen> {
                     _buildAtRiskSection(),
                     const SizedBox(height: 24),
 
+                    // Ex-Clients
+                    _buildExClientsSection(),
+                    const SizedBox(height: 24),
+
                     // Recent Interactions
                     _buildInteractionsSection(),
                     const SizedBox(height: 24),
@@ -184,7 +194,7 @@ class _OwnerCrmScreenState extends ConsumerState<OwnerCrmScreen> {
           physics: const NeverScrollableScrollPhysics(),
           crossAxisSpacing: 12,
           mainAxisSpacing: 12,
-          childAspectRatio: 2.2,
+          childAspectRatio: 2.5,
           children: [
             _buildPipelineCard('$_pipelineNew', 'Nuovi', '< 14 giorni', const Color(0xFF4ADE80)),
             _buildPipelineCard('$_pipelineActive', 'Attivi', 'Coinvolti', const Color(0xFF60A5FA)),
@@ -198,20 +208,22 @@ class _OwnerCrmScreenState extends ConsumerState<OwnerCrmScreen> {
 
   Widget _buildPipelineCard(String value, String label, String sub, Color color) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border(left: BorderSide(color: color, width: 3)),
       ),
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text(value, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 2),
-          Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-          Text(sub, style: TextStyle(fontSize: 10, color: Colors.grey[700])),
-        ],
+      child: FittedBox(
+        fit: BoxFit.scaleDown,
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700)),
+            Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[500]), overflow: TextOverflow.ellipsis),
+            Text(sub, style: TextStyle(fontSize: 9, color: Colors.grey[700]), overflow: TextOverflow.ellipsis),
+          ],
+        ),
       ),
     );
   }
@@ -265,7 +277,8 @@ class _OwnerCrmScreenState extends ConsumerState<OwnerCrmScreen> {
                 final daysInactive = (c['days_inactive'] as num?)?.toInt() ?? 0;
                 final streak = (c['streak'] as num?)?.toInt() ?? 0;
                 final trainerName = c['trainer_name'] as String?;
-                final isCritical = daysInactive > 10;
+                final pipelineStatus = c['pipeline_status'] as String? ?? '';
+                final isCritical = pipelineStatus == 'churning';
 
                 return GestureDetector(
                   onTap: () => _showClientDetail(c),
@@ -326,7 +339,7 @@ class _OwnerCrmScreenState extends ConsumerState<OwnerCrmScreen> {
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Text(
-                            isCritical ? 'Critico' : 'A Rischio',
+                            isCritical ? 'In Abbandono' : 'A Rischio',
                             style: TextStyle(
                               fontSize: 11, fontWeight: FontWeight.w600,
                               color: isCritical ? const Color(0xFFF87171) : const Color(0xFFFACC15),
@@ -355,7 +368,8 @@ class _OwnerCrmScreenState extends ConsumerState<OwnerCrmScreen> {
     final planName = client['plan_name'] as String?;
     final lastWorkout = client['last_workout_date'] as String?;
     final email = client['email'] as String?;
-    final isCritical = daysInactive > 10;
+    final pipelineStatus = client['pipeline_status'] as String? ?? '';
+    final isCritical = pipelineStatus == 'churning';
 
     showModalBottomSheet(
       context: context,
@@ -405,7 +419,7 @@ class _OwnerCrmScreenState extends ConsumerState<OwnerCrmScreen> {
                     borderRadius: BorderRadius.circular(12),
                   ),
                   child: Text(
-                    isCritical ? 'Critico · ${daysInactive}g inattivo' : 'A Rischio · ${daysInactive}g inattivo',
+                    isCritical ? 'In Abbandono · ${daysInactive}g inattivo' : 'A Rischio · ${daysInactive}g inattivo',
                     style: TextStyle(
                       fontSize: 12, fontWeight: FontWeight.w600,
                       color: isCritical ? const Color(0xFFF87171) : const Color(0xFFFACC15),
@@ -537,6 +551,277 @@ class _OwnerCrmScreenState extends ConsumerState<OwnerCrmScreen> {
         ),
       ],
     );
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  EX-CLIENTS
+  // ═══════════════════════════════════════════════════════════
+  Widget _buildExClientsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            _buildZoneBar(const Color(0xFF6B7280)),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('Ex-Clienti', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey, letterSpacing: 0.5)),
+                  Text('Abbonamenti scaduti o cancellati', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF6B7280).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Text(
+                '${_exClients.length}',
+                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF9CA3AF)),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        if (_exClients.isEmpty)
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(16)),
+            child: Center(child: Text('Nessun ex-cliente', style: TextStyle(fontSize: 13, color: Colors.grey[600]))),
+          )
+        else
+          ConstrainedBox(
+            constraints: const BoxConstraints(maxHeight: 440),
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: _exClients.length,
+              separatorBuilder: (_, _) => const SizedBox(height: 8),
+              itemBuilder: (_, i) {
+                final c = _exClients[i];
+                final name = c['name'] as String? ?? '';
+                final planName = c['last_plan_name'] as String? ?? 'Nessun piano';
+                final daysSince = (c['days_since_cancellation'] as num?)?.toInt() ?? 0;
+                final phone = c['phone'] as String?;
+
+                return GestureDetector(
+                  onTap: () => _showExClientDetail(c),
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(color: AppColors.surface, borderRadius: BorderRadius.circular(12)),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 36, height: 36,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6B7280).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            name.length >= 2 ? name.substring(0, 2).toUpperCase() : name.toUpperCase(),
+                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600), overflow: TextOverflow.ellipsis),
+                              const SizedBox(height: 2),
+                              Text(
+                                '$planName · ${daysSince}g fa',
+                                style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (phone != null && phone.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.message, size: 18, color: Color(0xFF25D366)),
+                            onPressed: () => _openWhatsApp(phone, 'Ciao $name! Ci manchi in palestra. Torna a trovarci!'),
+                            constraints: const BoxConstraints(),
+                            padding: const EdgeInsets.all(4),
+                          ),
+                        const SizedBox(width: 4),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6B7280).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text(
+                            'Ex-Cliente',
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF9CA3AF)),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(Icons.chevron_right, size: 18, color: Colors.grey[700]),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _showExClientDetail(Map<String, dynamic> client) {
+    final name = client['name'] as String? ?? '';
+    final planName = client['last_plan_name'] as String? ?? 'Nessun piano';
+    final daysSince = (client['days_since_cancellation'] as num?)?.toInt() ?? 0;
+    final canceledAt = client['canceled_at'] as String? ?? '';
+    final email = client['email'] as String?;
+    final phone = client['phone'] as String?;
+    final subStatus = client['last_subscription_status'] as String? ?? '';
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => Container(
+        padding: EdgeInsets.only(
+          left: 20, right: 20, top: 20,
+          bottom: MediaQuery.of(ctx).viewInsets.bottom + 20,
+        ),
+        decoration: const BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Center(child: Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2)))),
+              const SizedBox(height: 20),
+
+              // Avatar
+              Container(
+                width: 56, height: 56,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6B7280).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  name.length >= 2 ? name.substring(0, 2).toUpperCase() : name.toUpperCase(),
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF9CA3AF)),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Text(name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+              const SizedBox(height: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6B7280).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  'Ex-Cliente · ${daysSince}g fa',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF9CA3AF)),
+                ),
+              ),
+              const SizedBox(height: 20),
+
+              // Info
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Column(
+                  children: [
+                    _detailInfoRow(Icons.card_membership, 'Ultimo piano', planName),
+                    const SizedBox(height: 10),
+                    _detailInfoRow(Icons.cancel_outlined, 'Stato', subStatus == 'past_due' ? 'Pagamento scaduto' : 'Cancellato'),
+                    if (canceledAt.isNotEmpty) ...[
+                      const SizedBox(height: 10),
+                      _detailInfoRow(Icons.calendar_today, 'Data cancellazione', canceledAt.length >= 10 ? canceledAt.substring(0, 10) : canceledAt),
+                    ],
+                    if (email != null) ...[
+                      const SizedBox(height: 10),
+                      _detailInfoRow(Icons.email_outlined, 'Email', email),
+                    ],
+                    if (phone != null) ...[
+                      const SizedBox(height: 10),
+                      _detailInfoRow(Icons.phone, 'Telefono', phone),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+
+              // Action buttons
+              Row(
+                children: [
+                  if (phone != null && phone.isNotEmpty)
+                    Expanded(
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _openWhatsApp(phone, 'Ciao $name! Ci manchi in palestra. Abbiamo delle offerte speciali per te. Torna a trovarci!');
+                        },
+                        icon: const Icon(Icons.message, size: 16),
+                        label: const Text('WhatsApp'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFF25D366),
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                  if (phone != null && phone.isNotEmpty)
+                    const SizedBox(width: 10),
+                  Expanded(
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        _openChatWithClient(client);
+                      },
+                      icon: const Icon(Icons.chat_bubble_outline, size: 16),
+                      label: const Text('Apri Chat'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openWhatsApp(String phone, String message) async {
+    final svc = ref.read(ownerServiceProvider);
+    try {
+      final result = await svc.generateWhatsappLink(phone, message);
+      final link = result['whatsapp_link'] as String;
+      final uri = Uri.parse(link);
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore: $e')),
+        );
+      }
+    }
   }
 
   // ═══════════════════════════════════════════════════════════

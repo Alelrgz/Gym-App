@@ -58,6 +58,52 @@ async def get_interactions(
     return service.get_client_interactions(user.id, client_id, limit)
 
 
+@router.get("/api/owner/crm/ex-clients")
+async def get_ex_clients(
+    limit: int = 50,
+    user = Depends(get_current_user),
+    service: CRMService = Depends(get_crm_service)
+):
+    """Get list of former clients with canceled/expired subscriptions."""
+    if user.role != "owner":
+        raise HTTPException(status_code=403, detail="Only gym owners can access CRM")
+    return service.get_ex_clients(user.id, limit)
+
+
+@router.post("/api/owner/crm/whatsapp-link")
+async def generate_whatsapp_link(
+    payload: dict,
+    user = Depends(get_current_user)
+):
+    """Generate a wa.me click-to-chat link with pre-filled message."""
+    if user.role != "owner":
+        raise HTTPException(status_code=403, detail="Only gym owners can access CRM")
+
+    import re
+    from urllib.parse import quote
+
+    phone = payload.get("phone", "").strip()
+    message = payload.get("message", "").strip()
+
+    if not phone:
+        raise HTTPException(status_code=400, detail="Phone number is required")
+
+    # Clean phone number
+    phone_clean = re.sub(r'[\s\-\(\)]', '', phone)
+    if not phone_clean.startswith('+'):
+        if phone_clean.startswith('0'):
+            phone_clean = '+39' + phone_clean[1:]
+        else:
+            phone_clean = '+39' + phone_clean
+
+    phone_for_link = phone_clean.lstrip('+')
+    link = f"https://wa.me/{phone_for_link}"
+    if message:
+        link += f"?text={quote(message)}"
+
+    return {"whatsapp_link": link, "phone": phone_clean}
+
+
 @router.get("/api/owner/activity-feed")
 async def get_activity_feed(
     limit: int = 20,

@@ -63,7 +63,7 @@ async def create_template(
         raise HTTPException(status_code=403, detail="Only gym owners can create automated messages")
 
     # Validate trigger type
-    valid_triggers = ["missed_workout", "days_inactive", "no_show_appointment"]
+    valid_triggers = ["missed_workout", "days_inactive", "no_show_appointment", "subscription_canceled"]
     if template_data.trigger_type not in valid_triggers:
         raise HTTPException(
             status_code=400,

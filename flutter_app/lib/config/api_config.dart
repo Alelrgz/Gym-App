@@ -107,6 +107,7 @@ class ApiConfig {
   static String trainerAvailability(int id) => '/api/client/trainers/$id/availability';
   static String trainerAvailableSlots(int id) => '/api/client/trainers/$id/available-slots';
   static String trainerSessionTypes(int id) => '/api/client/trainers/$id/session-types';
+  static String trainerSessionRate(int id) => '/api/client/trainers/$id/session-rate';
   static const appointmentCheckoutSession = '/api/client/appointment-checkout-session';
 
   // ── Trainer ─────────────────────────────────────────────
@@ -183,6 +184,8 @@ class ApiConfig {
   static const ownerCrmAtRisk = '/api/owner/crm/at-risk';
   static const ownerCrmAnalytics = '/api/owner/crm/analytics';
   static const ownerCrmInteractions = '/api/owner/crm/interactions';
+  static const ownerCrmExClients = '/api/owner/crm/ex-clients';
+  static const ownerCrmWhatsappLink = '/api/owner/crm/whatsapp-link';
 
   // Facilities
   static const ownerActivityTypes = '/api/owner/activity-types';

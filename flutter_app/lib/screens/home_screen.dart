@@ -155,6 +155,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         case 'log_weight':
           showLogWeightDialog(context, ref);
           break;
+        case 'book_appointment':
+          showBookAppointmentSheet(context, ref);
+          break;
       }
     }
 

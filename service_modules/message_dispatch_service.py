@@ -74,25 +74,43 @@ class MessageDispatchService:
         subject: str,
         message: str
     ) -> bool:
-        """
-        Send an email notification.
-        NOTE: This is a placeholder - email service not yet implemented.
-        """
+        """Send an email notification using the configured SMTP EmailService."""
+        from .email_service import get_email_service
+
         db = get_db_session()
         try:
-            # Get client's email
             user = db.query(UserORM).filter(UserORM.id == client_id).first()
             if not user or not user.email:
                 logger.warning(f"No email found for client {client_id}")
                 return False
 
-            # TODO: Implement actual email sending
-            # This would integrate with SendGrid, Mailgun, AWS SES, etc.
-            logger.warning(f"Email delivery not implemented. Would send to {user.email}: {subject}")
+            email_service = get_email_service()
+            if not email_service.is_configured():
+                logger.warning(f"SMTP not configured. Cannot send email to {user.email}")
+                return False
 
-            # For now, return False to indicate not sent
-            # When implemented, return True on success
-            return False
+            html_body = f"""
+            <div style="max-width:480px;margin:0 auto;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:#1a1a2e;border-radius:16px;overflow:hidden;border:1px solid rgba(255,255,255,0.1);">
+                <div style="background:linear-gradient(135deg,#f97316,#ea580c);padding:24px;text-align:center;">
+                    <h1 style="color:white;margin:0;font-size:24px;">FitOS</h1>
+                </div>
+                <div style="padding:32px 24px;">
+                    <p style="color:#e5e7eb;font-size:16px;margin:0 0 16px;">{message}</p>
+                </div>
+                <div style="padding:16px 24px;border-top:1px solid rgba(255,255,255,0.05);">
+                    <p style="color:#6b7280;font-size:12px;margin:0;text-align:center;">
+                        Questa email è stata inviata automaticamente.
+                    </p>
+                </div>
+            </div>
+            """
+
+            success = email_service.send_email(user.email, subject, html_body)
+            if success:
+                logger.info(f"Email sent to {user.email}: {subject}")
+            else:
+                logger.warning(f"Failed to send email to {user.email}: {subject}")
+            return success
 
         except Exception as e:
             logger.error(f"Failed to send email: {e}")
@@ -106,27 +124,61 @@ class MessageDispatchService:
         message: str
     ) -> bool:
         """
-        Send a WhatsApp notification.
-        NOTE: This is a placeholder - WhatsApp integration not yet implemented.
+        Generate a WhatsApp wa.me link and notify the owner to send it manually.
+        Full automation requires WhatsApp Business API (future feature).
         """
+        import re
+        from urllib.parse import quote
+
         db = get_db_session()
         try:
-            # Get client's phone number
             user = db.query(UserORM).filter(UserORM.id == client_id).first()
             if not user:
                 logger.warning(f"No user found for client {client_id}")
                 return False
 
-            # TODO: Get phone number from profile
-            # TODO: Implement actual WhatsApp sending via Twilio or WhatsApp Business API
-            logger.warning(f"WhatsApp delivery not implemented. Would send to client {client_id}")
+            phone = user.phone
+            if not phone:
+                logger.warning(f"No phone number for client {client_id}")
+                return False
 
-            # For now, return False to indicate not sent
-            # When implemented, return True on success
-            return False
+            # Clean phone number, default to Italian +39 prefix
+            phone_clean = re.sub(r'[\s\-\(\)]', '', phone)
+            if not phone_clean.startswith('+'):
+                if phone_clean.startswith('0'):
+                    phone_clean = '+39' + phone_clean[1:]
+                else:
+                    phone_clean = '+39' + phone_clean
+            phone_for_link = phone_clean.lstrip('+')
+
+            wa_link = f"https://wa.me/{phone_for_link}?text={quote(message)}"
+            logger.info(f"WhatsApp link generated for {client_id}: {wa_link}")
+
+            # Notify the gym owner with the link so they can click to send
+            from models_orm import ClientProfileORM
+            profile = db.query(ClientProfileORM).filter(
+                ClientProfileORM.id == client_id
+            ).first()
+
+            if profile and profile.gym_id:
+                notification_service = get_notification_service()
+                notification_service.create_notification(
+                    user_id=profile.gym_id,
+                    notification_type="whatsapp_pending",
+                    title=f"WhatsApp da inviare a {user.username}",
+                    message=message[:100] + "..." if len(message) > 100 else message,
+                    data={
+                        "type": "whatsapp_link",
+                        "whatsapp_link": wa_link,
+                        "client_id": client_id,
+                        "client_name": user.username,
+                    }
+                )
+
+            return True
 
         except Exception as e:
-            logger.error(f"Failed to send WhatsApp: {e}")
+            logger.error(f"Failed to generate WhatsApp link: {e}")
             return False
         finally:
             db.close()

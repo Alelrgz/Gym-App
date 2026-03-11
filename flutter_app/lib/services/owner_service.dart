@@ -161,6 +161,19 @@ class OwnerService {
     return (response.data as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
+  Future<List<Map<String, dynamic>>> getExClients() async {
+    final response = await _api.get(ApiConfig.ownerCrmExClients);
+    return (response.data as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  Future<Map<String, dynamic>> generateWhatsappLink(String phone, String message) async {
+    final response = await _api.post(ApiConfig.ownerCrmWhatsappLink, data: {
+      'phone': phone,
+      'message': message,
+    });
+    return response.data as Map<String, dynamic>;
+  }
+
   // ── Facilities ──────────────────────────────────────────
   Future<List<Map<String, dynamic>>> getActivityTypes() async {
     final response = await _api.get(ApiConfig.ownerActivityTypes);
