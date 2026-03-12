@@ -1,9 +1,11 @@
 from fastapi import APIRouter, Depends, Header, HTTPException, status, File, UploadFile
+from typing import Optional
 from fastapi.security import OAuth2PasswordRequestForm
 from models import GymConfig, ClientData, TrainerData, OwnerData, LeaderboardData, WorkoutAssignment, ExerciseTemplate, AssignDietRequest
 from services import GymService, UserService, LeaderboardService
 from datetime import timedelta
 from auth import create_access_token, get_current_user
+from database import get_db
 from models_orm import UserORM
 
 # Import modular routes
@@ -21,6 +23,7 @@ from route_modules.course_routes import router as course_router
 from route_modules.friend_routes import router as friend_router
 from route_modules.facility_routes import router as facility_router
 from route_modules.nutritionist_routes import router as nutritionist_router
+from route_modules.gym_routes import router as gym_router
 # Gym assignment routes are now defined directly in main.py
 # from route_modules.gym_assignment_routes import router as gym_assignment_router
 
@@ -40,6 +43,7 @@ router.include_router(course_router)
 router.include_router(friend_router)
 router.include_router(facility_router)
 router.include_router(nutritionist_router)
+router.include_router(gym_router)
 # router.include_router(gym_assignment_router)
 # Trigger reload v14 - added gym/trainer assignment system
 
@@ -68,7 +72,26 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), service: UserS
             headers={"WWW-Authenticate": "Bearer"},
         )
     access_token = create_access_token(data={"sub": user.username, "role": user.role}, expires_delta=timedelta(hours=8))
-    return {"access_token": access_token, "token_type": "bearer", "role": user.role, "username": user.username, "user_id": user.id}
+
+    # Include gym list for owners
+    gyms = []
+    if user.role == "owner":
+        from models_orm import GymORM
+        db = next(get_db())
+        try:
+            gym_rows = db.query(GymORM).filter(
+                GymORM.owner_id == user.id,
+                GymORM.is_active == True
+            ).order_by(GymORM.created_at).all()
+            gyms = [{"id": g.id, "name": g.name or user.username, "logo": g.logo} for g in gym_rows]
+        finally:
+            db.close()
+
+    return {
+        "access_token": access_token, "token_type": "bearer",
+        "role": user.role, "username": user.username, "user_id": user.id,
+        "gyms": gyms,
+    }
 
 @router.post("/api/auth/register")
 async def register(
@@ -112,9 +135,12 @@ async def get_trainer_clients(
 @router.get("/api/owner/data", response_model=OwnerData)
 async def get_owner_data(
     service: UserService = Depends(get_user_service),
-    current_user: UserORM = Depends(get_current_user)
+    current_user: UserORM = Depends(get_current_user),
+    x_gym_id: Optional[str] = Header(None)
 ):
-    return service.get_owner(owner_id=current_user.id)
+    from gym_context import resolve_gym_id
+    gym_id = resolve_gym_id(current_user, x_gym_id)
+    return service.get_owner(owner_id=gym_id)
 
 @router.get("/api/leaderboard/data", response_model=LeaderboardData)
 async def get_leaderboard_data(

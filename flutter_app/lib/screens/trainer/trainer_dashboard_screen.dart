@@ -815,7 +815,7 @@ class _ClientWorkoutLogPanelState extends State<_ClientWorkoutLogPanel> with Sin
     try {
       final data = await widget.service.getClientNotes(widget.client.id);
       if (mounted) setState(() { _notes = data; _loadingNotes = false; });
-    } catch (_) { if (mounted) setState(() => _loadingNotes = false); }
+    } catch (e) { debugPrint('LOAD NOTES ERROR: $e'); if (mounted) setState(() => _loadingNotes = false); }
   }
 
   Future<void> _saveNote() async {
@@ -826,7 +826,7 @@ class _ClientWorkoutLogPanelState extends State<_ClientWorkoutLogPanel> with Sin
       await widget.service.saveClientNote(widget.client.id, title: 'Nota', content: text);
       _noteCtrl.clear();
       await _loadNotes();
-    } catch (_) {}
+    } catch (e) { debugPrint('SAVE NOTE ERROR: $e'); }
     if (mounted) setState(() => _savingNote = false);
   }
 

@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -15,19 +16,71 @@ class LoginScreen extends ConsumerStatefulWidget {
 
 class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _usernameController = TextEditingController();
-  final _passwordController = TextEditingController();
+  final _displayController = TextEditingController();
+  String _realPassword = '';
   bool _obscurePassword = true;
+  Timer? _revealTimer;
 
   @override
   void dispose() {
     _usernameController.dispose();
-    _passwordController.dispose();
+    _displayController.dispose();
+    _revealTimer?.cancel();
     super.dispose();
+  }
+
+  void _onPasswordChanged(String value) {
+    _revealTimer?.cancel();
+
+    if (!_obscurePassword) {
+      _realPassword = value;
+      return;
+    }
+
+    // Figure out what changed
+    final oldLen = _realPassword.length;
+    final newLen = value.length;
+
+    if (newLen > oldLen) {
+      // Characters were added — extract the new ones from the non-masked part
+      final newChars = value.substring(oldLen);
+      _realPassword = _realPassword.substring(0, oldLen) + newChars;
+
+      // Show last char briefly, mask the rest
+      final maskedPart = '•' * (_realPassword.length - 1);
+      _displayController.text = maskedPart + _realPassword[_realPassword.length - 1];
+      _displayController.selection = TextSelection.collapsed(offset: _displayController.text.length);
+
+      _revealTimer = Timer(const Duration(milliseconds: 800), () {
+        if (mounted && _obscurePassword) {
+          _displayController.text = '•' * _realPassword.length;
+          _displayController.selection = TextSelection.collapsed(offset: _displayController.text.length);
+        }
+      });
+    } else if (newLen < oldLen) {
+      // Characters were deleted
+      _realPassword = _realPassword.substring(0, newLen);
+      _displayController.text = '•' * newLen;
+      _displayController.selection = TextSelection.collapsed(offset: newLen);
+    }
+  }
+
+  void _toggleObscure() {
+    setState(() {
+      _obscurePassword = !_obscurePassword;
+      _revealTimer?.cancel();
+      if (_obscurePassword) {
+        _displayController.text = '•' * _realPassword.length;
+      } else {
+        _displayController.text = _realPassword;
+      }
+      _displayController.selection = TextSelection.collapsed(offset: _displayController.text.length);
+    });
   }
 
   Future<void> _login() async {
     final username = _usernameController.text.trim();
-    final password = _passwordController.text;
+    final password = _realPassword;
 
     if (username.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -99,8 +152,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                   // Password
                   TextField(
-                    controller: _passwordController,
-                    obscureText: _obscurePassword,
+                    controller: _displayController,
+                    obscureText: false,
+                    onChanged: _onPasswordChanged,
                     decoration: InputDecoration(
                       hintText: 'Password',
                       prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textTertiary),
@@ -109,7 +163,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                           _obscurePassword ? Icons.visibility_off : Icons.visibility,
                           color: AppColors.textTertiary,
                         ),
-                        onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                        onPressed: _toggleObscure,
                       ),
                     ),
                     style: const TextStyle(color: AppColors.textPrimary),

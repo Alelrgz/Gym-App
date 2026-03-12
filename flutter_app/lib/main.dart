@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:media_kit/media_kit.dart';
 
 import 'config/theme.dart';
+import 'services/local_notification_service.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -24,7 +26,10 @@ import 'screens/owner/owner_crm_screen.dart';
 import 'screens/owner/owner_facilities_screen.dart';
 import 'screens/owner/owner_settings_screen.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  MediaKit.ensureInitialized();
+  await LocalNotificationService().init();
   runApp(const ProviderScope(child: GymApp()));
 }
 

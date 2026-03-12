@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:media_kit/media_kit.dart';
+import 'package:media_kit_video/media_kit_video.dart';
+import '../../config/api_config.dart';
 import '../../config/theme.dart';
 import '../../providers/trainer_provider.dart';
 import '../../providers/client_provider.dart';
@@ -1234,7 +1238,13 @@ class _DraggableExerciseList extends StatelessWidget {
                     );
 
                     if (!isDraggable) {
-                      return Padding(padding: const EdgeInsets.only(bottom: 6), child: card);
+                      return Padding(
+                        padding: const EdgeInsets.only(bottom: 6),
+                        child: GestureDetector(
+                          onTap: () => _showExerciseDetail(context, ex),
+                          child: card,
+                        ),
+                      );
                     }
 
                     return Padding(
@@ -2455,35 +2465,38 @@ class _ExerciseTab extends StatelessWidget {
                     final muscle = ex['muscle'] ?? ex['muscle_group'] ?? '';
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 6),
-                      child: GlassCard(
-                        padding: const EdgeInsets.all(12),
-                        borderRadius: 14,
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 40, height: 40,
-                              decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: 0.12),
-                                borderRadius: BorderRadius.circular(10),
+                      child: GestureDetector(
+                        onTap: () => _showExerciseDetail(context, ex),
+                        child: GlassCard(
+                          padding: const EdgeInsets.all(12),
+                          borderRadius: 14,
+                          child: Row(
+                            children: [
+                              Container(
+                                width: 40, height: 40,
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: const Icon(Icons.fitness_center_rounded, size: 20, color: AppColors.primary),
                               ),
-                              child: const Icon(Icons.fitness_center_rounded, size: 20, color: AppColors.primary),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    ex['name'] as String? ?? '',
-                                    style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
-                                  ),
-                                  if (muscle.toString().isNotEmpty)
-                                    Text(muscle.toString(), style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                                ],
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      ex['name'] as String? ?? '',
+                                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                    ),
+                                    if (muscle.toString().isNotEmpty)
+                                      Text(muscle.toString(), style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                                  ],
+                                ),
                               ),
-                            ),
-                            Icon(Icons.chevron_right_rounded, size: 20, color: Colors.grey[600]),
-                          ],
+                              Icon(Icons.chevron_right_rounded, size: 20, color: Colors.grey[600]),
+                            ],
+                          ),
                         ),
                       ),
                     );
@@ -2492,6 +2505,426 @@ class _ExerciseTab extends StatelessWidget {
         ),
       ],
     );
+  }
+
+}
+
+void _showExerciseDetail(BuildContext context, Map<String, dynamic> ex) {
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: AppColors.surface,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+    builder: (ctx) => DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (_, scrollCtrl) => _ExerciseDetailSheet(exercise: ex, scrollController: scrollCtrl),
+    ),
+  );
+}
+
+class _ExerciseDetailSheet extends ConsumerStatefulWidget {
+  final Map<String, dynamic> exercise;
+  final ScrollController scrollController;
+
+  const _ExerciseDetailSheet({required this.exercise, required this.scrollController});
+
+  @override
+  ConsumerState<_ExerciseDetailSheet> createState() => _ExerciseDetailSheetState();
+}
+
+class _ExerciseDetailSheetState extends ConsumerState<_ExerciseDetailSheet> {
+  late Map<String, dynamic> _exercise;
+  Player? _player;
+  VideoController? _videoCtrl;
+  bool _hasVideo = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _exercise = Map<String, dynamic>.from(widget.exercise);
+    _initVideo();
+  }
+
+  void _initVideo() {
+    final ex = _exercise;
+    final videoUrl = ex['video_url'] as String?;
+    final videoId = ex['video_id'] as String?;
+
+    String? url;
+    if (videoUrl != null && videoUrl.isNotEmpty) {
+      url = videoUrl.startsWith('http') ? videoUrl : '${ApiConfig.baseUrl}$videoUrl';
+    } else if (videoId != null && videoId.isNotEmpty) {
+      url = '${ApiConfig.baseUrl}/static/videos/$videoId.mp4';
+    }
+
+    if (url != null) {
+      _hasVideo = true;
+      _player = Player();
+      _videoCtrl = VideoController(_player!);
+      _player!.setPlaylistMode(PlaylistMode.loop);
+      _player!.open(Media(url));
+    }
+  }
+
+  @override
+  void dispose() {
+    _player?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ex = _exercise;
+    final name = ex['name'] as String? ?? '';
+    final muscle = (ex['muscle'] ?? ex['muscle_group'] ?? '') as String;
+    final type = ex['type'] as String? ?? '';
+    final difficulty = ex['difficulty'] as String? ?? '';
+    final description = ex['description'] as String? ?? '';
+    final steps = ex['steps'] as List<dynamic>? ?? [];
+    final defaultDuration = ex['default_duration'];
+
+    return ListView(
+      controller: widget.scrollController,
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
+      children: [
+        // Drag handle
+        Center(
+          child: Container(
+            width: 40, height: 4,
+            margin: const EdgeInsets.only(bottom: 16),
+            decoration: BoxDecoration(color: Colors.grey[600], borderRadius: BorderRadius.circular(2)),
+          ),
+        ),
+
+        // Video
+        ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: AspectRatio(
+            aspectRatio: 16 / 9,
+            child: _buildVideoWidget(),
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        // Name & muscle + edit button
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  const SizedBox(height: 4),
+                  if (muscle.isNotEmpty)
+                    Text(muscle, style: TextStyle(fontSize: 14, color: AppColors.primary, fontWeight: FontWeight.w500)),
+                ],
+              ),
+            ),
+            GestureDetector(
+              onTap: () => _showEditModal(context),
+              child: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                ),
+                child: const Icon(Icons.edit_rounded, size: 20, color: AppColors.primary),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Info chips
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            if (type.isNotEmpty) _infoChip(Icons.category_rounded, _formatType(type)),
+            if (difficulty.isNotEmpty) _infoChip(Icons.speed_rounded, _formatDifficulty(difficulty)),
+            if (defaultDuration != null) _infoChip(Icons.timer_outlined, '${defaultDuration}s'),
+          ],
+        ),
+
+        // Description
+        if (description.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          const Text('Descrizione', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+          const SizedBox(height: 8),
+          Text(description, style: TextStyle(fontSize: 14, color: Colors.grey[400], height: 1.5)),
+        ],
+
+        // Steps
+        if (steps.isNotEmpty) ...[
+          const SizedBox(height: 20),
+          const Text('Passaggi', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+          const SizedBox(height: 8),
+          ...steps.asMap().entries.map((entry) => Padding(
+            padding: const EdgeInsets.only(bottom: 8),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 24, height: 24,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(7),
+                  ),
+                  child: Center(
+                    child: Text('${entry.key + 1}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(child: Text(entry.value.toString(), style: TextStyle(fontSize: 13, color: Colors.grey[400], height: 1.4))),
+              ],
+            ),
+          )),
+        ],
+
+        // No extra info placeholder
+        if (description.isEmpty && steps.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(top: 20),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(Icons.info_outline_rounded, size: 32, color: Colors.grey[600]),
+                  const SizedBox(height: 8),
+                  Text('Nessuna descrizione disponibile', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+                ],
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  void _showEditModal(BuildContext context) {
+    final nameCtrl = TextEditingController(text: _exercise['name'] as String? ?? '');
+    final muscleCtrl = TextEditingController(text: (_exercise['muscle'] ?? _exercise['muscle_group'] ?? '') as String);
+    final descCtrl = TextEditingController(text: _exercise['description'] as String? ?? '');
+    final videoUrlCtrl = TextEditingController(text: _exercise['video_url'] as String? ?? '');
+    final durationCtrl = TextEditingController(text: '${_exercise['default_duration'] ?? 60}');
+    String type = _exercise['type'] as String? ?? 'weight_reps';
+    String difficulty = _exercise['difficulty'] as String? ?? 'intermediate';
+    final stepsCtrl = TextEditingController(
+      text: (_exercise['steps'] as List<dynamic>? ?? []).join('\n'),
+    );
+    bool saving = false;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    const Expanded(
+                      child: Text('Modifica Esercizio', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.pop(ctx),
+                      child: Icon(Icons.close_rounded, color: Colors.grey[500]),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                _EditField(controller: nameCtrl, label: 'Nome'),
+                const SizedBox(height: 12),
+                _EditField(controller: muscleCtrl, label: 'Gruppo Muscolare'),
+                const SizedBox(height: 12),
+                _EditField(controller: descCtrl, label: 'Descrizione', maxLines: 3),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(child: _EditField(controller: videoUrlCtrl, label: 'Video URL (opzionale)')),
+                    const SizedBox(width: 8),
+                    _VideoUploadButton(
+                      exerciseId: _exercise['id'] as String,
+                      onUploaded: (updatedEx) {
+                        setModalState(() => videoUrlCtrl.text = '');
+                        setState(() {
+                          _exercise = {..._exercise, 'video_id': updatedEx['video_id']};
+                        });
+                      },
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: type,
+                        dropdownColor: AppColors.surface,
+                        style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                        decoration: _editInputDecoration('Tipo'),
+                        items: const [
+                          DropdownMenuItem(value: 'weight_reps', child: Text('Peso & Ripetizioni')),
+                          DropdownMenuItem(value: 'cardio', child: Text('Cardio')),
+                          DropdownMenuItem(value: 'bodyweight', child: Text('Corpo Libero')),
+                          DropdownMenuItem(value: 'Compound', child: Text('Compound')),
+                        ],
+                        onChanged: (v) => setModalState(() => type = v ?? type),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: DropdownButtonFormField<String>(
+                        value: difficulty,
+                        dropdownColor: AppColors.surface,
+                        style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                        decoration: _editInputDecoration('Difficoltà'),
+                        items: const [
+                          DropdownMenuItem(value: 'beginner', child: Text('Principiante')),
+                          DropdownMenuItem(value: 'intermediate', child: Text('Intermedio')),
+                          DropdownMenuItem(value: 'advanced', child: Text('Avanzato')),
+                        ],
+                        onChanged: (v) => setModalState(() => difficulty = v ?? difficulty),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                _EditField(controller: durationCtrl, label: 'Durata Default (secondi)', keyboardType: TextInputType.number),
+                const SizedBox(height: 12),
+                _EditField(controller: stepsCtrl, label: 'Passaggi (uno per riga)', maxLines: 4),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    onPressed: saving ? null : () async {
+                      setModalState(() => saving = true);
+                      final steps = stepsCtrl.text.split('\n').where((s) => s.trim().isNotEmpty).toList();
+                      final data = {
+                        'name': nameCtrl.text.trim(),
+                        'muscle_group': muscleCtrl.text.trim(),
+                        'description': descCtrl.text.trim(),
+                        'video_url': videoUrlCtrl.text.trim().isEmpty ? null : videoUrlCtrl.text.trim(),
+                        'type': type,
+                        'difficulty': difficulty,
+                        'default_duration': int.tryParse(durationCtrl.text) ?? 60,
+                        'steps': steps,
+                      };
+                      try {
+                        final service = ref.read(trainerServiceProvider);
+                        await service.updateExercise(_exercise['id'] as String, data);
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        // Update local state
+                        setState(() {
+                          _exercise = {..._exercise, ...data, 'muscle': muscleCtrl.text.trim()};
+                        });
+                        ref.invalidate(trainerExercisesProvider);
+                      } catch (e) {
+                        if (ctx.mounted) {
+                          ScaffoldMessenger.of(ctx).showSnackBar(
+                            SnackBar(content: Text('Errore: $e'), backgroundColor: AppColors.danger),
+                          );
+                        }
+                      }
+                      setModalState(() => saving = false);
+                    },
+                    child: saving
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Salva Modifiche', style: TextStyle(fontWeight: FontWeight.w600)),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  InputDecoration _editInputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      labelStyle: TextStyle(color: Colors.grey[500]),
+      filled: true,
+      fillColor: Colors.white.withValues(alpha: 0.06),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+    );
+  }
+
+  Widget _buildVideoWidget() {
+    if (!_hasVideo || _videoCtrl == null) {
+      return Container(
+        color: Colors.grey[900],
+        child: Center(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.videocam_off_rounded, size: 40, color: Colors.grey[600]),
+              const SizedBox(height: 8),
+              Text('Nessun video', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Video(
+      controller: _videoCtrl!,
+      controls: AdaptiveVideoControls,
+    );
+  }
+
+  Widget _infoChip(IconData icon, String label) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: Colors.grey[400]),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[400])),
+        ],
+      ),
+    );
+  }
+
+  String _formatType(String type) {
+    switch (type) {
+      case 'weight_reps': return 'Peso & Rip.';
+      case 'cardio': return 'Cardio';
+      case 'bodyweight': return 'Corpo Libero';
+      default: return type;
+    }
+  }
+
+  String _formatDifficulty(String diff) {
+    switch (diff) {
+      case 'beginner': return 'Principiante';
+      case 'intermediate': return 'Intermedio';
+      case 'advanced': return 'Avanzato';
+      default: return diff;
+    }
   }
 }
 
@@ -3726,6 +4159,101 @@ class _ClientMetricsContentState extends State<_ClientMetricsContent> {
   Widget _emptyChart(String msg) {
     return Center(
       child: Text(msg, style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.25), fontStyle: FontStyle.italic)),
+    );
+  }
+}
+
+class _EditField extends StatelessWidget {
+  final TextEditingController controller;
+  final String label;
+  final int maxLines;
+  final TextInputType keyboardType;
+
+  const _EditField({
+    required this.controller,
+    required this.label,
+    this.maxLines = 1,
+    this.keyboardType = TextInputType.text,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TextField(
+      controller: controller,
+      maxLines: maxLines,
+      keyboardType: keyboardType,
+      style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.grey[500]),
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: 0.06),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      ),
+    );
+  }
+}
+
+class _VideoUploadButton extends ConsumerStatefulWidget {
+  final String exerciseId;
+  final ValueChanged<Map<String, dynamic>> onUploaded;
+
+  const _VideoUploadButton({required this.exerciseId, required this.onUploaded});
+
+  @override
+  ConsumerState<_VideoUploadButton> createState() => _VideoUploadButtonState();
+}
+
+class _VideoUploadButtonState extends ConsumerState<_VideoUploadButton> {
+  bool _uploading = false;
+
+  Future<void> _pickAndUpload() async {
+    final picker = ImagePicker();
+    final video = await picker.pickVideo(source: ImageSource.gallery);
+    if (video == null) return;
+
+    setState(() => _uploading = true);
+    try {
+      final service = ref.read(trainerServiceProvider);
+      final result = await service.uploadExerciseVideo(widget.exerciseId, video.path, video.name);
+      ref.invalidate(trainerExercisesProvider);
+      widget.onUploaded(result);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Video caricato'), backgroundColor: Colors.green),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore upload: $e'), backgroundColor: AppColors.danger),
+        );
+      }
+    }
+    if (mounted) setState(() => _uploading = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: _uploading ? null : _pickAndUpload,
+      child: Container(
+        width: 48, height: 48,
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.15),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+        ),
+        child: _uploading
+            ? const Padding(
+                padding: EdgeInsets.all(12),
+                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+              )
+            : const Icon(Icons.video_library_rounded, size: 22, color: AppColors.primary),
+      ),
     );
   }
 }

@@ -161,6 +161,11 @@ class AuthNotifier extends StateNotifier<AuthState> {
     }
   }
 
+  /// Update the current user in state (e.g. to refresh gym list).
+  void updateUser(User user) {
+    state = state.copyWith(user: user);
+  }
+
   Future<void> logout() async {
     await _authService.logout();
     state = const AuthState(status: AuthStatus.unauthenticated);

@@ -548,6 +548,86 @@ class CRMService:
         finally:
             db.close()
 
+    def get_pipeline_clients(self, gym_id: str, status: str, limit: int = 50) -> List[dict]:
+        """Get detailed client list for a specific pipeline status (new, active, at_risk, churning)."""
+        db = get_db_session()
+        try:
+            clients = db.query(ClientProfileORM).filter(
+                ClientProfileORM.gym_id == gym_id
+            ).all()
+
+            today = date.today()
+            result = []
+
+            for client in clients:
+                client_status = self._calculate_client_status(client, db, today)
+                if client_status != status:
+                    continue
+
+                user = db.query(UserORM).filter(UserORM.id == client.id).first()
+                if not user:
+                    continue
+
+                # Count completed workouts
+                completed_workouts = db.query(ClientScheduleORM).filter(
+                    ClientScheduleORM.client_id == client.id,
+                    ClientScheduleORM.type == "workout",
+                    ClientScheduleORM.completed == True
+                ).count()
+
+                # Count completed courses
+                completed_courses = db.query(ClientScheduleORM).filter(
+                    ClientScheduleORM.client_id == client.id,
+                    ClientScheduleORM.type == "course",
+                    ClientScheduleORM.completed == True
+                ).count()
+
+                days_inactive = self._get_days_inactive(client, db, today)
+
+                # Get trainer name
+                trainer_name = None
+                if client.trainer_id:
+                    trainer = db.query(UserORM).filter(UserORM.id == client.trainer_id).first()
+                    if trainer:
+                        trainer_name = trainer.username
+
+                # Get subscription plan
+                plan_name = None
+                sub = db.query(ClientSubscriptionORM).filter(
+                    ClientSubscriptionORM.client_id == client.id,
+                    ClientSubscriptionORM.gym_id == gym_id
+                ).first()
+                if sub and sub.plan_id:
+                    plan = db.query(SubscriptionPlanORM).filter(
+                        SubscriptionPlanORM.id == sub.plan_id
+                    ).first()
+                    if plan:
+                        plan_name = plan.name
+
+                result.append({
+                    "id": client.id,
+                    "name": user.username,
+                    "email": user.email,
+                    "streak": client.streak or 0,
+                    "health_score": client.health_score or 0,
+                    "completed_workouts": completed_workouts,
+                    "completed_courses": completed_courses,
+                    "days_inactive": days_inactive,
+                    "trainer_name": trainer_name,
+                    "plan_name": plan_name,
+                    "profile_picture": user.profile_picture,
+                })
+
+            # Sort: most active first (lowest days_inactive), then by streak desc
+            result.sort(key=lambda x: (-x['streak'], x['days_inactive']))
+            return result[:limit]
+
+        except Exception as e:
+            logger.error(f"Error getting pipeline clients: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to get pipeline clients: {str(e)}")
+        finally:
+            db.close()
+
     def _days_since(self, date_str: str) -> int:
         """Calculate days since a given ISO date string."""
         if not date_str:

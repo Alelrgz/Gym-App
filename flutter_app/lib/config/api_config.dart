@@ -138,6 +138,7 @@ class ApiConfig {
   static const trainerMyCommissions = '/api/trainer/my-commissions';
   static const exercises = '/api/exercises';
   static String exercise(String id) => '/api/exercises/$id';
+  static String exerciseVideo(String id) => '/api/exercises/$id/video';
 
   // ── Trainer Client Metrics ────────────────────────────────
   static String trainerClientWeightHistory(String id) => '/api/trainer/client/$id/weight-history';
@@ -146,6 +147,7 @@ class ApiConfig {
   static String trainerClientWeekStreak(String id) => '/api/trainer/client/$id/week-streak';
   static String trainerClientWorkoutLog(String id) => '/api/trainer/client/$id/workout-log';
   static String trainerClientNotes(String id) => '/api/trainer/client/$id/notes';
+  static String trainerClientCourseLog(String id) => '/api/trainer/client/$id/course-log';
 
   // ── Owner ───────────────────────────────────────────────
   // Dashboard / core
@@ -185,7 +187,12 @@ class ApiConfig {
   static const ownerCrmAnalytics = '/api/owner/crm/analytics';
   static const ownerCrmInteractions = '/api/owner/crm/interactions';
   static const ownerCrmExClients = '/api/owner/crm/ex-clients';
+  static String ownerCrmPipelineClients(String status) => '/api/owner/crm/pipeline-clients?status=$status';
   static const ownerCrmWhatsappLink = '/api/owner/crm/whatsapp-link';
+
+  // Multi-gym
+  static const ownerGyms = '/api/owner/gyms';
+  static String ownerGym(String id) => '/api/owner/gyms/$id';
 
   // Facilities
   static const ownerActivityTypes = '/api/owner/activity-types';
@@ -200,6 +207,18 @@ class ApiConfig {
   static const ownerShowerSettings = '/api/owner/shower-settings';
   static const ownerGenerateDeviceKey = '/api/owner/generate-device-key';
   static const ownerImportClients = '/api/owner/import-clients';
+
+  // SMTP Email Settings
+  static const ownerSmtpSettings = '/api/owner/smtp-settings';
+  static const ownerSmtpTest = '/api/owner/smtp-settings/test';
+  static String ownerSmtpOAuthAuthorize(String provider) => '/api/owner/smtp-oauth/$provider/authorize';
+  static const ownerSmtpOAuthStatus = '/api/owner/smtp-oauth/status';
+  static const ownerSmtpOAuthDisconnect = '/api/owner/smtp-oauth';
+
+  // FCM Push Notification Settings
+  static const ownerFcmSettings = '/api/owner/fcm-settings';
+  static const registerDevice = '/api/notifications/register-device';
+  static const unregisterDevice = '/api/notifications/unregister-device';
 
   // Stripe Connect
   static const ownerStripeOnboard = '/api/owner/stripe-connect/onboard';

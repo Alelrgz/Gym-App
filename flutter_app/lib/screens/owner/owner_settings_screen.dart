@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../config/api_config.dart';
 import '../../config/theme.dart';
 import '../../providers/owner_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/gym_provider.dart';
+import '../../models/user.dart';
 
 class OwnerSettingsScreen extends ConsumerStatefulWidget {
   const OwnerSettingsScreen({super.key});
@@ -43,6 +46,21 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
   // Commissions
   double _defaultCommissionRate = 0;
   List<Map<String, dynamic>> _trainers = [];
+
+  // SMTP
+  String _smtpHost = '';
+  int _smtpPort = 587;
+  String _smtpUser = '';
+  String _smtpFromEmail = '';
+  String _smtpFromName = '';
+  bool _smtpPasswordSet = false;
+  bool _smtpConfigured = false;
+  bool _smtpTesting = false;
+  String? _smtpOAuthProvider;
+  bool _smtpOAuthConnected = false;
+
+  // Push Notifications (FCM)
+  bool _fcmConfigured = false;
 
   @override
   void initState() {
@@ -96,6 +114,8 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
 
       // Load terminal status separately
       _loadTerminalStatus();
+      _loadSmtpSettings();
+      _loadFcmSettings();
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
@@ -175,6 +195,8 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
                       final cards = [
                         _buildProfileCard(),
                         _buildGymInfoCard(),
+                        _buildSmtpCard(),
+                        _buildPushNotificationCard(),
                         _buildStripeCard(),
                         _buildPosCard(),
                         _buildShowerCard(),
@@ -242,15 +264,120 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
     );
   }
 
+  Future<void> _loadSmtpSettings() async {
+    try {
+      final data = await ref.read(ownerServiceProvider).getSmtpSettings();
+      if (mounted) {
+        setState(() {
+          _smtpHost = data['smtp_host'] as String? ?? '';
+          _smtpPort = (data['smtp_port'] as num?)?.toInt() ?? 587;
+          _smtpUser = data['smtp_user'] as String? ?? '';
+          _smtpFromEmail = data['smtp_from_email'] as String? ?? '';
+          _smtpFromName = data['smtp_from_name'] as String? ?? '';
+          _smtpPasswordSet = data['smtp_password_set'] as bool? ?? false;
+          _smtpConfigured = data['is_configured'] as bool? ?? false;
+          _smtpOAuthProvider = data['oauth_provider'] as String?;
+          _smtpOAuthConnected = data['oauth_connected'] as bool? ?? false;
+        });
+      }
+    } catch (_) {}
+
+  }
+
+  Future<void> _loadFcmSettings() async {
+    try {
+      final data = await ref.read(ownerServiceProvider).getFcmSettings();
+      if (mounted) {
+        setState(() {
+          _fcmConfigured = data['is_configured'] as bool? ?? false;
+        });
+      }
+    } catch (_) {}
+  }
+
   // ═══════════════════════════════════════════════════════════
   //  GYM INFO
   // ═══════════════════════════════════════════════════════════
   Widget _buildGymInfoCard() {
+    final gyms = ref.watch(ownerGymsProvider);
+    final activeGymId = ref.watch(activeGymIdProvider);
+
     return _settingsCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle('Palestra'),
+          Row(
+            children: [
+              Expanded(child: _sectionTitle('Palestra')),
+              GestureDetector(
+                onTap: _showCreateGymDialog,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.add_rounded, size: 14, color: AppColors.primary),
+                      const SizedBox(width: 4),
+                      Text('Aggiungi', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          // Gym selector (when multiple gyms)
+          if (gyms.length > 1) ...[
+            const SizedBox(height: 12),
+            _fieldLabel('Seleziona Palestra'),
+            ...gyms.map((gym) {
+              final isActive = gym.id == activeGymId;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 6),
+                child: GestureDetector(
+                  onTap: () => _switchToGym(gym),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: isActive ? AppColors.primary.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isActive ? AppColors.primary.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.08),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 32, height: 32,
+                          decoration: BoxDecoration(
+                            color: isActive ? AppColors.primary.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(7),
+                          ),
+                          child: Center(
+                            child: Text(
+                              gym.name.isNotEmpty ? gym.name[0].toUpperCase() : 'G',
+                              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: isActive ? AppColors.primary : Colors.grey[500]),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(gym.name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                        ),
+                        if (isActive)
+                          Icon(Icons.check_circle_rounded, size: 16, color: AppColors.primary)
+                        else
+                          Text('Seleziona', style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+          ],
           const SizedBox(height: 12),
           _fieldLabel('Nome Palestra'),
           Row(
@@ -302,6 +429,73 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
     );
   }
 
+  void _switchToGym(GymInfo gym) {
+    ref.read(activeGymIdProvider.notifier).state = gym.id;
+    // Reload settings for the new gym
+    _loadAll();
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Palestra attiva: ${gym.name}')),
+    );
+  }
+
+  void _showCreateGymDialog() {
+    final nameCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Nuova Palestra'),
+        content: TextField(
+          controller: nameCtrl,
+          decoration: const InputDecoration(hintText: 'Nome della nuova palestra'),
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Annulla'),
+          ),
+          TextButton(
+            onPressed: () async {
+              final name = nameCtrl.text.trim();
+              if (name.isEmpty) return;
+              Navigator.pop(ctx);
+              try {
+                final svc = ref.read(ownerServiceProvider);
+                final result = await svc.createGym(name);
+                final newGym = GymInfo(
+                  id: result['id'] as String,
+                  name: result['name'] as String,
+                  logo: result['logo'] as String?,
+                );
+                // Update the auth state's gym list
+                final authNotifier = ref.read(authProvider.notifier);
+                final currentUser = ref.read(authProvider).user;
+                if (currentUser != null) {
+                  final updatedGyms = [...currentUser.gyms, newGym];
+                  authNotifier.updateUser(currentUser.copyWith(gyms: updatedGyms));
+                }
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Palestra "${newGym.name}" creata!')),
+                  );
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Errore: $e')),
+                  );
+                }
+              }
+            },
+            child: const Text('Crea'),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _showGymNameModal() {
     final nameCtrl = TextEditingController(text: _gymName);
     final passCtrl = TextEditingController();
@@ -334,6 +528,519 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
                 await ref.read(ownerServiceProvider).updateGymName(nameCtrl.text, passCtrl.text);
                 if (ctx.mounted) Navigator.pop(ctx);
                 setState(() => _gymName = nameCtrl.text);
+              } catch (e) {
+                if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Errore: $e')));
+              }
+            },
+            child: const Text('Salva'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  SMTP EMAIL
+  // ═══════════════════════════════════════════════════════════
+  Widget _buildSmtpCard() {
+    final oauthLabel = _smtpOAuthProvider == 'google' ? 'Google' : _smtpOAuthProvider == 'microsoft' ? 'Microsoft' : null;
+
+    return _settingsCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _sectionTitle('Email Automatiche'),
+              Row(
+                children: [
+                  if (_smtpOAuthConnected) ...[
+                    _badge(oauthLabel ?? 'OAuth', const Color(0xFF60A5FA)),
+                    const SizedBox(width: 6),
+                  ],
+                  _badge(
+                    _smtpConfigured ? 'Attivo' : 'Non Configurato',
+                    _smtpConfigured ? const Color(0xFF4ADE80) : const Color(0xFFF87171),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            _smtpOAuthConnected
+              ? 'Email collegate tramite ${oauthLabel ?? 'OAuth'}. Nessuna password necessaria.'
+              : 'Configura SMTP per inviare email automatiche ai clienti.',
+            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 12),
+          if (_smtpConfigured) ...[
+            _smtpInfoRow(_smtpOAuthConnected ? 'Metodo' : 'Server', _smtpOAuthConnected ? 'OAuth2 (${oauthLabel ?? _smtpOAuthProvider})' : _smtpHost),
+            if (!_smtpOAuthConnected) _smtpInfoRow('Porta', '$_smtpPort'),
+            _smtpInfoRow('Email', _smtpUser),
+            _smtpInfoRow('Mittente', _smtpFromEmail.isNotEmpty ? _smtpFromEmail : _smtpUser),
+            _smtpInfoRow('Nome', _smtpFromName),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                if (_smtpOAuthConnected) ...[
+                  Expanded(
+                    child: _actionBtn('Disconnetti', icon: Icons.link_off_rounded, onTap: _disconnectOAuth),
+                  ),
+                ] else ...[
+                  Expanded(
+                    child: _actionBtn('Modifica', icon: Icons.edit_rounded, onTap: _showSmtpModal),
+                  ),
+                ],
+                const SizedBox(width: 8),
+                _actionBtn(
+                  _smtpTesting ? 'Invio...' : 'Test Email',
+                  icon: Icons.send_rounded,
+                  onTap: _smtpTesting ? null : _testSmtp,
+                ),
+              ],
+            ),
+          ] else ...[
+            // OAuth sign-in buttons
+            ...[
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _startOAuth('google'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.white,
+                      foregroundColor: Colors.black87,
+                    ),
+                    icon: const Text('G', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Color(0xFF4285F4))),
+                    label: const Text('Accedi con Google'),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _startOAuth('microsoft'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2F2F2F),
+                      foregroundColor: Colors.white,
+                    ),
+                    icon: const Icon(Icons.window_rounded, size: 18, color: Color(0xFF00A4EF)),
+                    label: const Text('Accedi con Microsoft'),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Row(
+                  children: [
+                    Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.1))),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: Text('oppure', style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+                    ),
+                    Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.1))),
+                  ],
+                ),
+              ),
+            ],
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _showSmtpModal,
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF3B82F6)),
+                icon: const Icon(Icons.email_rounded, size: 16),
+                label: const Text('Configura SMTP Manuale'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Future<void> _startOAuth(String provider) async {
+    try {
+      final data = await ref.read(ownerServiceProvider).getSmtpOAuthAuthorizeUrl(provider);
+      final url = data['url'] as String?;
+      if (url != null) {
+        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        // Show hint to reload after completing OAuth
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Text('Completa l\'accesso nel browser, poi torna qui.'),
+              duration: const Duration(seconds: 8),
+              action: SnackBarAction(label: 'Ricarica', onPressed: _loadSmtpSettings),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('OAuth non disponibile: $e'),
+          backgroundColor: const Color(0xFFF87171),
+        ));
+      }
+    }
+  }
+
+  Future<void> _disconnectOAuth() async {
+    try {
+      await ref.read(ownerServiceProvider).disconnectSmtpOAuth();
+      _loadSmtpSettings();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('OAuth disconnesso')));
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+    }
+  }
+
+  Widget _smtpInfoRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          SizedBox(width: 70, child: Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[600]))),
+          Expanded(child: Text(value.isNotEmpty ? value : '—', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.7)), overflow: TextOverflow.ellipsis)),
+        ],
+      ),
+    );
+  }
+
+  static const _smtpPresets = <String, Map<String, dynamic>>{
+    'Gmail': {'host': 'smtp.gmail.com', 'port': 587, 'hint': 'Usa una App Password di Google'},
+    'Outlook': {'host': 'smtp.office365.com', 'port': 587, 'hint': 'Usa la password del tuo account Microsoft'},
+    'Aruba': {'host': 'smtps.aruba.it', 'port': 465, 'hint': 'Usa le credenziali della tua casella Aruba'},
+    'Yahoo': {'host': 'smtp.mail.yahoo.com', 'port': 587, 'hint': 'Genera una App Password da Yahoo'},
+    'Libero': {'host': 'smtp.libero.it', 'port': 465, 'hint': 'Usa le credenziali del tuo account Libero'},
+    'Personalizzato': {'host': '', 'port': 587, 'hint': 'Inserisci i dati del tuo server SMTP'},
+  };
+
+  void _showSmtpModal() {
+    final hostCtrl = TextEditingController(text: _smtpHost);
+    final portCtrl = TextEditingController(text: '$_smtpPort');
+    final userCtrl = TextEditingController(text: _smtpUser);
+    final passCtrl = TextEditingController();
+    final fromEmailCtrl = TextEditingController(text: _smtpFromEmail);
+    final fromNameCtrl = TextEditingController(text: _smtpFromName);
+
+    // Detect current preset
+    String selectedPreset = 'Personalizzato';
+    for (final entry in _smtpPresets.entries) {
+      if (entry.value['host'] == _smtpHost && _smtpHost.isNotEmpty) {
+        selectedPreset = entry.key;
+        break;
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) {
+          final preset = _smtpPresets[selectedPreset]!;
+          final hintText = preset['hint'] as String;
+
+          return AlertDialog(
+            backgroundColor: AppColors.surface,
+            title: const Text('Configurazione SMTP', style: TextStyle(fontSize: 16)),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Seleziona il tuo provider email:', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: _smtpPresets.keys.map((name) {
+                      final isSelected = name == selectedPreset;
+                      return GestureDetector(
+                        onTap: () {
+                          final p = _smtpPresets[name]!;
+                          setModalState(() {
+                            selectedPreset = name;
+                            if (name != 'Personalizzato') {
+                              hostCtrl.text = p['host'] as String;
+                              portCtrl.text = '${p['port']}';
+                            }
+                          });
+                        },
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: isSelected ? AppColors.primary.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.06),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: isSelected ? AppColors.primary : Colors.white.withValues(alpha: 0.1),
+                            ),
+                          ),
+                          child: Text(
+                            name,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: isSelected ? AppColors.primary : Colors.grey[400],
+                              fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                            ),
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 14, color: AppColors.primary.withValues(alpha: 0.7)),
+                        const SizedBox(width: 6),
+                        Expanded(child: Text(hintText, style: TextStyle(fontSize: 10, color: Colors.grey[400]))),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // OAuth shortcut for Gmail/Outlook
+                  if (selectedPreset == 'Gmail' || selectedPreset == 'Outlook') ...[
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton.icon(
+                        onPressed: () {
+                          Navigator.pop(ctx);
+                          _startOAuth(selectedPreset == 'Gmail' ? 'google' : 'microsoft');
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: selectedPreset == 'Gmail' ? Colors.white : const Color(0xFF2F2F2F),
+                          foregroundColor: selectedPreset == 'Gmail' ? Colors.black87 : Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                        icon: selectedPreset == 'Gmail'
+                          ? const Text('G', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: Color(0xFF4285F4)))
+                          : const Icon(Icons.window_rounded, size: 16, color: Color(0xFF00A4EF)),
+                        label: Text('Accedi con ${selectedPreset == 'Gmail' ? 'Google' : 'Microsoft'}'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.1))),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text('oppure manuale', style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+                        ),
+                        Expanded(child: Divider(color: Colors.white.withValues(alpha: 0.1))),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  if (selectedPreset == 'Personalizzato') ...[
+                    _buildInput(hostCtrl, 'Server SMTP'),
+                    const SizedBox(height: 8),
+                    _buildInput(portCtrl, 'Porta', keyboardType: TextInputType.number),
+                    const SizedBox(height: 8),
+                  ],
+                  _buildInput(userCtrl, 'Email / Username'),
+                  const SizedBox(height: 8),
+                  TextField(
+                    controller: passCtrl,
+                    obscureText: true,
+                    style: const TextStyle(fontSize: 14, color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: _smtpPasswordSet ? 'Password (lascia vuoto per non cambiare)' : 'Password / App Password',
+                      hintStyle: TextStyle(color: Colors.grey[700]),
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.06),
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.primary)),
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  _buildInput(fromEmailCtrl, 'Email Mittente (opzionale)'),
+                  const SizedBox(height: 8),
+                  _buildInput(fromNameCtrl, 'Nome Mittente (es. La Mia Palestra)'),
+                ],
+              ),
+            ),
+            actions: [
+              TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annulla')),
+              ElevatedButton(
+                onPressed: () async {
+                  final data = <String, dynamic>{
+                    'smtp_host': hostCtrl.text.trim(),
+                    'smtp_port': int.tryParse(portCtrl.text.trim()) ?? 587,
+                    'smtp_user': userCtrl.text.trim(),
+                    'smtp_from_email': fromEmailCtrl.text.trim(),
+                    'smtp_from_name': fromNameCtrl.text.trim(),
+                  };
+                  if (passCtrl.text.isNotEmpty) data['smtp_password'] = passCtrl.text;
+
+                  try {
+                    await ref.read(ownerServiceProvider).updateSmtpSettings(data);
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    _loadSmtpSettings();
+                    if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('SMTP salvato!')));
+                  } catch (e) {
+                    if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Errore: $e')));
+                  }
+                },
+                child: const Text('Salva'),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _testSmtp() async {
+    setState(() => _smtpTesting = true);
+    try {
+      final result = await ref.read(ownerServiceProvider).testSmtpSettings();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text(result['message'] as String? ?? 'Email di test inviata!'),
+          backgroundColor: const Color(0xFF4ADE80),
+        ));
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Errore: $e'),
+          backgroundColor: const Color(0xFFF87171),
+        ));
+      }
+    } finally {
+      if (mounted) setState(() => _smtpTesting = false);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════
+  //  PUSH NOTIFICATIONS (FCM)
+  // ═══════════════════════════════════════════════════════════
+  Widget _buildPushNotificationCard() {
+    return _settingsCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _sectionTitle('Notifiche Push'),
+              _badge(
+                _fcmConfigured ? 'Attivo' : 'Non Configurato',
+                _fcmConfigured ? const Color(0xFF4ADE80) : Colors.grey,
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Le notifiche push arrivano sul telefono del cliente anche quando l\'app è chiusa.',
+            style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+          ),
+          const SizedBox(height: 12),
+          if (_fcmConfigured) ...[
+            Row(
+              children: [
+                Container(
+                  width: 34, height: 34,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF4ADE80).withValues(alpha: 0.15)),
+                  child: const Center(child: Icon(Icons.check_rounded, size: 18, color: Color(0xFF4ADE80))),
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Firebase Configurato', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF4ADE80))),
+                    Text('I clienti riceveranno notifiche push', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            _actionBtn('Modifica Server Key', icon: Icons.edit_rounded, onTap: _showFcmModal),
+          ] else ...[
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.black.withValues(alpha: 0.25),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Per attivare le notifiche push serve:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.45))),
+                  const SizedBox(height: 4),
+                  Text('1. Un progetto Firebase (firebase.google.com)', style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.3))),
+                  Text('2. La Server Key da Cloud Messaging', style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.3))),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _showFcmModal,
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFACC15).withValues(alpha: 0.2), foregroundColor: const Color(0xFFFACC15)),
+                icon: const Icon(Icons.notifications_active_rounded, size: 16),
+                label: const Text('Configura Firebase'),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  void _showFcmModal() {
+    final keyCtrl = TextEditingController();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Firebase Server Key', style: TextStyle(fontSize: 16)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Vai su Firebase Console > Impostazioni Progetto > Cloud Messaging e copia la Server Key.', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+            const SizedBox(height: 12),
+            TextField(
+              controller: keyCtrl,
+              maxLines: 3,
+              style: const TextStyle(fontSize: 12, color: Colors.white, fontFamily: 'monospace'),
+              decoration: InputDecoration(
+                hintText: 'Incolla la Server Key qui...',
+                hintStyle: TextStyle(color: Colors.grey[700]),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.06),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.primary)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annulla')),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await ref.read(ownerServiceProvider).updateFcmSettings({'fcm_server_key': keyCtrl.text.trim()});
+                if (ctx.mounted) Navigator.pop(ctx);
+                _loadFcmSettings();
+                if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Firebase configurato!')));
               } catch (e) {
                 if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Errore: $e')));
               }

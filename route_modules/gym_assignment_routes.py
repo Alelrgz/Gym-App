@@ -3,6 +3,7 @@ Gym Assignment Routes - API endpoints for clients to join gyms and select traine
 """
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from auth import get_current_user
+from gym_context import get_gym_context
 from service_modules.gym_assignment_service import get_gym_assignment_service, GymAssignmentService
 from models import JoinGymRequest, SelectTrainerRequest
 from models_orm import UserORM
@@ -104,51 +105,55 @@ async def get_gym_code(
 @router.get("/api/owner/pending-trainers")
 async def get_pending_trainers(
     user: UserORM = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: GymAssignmentService = Depends(get_gym_assignment_service)
 ):
     """Get list of trainers pending approval."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can view pending trainers")
 
-    return service.get_pending_trainers(user.id)
+    return service.get_pending_trainers(gym_id)
 
 
 @router.post("/api/owner/approve-trainer/{trainer_id}")
 async def approve_trainer(
     trainer_id: str,
     user: UserORM = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: GymAssignmentService = Depends(get_gym_assignment_service)
 ):
     """Approve a trainer's registration."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can approve trainers")
 
-    return service.approve_trainer(user.id, trainer_id)
+    return service.approve_trainer(gym_id, trainer_id)
 
 
 @router.post("/api/owner/reject-trainer/{trainer_id}")
 async def reject_trainer(
     trainer_id: str,
     user: UserORM = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: GymAssignmentService = Depends(get_gym_assignment_service)
 ):
     """Reject a trainer's registration."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can reject trainers")
 
-    return service.reject_trainer(user.id, trainer_id)
+    return service.reject_trainer(gym_id, trainer_id)
 
 
 @router.get("/api/owner/approved-trainers")
 async def get_approved_trainers(
     user: UserORM = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: GymAssignmentService = Depends(get_gym_assignment_service)
 ):
     """Get list of approved trainers for this gym."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can view trainers")
 
-    return service.get_approved_trainers(user.id)
+    return service.get_approved_trainers(gym_id)
 
 
 # --- GYM SETTINGS ENDPOINTS ---

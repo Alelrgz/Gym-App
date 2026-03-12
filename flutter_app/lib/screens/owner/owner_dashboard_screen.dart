@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../config/theme.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/client_provider.dart';
+import '../../providers/gym_provider.dart';
 import '../../providers/owner_provider.dart';
 import '../../widgets/dashboard_sheets.dart';
 import '../../widgets/glass_card.dart';
+import 'owner_automation_builder_screen.dart';
 
 const double _kDesktopBreakpoint = 1024;
 
@@ -39,6 +42,9 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
 
   bool _loading = true;
 
+  // Activity carousel
+  int _activityPage = 0;
+
   // Commission modal state
   String _commissionPeriod = 'month';
   List<Map<String, dynamic>> _commissions = [];
@@ -47,7 +53,232 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
   @override
   void initState() {
     super.initState();
+    // Sync active gym to API client
+    _syncGymContext();
     _loadAll();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+  }
+
+  void _syncGymContext() {
+    final gymId = ref.read(activeGymIdProvider);
+    ref.read(apiClientProvider).activeGymId = gymId;
+  }
+
+  void _switchGym(String gymId) {
+    ref.read(activeGymIdProvider.notifier).state = gymId;
+    ref.read(apiClientProvider).activeGymId = gymId;
+    _loadAll();
+  }
+
+  Widget _buildGymSwitcher() {
+    final gyms = ref.watch(ownerGymsProvider);
+    final activeId = ref.watch(activeGymIdProvider);
+
+    // Single gym — just show the name with gradient
+    if (gyms.length <= 1) {
+      return ShaderMask(
+        shaderCallback: (bounds) => const LinearGradient(
+          colors: [AppColors.primary, Color(0xFFFB923C)],
+        ).createShader(bounds),
+        child: Text(
+          _gymName,
+          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white),
+        ),
+      );
+    }
+
+    // Multiple gyms — dropdown switcher
+    final activeGym = gyms.firstWhere(
+      (g) => g.id == activeId,
+      orElse: () => gyms.first,
+    );
+
+    return GestureDetector(
+      onTap: () => _showGymPicker(gyms, activeGym.id),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ShaderMask(
+            shaderCallback: (bounds) => const LinearGradient(
+              colors: [AppColors.primary, Color(0xFFFB923C)],
+            ).createShader(bounds),
+            child: Text(
+              activeGym.name,
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(6),
+            ),
+            child: const Icon(Icons.swap_horiz_rounded, size: 18, color: AppColors.primary),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showGymPicker(List<dynamic> gyms, String activeId) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A2E),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => Padding(
+        padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2)),
+            ),
+            const Text('Le Tue Palestre', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 16),
+            ...gyms.map((g) {
+              final isActive = g.id == activeId;
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: GestureDetector(
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    if (!isActive) _switchGym(g.id);
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    decoration: BoxDecoration(
+                      color: isActive ? AppColors.primary.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.03),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: isActive ? AppColors.primary.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.06),
+                      ),
+                    ),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40, height: 40,
+                          decoration: BoxDecoration(
+                            color: isActive ? AppColors.primary.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: Center(
+                            child: Text(
+                              g.name.isNotEmpty ? g.name[0].toUpperCase() : '?',
+                              style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.w800,
+                                color: isActive ? AppColors.primary : Colors.grey[600],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Text(
+                            g.name,
+                            style: TextStyle(
+                              fontSize: 15, fontWeight: FontWeight.w600,
+                              color: isActive ? AppColors.primary : Colors.grey[400],
+                            ),
+                          ),
+                        ),
+                        if (isActive)
+                          const Icon(Icons.check_circle_rounded, size: 20, color: AppColors.primary),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
+            const SizedBox(height: 8),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  _showCreateGymDialog();
+                },
+                icon: const Icon(Icons.add_rounded, size: 18),
+                label: const Text('Aggiungi Palestra'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.grey[500],
+                  side: BorderSide(color: Colors.grey[800]!),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showCreateGymDialog() {
+    final nameCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Nuova Palestra', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+        content: TextField(
+          controller: nameCtrl,
+          autofocus: true,
+          decoration: InputDecoration(
+            hintText: 'Nome della palestra',
+            hintStyle: TextStyle(color: Colors.grey[700]),
+            filled: true,
+            fillColor: Colors.white.withValues(alpha: 0.05),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text('Annulla', style: TextStyle(color: Colors.grey[600])),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              final name = nameCtrl.text.trim();
+              if (name.isEmpty) return;
+              Navigator.pop(ctx);
+              try {
+                final result = await ref.read(ownerServiceProvider).createGym(name);
+                // Re-login to refresh gym list, or just add locally
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Palestra "$name" creata!')),
+                  );
+                  // Switch to new gym
+                  _switchGym(result['id'] as String);
+                }
+              } catch (e) {
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Errore: $e')),
+                  );
+                }
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('Crea'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _loadAll() async {
@@ -125,12 +356,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                       Center(
                         child: Column(
                           children: [
-                            ShaderMask(
-                              shaderCallback: (bounds) => const LinearGradient(
-                                colors: [AppColors.primary, Color(0xFFFB923C)],
-                              ).createShader(bounds),
-                              child: Text(_gymName, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Colors.white)),
-                            ),
+                            _buildGymSwitcher(),
                             const SizedBox(height: 2),
                             Text('Dashboard', style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w600, letterSpacing: 1.5)),
                           ],
@@ -146,7 +372,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                             children: [
                               Text('Dashboard', style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w600, letterSpacing: 1.5)),
                               const SizedBox(height: 4),
-                              Text(_gymName, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+                              _buildGymSwitcher(),
                             ],
                           ),
                         ],
@@ -185,8 +411,6 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                             child: Column(
                               children: [
                                 _buildTeamZone(),
-                                const SizedBox(height: 24),
-                                _buildFeedZone(),
                               ],
                             ),
                           ),
@@ -202,8 +426,6 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                           _buildTeamZone(),
                           const SizedBox(height: 24),
                           _buildAutomationZone(),
-                          const SizedBox(height: 24),
-                          _buildFeedZone(),
                         ],
                       ),
                   ],
@@ -918,7 +1140,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text('Modelli Messaggi', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-              _buildActionChip('+ Crea', const Color(0xFF60A5FA), onTap: () => _showTemplateModal()),
+              _buildActionChip('+ Crea', const Color(0xFF60A5FA), onTap: () => _openAutomationBuilder()),
             ],
           ),
           const SizedBox(height: 12),
@@ -949,9 +1171,12 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
       'missed_workout': 'Allenamento Mancato',
       'days_inactive': 'Giorni Inattivo',
       'no_show_appointment': 'No-Show',
+      'subscription_canceled': 'Abbonamento Cancellato',
     };
 
-    return GlassCard(
+    return GestureDetector(
+      onTap: () => _openAutomationBuilder(tmpl: tmpl),
+      child: GlassCard(
       padding: const EdgeInsets.all(12),
       borderRadius: 12,
       child: Row(
@@ -1001,60 +1226,250 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
           ),
         ],
       ),
-    );
+    ));
+  }
+
+  void _swipeActivityPage(int delta) {
+    final next = (_activityPage + delta).clamp(0, 1);
+    if (next != _activityPage) setState(() => _activityPage = next);
   }
 
   Widget _buildMessageLogCard() {
+    const tabDefs = [
+      (icon: Icons.bolt_rounded, label: 'Automazioni', color: Color(0xFF60A5FA)),
+      (icon: Icons.show_chart_rounded, label: 'Eventi', color: Color(0xFF9CA3AF)),
+    ];
+    final activeTab = tabDefs[_activityPage];
+
     return GlassCard(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          // Tab header
+          Wrap(
+            spacing: 6,
+            runSpacing: 6,
+            crossAxisAlignment: WrapCrossAlignment.center,
             children: [
-              const Text('Attività Recenti', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700)),
-              _buildActionChip('Esegui Controllo', const Color(0xFF60A5FA), onTap: _triggerCheck),
+              for (var i = 0; i < tabDefs.length; i++)
+                GestureDetector(
+                  onTap: () => setState(() => _activityPage = i),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOutCubic,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: _activityPage == i ? tabDefs[i].color.withValues(alpha: 0.15) : Colors.transparent,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(tabDefs[i].icon, size: 14, color: _activityPage == i ? tabDefs[i].color : Colors.grey[700]),
+                        const SizedBox(width: 5),
+                        Text(
+                          tabDefs[i].label,
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: _activityPage == i ? FontWeight.w700 : FontWeight.w500,
+                            color: _activityPage == i ? tabDefs[i].color : Colors.grey[700],
+                          ),
+                        ),
+                        if (_activityPage == i) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                            decoration: BoxDecoration(
+                              color: tabDefs[i].color.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${i == 0 ? _messageLog.length : _activityFeed.length}',
+                              style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: tabDefs[i].color),
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              if (_activityPage == 0)
+                _buildActionChip('Controlla', const Color(0xFF60A5FA), onTap: _triggerCheck),
             ],
           ),
           const SizedBox(height: 12),
-          if (_messageLog.isEmpty)
-            Center(child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text('Nessuna attività', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-            ))
-          else
-            ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 280),
-              child: ListView.separated(
-                shrinkWrap: true,
-                itemCount: _messageLog.length,
-                separatorBuilder: (_, _) => Divider(height: 1, color: Colors.white.withValues(alpha: 0.06)),
-                itemBuilder: (_, i) {
-                  final log = _messageLog[i];
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: Row(
-                      children: [
-                        Icon(Icons.send_rounded, size: 14, color: Colors.grey[600]),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            log['description'] as String? ?? log['message'] as String? ?? '',
-                            style: TextStyle(fontSize: 12, color: Colors.grey[400]),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
+
+          // Swipeable content area
+          GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onHorizontalDragEnd: (details) {
+              if (details.primaryVelocity == null) return;
+              if (details.primaryVelocity! < -100) _swipeActivityPage(1);   // swipe left → next
+              if (details.primaryVelocity! > 100) _swipeActivityPage(-1);   // swipe right → prev
+            },
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              switchInCurve: Curves.easeOutCubic,
+              switchOutCurve: Curves.easeInCubic,
+              transitionBuilder: (child, animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0.05, 0),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                );
+              },
+              child: SizedBox(
+                key: ValueKey(_activityPage),
+                height: 260,
+                child: _activityPage == 0
+                    ? _buildAutomationPage()
+                    : _buildEventsPage(),
               ),
+            ),
+          ),
+
+          // Dot indicators
+          const SizedBox(height: 10),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(2, (i) => AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeOutCubic,
+              width: _activityPage == i ? 16 : 6,
+              height: 6,
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              decoration: BoxDecoration(
+                color: _activityPage == i ? activeTab.color : Colors.grey[800],
+                borderRadius: BorderRadius.circular(3),
+              ),
+            )),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAutomationPage() {
+    if (_messageLog.isEmpty) {
+      return Center(child: Text('Nessun messaggio inviato', style: TextStyle(fontSize: 12, color: Colors.grey[700])));
+    }
+    return ListView.separated(
+      padding: EdgeInsets.zero,
+      physics: const BouncingScrollPhysics(),
+      itemCount: _messageLog.length,
+      separatorBuilder: (_, _) => Divider(height: 1, color: Colors.white.withValues(alpha: 0.05)),
+      itemBuilder: (_, i) {
+        final log = _messageLog[i];
+        final status = log['status'] as String? ?? '';
+        final triggerType = log['trigger_type'] as String? ?? '';
+        return _buildLogRow(
+          icon: status == 'failed' ? Icons.error_outline_rounded : Icons.send_rounded,
+          iconColor: status == 'failed' ? const Color(0xFFEF4444) : const Color(0xFF60A5FA),
+          text: '${log['template_name'] ?? 'Automazione'} → ${log['client_name'] ?? 'Cliente'}',
+          subtitle: _triggerLabel(triggerType),
+          trailing: _formatLogTime(log['triggered_at'] as String?),
+        );
+      },
+    );
+  }
+
+  Widget _buildEventsPage() {
+    if (_activityFeed.isEmpty) {
+      return Center(child: Text('Nessun evento recente', style: TextStyle(fontSize: 12, color: Colors.grey[700])));
+    }
+    return ListView.separated(
+      padding: EdgeInsets.zero,
+      physics: const BouncingScrollPhysics(),
+      itemCount: _activityFeed.length,
+      separatorBuilder: (_, _) => Divider(height: 1, color: Colors.white.withValues(alpha: 0.05)),
+      itemBuilder: (_, i) {
+        final item = _activityFeed[i];
+        final type = item['type'] as String? ?? '';
+        return _buildLogRow(
+          icon: _feedIcon(type),
+          iconColor: _feedColor(type),
+          text: item['title'] as String? ?? item['description'] as String? ?? '',
+          subtitle: item['description'] as String?,
+          trailing: item['time'] as String? ?? _formatLogTime(item['timestamp'] as String?),
+        );
+      },
+    );
+  }
+
+  Widget _buildLogRow({
+    required IconData icon,
+    Color? iconColor,
+    required String text,
+    String? subtitle,
+    String? trailing,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6),
+      child: Row(
+        children: [
+          Icon(icon, size: 14, color: iconColor ?? Colors.grey[600]),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(text, style: TextStyle(fontSize: 12, color: Colors.grey[400]), maxLines: 1, overflow: TextOverflow.ellipsis),
+                if (subtitle != null)
+                  Text(subtitle, style: TextStyle(fontSize: 10, color: Colors.grey[700])),
+              ],
+            ),
+          ),
+          if (trailing != null)
+            Padding(
+              padding: const EdgeInsets.only(left: 6),
+              child: Text(trailing, style: TextStyle(fontSize: 10, color: Colors.grey[700])),
             ),
         ],
       ),
     );
+  }
+
+  String _triggerLabel(String triggerType) {
+    switch (triggerType) {
+      case 'days_inactive': return 'Inattività';
+      case 'missed_workout': return 'Allenamento mancato';
+      case 'no_show_appointment': return 'Appuntamento mancato';
+      case 'subscription_canceled': return 'Abbonamento cancellato';
+      case 'payment_failed': return 'Pagamento fallito';
+      case 'upcoming_appointment': return 'Promemoria appuntamento';
+      default: return triggerType;
+    }
+  }
+
+  String _formatLogTime(String? isoTime) {
+    if (isoTime == null || isoTime.isEmpty) return '';
+    try {
+      final dt = DateTime.parse(isoTime);
+      final now = DateTime.now();
+      final diff = now.difference(dt);
+      if (diff.inMinutes < 60) return '${diff.inMinutes}m fa';
+      if (diff.inHours < 24) return '${diff.inHours}h fa';
+      if (diff.inDays < 7) return '${diff.inDays}g fa';
+      return '${dt.day}/${dt.month}';
+    } catch (_) {
+      return '';
+    }
+  }
+
+  Color _feedColor(String type) {
+    switch (type) {
+      case 'check_in': return const Color(0xFF34D399);
+      case 'workout': return const Color(0xFFF97316);
+      case 'subscription': return const Color(0xFFA78BFA);
+      case 'appointment': return const Color(0xFF60A5FA);
+      default: return Colors.grey[600]!;
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1442,65 +1857,6 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
         );
       }
     }
-  }
-
-  // ═══════════════════════════════════════════════════════════
-  //  LIVE FEED ZONE (Slate)
-  // ═══════════════════════════════════════════════════════════
-  Widget _buildFeedZone() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        _buildZoneHeader(
-          icon: Icons.show_chart_rounded,
-          title: 'Feed Live',
-          subtitle: 'Attività recenti della palestra',
-          color: Colors.grey[500]!,
-        ),
-        const SizedBox(height: 12),
-        GlassCard(
-          padding: EdgeInsets.zero,
-          child: _activityFeed.isEmpty
-              ? Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Center(child: Text('Nessuna attività recente', style: TextStyle(fontSize: 13, color: Colors.grey[600]))),
-                )
-              : ConstrainedBox(
-                  constraints: const BoxConstraints(maxHeight: 400),
-                  child: ListView.separated(
-                    shrinkWrap: true,
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    itemCount: _activityFeed.length,
-                    separatorBuilder: (_, _) => Divider(height: 1, indent: 16, endIndent: 16, color: Colors.white.withValues(alpha: 0.05)),
-                    itemBuilder: (_, i) {
-                      final item = _activityFeed[i];
-                      final type = item['type'] as String? ?? '';
-                      final icon = _feedIcon(type);
-                      return Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                        child: Row(
-                          children: [
-                            Icon(icon, size: 16, color: Colors.grey[600]),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: Text(
-                                item['description'] as String? ?? item['message'] as String? ?? '',
-                                style: TextStyle(fontSize: 12, color: Colors.grey[400]),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            if (item['time'] != null)
-                              Text(item['time'] as String, style: TextStyle(fontSize: 10, color: Colors.grey[700])),
-                          ],
-                        ),
-                      );
-                    },
-                  ),
-                ),
-        ),
-      ],
-    );
   }
 
   IconData _feedIcon(String type) {
@@ -2468,6 +2824,14 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
         if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
       }
     }
+  }
+
+  Future<void> _openAutomationBuilder({Map<String, dynamic>? tmpl}) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(builder: (_) => OwnerAutomationBuilderScreen(existingTemplate: tmpl)),
+    );
+    if (result == true) _loadAll();
   }
 
   Future<void> _toggleTemplate(Map<String, dynamic> tmpl) async {

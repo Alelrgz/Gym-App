@@ -2,8 +2,10 @@
 Subscription Routes - API endpoints for subscription management
 """
 from fastapi import APIRouter, Depends, Header, Request, HTTPException
+from fastapi.responses import RedirectResponse
 from typing import Optional
 from auth import get_current_user
+from gym_context import get_gym_context
 from service_modules.subscription_service import get_subscription_service, SubscriptionService
 from models import (
     CreateSubscriptionPlanRequest, UpdateSubscriptionPlanRequest,
@@ -23,6 +25,7 @@ router = APIRouter()
 async def create_subscription_plan(
     plan_data: CreateSubscriptionPlanRequest,
     user = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: SubscriptionService = Depends(get_subscription_service)
 ):
     """Create a new subscription plan (owner only)."""
@@ -34,8 +37,8 @@ async def create_subscription_plan(
             logger.warning(f"CREATE PLAN: Access denied - user {user.username} is not an owner")
             raise HTTPException(status_code=403, detail="Only gym owners can create subscription plans")
 
-        logger.info(f"CREATE PLAN: Calling service.create_plan with gym_id={user.id}")
-        result = service.create_plan(user.id, plan_data)
+        logger.info(f"CREATE PLAN: Calling service.create_plan with gym_id={gym_id}")
+        result = service.create_plan(gym_id, plan_data)
         logger.info(f"CREATE PLAN: Success - plan created with id={result.get('plan_id')}")
 
         return result
@@ -51,13 +54,14 @@ async def create_subscription_plan(
 async def get_owner_plans(
     include_inactive: bool = False,
     user = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: SubscriptionService = Depends(get_subscription_service)
 ):
     """Get all subscription plans for the owner's gym."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can view subscription plans")
 
-    return service.get_gym_plans(user.id, include_inactive)
+    return service.get_gym_plans(gym_id, include_inactive)
 
 
 @router.put("/api/owner/subscription-plans/{plan_id}")
@@ -65,26 +69,28 @@ async def update_subscription_plan(
     plan_id: str,
     plan_data: UpdateSubscriptionPlanRequest,
     user = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: SubscriptionService = Depends(get_subscription_service)
 ):
     """Update a subscription plan."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can update subscription plans")
 
-    return service.update_plan(plan_id, user.id, plan_data)
+    return service.update_plan(plan_id, gym_id, plan_data)
 
 
 @router.delete("/api/owner/subscription-plans/{plan_id}")
 async def delete_subscription_plan(
     plan_id: str,
     user = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: SubscriptionService = Depends(get_subscription_service)
 ):
     """Delete (deactivate) a subscription plan."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can delete subscription plans")
 
-    return service.delete_plan(plan_id, user.id)
+    return service.delete_plan(plan_id, gym_id)
 
 
 # --- STAFF ENDPOINT (view plans for their gym) ---
@@ -111,25 +117,27 @@ async def get_staff_plans(
 async def create_offer(
     offer_data: dict,
     user = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: SubscriptionService = Depends(get_subscription_service)
 ):
     """Create a promotional offer (owner only)."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can create offers")
 
-    return service.create_offer(user.id, offer_data)
+    return service.create_offer(gym_id, offer_data)
 
 
 @router.get("/api/owner/offers")
 async def get_gym_offers(
     user = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: SubscriptionService = Depends(get_subscription_service)
 ):
     """Get all offers for the gym."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can view all offers")
 
-    return service.get_gym_offers(user.id, include_inactive=True)
+    return service.get_gym_offers(gym_id, include_inactive=True)
 
 
 @router.put("/api/owner/offers/{offer_id}")
@@ -137,26 +145,28 @@ async def update_offer(
     offer_id: str,
     offer_data: dict,
     user = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: SubscriptionService = Depends(get_subscription_service)
 ):
     """Update an offer."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can update offers")
 
-    return service.update_offer(user.id, offer_id, offer_data)
+    return service.update_offer(gym_id, offer_id, offer_data)
 
 
 @router.delete("/api/owner/offers/{offer_id}")
 async def delete_offer(
     offer_id: str,
     user = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: SubscriptionService = Depends(get_subscription_service)
 ):
     """Delete (deactivate) an offer."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can delete offers")
 
-    return service.delete_offer(user.id, offer_id)
+    return service.delete_offer(gym_id, offer_id)
 
 
 @router.get("/api/client/offers/{gym_id}")
@@ -292,6 +302,30 @@ async def get_stripe_dashboard_link(
         raise HTTPException(status_code=403, detail="Only gym owners can access the payment dashboard")
 
     return service.create_connect_login_link(user.id)
+
+
+# --- OFFER REDEMPTION (Public link for automated messages) ---
+
+@router.get("/api/redeem/{offer_id}")
+async def redeem_offer(
+    offer_id: str,
+    request: Request,
+    client_id: Optional[str] = None,
+    service: SubscriptionService = Depends(get_subscription_service)
+):
+    """
+    Public link included in automated messages.
+    Creates a Stripe Checkout Session with the offer's coupon pre-applied and redirects.
+    """
+    try:
+        base_url = str(request.base_url).rstrip("/")
+        result = service.create_offer_checkout(offer_id, client_id, base_url)
+        return RedirectResponse(url=result["checkout_url"], status_code=303)
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Offer redemption error: {e}")
+        raise HTTPException(status_code=500, detail="Could not create checkout session")
 
 
 # --- STRIPE WEBHOOK ---

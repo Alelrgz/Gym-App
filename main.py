@@ -209,6 +209,12 @@ app.include_router(client_import_router)
 from route_modules.terminal_routes import router as terminal_router
 app.include_router(terminal_router)
 
+from route_modules.notification_settings_routes import router as notification_settings_router
+app.include_router(notification_settings_router)
+
+from route_modules.smtp_oauth_routes import router as smtp_oauth_router
+app.include_router(smtp_oauth_router)
+
 
 def _safe_add_columns(engine, table_name, columns_list):
     """Add columns to a table using IF NOT EXISTS (PostgreSQL 9.6+) or fallback."""
@@ -428,6 +434,21 @@ def run_migrations(engine):
         ('shower_daily_limit', 'INTEGER'),
         ('device_api_key', 'TEXT'),
         ('turnstile_gate_seconds', 'INTEGER'),
+        ('smtp_host', 'TEXT'),
+        ('smtp_port', 'INTEGER'),
+        ('smtp_user', 'TEXT'),
+        ('smtp_password', 'TEXT'),
+        ('smtp_from_email', 'TEXT'),
+        ('smtp_from_name', 'TEXT'),
+        ('fcm_server_key', 'TEXT'),
+        ('smtp_oauth_provider', 'TEXT'),
+        ('smtp_oauth_refresh_token', 'TEXT'),
+        ('smtp_oauth_access_token', 'TEXT'),
+        ('smtp_oauth_token_expiry', 'TEXT'),
+    ])
+
+    _safe_add_columns(engine, 'automated_message_templates', [
+        ('linked_offer_id', 'TEXT'),
     ])
 
     # Add health_score to client_daily_diet_summary
@@ -607,6 +628,64 @@ def run_migrations(engine):
                     logger.info("Added column alternative_index to weekly_meal_plan table")
                 except Exception as e:
                     logger.debug(f"Column alternative_index may already exist: {e}")
+
+    # --- Multi-gym migration: create gyms table and populate from existing owners ---
+    from models_orm import GymORM
+    GymORM.__table__.create(engine, checkfirst=True)
+
+    if 'gyms' in inspector.get_table_names():
+        with engine.connect() as conn:
+            # Check if migration already ran (any gym rows exist)
+            existing = conn.execute(text("SELECT COUNT(*) FROM gyms")).scalar()
+            if existing == 0:
+                # Migrate existing owners into gym records (gym.id = owner.id for seamless FK compat)
+                owners = conn.execute(text(
+                    "SELECT id, gym_name, gym_logo, gym_code, "
+                    "shower_timer_minutes, shower_daily_limit, device_api_key, turnstile_gate_seconds, "
+                    "smtp_host, smtp_port, smtp_user, smtp_password, smtp_from_email, smtp_from_name, "
+                    "smtp_oauth_provider, smtp_oauth_refresh_token, smtp_oauth_access_token, smtp_oauth_token_expiry, "
+                    "stripe_account_id, stripe_account_status, stripe_terminal_location_id, stripe_terminal_reader_id, "
+                    "fcm_server_key, created_at "
+                    "FROM users WHERE role = 'owner'"
+                )).fetchall()
+
+                for owner in owners:
+                    try:
+                        conn.execute(text(
+                            "INSERT INTO gyms (id, owner_id, name, logo, gym_code, is_active, created_at, "
+                            "shower_timer_minutes, shower_daily_limit, device_api_key, turnstile_gate_seconds, "
+                            "smtp_host, smtp_port, smtp_user, smtp_password, smtp_from_email, smtp_from_name, "
+                            "smtp_oauth_provider, smtp_oauth_refresh_token, smtp_oauth_access_token, smtp_oauth_token_expiry, "
+                            "stripe_account_id, stripe_account_status, stripe_terminal_location_id, stripe_terminal_reader_id, "
+                            "fcm_server_key) "
+                            "VALUES (:id, :owner_id, :name, :logo, :gym_code, 1, :created_at, "
+                            ":shower_timer_minutes, :shower_daily_limit, :device_api_key, :turnstile_gate_seconds, "
+                            ":smtp_host, :smtp_port, :smtp_user, :smtp_password, :smtp_from_email, :smtp_from_name, "
+                            ":smtp_oauth_provider, :smtp_oauth_refresh_token, :smtp_oauth_access_token, :smtp_oauth_token_expiry, "
+                            ":stripe_account_id, :stripe_account_status, :stripe_terminal_location_id, :stripe_terminal_reader_id, "
+                            ":fcm_server_key)"
+                        ), {
+                            "id": owner[0], "owner_id": owner[0],
+                            "name": owner[1], "logo": owner[2], "gym_code": owner[3],
+                            "created_at": owner[23] or datetime.utcnow().isoformat(),
+                            "shower_timer_minutes": owner[4], "shower_daily_limit": owner[5],
+                            "device_api_key": owner[6], "turnstile_gate_seconds": owner[7],
+                            "smtp_host": owner[8], "smtp_port": owner[9],
+                            "smtp_user": owner[10], "smtp_password": owner[11],
+                            "smtp_from_email": owner[12], "smtp_from_name": owner[13],
+                            "smtp_oauth_provider": owner[14], "smtp_oauth_refresh_token": owner[15],
+                            "smtp_oauth_access_token": owner[16], "smtp_oauth_token_expiry": owner[17],
+                            "stripe_account_id": owner[18], "stripe_account_status": owner[19],
+                            "stripe_terminal_location_id": owner[20], "stripe_terminal_reader_id": owner[21],
+                            "fcm_server_key": owner[22],
+                        })
+                        logger.info(f"Migrated owner {owner[0]} to gyms table")
+                    except Exception as e:
+                        logger.debug(f"Gym migration for owner {owner[0]} may already exist: {e}")
+
+                conn.commit()
+                logger.info(f"Multi-gym migration complete: {len(owners)} gyms created")
+
 
 def background_trigger_checker():
     """Background thread that periodically checks for automated message triggers."""
