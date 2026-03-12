@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import '../config/theme.dart';
 import '../providers/auth_provider.dart';
@@ -64,37 +65,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Column(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   // Logo / Title
-                  Container(
-                    width: 80,
+                  SvgPicture.asset(
+                    'assets/fitos-logo.svg',
                     height: 80,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [AppColors.primary, AppColors.primaryHover],
-                      ),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.fitness_center_rounded,
-                      color: Colors.white,
-                      size: 40,
-                    ),
                   ),
-                  const SizedBox(height: 24),
-                  const Text(
-                    'Antigravity',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 16),
                   const Text(
                     'Accedi al tuo account',
                     style: TextStyle(
@@ -135,13 +116,17 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     textInputAction: TextInputAction.done,
                     onSubmitted: (_) => _login(),
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 16),
 
                   // Login button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
                       onPressed: authState.status == AuthStatus.loading ? null : _login,
+                      style: ElevatedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                        minimumSize: const Size(0, 48),
+                      ),
                       child: const Text('Accedi'),
                     ),
                   ),
@@ -164,6 +149,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                     ),
                   ),
                 ],
+              ),
               ),
             ),
           ),

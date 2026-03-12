@@ -347,7 +347,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
         GestureDetector(
           onTap: _showRevenueDetailSheet,
           child: GlassCard(
-            padding: const EdgeInsets.all(20),
+            padding: EdgeInsets.zero,
             child: Stack(
               children: [
                 Positioned.fill(
@@ -362,7 +362,9 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                     ),
                   ),
                 ),
-                Column(
+                Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Row(
@@ -384,6 +386,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                     const SizedBox(height: 8),
                     _buildMetricRow('Staff', '$_staffActive'),
                   ],
+                ),
                 ),
               ],
             ),
@@ -682,17 +685,23 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
           ),
           const SizedBox(height: 12),
           if (_plans.isEmpty)
-            Center(child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text('Nessun piano', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-            ))
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+              ),
+              child: Center(child: Text('Nessun piano', style: TextStyle(fontSize: 13, color: Colors.grey[600]))),
+            )
           else
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 280),
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: _plans.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (_, i) => _buildPlanItem(_plans[i]),
               ),
             ),
@@ -714,7 +723,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
       priceLabel = '€${price.toStringAsFixed(0)}/mese';
     } else {
       priceLabel = '€${annualPrice.toStringAsFixed(0)}/anno';
-      if (installments > 1) priceLabel += ' (${installments} rate da €${price.toStringAsFixed(0)})';
+      if (installments > 1) priceLabel += ' ($installments rate da €${price.toStringAsFixed(0)})';
     }
 
     return Opacity(
@@ -785,17 +794,23 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
           ),
           const SizedBox(height: 12),
           if (_offers.isEmpty)
-            Center(child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Text('Nessuna offerta', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-            ))
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 24),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+              ),
+              child: Center(child: Text('Nessuna offerta', style: TextStyle(fontSize: 13, color: Colors.grey[600]))),
+            )
           else
             ConstrainedBox(
               constraints: const BoxConstraints(maxHeight: 280),
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: _offers.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (_, i) => _buildOfferItem(_offers[i]),
               ),
             ),
@@ -918,7 +933,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: _templates.length,
-                separatorBuilder: (_, __) => const SizedBox(height: 8),
+                separatorBuilder: (_, _) => const SizedBox(height: 8),
                 itemBuilder: (_, i) => _buildTemplateItem(_templates[i]),
               ),
             ),
@@ -1014,7 +1029,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: _messageLog.length,
-                separatorBuilder: (_, __) => Divider(height: 1, color: Colors.white.withValues(alpha: 0.06)),
+                separatorBuilder: (_, _) => Divider(height: 1, color: Colors.white.withValues(alpha: 0.06)),
                 itemBuilder: (_, i) {
                   final log = _messageLog[i];
                   return Padding(
@@ -1101,7 +1116,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                   child: ListView.separated(
                     shrinkWrap: true,
                     itemCount: _trainers.length,
-                    separatorBuilder: (_, __) => const SizedBox(height: 10),
+                    separatorBuilder: (_, _) => const SizedBox(height: 10),
                     itemBuilder: (_, i) {
                       final t = _trainers[i];
                       final name = t['username'] as String? ?? '';
@@ -1456,7 +1471,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                     shrinkWrap: true,
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     itemCount: _activityFeed.length,
-                    separatorBuilder: (_, __) => Divider(height: 1, indent: 16, endIndent: 16, color: Colors.white.withValues(alpha: 0.05)),
+                    separatorBuilder: (_, _) => Divider(height: 1, indent: 16, endIndent: 16, color: Colors.white.withValues(alpha: 0.05)),
                     itemBuilder: (_, i) {
                       final item = _activityFeed[i];
                       final type = item['type'] as String? ?? '';
@@ -1527,7 +1542,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
             ],
           ),
         ),
-        if (trailing != null) trailing,
+        ?trailing,
       ],
     );
   }
@@ -1674,7 +1689,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
 
                               try {
                                 if (isEdit) {
-                                  await ref.read(ownerServiceProvider).updatePlan(plan!['id'] as String, data);
+                                  await ref.read(ownerServiceProvider).updatePlan(plan['id'] as String, data);
                                 } else {
                                   await ref.read(ownerServiceProvider).createPlan(data);
                                 }
@@ -1834,12 +1849,12 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                                 'discount_value': double.tryParse(discountValueCtrl.text) ?? 0,
                                 'duration_months': int.tryParse(durationCtrl.text) ?? 1,
                                 'coupon_code': couponCtrl.text.toUpperCase(),
-                                if (planId != null) 'plan_id': planId,
+                                'plan_id': ?planId,
                                 if (maxUsesCtrl.text.isNotEmpty) 'max_uses': int.tryParse(maxUsesCtrl.text),
                               };
                               try {
                                 if (isEdit) {
-                                  await ref.read(ownerServiceProvider).updateOffer(offer!['id'] as String, data);
+                                  await ref.read(ownerServiceProvider).updateOffer(offer['id'] as String, data);
                                 } else {
                                   await ref.read(ownerServiceProvider).createOffer(data);
                                 }
@@ -2012,7 +2027,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                               };
                               try {
                                 if (isEdit) {
-                                  await ref.read(ownerServiceProvider).updateAutomatedMessage(tmpl!['id'] as String, data);
+                                  await ref.read(ownerServiceProvider).updateAutomatedMessage(tmpl['id'] as String, data);
                                 } else {
                                   await ref.read(ownerServiceProvider).createAutomatedMessage(data);
                                 }
@@ -2273,7 +2288,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                           : ListView.separated(
                               padding: const EdgeInsets.all(20),
                               itemCount: _commissions.length,
-                              separatorBuilder: (_, __) => const SizedBox(height: 12),
+                              separatorBuilder: (_, _) => const SizedBox(height: 12),
                               itemBuilder: (_, i) => _buildCommissionItem(_commissions[i], setModalState),
                             ),
                 ),

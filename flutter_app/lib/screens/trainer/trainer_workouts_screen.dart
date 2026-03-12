@@ -158,9 +158,24 @@ class _TrainerWorkoutsScreenState extends ConsumerState<TrainerWorkoutsScreen> w
                 // CENTER: Workouts & Splits (tabbed) or Builder
                 Expanded(
                   flex: 12,
-                  child: _isBuilderMode
-                      ? _buildWorkoutBuilder()
-                      : _buildDesktopCenterColumn(trainer),
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
+                    transitionBuilder: (child, animation) => FadeTransition(
+                      opacity: animation,
+                      child: SlideTransition(
+                        position: Tween<Offset>(
+                          begin: const Offset(0, 0.05),
+                          end: Offset.zero,
+                        ).animate(animation),
+                        child: child,
+                      ),
+                    ),
+                    child: _isBuilderMode
+                        ? KeyedSubtree(key: const ValueKey('builder'), child: _buildWorkoutBuilder())
+                        : KeyedSubtree(key: const ValueKey('list'), child: _buildDesktopCenterColumn(trainer)),
+                  ),
                 ),
                 const SizedBox(width: 16),
 
@@ -361,7 +376,8 @@ class _TrainerWorkoutsScreenState extends ConsumerState<TrainerWorkoutsScreen> w
                       backgroundColor: AppColors.primary,
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.3),
+                      disabledBackgroundColor: AppColors.primary.withValues(alpha: 0.5),
+                      disabledForegroundColor: Colors.white.withValues(alpha: 0.5),
                     ),
                     onPressed: _builderTitleCtrl.text.isEmpty || _isSaving ? null : _saveWorkout,
                     child: _isSaving
@@ -454,17 +470,32 @@ class _TrainerWorkoutsScreenState extends ConsumerState<TrainerWorkoutsScreen> w
             const Text('Allenamenti', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
             const Spacer(),
             GestureDetector(
-              onTap: _desktopCenterTabCtrl.index == 0
-                  ? _enterBuilderMode
-                  : () => _showCreateSplitForm(context, trainer.workouts),
-              child: Container(
+              onTap: _isBuilderMode
+                  ? _exitBuilderMode
+                  : _desktopCenterTabCtrl.index == 0
+                      ? _enterBuilderMode
+                      : () => _showCreateSplitForm(context, trainer.workouts),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
                 width: 32, height: 32,
                 decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.15),
+                  color: _isBuilderMode
+                      ? AppColors.danger.withValues(alpha: 0.15)
+                      : AppColors.primary.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(8),
-                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                  border: Border.all(color: _isBuilderMode
+                      ? AppColors.danger.withValues(alpha: 0.3)
+                      : AppColors.primary.withValues(alpha: 0.3)),
                 ),
-                child: const Icon(Icons.add_rounded, color: AppColors.primary, size: 18),
+                child: AnimatedRotation(
+                  turns: _isBuilderMode ? 0.125 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    _isBuilderMode ? Icons.close_rounded : Icons.add_rounded,
+                    color: _isBuilderMode ? AppColors.danger : AppColors.primary,
+                    size: 18,
+                  ),
+                ),
               ),
             ),
           ],
@@ -781,7 +812,7 @@ class _TrainerWorkoutsScreenState extends ConsumerState<TrainerWorkoutsScreen> w
             _InputField(controller: muscleCtrl, label: 'Gruppo Muscolare', hint: 'es. Petto'),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: type,
+              initialValue: type,
               dropdownColor: AppColors.surface,
               style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
               decoration: InputDecoration(
@@ -790,6 +821,9 @@ class _TrainerWorkoutsScreenState extends ConsumerState<TrainerWorkoutsScreen> w
                 filled: true,
                 fillColor: Colors.white.withValues(alpha: 0.06),
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
               ),
               items: const [
                 DropdownMenuItem(value: 'weight_reps', child: Text('Peso & Ripetizioni')),
@@ -855,7 +889,7 @@ class _TrainerWorkoutsScreenState extends ConsumerState<TrainerWorkoutsScreen> w
             _InputField(controller: durationCtrl, label: 'Durata (min)', hint: 'es. 45', inputType: TextInputType.number),
             const SizedBox(height: 12),
             DropdownButtonFormField<String>(
-              value: difficulty,
+              initialValue: difficulty,
               dropdownColor: AppColors.surface,
               style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
               decoration: InputDecoration(
@@ -1062,7 +1096,10 @@ class _BuilderInput extends StatelessWidget {
         decoration: InputDecoration(
           hintText: hint,
           hintStyle: TextStyle(fontSize: 13, color: Colors.grey[600]),
+          filled: false,
           border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         ),
       ),
@@ -2910,7 +2947,10 @@ class _SearchBar extends StatelessWidget {
           hintText: hint,
           hintStyle: TextStyle(fontSize: 13, color: Colors.grey[600]),
           prefixIcon: Icon(Icons.search_rounded, size: 20, color: Colors.grey[600]),
+          filled: false,
           border: InputBorder.none,
+          enabledBorder: InputBorder.none,
+          focusedBorder: InputBorder.none,
           contentPadding: const EdgeInsets.symmetric(vertical: 10),
         ),
       ),
@@ -2945,6 +2985,9 @@ class _InputField extends StatelessWidget {
         filled: true,
         fillColor: Colors.white.withValues(alpha: 0.06),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       ),
     );
   }
@@ -3055,7 +3098,7 @@ void _showEditWorkoutSheet(
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: difficulty,
+                        initialValue: difficulty,
                         dropdownColor: AppColors.surface,
                         style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
                         decoration: InputDecoration(

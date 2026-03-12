@@ -88,11 +88,11 @@ class _TrainerDashboardScreenState extends ConsumerState<TrainerDashboardScreen>
                   ],
                 ),
                 const Spacer(),
-                _StatChip(value: '${trainer.clients.length}', label: 'clienti', color: AppColors.primary),
+                _StatChip(value: '${trainer.clients.length}', label: 'clienti'),
                 const SizedBox(width: 8),
-                _StatChip(value: '${trainer.activeClients}', label: 'attivi', color: const Color(0xFF22C55E)),
+                _StatChip(value: '${trainer.activeClients}', label: 'attivi'),
                 const SizedBox(width: 8),
-                _StatChip(value: '${trainer.atRiskClients}', label: 'inattivi', color: AppColors.danger),
+                _StatChip(value: '${trainer.atRiskClients}', label: 'inattivi'),
               ],
             ),
             const SizedBox(height: 20),
@@ -151,16 +151,17 @@ class _TrainerDashboardScreenState extends ConsumerState<TrainerDashboardScreen>
                     hintText: 'Cerca clienti...',
                     hintStyle: TextStyle(fontSize: 13, color: Colors.grey[600]),
                     prefixIcon: Icon(Icons.search_rounded, size: 20, color: Colors.grey[600]),
+                    filled: false,
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(vertical: 10),
                   ),
                 ),
               ),
             ),
             const SizedBox(width: 8),
-            _FilterChip(label: 'Tutti', active: _filter == 'all', onTap: () => setState(() => _filter = 'all')),
-            const SizedBox(width: 4),
-            _FilterChip(label: 'Con scheda', active: _filter == 'with_plan', onTap: () => setState(() => _filter = 'with_plan')),
+            _buildFilterIcon(),
           ],
         ),
         const SizedBox(height: 12),
@@ -232,11 +233,11 @@ class _TrainerDashboardScreenState extends ConsumerState<TrainerDashboardScreen>
               padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Row(
                 children: [
-                  _StatChip(value: '${trainer.clients.length}', label: 'clienti', color: AppColors.primary),
+                  _StatChip(value: '${trainer.clients.length}', label: 'clienti'),
                   const SizedBox(width: 8),
-                  _StatChip(value: '${trainer.activeClients}', label: 'attivi', color: const Color(0xFF22C55E)),
+                  _StatChip(value: '${trainer.activeClients}', label: 'attivi'),
                   const SizedBox(width: 8),
-                  _StatChip(value: '${trainer.atRiskClients}', label: 'inattivi', color: AppColors.danger),
+                  _StatChip(value: '${trainer.atRiskClients}', label: 'inattivi'),
                 ],
               ),
             ),
@@ -263,16 +264,17 @@ class _TrainerDashboardScreenState extends ConsumerState<TrainerDashboardScreen>
                           hintText: 'Cerca clienti...',
                           hintStyle: TextStyle(fontSize: 13, color: Colors.grey[600]),
                           prefixIcon: Icon(Icons.search_rounded, size: 20, color: Colors.grey[600]),
-                          border: InputBorder.none,
+                          filled: false,
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
                           contentPadding: const EdgeInsets.symmetric(vertical: 10),
                         ),
                       ),
                     ),
                   ),
                   const SizedBox(width: 8),
-                  _FilterChip(label: 'Tutti', active: _filter == 'all', onTap: () => setState(() => _filter = 'all')),
-                  const SizedBox(width: 4),
-                  _FilterChip(label: 'Con scheda', active: _filter == 'with_plan', onTap: () => setState(() => _filter = 'with_plan')),
+                  _buildFilterIcon(),
                 ],
               ),
             ),
@@ -299,6 +301,54 @@ class _TrainerDashboardScreenState extends ConsumerState<TrainerDashboardScreen>
   }
 
   // ── Shared helpers ─────────────────────────────────────────
+
+  Widget _buildFilterIcon() {
+    final isFiltered = _filter != 'all';
+    return GestureDetector(
+      onTap: () {
+        showModalBottomSheet(
+          context: context,
+          backgroundColor: AppColors.surface,
+          shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(16))),
+          builder: (ctx) => Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Filtra clienti', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 16),
+                ListTile(
+                  title: const Text('Tutti'),
+                  leading: Icon(Icons.people_rounded, color: _filter == 'all' ? AppColors.primary : Colors.grey[600]),
+                  selected: _filter == 'all',
+                  selectedColor: AppColors.primary,
+                  onTap: () { setState(() => _filter = 'all'); Navigator.pop(ctx); },
+                ),
+                ListTile(
+                  title: const Text('Con scheda'),
+                  leading: Icon(Icons.assignment_rounded, color: _filter == 'with_plan' ? AppColors.primary : Colors.grey[600]),
+                  selected: _filter == 'with_plan',
+                  selectedColor: AppColors.primary,
+                  onTap: () { setState(() => _filter = 'with_plan'); Navigator.pop(ctx); },
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
+      child: Container(
+        width: 42, height: 42,
+        decoration: BoxDecoration(
+          color: isFiltered ? AppColors.primary.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: isFiltered ? AppColors.primary.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.08)),
+        ),
+        child: Icon(Icons.tune_rounded, size: 20, color: isFiltered ? AppColors.primary : Colors.grey[500]),
+      ),
+    );
+  }
 
   List<TrainerClient> _filterClients(List<TrainerClient> clients) {
     return clients.where((c) {
@@ -464,58 +514,25 @@ class _TrainerDashboardScreenState extends ConsumerState<TrainerDashboardScreen>
 class _StatChip extends StatelessWidget {
   final String value;
   final String label;
-  final Color color;
 
-  const _StatChip({required this.value, required this.label, required this.color});
+  const _StatChip({required this.value, required this.label});
 
   @override
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
+        color: Colors.white.withValues(alpha: 0.06),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: 0.2)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
+          Text(value, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
           const SizedBox(width: 4),
-          Text(label, style: TextStyle(fontSize: 12, color: color.withValues(alpha: 0.8))),
+          Text(label, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
         ],
-      ),
-    );
-  }
-}
-
-// ── Filter Chip ────────────────────────────────────────────
-class _FilterChip extends StatelessWidget {
-  final String label;
-  final bool active;
-  final VoidCallback onTap;
-
-  const _FilterChip({required this.label, required this.active, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-        decoration: BoxDecoration(
-          color: active ? AppColors.primary.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.06),
-          borderRadius: BorderRadius.circular(10),
-          border: active ? Border.all(color: AppColors.primary.withValues(alpha: 0.3)) : null,
-        ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: active ? AppColors.primary : Colors.grey[500],
-          ),
-        ),
       ),
     );
   }
@@ -782,13 +799,15 @@ class _ClientWorkoutLogPanelState extends State<_ClientWorkoutLogPanel> with Sin
         widget.service.getClientDietConsistency(widget.client.id),
         widget.service.getClientWeekStreak(widget.client.id),
       ]);
-      if (mounted) setState(() {
-        _weightData = results[0] as Map<String, dynamic>;
-        _strengthData = results[1] as Map<String, dynamic>;
-        _dietData = results[2] as Map<String, dynamic>;
-        _streakData = results[3] as Map<String, dynamic>;
+      if (mounted) {
+        setState(() {
+        _weightData = results[0];
+        _strengthData = results[1];
+        _dietData = results[2];
+        _streakData = results[3];
         _loadingStrength = false;
       });
+      }
     } catch (_) { if (mounted) setState(() => _loadingStrength = false); }
   }
 
@@ -1302,7 +1321,10 @@ class _ClientWorkoutLogPanelState extends State<_ClientWorkoutLogPanel> with Sin
                   decoration: InputDecoration(
                     hintText: 'Scrivi una nota...',
                     hintStyle: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    filled: false,
                     border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
                     contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                   ),
                   onSubmitted: (_) => _saveNote(),

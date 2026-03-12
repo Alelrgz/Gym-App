@@ -761,22 +761,34 @@ class _TrainerScheduleScreenState extends ConsumerState<TrainerScheduleScreen> {
             Expanded(
               child: GlassCard(
                 padding: const EdgeInsets.all(16),
-                child: Column(children: [
-                  Text('${trainer.streak}',
-                      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: Color(0xFF22C55E))),
-                  const Text('Streak', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                ]),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.local_fire_department_rounded, size: 18, color: const Color(0xFF22C55E).withValues(alpha: 0.7)),
+                    const SizedBox(width: 8),
+                    Text('${trainer.streak}',
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: Color(0xFF22C55E))),
+                    const SizedBox(width: 6),
+                    Text('Streak', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                  ],
+                ),
               ),
             ),
             const SizedBox(width: 12),
             Expanded(
               child: GlassCard(
                 padding: const EdgeInsets.all(16),
-                child: Column(children: [
-                  Text('${trainer.clients.length}',
-                      style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w800, color: AppColors.primary)),
-                  const Text('Clienti', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-                ]),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.people_rounded, size: 18, color: AppColors.primary.withValues(alpha: 0.7)),
+                    const SizedBox(width: 8),
+                    Text('${trainer.clients.length}',
+                        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                    const SizedBox(width: 6),
+                    Text('Clienti', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                  ],
+                ),
               ),
             ),
           ],
@@ -795,16 +807,8 @@ class _TrainerScheduleScreenState extends ConsumerState<TrainerScheduleScreen> {
     final isCompleted = hasWorkout && workout['completed'] == true;
     final title = hasWorkout ? (workout['title'] ?? 'Workout') : 'Nessun allenamento';
 
-    return Container(
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFE8461E), Color(0xFFF15A24), Color(0xFFF97316)],
-        ),
-        borderRadius: BorderRadius.circular(24),
-      ),
-      padding: const EdgeInsets.all(24),
+    return GlassCard(
+      padding: const EdgeInsets.all(20),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -812,76 +816,72 @@ class _TrainerScheduleScreenState extends ConsumerState<TrainerScheduleScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'ALLENAMENTO DI OGGI',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white.withValues(alpha: 0.7),
-                  letterSpacing: 1.2,
-                ),
+              Row(
+                children: [
+                  Container(
+                    width: 6, height: 6,
+                    decoration: BoxDecoration(
+                      color: hasWorkout ? AppColors.primary : Colors.grey[600],
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    'ALLENAMENTO DI OGGI',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.grey[500],
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ],
               ),
               if (isCompleted)
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
+                    color: const Color(0xFF22C55E).withValues(alpha: 0.12),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                    Icon(Icons.check_circle_rounded, size: 14, color: Colors.white),
+                    Icon(Icons.check_circle_rounded, size: 14, color: Color(0xFF22C55E)),
                     SizedBox(width: 4),
-                    Text('Completato', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white)),
+                    Text('Completato', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF22C55E))),
                   ]),
                 ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
 
           // Title
           Text(
-            title.toString().toUpperCase(),
+            title.toString(),
             style: const TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-              height: 1.1,
+              fontSize: 18,
+              fontWeight: FontWeight.w700,
+              color: AppColors.textPrimary,
+              height: 1.2,
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 6),
 
           // Duration & difficulty / exercises
           Text(
             hasWorkout
-                ? '${workout['duration'] != null ? '${workout['duration']} min' : ''}${workout['exercises'] != null ? ' • ${(workout['exercises'] as List).length} esercizi' : ''}${workout['difficulty'] != null ? ' • ${workout['difficulty']}' : ''}'
+                ? '${workout['duration'] != null ? '${workout['duration']} min' : ''}${workout['exercises'] != null ? ' · ${(workout['exercises'] as List).length} esercizi' : ''}${workout['difficulty'] != null ? ' · ${workout['difficulty']}' : ''}'
                 : 'Assegnati un allenamento dalla sezione qui sotto.',
-            style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.7)),
+            style: TextStyle(fontSize: 13, color: Colors.grey[500]),
           ),
-          const SizedBox(height: 24),
 
-          // Divider + Button
+          // Button
           if (hasWorkout && !isCompleted) ...[
-            Divider(color: Colors.white.withValues(alpha: 0.2), height: 1),
-            const SizedBox(height: 20),
-            GestureDetector(
-              onTap: () => context.go('/trainer/active-workout', extra: workout),
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.2),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Text(
-                  'AVVIA ALLENAMENTO',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
-                    fontSize: 14,
-                    letterSpacing: 0.5,
-                  ),
-                ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => context.go('/trainer/active-workout', extra: workout),
+                child: const Text('Avvia Allenamento'),
               ),
             ),
           ],
@@ -925,16 +925,7 @@ class _TrainerScheduleScreenState extends ConsumerState<TrainerScheduleScreen> {
     return Column(
       children: [
         // Commission total card
-        Container(
-          width: double.infinity,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [Color(0xFFF59E0B), Color(0xFFEA580C)],
-            ),
-            borderRadius: BorderRadius.circular(20),
-          ),
+        GlassCard(
           padding: const EdgeInsets.all(20),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -943,26 +934,26 @@ class _TrainerScheduleScreenState extends ConsumerState<TrainerScheduleScreen> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text('COMMISSIONE DOVUTA', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700,
-                      color: Colors.white.withValues(alpha: 0.7), letterSpacing: 1.0)),
+                      color: Colors.grey[500], letterSpacing: 1.0)),
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
+                      color: const Color(0xFFF59E0B).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(8),
                     ),
-                    child: Text('${rate.toStringAsFixed(0)}%', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+                    child: Text('${rate.toStringAsFixed(0)}%', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFFF59E0B))),
                   ),
                 ],
               ),
               const SizedBox(height: 10),
               Text(
                 '€${commissionDue.toStringAsFixed(2)}',
-                style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Colors.white, height: 1.1),
+                style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.textPrimary, height: 1.1),
               ),
               const SizedBox(height: 4),
               Text(
                 'su €${totalRevenue.toStringAsFixed(2)} di ricavi totali',
-                style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.7)),
+                style: TextStyle(fontSize: 13, color: Colors.grey[500]),
               ),
             ],
           ),
@@ -983,13 +974,13 @@ class _TrainerScheduleScreenState extends ConsumerState<TrainerScheduleScreen> {
                   margin: const EdgeInsets.symmetric(horizontal: 3),
                   padding: const EdgeInsets.symmetric(vertical: 8),
                   decoration: BoxDecoration(
-                    color: isActive ? const Color(0xFFF59E0B).withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.04),
+                    color: isActive ? AppColors.primary.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.04),
                     borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: isActive ? const Color(0xFFF59E0B).withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.06)),
+                    border: Border.all(color: isActive ? AppColors.primary.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.06)),
                   ),
                   child: Text(p.$2, textAlign: TextAlign.center,
                     style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
-                      color: isActive ? const Color(0xFFF59E0B) : Colors.grey[500]),
+                      color: isActive ? AppColors.primary : Colors.grey[500]),
                   ),
                 ),
               ),
