@@ -62,9 +62,15 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
   // Push Notifications (FCM)
   bool _fcmConfigured = false;
 
+  String? _lastGymId;
+
   @override
   void initState() {
     super.initState();
+    final gymId = ref.read(activeGymIdProvider);
+    if (gymId != null) {
+      ref.read(apiClientProvider).activeGymId = gymId;
+    }
     _loadAll();
   }
 
@@ -116,10 +122,12 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
       _loadTerminalStatus();
       _loadSmtpSettings();
       _loadFcmSettings();
-    } catch (_) {
+    } catch (e) {
+      debugPrint('Settings _loadAll error: $e');
       if (mounted) setState(() => _loading = false);
     }
   }
+
 
   Future<void> _loadTerminalStatus() async {
     try {
@@ -148,6 +156,15 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Reload when active gym changes (e.g. user switches gym on dashboard)
+    final currentGymId = ref.watch(activeGymIdProvider);
+    if (_lastGymId != null && currentGymId != _lastGymId) {
+      _lastGymId = currentGymId;
+      ref.read(apiClientProvider).activeGymId = currentGymId;
+      Future.microtask(() => _loadAll());
+    }
+    _lastGymId = currentGymId;
+
     final isDesktop = MediaQuery.of(context).size.width > 1024;
 
     return Scaffold(
@@ -431,6 +448,7 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
 
   void _switchToGym(GymInfo gym) {
     ref.read(activeGymIdProvider.notifier).state = gym.id;
+    ref.read(apiClientProvider).activeGymId = gym.id;
     // Reload settings for the new gym
     _loadAll();
     ScaffoldMessenger.of(context).showSnackBar(

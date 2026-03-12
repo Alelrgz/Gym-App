@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../config/theme.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/gym_provider.dart';
 import '../../providers/owner_provider.dart';
 import '../../widgets/glass_card.dart';
 
@@ -32,9 +34,15 @@ class _OwnerFacilitiesScreenState extends ConsumerState<OwnerFacilitiesScreen> {
   static const _dayNames = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
   static const _dayKeys = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
+  String? _lastGymId;
+
   @override
   void initState() {
     super.initState();
+    final gymId = ref.read(activeGymIdProvider);
+    if (gymId != null) {
+      ref.read(apiClientProvider).activeGymId = gymId;
+    }
     _loadAll();
   }
 
@@ -65,6 +73,14 @@ class _OwnerFacilitiesScreenState extends ConsumerState<OwnerFacilitiesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentGymId = ref.watch(activeGymIdProvider);
+    if (_lastGymId != null && currentGymId != _lastGymId) {
+      _lastGymId = currentGymId;
+      ref.read(apiClientProvider).activeGymId = currentGymId;
+      Future.microtask(() => _loadAll());
+    }
+    _lastGymId = currentGymId;
+
     final isDesktop = MediaQuery.of(context).size.width > 1024;
 
     return Scaffold(

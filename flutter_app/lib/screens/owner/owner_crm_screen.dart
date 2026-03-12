@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../config/theme.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/client_provider.dart';
+import '../../providers/gym_provider.dart';
 import '../../providers/owner_provider.dart';
 import '../../widgets/dashboard_sheets.dart';
 
@@ -38,10 +40,20 @@ class _OwnerCrmScreenState extends ConsumerState<OwnerCrmScreen> {
   // Certificates
   List<Map<String, dynamic>> _certificates = [];
 
+  String? _lastGymId;
+
   @override
   void initState() {
     super.initState();
+    _syncGymContext();
     _loadAll();
+  }
+
+  void _syncGymContext() {
+    final gymId = ref.read(activeGymIdProvider);
+    if (gymId != null) {
+      ref.read(apiClientProvider).activeGymId = gymId;
+    }
   }
 
   Future<void> _loadAll() async {
@@ -81,6 +93,14 @@ class _OwnerCrmScreenState extends ConsumerState<OwnerCrmScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentGymId = ref.watch(activeGymIdProvider);
+    if (_lastGymId != null && currentGymId != _lastGymId) {
+      _lastGymId = currentGymId;
+      ref.read(apiClientProvider).activeGymId = currentGymId;
+      Future.microtask(() => _loadAll());
+    }
+    _lastGymId = currentGymId;
+
     final isDesktop = MediaQuery.of(context).size.width > 1024;
 
     return Scaffold(

@@ -53,9 +53,10 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
   @override
   void initState() {
     super.initState();
-    // Sync active gym to API client
-    _syncGymContext();
-    _loadAll();
+    Future.microtask(() {
+      _syncGymContext();
+      _loadAll();
+    });
   }
 
   @override
@@ -64,7 +65,13 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
   }
 
   void _syncGymContext() {
-    final gymId = ref.read(activeGymIdProvider);
+    var gymId = ref.read(activeGymIdProvider);
+    if (gymId == null) {
+      gymId = ref.read(defaultGymIdProvider);
+      if (gymId != null) {
+        ref.read(activeGymIdProvider.notifier).state = gymId;
+      }
+    }
     ref.read(apiClientProvider).activeGymId = gymId;
   }
 
