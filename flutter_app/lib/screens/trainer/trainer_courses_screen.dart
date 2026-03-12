@@ -71,7 +71,7 @@ class TrainerCoursesScreen extends ConsumerStatefulWidget {
 }
 
 class _TrainerCoursesScreenState extends ConsumerState<TrainerCoursesScreen> {
-  String _search = '';
+  final String _search = '';
   int _courseTab = 0; // 0 = my courses, 1 = shared
   int _mobilePanel = 0; // 0 = courses, 1 = participants, 2 = exercises
   String? _selectedCourseId;
@@ -599,7 +599,10 @@ class _TrainerCoursesScreenState extends ConsumerState<TrainerCoursesScreen> {
                 hintStyle: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.3)),
                 prefixIcon: Icon(Icons.search_rounded, size: 16, color: Colors.white.withValues(alpha: 0.3)),
                 prefixIconConstraints: const BoxConstraints(minWidth: 36),
+                filled: false,
                 border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 10),
               ),
             ),
@@ -1085,7 +1088,7 @@ class _ExerciseLibraryCard extends StatelessWidget {
             child: thumbnailUrl != null && thumbnailUrl.isNotEmpty
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: Image.network(thumbnailUrl, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Center(child: Icon(catIcon, size: 28, color: Colors.white.withValues(alpha: 0.3)))),
+                    child: Image.network(thumbnailUrl, fit: BoxFit.cover, errorBuilder: (_, _, _) => Center(child: Icon(catIcon, size: 28, color: Colors.white.withValues(alpha: 0.3)))),
                   )
                 : Center(child: Icon(catIcon, size: 28, color: Colors.white.withValues(alpha: 0.3))),
           ),
@@ -1355,7 +1358,10 @@ class _CourseFormModalState extends State<_CourseFormModal> {
                                     controller: _timeCtrl,
                                     style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
                                     decoration: const InputDecoration(
+                                      filled: false,
                                       border: InputBorder.none,
+                                      enabledBorder: InputBorder.none,
+                                      focusedBorder: InputBorder.none,
                                       contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                                       hintText: '09:00',
                                       hintStyle: TextStyle(color: Color(0xFF6B7280)),
@@ -1426,7 +1432,7 @@ class _CourseFormModalState extends State<_CourseFormModal> {
                     trailing: Switch(
                       value: _isShared,
                       onChanged: (v) => setState(() => _isShared = v),
-                      activeColor: const Color(0xFF22C55E),
+                      activeThumbColor: const Color(0xFF22C55E),
                     ),
                     children: [
                       Text(
@@ -1511,7 +1517,7 @@ class _CourseFormModalState extends State<_CourseFormModal> {
                           Switch(
                             value: _waitlistEnabled,
                             onChanged: (v) => setState(() => _waitlistEnabled = v),
-                            activeColor: const Color(0xFF22C55E),
+                            activeThumbColor: const Color(0xFF22C55E),
                           ),
                         ],
                       ),
@@ -1566,7 +1572,7 @@ class _CourseFormModalState extends State<_CourseFormModal> {
                                         controller: TextEditingController(text: ml['title'] as String? ?? ''),
                                         onChanged: (v) => _musicLinks[i]['title'] = v,
                                         style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
-                                        decoration: const InputDecoration(hintText: 'Titolo playlist', hintStyle: TextStyle(fontSize: 12, color: Color(0xFF6B7280)), border: InputBorder.none, contentPadding: EdgeInsets.symmetric(horizontal: 8)),
+                                        decoration: const InputDecoration(hintText: 'Titolo playlist', hintStyle: TextStyle(fontSize: 12, color: Color(0xFF6B7280)), filled: false, border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none, contentPadding: EdgeInsets.symmetric(horizontal: 8)),
                                       ),
                                     ),
                                   ),
@@ -1588,7 +1594,7 @@ class _CourseFormModalState extends State<_CourseFormModal> {
                                   controller: TextEditingController(text: ml['url'] as String? ?? ''),
                                   onChanged: (v) => _musicLinks[i]['url'] = v,
                                   style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
-                                  decoration: const InputDecoration(hintText: 'URL', hintStyle: TextStyle(fontSize: 12, color: Color(0xFF6B7280)), border: InputBorder.none, contentPadding: EdgeInsets.symmetric(horizontal: 8)),
+                                  decoration: const InputDecoration(hintText: 'URL', hintStyle: TextStyle(fontSize: 12, color: Color(0xFF6B7280)), filled: false, border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none, contentPadding: EdgeInsets.symmetric(horizontal: 8)),
                                 ),
                               ),
                             ],
@@ -1962,7 +1968,10 @@ class _ExercisePickerDialogState extends State<_ExercisePickerDialog> {
                 hintStyle: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.3)),
                 prefixIcon: Icon(Icons.search_rounded, size: 16, color: Colors.white.withValues(alpha: 0.3)),
                 prefixIconConstraints: const BoxConstraints(minWidth: 36),
+                filled: false,
                 border: InputBorder.none,
+                enabledBorder: InputBorder.none,
+                focusedBorder: InputBorder.none,
                 contentPadding: const EdgeInsets.symmetric(vertical: 10),
               ),
             ),
@@ -2137,7 +2146,7 @@ class _MiniInput extends StatelessWidget {
               textAlign: TextAlign.center,
               keyboardType: TextInputType.number,
               style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-              decoration: const InputDecoration(border: InputBorder.none, contentPadding: EdgeInsets.symmetric(vertical: 6)),
+              decoration: const InputDecoration(filled: false, border: InputBorder.none, enabledBorder: InputBorder.none, focusedBorder: InputBorder.none, contentPadding: EdgeInsets.symmetric(vertical: 6)),
             ),
           ),
         ],
@@ -2486,7 +2495,7 @@ class _LessonCard extends StatelessWidget {
                 Text(
                   [
                     if (time.isNotEmpty) time,
-                    if (engagement != null) '${'*' * engagement}',
+                    if (engagement != null) '*' * engagement,
                     if (attendees != null) '$attendees partecipanti',
                   ].join(' - '),
                   style: TextStyle(fontSize: 11, color: Colors.grey[500]),
@@ -3440,7 +3449,7 @@ class _LiveClassModalState extends State<_LiveClassModal> {
                   Switch(
                     value: _autoAdvance,
                     onChanged: (v) => setState(() => _autoAdvance = v),
-                    activeColor: const Color(0xFF22C55E),
+                    activeThumbColor: const Color(0xFF22C55E),
                   ),
                 ],
               ),
@@ -3681,7 +3690,7 @@ class _SectionBox extends StatelessWidget {
               const SizedBox(width: 8),
               Text(title, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
               const Spacer(),
-              if (trailing != null) trailing!,
+              ?trailing,
             ],
           ),
           const SizedBox(height: 10),

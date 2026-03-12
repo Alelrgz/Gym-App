@@ -30,6 +30,7 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
   String? _readerLabel;
   String? _readerStatus;
   String _readerTab = 'code';
+  bool _turnstileExpanded = false;
 
   // Shower
   int _showerTimer = 8;
@@ -135,7 +136,10 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
           : SingleChildScrollView(
               padding: EdgeInsets.all(isDesktop ? 32 : 16),
-              child: Column(
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 600),
+                  child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Header
@@ -165,7 +169,7 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
                     const SizedBox(height: 24),
                   ],
 
-                  // Settings grid (2 columns on desktop, single on mobile)
+                  // Settings cards - single column layout
                   LayoutBuilder(
                     builder: (context, constraints) {
                       final cards = [
@@ -180,41 +184,6 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
                         _buildLogoutCard(),
                       ];
 
-                      if (constraints.maxWidth > 700) {
-                        // Desktop: 2-column grid with full-width cards for profile, POS, commissions, import
-                        return Column(
-                          children: [
-                            cards[0], // profile - full width
-                            const SizedBox(height: 12),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(child: cards[1]), // gym info
-                                const SizedBox(width: 12),
-                                Expanded(child: cards[2]), // stripe
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            cards[3], // POS - full width
-                            const SizedBox(height: 12),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(child: cards[4]), // shower
-                                const SizedBox(width: 12),
-                                Expanded(child: cards[5]), // turnstile
-                              ],
-                            ),
-                            const SizedBox(height: 12),
-                            cards[6], // commissions - full width
-                            const SizedBox(height: 12),
-                            cards[7], // import - full width
-                            const SizedBox(height: 12),
-                            cards[8], // logout - full width
-                          ],
-                        );
-                      }
-
                       return Column(
                         children: cards.map((c) => Padding(padding: const EdgeInsets.only(bottom: 12), child: c)).toList(),
                       );
@@ -223,6 +192,8 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
                 ],
               ),
             ),
+          ),
+        ),
     );
   }
 
@@ -243,7 +214,7 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
             child: _gymLogo != null
                 ? ClipRRect(
                     borderRadius: BorderRadius.circular(10),
-                    child: Image.network('${ApiConfig.baseUrl}$_gymLogo', fit: BoxFit.cover, errorBuilder: (_, _, _a) => _logoPlaceholder()),
+                    child: Image.network('${ApiConfig.baseUrl}$_gymLogo', fit: BoxFit.cover, errorBuilder: (_, _, a) => _logoPlaceholder()),
                   )
                 : _logoPlaceholder(),
           ),
@@ -721,8 +692,33 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sectionTitle('Tornello / Kiosk'),
-          Text('Configura il Raspberry Pi all\'ingresso per la scansione QR e l\'apertura del tornello.', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+          GestureDetector(
+            onTap: () => setState(() => _turnstileExpanded = !_turnstileExpanded),
+            behavior: HitTestBehavior.opaque,
+            child: Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _sectionTitle('Tornello / Kiosk'),
+                      Text('Configura il Raspberry Pi all\'ingresso per la scansione QR e l\'apertura del tornello.', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                    ],
+                  ),
+                ),
+                AnimatedRotation(
+                  turns: _turnstileExpanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey[600], size: 22),
+                ),
+              ],
+            ),
+          ),
+          AnimatedCrossFade(
+            firstChild: const SizedBox.shrink(),
+            secondChild: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
           const SizedBox(height: 12),
           _fieldLabel('Chiave API Dispositivo'),
           Row(
@@ -751,7 +747,7 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
               }),
             ],
           ),
-          const SizedBox(height: 10),
+          const SizedBox(height: 12),
           _fieldLabel('Durata Apertura Cancello (secondi)'),
           _buildInput(gateCtrl, '5', keyboardType: TextInputType.number),
           const SizedBox(height: 12),
@@ -778,12 +774,17 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
                     // Save turnstile settings - gate duration
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Salvato')));
                   },
-                  style: OutlinedButton.styleFrom(foregroundColor: Colors.white, side: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: Colors.white,
+                    side: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
                   child: const Text('Salva'),
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 6),
           Text('Rigenerare la chiave disconnetterà tutti i dispositivi configurati.', style: TextStyle(fontSize: 10, color: Colors.grey[600])),
           if (_deviceApiKey.isNotEmpty) ...[
             const SizedBox(height: 16),
@@ -806,6 +807,11 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
               ),
             ),
           ],
+              ],
+            ),
+            crossFadeState: _turnstileExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+            duration: const Duration(milliseconds: 200),
+          ),
         ],
       ),
     );

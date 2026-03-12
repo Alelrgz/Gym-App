@@ -97,7 +97,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           child: Center(
             child: SingleChildScrollView(
               padding: const EdgeInsets.symmetric(horizontal: 32),
-              child: Column(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 400),
+                child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   const Icon(
@@ -207,6 +209,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     ),
                   ),
                 ],
+              ),
               ),
             ),
           ),

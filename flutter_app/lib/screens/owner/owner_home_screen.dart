@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
@@ -79,22 +80,8 @@ class _DesktopSidebar extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
             child: Column(
               children: [
-                Container(
-                  width: 40, height: 40,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [AppColors.primary, Color(0xFFFF6B35)],
-                    ),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.fitness_center_rounded, color: Colors.white, size: 22),
-                ),
+                SvgPicture.asset('assets/fitos-logo.svg', height: 36),
                 const SizedBox(height: 6),
-                const Text(
-                  'FitOS',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary, letterSpacing: 0.5),
-                ),
-                const SizedBox(height: 2),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                   decoration: BoxDecoration(
@@ -236,29 +223,30 @@ class _MobileBottomNav extends StatelessWidget {
         child: Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: List.generate(OwnerHomeScreen._navItems.length, (i) {
               final item = OwnerHomeScreen._navItems[i];
               final isActive = i == currentIndex;
-              return GestureDetector(
-                onTap: () => onTap(i),
-                behavior: HitTestBehavior.opaque,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(item.icon, size: 24, color: isActive ? AppColors.primary : Colors.grey[600]),
-                      const SizedBox(height: 2),
-                      Text(
-                        item.label,
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                          color: isActive ? AppColors.primary : Colors.grey[600],
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () => onTap(i),
+                  behavior: HitTestBehavior.opaque,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(item.icon, size: 24, color: isActive ? AppColors.primary : Colors.grey[600]),
+                        const SizedBox(height: 2),
+                        Text(
+                          item.label,
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
+                            color: isActive ? AppColors.primary : Colors.grey[600],
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
               );
