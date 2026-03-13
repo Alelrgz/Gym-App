@@ -6,6 +6,26 @@ class OwnerService {
 
   OwnerService({required ApiClient api}) : _api = api;
 
+  // ── Multi-Gym ──────────────────────────────────────────
+  Future<List<Map<String, dynamic>>> getGyms() async {
+    final response = await _api.get(ApiConfig.ownerGyms);
+    return (response.data as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  Future<Map<String, dynamic>> createGym(String name) async {
+    final response = await _api.post(ApiConfig.ownerGyms, data: {'name': name});
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> updateGym(String gymId, Map<String, dynamic> data) async {
+    final response = await _api.put(ApiConfig.ownerGym(gymId), data: data);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<void> deleteGym(String gymId) async {
+    await _api.delete(ApiConfig.ownerGym(gymId));
+  }
+
   // ── Dashboard / Core ────────────────────────────────────
   Future<Map<String, dynamic>> getOwnerData() async {
     final response = await _api.get(ApiConfig.ownerData);
@@ -161,6 +181,45 @@ class OwnerService {
     return (response.data as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
   }
 
+  Future<List<Map<String, dynamic>>> getPipelineClients(String status) async {
+    final response = await _api.get(ApiConfig.ownerCrmPipelineClients(status));
+    return (response.data as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getExClients() async {
+    final response = await _api.get(ApiConfig.ownerCrmExClients);
+    return (response.data as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  Future<Map<String, dynamic>> generateWhatsappLink(String phone, String message) async {
+    final response = await _api.post(ApiConfig.ownerCrmWhatsappLink, data: {
+      'phone': phone,
+      'message': message,
+    });
+    return response.data as Map<String, dynamic>;
+  }
+
+  // ── Client Metrics (reuses trainer endpoints) ──────────
+  Future<Map<String, dynamic>> getClientWeekStreak(String clientId) async {
+    final response = await _api.get(ApiConfig.trainerClientWeekStreak(clientId));
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getClientDietConsistency(String clientId, {String period = 'month'}) async {
+    final response = await _api.get('${ApiConfig.trainerClientDietConsistency(clientId)}?period=$period');
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<List<Map<String, dynamic>>> getClientWorkoutLog(String clientId) async {
+    final response = await _api.get(ApiConfig.trainerClientWorkoutLog(clientId));
+    return (response.data as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
+  Future<List<Map<String, dynamic>>> getClientCourseLog(String clientId) async {
+    final response = await _api.get(ApiConfig.trainerClientCourseLog(clientId));
+    return (response.data as List).map((e) => Map<String, dynamic>.from(e as Map)).toList();
+  }
+
   // ── Facilities ──────────────────────────────────────────
   Future<List<Map<String, dynamic>>> getActivityTypes() async {
     final response = await _api.get(ApiConfig.ownerActivityTypes);
@@ -198,9 +257,9 @@ class OwnerService {
     await _api.delete(ApiConfig.ownerFacility(id));
   }
 
-  Future<Map<String, dynamic>> getFacilityAvailability(String id) async {
+  Future<List<dynamic>> getFacilityAvailability(String id) async {
     final response = await _api.get(ApiConfig.ownerFacilityAvailability(id));
-    return response.data as Map<String, dynamic>;
+    return response.data as List<dynamic>;
   }
 
   Future<void> setFacilityAvailability(String id, Map<String, dynamic> data) async {
@@ -224,6 +283,48 @@ class OwnerService {
 
   Future<Map<String, dynamic>> generateDeviceKey() async {
     final response = await _api.post(ApiConfig.ownerGenerateDeviceKey);
+    return response.data as Map<String, dynamic>;
+  }
+
+  // ── SMTP Email Settings ────────────────────────────────
+  Future<Map<String, dynamic>> getSmtpSettings() async {
+    final response = await _api.get(ApiConfig.ownerSmtpSettings);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> updateSmtpSettings(Map<String, dynamic> data) async {
+    final response = await _api.put(ApiConfig.ownerSmtpSettings, data: data);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> testSmtpSettings() async {
+    final response = await _api.post(ApiConfig.ownerSmtpTest);
+    return response.data as Map<String, dynamic>;
+  }
+
+  // ── SMTP OAuth ────────────────────────────────────────
+  Future<Map<String, dynamic>> getSmtpOAuthAuthorizeUrl(String provider) async {
+    final response = await _api.get(ApiConfig.ownerSmtpOAuthAuthorize(provider));
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getSmtpOAuthStatus() async {
+    final response = await _api.get(ApiConfig.ownerSmtpOAuthStatus);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<void> disconnectSmtpOAuth() async {
+    await _api.delete(ApiConfig.ownerSmtpOAuthDisconnect);
+  }
+
+  // ── FCM Push Settings ────────────────────────────────
+  Future<Map<String, dynamic>> getFcmSettings() async {
+    final response = await _api.get(ApiConfig.ownerFcmSettings);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> updateFcmSettings(Map<String, dynamic> data) async {
+    final response = await _api.put(ApiConfig.ownerFcmSettings, data: data);
     return response.data as Map<String, dynamic>;
   }
 

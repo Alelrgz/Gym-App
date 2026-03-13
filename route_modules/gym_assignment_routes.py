@@ -3,6 +3,7 @@ Gym Assignment Routes - API endpoints for clients to join gyms and select traine
 """
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from auth import get_current_user
+from gym_context import get_gym_context
 from service_modules.gym_assignment_service import get_gym_assignment_service, GymAssignmentService
 from models import JoinGymRequest, SelectTrainerRequest
 from models_orm import UserORM
@@ -83,20 +84,28 @@ async def leave_gym(
 @router.get("/api/owner/gym-code")
 async def get_gym_code(
     user: UserORM = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: GymAssignmentService = Depends(get_gym_assignment_service)
 ):
     """Get the gym code that trainers/clients can use to join."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can view gym codes")
 
-    # Use the new gym_code field
-    gym_code = user.gym_code or service.generate_gym_code_for_owner(user.id)
+    from models_orm import GymORM
+    db = get_db_session()
+    try:
+        gym = db.query(GymORM).filter(GymORM.id == gym_id).first()
+        gym_code = gym.gym_code if gym else (user.gym_code or service.generate_gym_code_for_owner(user.id))
+        gym_name = gym.name if gym else (user.gym_name or "")
+        gym_logo = gym.logo if gym else (user.gym_logo or "")
+    finally:
+        db.close()
 
     return {
         "gym_code": gym_code,
         "owner_name": user.username,
-        "gym_name": user.gym_name or "",
-        "gym_logo": user.gym_logo or "",
+        "gym_name": gym_name,
+        "gym_logo": gym_logo,
         "message": "Share this code with trainers and clients to let them join your gym"
     }
 
@@ -104,51 +113,55 @@ async def get_gym_code(
 @router.get("/api/owner/pending-trainers")
 async def get_pending_trainers(
     user: UserORM = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: GymAssignmentService = Depends(get_gym_assignment_service)
 ):
     """Get list of trainers pending approval."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can view pending trainers")
 
-    return service.get_pending_trainers(user.id)
+    return service.get_pending_trainers(gym_id)
 
 
 @router.post("/api/owner/approve-trainer/{trainer_id}")
 async def approve_trainer(
     trainer_id: str,
     user: UserORM = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: GymAssignmentService = Depends(get_gym_assignment_service)
 ):
     """Approve a trainer's registration."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can approve trainers")
 
-    return service.approve_trainer(user.id, trainer_id)
+    return service.approve_trainer(gym_id, trainer_id)
 
 
 @router.post("/api/owner/reject-trainer/{trainer_id}")
 async def reject_trainer(
     trainer_id: str,
     user: UserORM = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: GymAssignmentService = Depends(get_gym_assignment_service)
 ):
     """Reject a trainer's registration."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can reject trainers")
 
-    return service.reject_trainer(user.id, trainer_id)
+    return service.reject_trainer(gym_id, trainer_id)
 
 
 @router.get("/api/owner/approved-trainers")
 async def get_approved_trainers(
     user: UserORM = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: GymAssignmentService = Depends(get_gym_assignment_service)
 ):
     """Get list of approved trainers for this gym."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can view trainers")
 
-    return service.get_approved_trainers(user.id)
+    return service.get_approved_trainers(gym_id)
 
 
 # --- GYM SETTINGS ENDPOINTS ---
@@ -159,21 +172,34 @@ class GymSettingsUpdate(BaseModel):
 
 
 @router.get("/api/owner/gym-settings")
-async def get_gym_settings(user: UserORM = Depends(get_current_user)):
+async def get_gym_settings(
+    user: UserORM = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
+):
     """Get gym branding settings (name, logo)."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can view gym settings")
 
-    return {
-        "gym_name": user.gym_name or "",
-        "gym_logo": user.gym_logo or "",
-    }
+    from models_orm import GymORM
+    db = get_db_session()
+    try:
+        gym = db.query(GymORM).filter(GymORM.id == gym_id).first()
+        return {
+            "gym_name": gym.name if gym else (user.gym_name or ""),
+            "gym_logo": gym.logo if gym else (user.gym_logo or ""),
+            "device_api_key": user.device_api_key or "",
+            "gate_duration": getattr(user, 'gate_duration', 5) or 5,
+            "default_commission_rate": getattr(user, 'default_commission_rate', 0) or 0,
+        }
+    finally:
+        db.close()
 
 
 @router.post("/api/owner/gym-settings")
 async def update_gym_settings(
     request: GymSettingsUpdate,
-    user: UserORM = Depends(get_current_user)
+    user: UserORM = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
 ):
     """Update gym name (requires password confirmation)."""
     if user.role != "owner":
@@ -187,13 +213,18 @@ async def update_gym_settings(
         if not verify_password(request.password, user.hashed_password):
             raise HTTPException(status_code=403, detail="Incorrect password")
 
+    from models_orm import GymORM
     db = get_db_session()
     try:
-        db_user = db.query(UserORM).filter(UserORM.id == user.id).first()
-        if db_user:
-            if request.gym_name is not None:
+        gym = db.query(GymORM).filter(GymORM.id == gym_id, GymORM.owner_id == user.id).first()
+        if gym and request.gym_name is not None:
+            gym.name = request.gym_name.strip()
+        # Also update legacy UserORM field if this is the primary gym
+        if gym_id == user.id:
+            db_user = db.query(UserORM).filter(UserORM.id == user.id).first()
+            if db_user and request.gym_name is not None:
                 db_user.gym_name = request.gym_name.strip()
-            db.commit()
+        db.commit()
         return {"success": True, "message": "Gym settings updated"}
     finally:
         db.close()
@@ -202,10 +233,12 @@ async def update_gym_settings(
 @router.post("/api/owner/gym-logo")
 async def upload_gym_logo(
     file: UploadFile = File(...),
-    user: UserORM = Depends(get_current_user)
+    user: UserORM = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
 ):
     """Upload or update gym logo."""
     from service_modules.upload_helper import save_file, delete_file, _optimize_image, ALLOWED_IMAGE_EXTENSIONS, MAX_IMAGE_SIZE
+    from models_orm import GymORM
 
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can update gym logo")
@@ -221,21 +254,25 @@ async def upload_gym_logo(
     if len(content) > MAX_IMAGE_SIZE:
         raise HTTPException(status_code=400, detail="File too large. Maximum 5MB")
 
-    # Delete old logo
-    if user.gym_logo:
-        await delete_file(user.gym_logo)
-
-    optimized, ext = _optimize_image(content, max_size=(400, 400), crop_square=False)
-    filename = f"gym_logo_{user.id}.{ext}"
-
-    url = await save_file(optimized, "profiles", filename)
-
     db = get_db_session()
     try:
-        db_user = db.query(UserORM).filter(UserORM.id == user.id).first()
-        if db_user:
-            db_user.gym_logo = url
-            db.commit()
+        gym = db.query(GymORM).filter(GymORM.id == gym_id, GymORM.owner_id == user.id).first()
+        old_logo = gym.logo if gym else user.gym_logo
+        if old_logo:
+            await delete_file(old_logo)
+
+        optimized, ext = _optimize_image(content, max_size=(400, 400), crop_square=False)
+        filename = f"gym_logo_{gym_id}.{ext}"
+        url = await save_file(optimized, "profiles", filename)
+
+        if gym:
+            gym.logo = url
+        # Also update legacy UserORM field for primary gym
+        if gym_id == user.id:
+            db_user = db.query(UserORM).filter(UserORM.id == user.id).first()
+            if db_user:
+                db_user.gym_logo = url
+        db.commit()
     finally:
         db.close()
 
@@ -248,22 +285,30 @@ async def upload_gym_logo(
 
 
 @router.delete("/api/owner/gym-logo")
-async def delete_gym_logo(user: UserORM = Depends(get_current_user)):
+async def delete_gym_logo(
+    user: UserORM = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
+):
     """Delete gym logo."""
     from service_modules.upload_helper import delete_file
+    from models_orm import GymORM
 
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can delete gym logo")
 
-    if user.gym_logo:
-        await delete_file(user.gym_logo)
-
     db = get_db_session()
     try:
-        db_user = db.query(UserORM).filter(UserORM.id == user.id).first()
-        if db_user:
-            db_user.gym_logo = None
-            db.commit()
+        gym = db.query(GymORM).filter(GymORM.id == gym_id, GymORM.owner_id == user.id).first()
+        old_logo = gym.logo if gym else user.gym_logo
+        if old_logo:
+            await delete_file(old_logo)
+        if gym:
+            gym.logo = None
+        if gym_id == user.id:
+            db_user = db.query(UserORM).filter(UserORM.id == user.id).first()
+            if db_user:
+                db_user.gym_logo = None
+        db.commit()
     finally:
         db.close()
 
@@ -280,7 +325,8 @@ class CommissionRateRequest(BaseModel):
 async def set_trainer_commission(
     trainer_id: str,
     body: CommissionRateRequest,
-    user: UserORM = Depends(get_current_user)
+    user: UserORM = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
 ):
     """Set the commission rate for a trainer."""
     if user.role != "owner":
@@ -292,7 +338,7 @@ async def set_trainer_commission(
     try:
         trainer = db.query(UserORM).filter(
             UserORM.id == trainer_id,
-            UserORM.gym_owner_id == user.id,
+            UserORM.gym_owner_id == gym_id,
             UserORM.role.in_(["trainer", "staff", "nutritionist"])
         ).first()
         if not trainer:
@@ -307,7 +353,8 @@ async def set_trainer_commission(
 @router.get("/api/owner/commissions")
 async def get_trainer_commissions(
     period: str = "month",  # "month", "last_month", "year", "all"
-    user: UserORM = Depends(get_current_user)
+    user: UserORM = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
 ):
     """Get all trainers with their commission calculations."""
     if user.role != "owner":
@@ -334,7 +381,7 @@ async def get_trainer_commissions(
             start = None
 
         trainers = db.query(UserORM).filter(
-            UserORM.gym_owner_id == user.id,
+            UserORM.gym_owner_id == gym_id,
             UserORM.role.in_(["trainer", "staff", "nutritionist"]),
             UserORM.is_approved == True
         ).all()
@@ -364,7 +411,7 @@ async def get_trainer_commissions(
             if client_ids:
                 pay_query = db.query(PaymentORM).filter(
                     PaymentORM.client_id.in_(client_ids),
-                    PaymentORM.gym_id == user.id,
+                    PaymentORM.gym_id == gym_id,
                     PaymentORM.status == "succeeded"
                 )
                 if start:

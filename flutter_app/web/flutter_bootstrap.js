@@ -3,6 +3,6 @@
 
 _flutter.loader.load({
   config: {
-    renderer: "canvaskit",
+    renderer: "html",
   },
 });

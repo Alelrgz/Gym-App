@@ -922,6 +922,28 @@ class ScheduleService:
         finally:
             db.close()
 
+    def get_client_course_log(self, client_id: str, limit: int = 50) -> list:
+        """Get completed course schedule entries for a client."""
+        db = get_db_session()
+        try:
+            courses = db.query(ClientScheduleORM).filter(
+                ClientScheduleORM.client_id == client_id,
+                ClientScheduleORM.type == "course",
+                ClientScheduleORM.completed == True,
+            ).order_by(ClientScheduleORM.date.desc()).limit(limit).all()
+
+            return [
+                {
+                    "id": c.id,
+                    "date": c.date,
+                    "title": c.title or "Corso",
+                    "completed": c.completed,
+                }
+                for c in courses
+            ]
+        finally:
+            db.close()
+
     def get_client_exercise_history(self, client_id: str, exercise_name: str = None) -> list:
         """Get historical performance data for a client's exercises."""
         from sqlalchemy import func

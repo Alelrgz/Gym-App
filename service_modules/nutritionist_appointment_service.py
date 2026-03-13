@@ -240,6 +240,26 @@ class NutritionistAppointmentService:
             )
             db.add(notification)
 
+            # Notify client that appointment is confirmed
+            client_notification = NotificationORM(
+                user_id=client_id,
+                type="appointment_confirmed",
+                title="Appuntamento Confermato",
+                message=f"Il tuo appuntamento di {session_label} con {nutri_name} il {request.date} alle {time_12hr} è stato aggiunto al tuo calendario.",
+                data=json.dumps({
+                    "appointment_id": appointment_id,
+                    "nutritionist_id": request.nutritionist_id,
+                    "nutritionist_name": nutri_name,
+                    "date": request.date,
+                    "time": time_12hr,
+                    "duration": request.duration,
+                    "session_type": session_type
+                }),
+                read=False,
+                created_at=datetime.utcnow().isoformat()
+            )
+            db.add(client_notification)
+
             # Payment record
             if payment_method == "card" and session_price and session_price > 0:
                 from models_orm import PaymentORM

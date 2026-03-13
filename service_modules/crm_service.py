@@ -48,7 +48,7 @@ class CRMService:
             db.close()
 
     def get_at_risk_clients(self, gym_id: str, limit: int = 20) -> List[dict]:
-        """Get detailed list of at-risk clients needing attention."""
+        """Get detailed list of at-risk and churning clients needing attention."""
         db = get_db_session()
         try:
             clients = db.query(ClientProfileORM).filter(
@@ -59,54 +59,65 @@ class CRMService:
             at_risk_clients = []
 
             for client in clients:
+                # Use the same classification as the pipeline
+                pipeline_status = self._calculate_client_status(client, db, today)
+
+                if pipeline_status not in ("at_risk", "churning"):
+                    continue
+
                 days_inactive = self._get_days_inactive(client, db, today)
 
-                # Include if 5-30 days inactive (at-risk or early churning)
-                if 5 < days_inactive <= 30:
-                    # Get trainer name
-                    trainer_name = None
-                    if client.trainer_id:
-                        trainer = db.query(UserORM).filter(UserORM.id == client.trainer_id).first()
-                        trainer_name = trainer.username if trainer else None
+                # Get trainer name
+                trainer_name = None
+                if client.trainer_id:
+                    trainer = db.query(UserORM).filter(UserORM.id == client.trainer_id).first()
+                    trainer_name = trainer.username if trainer else None
 
-                    # Get user info for name/email
-                    user = db.query(UserORM).filter(UserORM.id == client.id).first()
+                # Get user info
+                user = db.query(UserORM).filter(UserORM.id == client.id).first()
 
-                    # Get last workout date
-                    last_workout = db.query(ClientScheduleORM).filter(
-                        ClientScheduleORM.client_id == client.id,
-                        ClientScheduleORM.type == "workout",
-                        ClientScheduleORM.completed == True
-                    ).order_by(ClientScheduleORM.date.desc()).first()
+                # Get last workout date
+                last_workout = db.query(ClientScheduleORM).filter(
+                    ClientScheduleORM.client_id == client.id,
+                    ClientScheduleORM.type == "workout",
+                    ClientScheduleORM.completed == True
+                ).order_by(ClientScheduleORM.date.desc()).first()
 
-                    # Get active subscription/plan name
-                    plan_name = None
-                    active_sub = db.query(ClientSubscriptionORM).filter(
-                        ClientSubscriptionORM.client_id == client.id,
-                        ClientSubscriptionORM.gym_id == client.gym_id,
-                        ClientSubscriptionORM.status == "active"
-                    ).first()
-                    if active_sub and active_sub.plan_id:
-                        plan = db.query(SubscriptionPlanORM).filter(SubscriptionPlanORM.id == active_sub.plan_id).first()
+                # Get latest subscription/plan name
+                plan_name = None
+                sub_status = None
+                latest_sub = db.query(ClientSubscriptionORM).filter(
+                    ClientSubscriptionORM.client_id == client.id,
+                    ClientSubscriptionORM.gym_id == client.gym_id,
+                ).order_by(ClientSubscriptionORM.created_at.desc()).first()
+                if latest_sub:
+                    sub_status = latest_sub.status
+                    if latest_sub.plan_id:
+                        plan = db.query(SubscriptionPlanORM).filter(SubscriptionPlanORM.id == latest_sub.plan_id).first()
                         plan_name = plan.name if plan else None
 
-                    at_risk_clients.append({
-                        "id": client.id,
-                        "name": user.username if user else "Unknown",
-                        "email": user.email if user else None,
-                        "days_inactive": days_inactive,
-                        "last_workout_date": last_workout.date if last_workout else None,
-                        "health_score": client.health_score or 0,
-                        "streak": client.streak or 0,
-                        "trainer_id": client.trainer_id,
-                        "trainer_name": trainer_name,
-                        "status": client.status,
-                        "plan_name": plan_name,
-                        "profile_picture": user.profile_picture if user else None,
-                    })
+                at_risk_clients.append({
+                    "id": client.id,
+                    "name": user.username if user else "Unknown",
+                    "email": user.email if user else None,
+                    "phone": user.phone if user else None,
+                    "days_inactive": days_inactive,
+                    "last_workout_date": last_workout.date if last_workout else None,
+                    "health_score": client.health_score or 0,
+                    "streak": client.streak or 0,
+                    "trainer_id": client.trainer_id,
+                    "trainer_name": trainer_name,
+                    "status": client.status,
+                    "pipeline_status": pipeline_status,
+                    "plan_name": plan_name,
+                    "subscription_status": sub_status,
+                    "profile_picture": user.profile_picture if user else None,
+                })
 
-            # Sort by days inactive (most inactive first)
-            at_risk_clients.sort(key=lambda x: x["days_inactive"], reverse=True)
+            # Sort: churning first, then by days inactive
+            at_risk_clients.sort(
+                key=lambda x: (0 if x["pipeline_status"] == "churning" else 1, -x["days_inactive"])
+            )
 
             return at_risk_clients[:limit]
 
@@ -470,6 +481,162 @@ class CRMService:
             return []
         finally:
             db.close()
+
+
+    def get_ex_clients(self, gym_id: str, limit: int = 50) -> List[dict]:
+        """Get former clients with canceled/expired subscriptions and no active sub."""
+        db = get_db_session()
+        try:
+            clients = db.query(ClientProfileORM).filter(
+                ClientProfileORM.gym_id == gym_id
+            ).all()
+
+            ex_clients = []
+
+            for client in clients:
+                # Skip if client has an active subscription
+                active_sub = db.query(ClientSubscriptionORM).filter(
+                    ClientSubscriptionORM.client_id == client.id,
+                    ClientSubscriptionORM.gym_id == gym_id,
+                    ClientSubscriptionORM.status == "active"
+                ).first()
+                if active_sub:
+                    continue
+
+                # Get most recent subscription
+                last_sub = db.query(ClientSubscriptionORM).filter(
+                    ClientSubscriptionORM.client_id == client.id,
+                    ClientSubscriptionORM.gym_id == gym_id,
+                ).order_by(ClientSubscriptionORM.created_at.desc()).first()
+
+                if not last_sub or last_sub.status not in ('canceled', 'past_due'):
+                    continue
+
+                user = db.query(UserORM).filter(UserORM.id == client.id).first()
+                if not user:
+                    continue
+
+                # Get plan name
+                plan_name = None
+                if last_sub.plan_id:
+                    plan = db.query(SubscriptionPlanORM).filter(
+                        SubscriptionPlanORM.id == last_sub.plan_id
+                    ).first()
+                    plan_name = plan.name if plan else None
+
+                cancel_date_str = last_sub.canceled_at or last_sub.current_period_end or last_sub.created_at
+
+                ex_clients.append({
+                    "id": client.id,
+                    "name": user.username,
+                    "email": user.email,
+                    "phone": user.phone,
+                    "last_plan_name": plan_name,
+                    "last_subscription_status": last_sub.status,
+                    "canceled_at": cancel_date_str,
+                    "subscription_end_date": last_sub.current_period_end,
+                    "days_since_cancellation": self._days_since(cancel_date_str),
+                    "profile_picture": user.profile_picture,
+                })
+
+            ex_clients.sort(key=lambda x: x.get("canceled_at") or "", reverse=True)
+            return ex_clients[:limit]
+
+        except Exception as e:
+            logger.error(f"Error getting ex-clients: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to get ex-clients: {str(e)}")
+        finally:
+            db.close()
+
+    def get_pipeline_clients(self, gym_id: str, status: str, limit: int = 50) -> List[dict]:
+        """Get detailed client list for a specific pipeline status (new, active, at_risk, churning)."""
+        db = get_db_session()
+        try:
+            clients = db.query(ClientProfileORM).filter(
+                ClientProfileORM.gym_id == gym_id
+            ).all()
+
+            today = date.today()
+            result = []
+
+            for client in clients:
+                client_status = self._calculate_client_status(client, db, today)
+                if client_status != status:
+                    continue
+
+                user = db.query(UserORM).filter(UserORM.id == client.id).first()
+                if not user:
+                    continue
+
+                # Count completed workouts
+                completed_workouts = db.query(ClientScheduleORM).filter(
+                    ClientScheduleORM.client_id == client.id,
+                    ClientScheduleORM.type == "workout",
+                    ClientScheduleORM.completed == True
+                ).count()
+
+                # Count completed courses
+                completed_courses = db.query(ClientScheduleORM).filter(
+                    ClientScheduleORM.client_id == client.id,
+                    ClientScheduleORM.type == "course",
+                    ClientScheduleORM.completed == True
+                ).count()
+
+                days_inactive = self._get_days_inactive(client, db, today)
+
+                # Get trainer name
+                trainer_name = None
+                if client.trainer_id:
+                    trainer = db.query(UserORM).filter(UserORM.id == client.trainer_id).first()
+                    if trainer:
+                        trainer_name = trainer.username
+
+                # Get subscription plan
+                plan_name = None
+                sub = db.query(ClientSubscriptionORM).filter(
+                    ClientSubscriptionORM.client_id == client.id,
+                    ClientSubscriptionORM.gym_id == gym_id
+                ).first()
+                if sub and sub.plan_id:
+                    plan = db.query(SubscriptionPlanORM).filter(
+                        SubscriptionPlanORM.id == sub.plan_id
+                    ).first()
+                    if plan:
+                        plan_name = plan.name
+
+                result.append({
+                    "id": client.id,
+                    "name": user.username,
+                    "email": user.email,
+                    "streak": client.streak or 0,
+                    "health_score": client.health_score or 0,
+                    "completed_workouts": completed_workouts,
+                    "completed_courses": completed_courses,
+                    "days_inactive": days_inactive,
+                    "trainer_name": trainer_name,
+                    "plan_name": plan_name,
+                    "profile_picture": user.profile_picture,
+                })
+
+            # Sort: most active first (lowest days_inactive), then by streak desc
+            result.sort(key=lambda x: (-x['streak'], x['days_inactive']))
+            return result[:limit]
+
+        except Exception as e:
+            logger.error(f"Error getting pipeline clients: {e}")
+            raise HTTPException(status_code=500, detail=f"Failed to get pipeline clients: {str(e)}")
+        finally:
+            db.close()
+
+    def _days_since(self, date_str: str) -> int:
+        """Calculate days since a given ISO date string."""
+        if not date_str:
+            return 999
+        try:
+            d = datetime.fromisoformat(date_str.replace('Z', '+00:00')).date()
+            return (date.today() - d).days
+        except:
+            return 999
 
 
 # Singleton instance

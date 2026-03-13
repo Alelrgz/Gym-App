@@ -890,6 +890,27 @@ class CourseService:
                     )
                     db.add(cal_entry)
 
+            # Notify client that the class is on their schedule
+            course_name = course.name if course else "Class"
+            lesson_date = lesson.date or "TBD"
+            lesson_time = lesson.time or (course.time_slot if course else "TBD")
+            client_notif = NotificationORM(
+                user_id=client_id,
+                type="course_enrolled",
+                title="Iscrizione Confermata",
+                message=f"Sei iscritto a {course_name} il {lesson_date} alle {lesson_time}. L'evento è stato aggiunto al tuo calendario.",
+                data=json.dumps({
+                    "lesson_id": lesson_id,
+                    "course_id": lesson.course_id,
+                    "course_name": course_name,
+                    "date": str(lesson_date),
+                    "time": str(lesson_time)
+                }),
+                read=False,
+                created_at=datetime.utcnow().isoformat()
+            )
+            db.add(client_notif)
+
             db.commit()
             db.refresh(enrollment)
 

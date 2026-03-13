@@ -682,6 +682,82 @@ class SubscriptionService:
         finally:
             db.close()
 
+    def create_offer_checkout(self, offer_id: str, client_id: str = None, base_url: str = "") -> dict:
+        """Create a Stripe Checkout Session with the offer's coupon pre-applied."""
+        if not is_stripe_configured():
+            raise HTTPException(status_code=400, detail="Stripe non configurato")
+
+        db = get_db_session()
+        try:
+            offer = db.query(PlanOfferORM).filter(PlanOfferORM.id == offer_id).first()
+            if not offer or not offer.is_active:
+                raise HTTPException(status_code=404, detail="Offerta non trovata o scaduta")
+
+            # Get plan(s) — if offer is tied to a specific plan, use that; otherwise pick first active plan
+            if offer.plan_id:
+                plan = db.query(SubscriptionPlanORM).filter(
+                    SubscriptionPlanORM.id == offer.plan_id,
+                    SubscriptionPlanORM.is_active == True
+                ).first()
+            else:
+                plan = db.query(SubscriptionPlanORM).filter(
+                    SubscriptionPlanORM.gym_id == offer.gym_id,
+                    SubscriptionPlanORM.is_active == True
+                ).order_by(SubscriptionPlanORM.price.asc()).first()
+
+            if not plan or not plan.stripe_price_id:
+                raise HTTPException(status_code=400, detail="Nessun piano disponibile per questa offerta")
+
+            # Get gym's connected Stripe account
+            gym_stripe_account = self.get_gym_stripe_account(offer.gym_id)
+
+            session_params = {
+                "mode": "subscription",
+                "line_items": [{"price": plan.stripe_price_id, "quantity": 1}],
+                "success_url": f"{base_url}/?subscription_success=true",
+                "cancel_url": f"{base_url}/?subscription_canceled=true",
+                "metadata": {
+                    "offer_id": offer_id,
+                    "client_id": client_id or "",
+                    "gym_id": offer.gym_id,
+                    "plan_id": plan.id,
+                },
+            }
+
+            # Apply Stripe coupon
+            if offer.stripe_coupon_id:
+                session_params["discounts"] = [{"coupon": offer.stripe_coupon_id}]
+
+            # Route payment to gym's Stripe account
+            if gym_stripe_account:
+                fee_pct = float(os.environ.get("STRIPE_PLATFORM_FEE_PERCENT", "0"))
+                if fee_pct > 0:
+                    session_params["subscription_data"] = {
+                        "application_fee_percent": fee_pct,
+                        "transfer_data": {"destination": gym_stripe_account},
+                    }
+                else:
+                    session_params["subscription_data"] = {
+                        "transfer_data": {"destination": gym_stripe_account},
+                    }
+
+            # Pre-fill client email if available
+            if client_id:
+                client_user = db.query(UserORM).filter(UserORM.id == client_id).first()
+                if client_user and client_user.email:
+                    session_params["customer_email"] = client_user.email
+
+            checkout = stripe.checkout.Session.create(**session_params)
+            return {"checkout_url": checkout.url}
+
+        except HTTPException:
+            raise
+        except stripe.StripeError as e:
+            logger.error(f"Stripe error creating offer checkout: {e}")
+            raise HTTPException(status_code=500, detail=f"Errore Stripe: {str(e)}")
+        finally:
+            db.close()
+
     def _notify_clients_of_offer(self, db, gym_id: str, offer: PlanOfferORM):
         """Send notifications to all clients of the gym about a new offer."""
         try:
@@ -1176,10 +1252,32 @@ class SubscriptionService:
             if subscription:
                 subscription.status = "canceled"
                 subscription.ended_at = datetime.utcnow().isoformat()
+                subscription.canceled_at = datetime.utcnow().isoformat()
                 subscription.updated_at = datetime.utcnow().isoformat()
 
                 db.commit()
                 logger.info(f"Canceled subscription from webhook: {subscription.id}")
+
+                # Fire subscription_canceled automations in real-time
+                try:
+                    from service_modules.trigger_check_service import get_trigger_check_service
+                    client_user = db.query(UserORM).filter(UserORM.id == subscription.client_id).first()
+                    plan = db.query(SubscriptionPlanORM).filter(SubscriptionPlanORM.id == subscription.plan_id).first() if subscription.plan_id else None
+                    get_trigger_check_service().fire_for_client(
+                        gym_id=subscription.gym_id,
+                        client_id=subscription.client_id,
+                        trigger_type="subscription_canceled",
+                        match_data={
+                            "client_id": subscription.client_id,
+                            "client_name": client_user.username if client_user else "",
+                            "plan_name": plan.name if plan else "",
+                            "canceled_at": subscription.canceled_at,
+                            "days_since_cancellation": 0,
+                            "trigger_reference": f"sub_canceled_{subscription.id}"
+                        }
+                    )
+                except Exception as e:
+                    logger.error(f"Error firing subscription_canceled automation: {e}")
 
         finally:
             db.close()
@@ -1244,6 +1342,27 @@ class SubscriptionService:
                 db.add(payment)
                 db.commit()
                 logger.info(f"Recorded failed payment from webhook: {payment.id}")
+
+                # Fire payment_failed automations in real-time
+                try:
+                    from service_modules.trigger_check_service import get_trigger_check_service
+                    client_user = db.query(UserORM).filter(UserORM.id == subscription.client_id).first()
+                    plan = db.query(SubscriptionPlanORM).filter(SubscriptionPlanORM.id == subscription.plan_id).first() if subscription.plan_id else None
+                    get_trigger_check_service().fire_for_client(
+                        gym_id=subscription.gym_id,
+                        client_id=subscription.client_id,
+                        trigger_type="payment_failed",
+                        match_data={
+                            "client_id": subscription.client_id,
+                            "client_name": client_user.username if client_user else "",
+                            "amount": str(invoice.amount_due / 100),
+                            "currency": invoice.currency or "eur",
+                            "plan_name": plan.name if plan else "",
+                            "trigger_reference": f"payment_failed_{payment.id}"
+                        }
+                    )
+                except Exception as e:
+                    logger.error(f"Error firing payment_failed automation: {e}")
 
         finally:
             db.close()
