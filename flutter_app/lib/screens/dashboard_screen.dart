@@ -9,6 +9,7 @@ import '../models/client_profile.dart';
 import '../providers/client_provider.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/dashboard_sheets.dart';
+import 'workout_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -57,30 +58,7 @@ class DashboardScreen extends ConsumerWidget {
                 backgroundColor: AppColors.background,
                 surfaceTintColor: Colors.transparent,
                 toolbarHeight: 60,
-                title: Text.rich(
-                  TextSpan(
-                    children: [
-                      const TextSpan(
-                        text: 'Fit',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      TextSpan(
-                        text: 'OS',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          color: const Color(0xFFF15A24),
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                title: SvgPicture.asset('assets/fitos-logo.svg', height: 28),
                 centerTitle: false,
                 actions: [
                   _TopBarIcon(
@@ -286,7 +264,17 @@ class _WorkoutCard extends ConsumerWidget {
                 ),
               ),
               GestureDetector(
-                onTap: () => showSnack(context, 'Modifica allenamento — Prossimamente'),
+                onTap: () {
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => WorkoutBuilderPage(
+                      existingWorkout: workout,
+                      onSaved: () {
+                        ref.invalidate(clientDataProvider);
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ));
+                },
                 child: Container(
                   width: 36,
                   height: 36,

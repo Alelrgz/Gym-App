@@ -48,7 +48,10 @@ class ApiConfig {
   // Diet
   static const dietScan = '/api/client/diet/scan';
   static const dietLog = '/api/client/diet/log';
+  static const dietSelfAssign = '/api/client/diet/self-assign';
   static const weeklyMealPlan = '/api/client/weekly-meal-plan';
+  static const weeklyMealPlanAdd = '/api/client/weekly-meal-plan/add';
+  static String weeklyMealPlanDelete(int id) => '/api/client/weekly-meal-plan/$id';
   static String dietLogForDate(String date) => '/api/client/diet-log/$date';
   static String dietBarcode(String code) => '/api/client/diet/barcode/$code';
 
@@ -96,6 +99,8 @@ class ApiConfig {
   static const completeWorkout = '/api/client/schedule/complete';
   static const completeCoopWorkout = '/api/client/schedule/complete-coop';
   static const updateWorkoutSet = '/api/client/schedule/update_set';
+  static const clientCreateWorkout = '/api/client/workout/create';
+  static String clientUpdateWorkout(String id) => '/api/client/workout/$id';
 
   // Leaderboard
   static const leaderboardData = '/api/leaderboard/data';

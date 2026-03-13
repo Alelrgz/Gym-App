@@ -232,6 +232,25 @@ class ClientService {
 
   // ── Diet & Nutrition ─────────────────────────────────────────
 
+  Future<Map<String, dynamic>> selfAssignDiet({
+    required int calories,
+    required int protein,
+    required int carbs,
+    required int fat,
+    int hydrationTarget = 2500,
+    int consistencyTarget = 80,
+  }) async {
+    final response = await _api.post(ApiConfig.dietSelfAssign, data: {
+      'calories': calories,
+      'protein': protein,
+      'carbs': carbs,
+      'fat': fat,
+      'hydration_target': hydrationTarget,
+      'consistency_target': consistencyTarget,
+    });
+    return response.data as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> logMeal(Map<String, dynamic> mealData) async {
     final response = await _api.post(ApiConfig.dietLog, data: mealData);
     return response.data as Map<String, dynamic>;
@@ -244,6 +263,34 @@ class ClientService {
 
   Future<Map<String, dynamic>> getWeeklyMealPlan() async {
     final response = await _api.get(ApiConfig.weeklyMealPlan);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> addMealToPlan({
+    required int dayOfWeek,
+    required String mealType,
+    required String mealName,
+    String? description,
+    int calories = 0,
+    int protein = 0,
+    int carbs = 0,
+    int fat = 0,
+  }) async {
+    final response = await _api.post(ApiConfig.weeklyMealPlanAdd, data: {
+      'day_of_week': dayOfWeek,
+      'meal_type': mealType,
+      'meal_name': mealName,
+      'description': description,
+      'calories': calories,
+      'protein': protein,
+      'carbs': carbs,
+      'fat': fat,
+    });
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> deleteMealFromPlan(int mealId) async {
+    final response = await _api.delete(ApiConfig.weeklyMealPlanDelete(mealId));
     return response.data as Map<String, dynamic>;
   }
 
@@ -324,6 +371,32 @@ class ClientService {
   Future<Map<String, dynamic>> updateWorkoutSet(Map<String, dynamic> payload) async {
     final response = await _api.put(ApiConfig.updateWorkoutSet, data: payload);
     return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> createWorkout({
+    required String title,
+    required String duration,
+    required String difficulty,
+    required List<Map<String, dynamic>> exercises,
+  }) async {
+    final response = await _api.post(ApiConfig.clientCreateWorkout, data: {
+      'title': title,
+      'duration': duration,
+      'difficulty': difficulty,
+      'exercises': exercises,
+    });
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> updateClientWorkout(String workoutId, Map<String, dynamic> updates) async {
+    final response = await _api.put(ApiConfig.clientUpdateWorkout(workoutId), data: updates);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<List<Map<String, dynamic>>> getExerciseLibrary() async {
+    final response = await _api.get(ApiConfig.exercises);
+    final list = response.data as List<dynamic>;
+    return list.map((e) => e as Map<String, dynamic>).toList();
   }
 
   // ── Profile Updates ──────────────────────────────────────────

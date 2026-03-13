@@ -238,6 +238,14 @@ class AssignDietRequest(BaseModel):
     hydration_target: int
     consistency_target: int
 
+class SelfAssignDietRequest(BaseModel):
+    calories: int
+    protein: int
+    carbs: int
+    fat: int
+    hydration_target: int = 2500
+    consistency_target: int = 80
+
 # --- WEEKLY MEAL PLAN ---
 
 class MealPlanEntry(BaseModel):
@@ -249,6 +257,16 @@ class MealPlanEntry(BaseModel):
     carbs: int = 0
     fat: int = 0
     alternative_index: int = 0  # 0=primary, 1+=alternatives
+
+class ClientAddMealRequest(BaseModel):
+    day_of_week: int  # 0=Monday ... 6=Sunday
+    meal_type: str
+    meal_name: str
+    description: Optional[str] = None
+    calories: int = 0
+    protein: int = 0
+    carbs: int = 0
+    fat: int = 0
 
 class SetWeeklyMealPlanRequest(BaseModel):
     client_id: str
