@@ -209,6 +209,9 @@ app.include_router(client_import_router)
 from route_modules.terminal_routes import router as terminal_router
 app.include_router(terminal_router)
 
+from route_modules.community_routes import router as community_router
+app.include_router(community_router)
+
 
 def _safe_add_columns(engine, table_name, columns_list):
     """Add columns to a table using IF NOT EXISTS (PostgreSQL 9.6+) or fallback."""

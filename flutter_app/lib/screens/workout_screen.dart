@@ -715,37 +715,45 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
                   ),
                 ),
               ],
-              // ─── Hero Section (Exercise Video — expandable) ─────
-              GestureDetector(
-                onTap: () => setState(() => videoExpanded = !videoExpanded),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  height: videoExpanded ? 400 : 220,
+              // ─── Hero Section ─────
+              if (isCompleted)
+                // Completed: show workout title instead of video
+                SizedBox(
+                  height: 160,
                   child: Stack(
-                    fit: StackFit.expand,
                     children: [
-                      // Exercise video from backend
-                      ExerciseVideoView(
-                        videoUrl: _exerciseVideoUrl(currentEx['video_id']?.toString()),
-                        key: ValueKey('video_${currentEx['video_id']}'),
-                      ),
-                      // Gradient overlay
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.black.withValues(alpha: 0.3),
-                              Colors.black.withValues(alpha: 0.2),
-                              AppColors.background,
+                      // Workout title centered
+                      Center(
+                        child: Padding(
+                          padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 36),
+                              const SizedBox(height: 12),
+                              Text(
+                                widget.workout['title'] ?? 'Workout',
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Completato',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
                             ],
-                            stops: const [0.0, 0.7, 1.0],
                           ),
                         ),
                       ),
-                      // Top controls
+                      // Close button
                       Positioned(
                         top: MediaQuery.of(context).padding.top + 8,
                         left: 12,
@@ -761,60 +769,110 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
                           ),
                         ),
                       ),
-                      // IN DIRETTA badge
-                      Positioned(
-                        top: MediaQuery.of(context).padding.top + 12,
-                        right: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 8, height: 8,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.primary,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              const Text(
-                                'IN DIRETTA',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
+                    ],
+                  ),
+                )
+              else
+                // Active: show exercise video
+                GestureDetector(
+                  onTap: () => setState(() => videoExpanded = !videoExpanded),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    height: videoExpanded ? 400 : 220,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // Exercise video from backend
+                        ExerciseVideoView(
+                          videoUrl: _exerciseVideoUrl(currentEx['video_id']?.toString()),
+                          key: ValueKey('video_${currentEx['video_id']}'),
                         ),
-                      ),
-                      // Expand/collapse hint
-                      Positioned(
-                        bottom: 8,
-                        left: 0, right: 0,
-                        child: Center(
-                          child: AnimatedRotation(
-                            turns: videoExpanded ? 0.5 : 0,
-                            duration: const Duration(milliseconds: 300),
-                            child: Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              color: Colors.white.withValues(alpha: 0.5),
-                              size: 28,
+                        // Gradient overlay
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.3),
+                                Colors.black.withValues(alpha: 0.2),
+                                AppColors.background,
+                              ],
+                              stops: const [0.0, 0.7, 1.0],
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                        // Top controls
+                        Positioned(
+                          top: MediaQuery.of(context).padding.top + 8,
+                          left: 12,
+                          child: GestureDetector(
+                            onTap: () => context.go(widget.isTrainer ? '/trainer/schedule' : '/home'),
+                            child: Container(
+                              width: 40, height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.5),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.close_rounded, color: Colors.white, size: 22),
+                            ),
+                          ),
+                        ),
+                        // IN DIRETTA badge
+                        Positioned(
+                          top: MediaQuery.of(context).padding.top + 12,
+                          right: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 8, height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Text(
+                                  'IN DIRETTA',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Expand/collapse hint
+                        Positioned(
+                          bottom: 8,
+                          left: 0, right: 0,
+                          child: Center(
+                            child: AnimatedRotation(
+                              turns: videoExpanded ? 0.5 : 0,
+                              duration: const Duration(milliseconds: 300),
+                              child: Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: Colors.white.withValues(alpha: 0.5),
+                                size: 28,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
 
               // ─── Active Exercise Card ──────────────────────
               Padding(

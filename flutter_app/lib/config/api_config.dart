@@ -215,6 +215,16 @@ class ApiConfig {
   static const terminalImportReader = '/api/terminal/import-reader';
   static const terminalReaders = '/api/terminal/readers';
 
+  // ── Community ────────────────────────────────────────────
+  static const communityFeed = '/api/community/feed';
+  static const communityPosts = '/api/community/posts';
+  static String communityPostDelete(String id) => '/api/community/posts/$id';
+  static String communityPostLike(String id) => '/api/community/posts/$id/like';
+  static String communityPostComments(String id) => '/api/community/posts/$id/comments';
+  static String communityCommentDelete(int id) => '/api/community/comments/$id';
+  static String communityCommentLike(int id) => '/api/community/comments/$id/like';
+  static String communityPostPin(String id) => '/api/community/posts/$id/pin';
+
   // ── Spotify ──────────────────────────────────────────────
   static const String spotifyStatus = '/api/spotify/status';
   static const String spotifyAuthorize = '/api/spotify/authorize';

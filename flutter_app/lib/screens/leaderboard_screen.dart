@@ -138,6 +138,13 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
       ),
       child: Row(
         children: [
+          GestureDetector(
+            onTap: () => Navigator.of(context).pop(),
+            child: const Padding(
+              padding: EdgeInsets.only(right: 12),
+              child: Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 20),
+            ),
+          ),
           const Text('Classifica', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: Colors.white)),
           const Spacer(),
           // Gem counter pill

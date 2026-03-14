@@ -78,6 +78,14 @@ class _DietScreenState extends ConsumerState<DietScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Listen for pending meal scan (FAB action while diet tab already mounted)
+    ref.listen<bool>(pendingMealScanProvider, (prev, next) {
+      if (next) {
+        ref.read(pendingMealScanProvider.notifier).state = false;
+        _scanMeal(context);
+      }
+    });
+
     final clientData = ref.watch(clientDataProvider);
     final unreadMessages = ref.watch(unreadMessagesProvider);
     final unreadNotifications = ref.watch(unreadNotificationsProvider);
@@ -122,8 +130,11 @@ class _DietScreenState extends ConsumerState<DietScreen> {
                   floating: true,
                   backgroundColor: AppColors.background,
                   surfaceTintColor: Colors.transparent,
-                  toolbarHeight: 60,
-                  title: SvgPicture.asset('assets/fitos-logo.svg', height: 28),
+                  toolbarHeight: 68,
+                  title: Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: SvgPicture.asset('assets/fitos-logo.svg', height: 34),
+                  ),
                   centerTitle: false,
                   actions: [
                     _TopBarIcon(icon: Icons.calendar_today_rounded, onTap: () => showCalendarSheet(context, ref)),
@@ -165,8 +176,6 @@ class _DietScreenState extends ConsumerState<DietScreen> {
                             _CalendarMealPlanCard(selectedDay: _selectedDay, onDaySelected: (d) => setState(() => _selectedDay = d)),
                             const SizedBox(height: 16),
 
-                            // D. Today's Diet Log
-                            _TodaysDietLog(dietLog: diet?.dietLog),
                             const SizedBox(height: 24),
 
                             // E. Footer
@@ -576,7 +585,7 @@ class _DietHeroCard extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                       elevation: 0,
                     ),
-                    child: const Text('Vai a Dieta', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+                    child: const Text('Vedi Piano Completo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
                   ),
                 ),
               ],
@@ -1236,15 +1245,15 @@ class _CalendarMealPlanCardState extends ConsumerState<_CalendarMealPlanCard> {
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        Text(label.toUpperCase(), style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color, letterSpacing: 0.3)),
-                        Text('${m['calories'] ?? 0} kcal', style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                        Text(label.toUpperCase(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color, letterSpacing: 0.3)),
+                        Text('${m['calories'] ?? 0} kcal', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
                       ],
                     ),
-                    const SizedBox(height: 1),
+                    const SizedBox(height: 2),
                     Text(
                       m['meal_name'] as String? ?? '',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 14,
                         fontWeight: FontWeight.w500,
                         color: AppColors.textPrimary,
                         decoration: isChecked ? TextDecoration.lineThrough : null,
@@ -1252,6 +1261,19 @@ class _CalendarMealPlanCardState extends ConsumerState<_CalendarMealPlanCard> {
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      children: [
+                        Text('P ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFFF9500))),
+                        Text('${m['protein'] ?? 0}g', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                        const SizedBox(width: 8),
+                        Text('C ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF34C759))),
+                        Text('${m['carbs'] ?? 0}g', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                        const SizedBox(width: 8),
+                        Text('G ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFFF3B30))),
+                        Text('${m['fat'] ?? 0}g', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                      ],
                     ),
                   ],
                 ),
@@ -1264,71 +1286,6 @@ class _CalendarMealPlanCardState extends ConsumerState<_CalendarMealPlanCard> {
   }
 }
 
-// ─── TODAY'S DIET LOG ────────────────────────────────────────────
-
-class _TodaysDietLog extends StatelessWidget {
-  final Map<String, List<DietItem>>? dietLog;
-  const _TodaysDietLog({this.dietLog});
-
-  @override
-  Widget build(BuildContext context) {
-    if (dietLog == null || dietLog!.isEmpty) return const SizedBox.shrink();
-    final sortedTypes = dietLog!.keys.where((k) => dietLog![k]!.isNotEmpty).toList()
-      ..sort((a, b) {
-        final ai = _typeOrder.indexOf(a.toLowerCase());
-        final bi = _typeOrder.indexOf(b.toLowerCase());
-        return (ai == -1 ? 99 : ai).compareTo(bi == -1 ? 99 : bi);
-      });
-    if (sortedTypes.isEmpty) return const SizedBox.shrink();
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4, bottom: 12),
-          child: Text('PASTI DI OGGI', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white.withValues(alpha: 0.6), letterSpacing: 1.0)),
-        ),
-        ...sortedTypes.map((type) {
-          final meals = dietLog![type]!;
-          final typeLower = type.toLowerCase();
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Padding(
-                padding: const EdgeInsets.only(left: 4, bottom: 6),
-                child: Row(children: [
-                  Text(_mealEmoji(typeLower), style: const TextStyle(fontSize: 12)),
-                  const SizedBox(width: 6),
-                  Text(_mealLabel(typeLower).toUpperCase(), style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: _mealColor(typeLower), letterSpacing: 0.5)),
-                ]),
-              ),
-              ...meals.map((meal) => Padding(
-                padding: const EdgeInsets.only(bottom: 6),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.04),
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border(left: BorderSide(color: AppColors.primary, width: 3)),
-                  ),
-                  child: Row(children: [
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(meal.meal, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                      if (meal.time.isNotEmpty) Text(meal.time, style: TextStyle(fontSize: 10, color: Colors.grey[600])),
-                    ])),
-                    Text('${meal.cals}', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                    Text(' kcal', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
-                  ]),
-                ),
-              )),
-              const SizedBox(height: 8),
-            ],
-          );
-        }),
-      ],
-    );
-  }
-}
 
 // ─── MANUAL MEAL DIALOG ──────────────────────────────────────────
 

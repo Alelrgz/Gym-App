@@ -2,10 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import '../config/api_config.dart';
 import '../config/theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/client_provider.dart';
-import '../widgets/glass_card.dart';
 import '../widgets/dashboard_sheets.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -15,97 +15,276 @@ class ProfileScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
     final user = authState.user;
+    final clientData = ref.watch(clientDataProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              const SizedBox(height: 20),
-              // Avatar
-              CircleAvatar(
-                radius: 40,
-                backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-                child: user?.profilePicture != null
-                    ? ClipOval(
-                        child: Image.network(
-                          user!.profilePicture!,
-                          width: 80,
-                          height: 80,
-                          fit: BoxFit.cover,
-                          errorBuilder: (_, e, s) => const Icon(
-                            Icons.person,
-                            size: 40,
-                            color: AppColors.primary,
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+          children: [
+            // ── Top bar: settings gear ──
+            Align(
+              alignment: Alignment.centerRight,
+              child: IconButton(
+                icon: const Icon(Icons.settings_outlined, color: AppColors.textSecondary, size: 24),
+                onPressed: () => _showSettingsSheet(context, ref),
+              ),
+            ),
+
+            // ── Avatar + Name + Bio ──
+            Center(
+              child: Column(
+                children: [
+                  GestureDetector(
+                    onTap: () => _showEditProfile(context, ref),
+                    child: Stack(
+                      children: [
+                        CircleAvatar(
+                          radius: 48,
+                          backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                          child: _buildAvatar(user),
+                        ),
+                        Positioned(
+                          bottom: 0, right: 0,
+                          child: Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary,
+                              shape: BoxShape.circle,
+                              border: Border.all(color: AppColors.background, width: 2),
+                            ),
+                            child: const Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
                           ),
                         ),
-                      )
-                    : const Icon(Icons.person, size: 40, color: AppColors.primary),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    user?.username ?? '',
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                  ),
+                  if (clientData.valueOrNull?.bio != null && clientData.valueOrNull!.bio!.isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 4),
+                      child: Text(
+                        clientData.valueOrNull!.bio!,
+                        style: TextStyle(fontSize: 14, color: Colors.grey[400], height: 1.3),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  if (clientData.valueOrNull?.gymName != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 6),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.fitness_center_rounded, size: 14, color: AppColors.primary),
+                          const SizedBox(width: 4),
+                          Text(
+                            clientData.valueOrNull!.gymName!,
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+                          ),
+                        ],
+                      ),
+                    ),
+                ],
               ),
-              const SizedBox(height: 12),
-              Text(
-                user?.username ?? '',
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.w700,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              if (user?.email != null)
-                Text(
-                  user!.email!,
-                  style: const TextStyle(fontSize: 14, color: AppColors.textSecondary),
-                ),
-              const SizedBox(height: 32),
+            ),
+            const SizedBox(height: 24),
 
-              // Settings
-              GlassCard(
-                child: Column(
-                  children: [
-                    _SettingsItem(
-                      icon: Icons.person_outline,
-                      label: 'Modifica Profilo',
-                      onTap: () => _showEditProfile(context, ref),
-                    ),
-                    const Divider(color: AppColors.border, height: 1),
-                    _SettingsItem(
-                      icon: Icons.lock_outline,
-                      label: 'Privacy',
-                      onTap: () => _showPrivacySettings(context, ref),
-                    ),
-                    const Divider(color: AppColors.border, height: 1),
-                    _SettingsItem(
-                      icon: Icons.notifications_none,
-                      label: 'Notifiche',
-                      onTap: () => showNotificationsSheet(context, ref),
-                    ),
-                  ],
+            // ── Stats Row ──
+            clientData.when(
+              data: (profile) => _buildStatsRow(profile),
+              loading: () => const SizedBox(height: 80),
+              error: (_, _) => const SizedBox.shrink(),
+            ),
+            const SizedBox(height: 24),
+
+            // ── Quick Actions ──
+            _buildActionTile(
+              icon: Icons.emoji_events_rounded,
+              iconColor: const Color(0xFFEAB308),
+              label: 'Classifica',
+              subtitle: 'Vedi la tua posizione',
+              onTap: () => context.push('/leaderboard'),
+            ),
+            const SizedBox(height: 10),
+            _buildActionTile(
+              icon: Icons.trending_up_rounded,
+              iconColor: const Color(0xFF60A5FA),
+              label: 'I Miei Progressi',
+              subtitle: 'Peso, forza e foto fisico',
+              onTap: () => showProgressSheet(context, ref),
+            ),
+            const SizedBox(height: 10),
+            if (clientData.valueOrNull?.trainerName != null)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: _buildActionTile(
+                  icon: Icons.person_rounded,
+                  iconColor: const Color(0xFF22C55E),
+                  label: 'Il Mio Trainer',
+                  subtitle: clientData.valueOrNull!.trainerName!,
+                  onTap: () {},
                 ),
+              ),
+            _buildActionTile(
+              icon: Icons.calendar_today_rounded,
+              iconColor: const Color(0xFF8B5CF6),
+              label: 'Calendario',
+              subtitle: 'Appuntamenti e allenamenti',
+              onTap: () => showCalendarSheet(context, ref),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatar(dynamic user) {
+    if (user?.profilePicture != null) {
+      final url = user!.profilePicture!;
+      final resolved = url.startsWith('http') ? url : '${ApiConfig.baseUrl}$url';
+      return ClipOval(
+        child: Image.network(
+          resolved,
+          width: 96,
+          height: 96,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => const Icon(Icons.person, size: 48, color: AppColors.primary),
+        ),
+      );
+    }
+    return const Icon(Icons.person, size: 48, color: AppColors.primary);
+  }
+
+  Widget _buildStatsRow(dynamic profile) {
+    return Row(
+      children: [
+        _StatCard(
+          icon: Icons.local_fire_department_rounded,
+          iconColor: AppColors.primary,
+          value: '${profile.streak}',
+          label: 'Streak',
+        ),
+        const SizedBox(width: 10),
+        _StatCard(
+          icon: Icons.diamond_rounded,
+          iconColor: const Color(0xFF60A5FA),
+          value: '${profile.gems}',
+          label: 'Gemme',
+        ),
+        const SizedBox(width: 10),
+        _StatCard(
+          icon: Icons.favorite_rounded,
+          iconColor: const Color(0xFFF472B6),
+          value: profile.healthScore != null ? '${profile.healthScore!.round()}%' : '--',
+          label: 'Salute',
+        ),
+      ],
+    );
+  }
+
+  Widget _buildActionTile({
+    required IconData icon,
+    required Color iconColor,
+    required String label,
+    required String subtitle,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 42,
+              height: 42,
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: iconColor, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                  Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: Colors.grey[600], size: 22),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showSettingsSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2)),
               ),
               const SizedBox(height: 16),
-
-              // Logout
-              GlassCard(
+              const Text('Impostazioni', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              const SizedBox(height: 12),
+              _SettingsItem(
+                icon: Icons.person_outline,
+                label: 'Modifica Profilo',
+                onTap: () {
+                  Navigator.pop(context);
+                  _showEditProfile(context, ref);
+                },
+              ),
+              _SettingsItem(
+                icon: Icons.lock_outline,
+                label: 'Privacy',
+                onTap: () {
+                  Navigator.pop(context);
+                  _showPrivacySettings(context, ref);
+                },
+              ),
+              _SettingsItem(
+                icon: Icons.notifications_none,
+                label: 'Notifiche',
+                onTap: () {
+                  Navigator.pop(context);
+                  showNotificationsSheet(context, ref);
+                },
+              ),
+              const Divider(color: AppColors.border, height: 24, indent: 16, endIndent: 16),
+              _SettingsItem(
+                icon: Icons.logout_rounded,
+                label: 'Esci',
+                color: AppColors.danger,
                 onTap: () async {
+                  Navigator.pop(context);
                   await ref.read(authProvider.notifier).logout();
                   if (context.mounted) context.go('/login');
                 },
-                child: const Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.logout_rounded, color: AppColors.danger, size: 20),
-                    SizedBox(width: 8),
-                    Text(
-                      'Esci',
-                      style: TextStyle(
-                        color: AppColors.danger,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ],
           ),
@@ -135,6 +314,63 @@ class ProfileScreen extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => _PrivacySheet(ref: ref),
+    );
+  }
+}
+
+// ─── STAT CARD ──────────────────────────────────────────────────
+
+class _StatCard extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final String value;
+  final String label;
+
+  const _StatCard({required this.icon, required this.iconColor, required this.value, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        ),
+        child: Column(
+          children: [
+            Icon(icon, color: iconColor, size: 22),
+            const SizedBox(height: 6),
+            Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+            const SizedBox(height: 2),
+            Text(label, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── SETTINGS ITEM ──────────────────────────────────────────────
+
+class _SettingsItem extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final Color? color;
+
+  const _SettingsItem({required this.icon, required this.label, required this.onTap, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    final c = color ?? AppColors.textPrimary;
+    return ListTile(
+      leading: Icon(icon, color: color ?? AppColors.textSecondary, size: 22),
+      title: Text(label, style: TextStyle(color: c, fontWeight: FontWeight.w500)),
+      trailing: Icon(Icons.chevron_right, color: Colors.grey[600], size: 20),
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 20),
     );
   }
 }
@@ -197,7 +433,6 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
       if (mounted) {
         showSnack(context, 'Profilo aggiornato');
         Navigator.pop(context);
-        // Refresh client data
         widget.ref.invalidate(clientDataProvider);
       }
     } catch (e) {
@@ -240,7 +475,6 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            // Handle
             Container(
               width: 40, height: 4,
               decoration: BoxDecoration(
@@ -253,7 +487,6 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
             const SizedBox(height: 24),
 
-            // Profile picture
             GestureDetector(
               onTap: _uploadingPic ? null : _changeProfilePicture,
               child: Stack(
@@ -288,19 +521,15 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
             Text('Cambia foto', style: TextStyle(fontSize: 12, color: AppColors.primary)),
             const SizedBox(height: 20),
 
-            // Name
             _buildField('Nome Completo', _nameCtrl, Icons.person_outline),
             const SizedBox(height: 12),
-            // Email
             _buildField('Email', _emailCtrl, Icons.email_outlined,
                 keyboardType: TextInputType.emailAddress),
             const SizedBox(height: 12),
-            // Password
             _buildField('Nuova Password (opzionale)', _passwordCtrl, Icons.lock_outline,
                 obscure: true),
             const SizedBox(height: 24),
 
-            // Save button
             SizedBox(
               width: double.infinity,
               height: 48,
@@ -406,7 +635,6 @@ class _PrivacySheetState extends State<_PrivacySheet> {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // Handle
           Container(
             width: 40, height: 4,
             decoration: BoxDecoration(
@@ -528,34 +756,6 @@ class _PrivacyOption extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-// ════════════════════════════════════════════════════════════════
-// SETTINGS ITEM
-// ════════════════════════════════════════════════════════════════
-
-class _SettingsItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _SettingsItem({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Icon(icon, color: AppColors.textSecondary, size: 22),
-      title: Text(label, style: const TextStyle(color: AppColors.textPrimary)),
-      trailing: const Icon(Icons.chevron_right, color: AppColors.textTertiary, size: 20),
-      onTap: onTap,
-      contentPadding: EdgeInsets.zero,
-      dense: true,
     );
   }
 }

@@ -10,6 +10,7 @@ import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/diet_screen.dart';
+import 'screens/community_screen.dart';
 import 'screens/leaderboard_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/workout_screen.dart';
@@ -76,6 +77,10 @@ class GymApp extends ConsumerWidget {
           builder: (context, state) => const RegisterScreen(),
         ),
         GoRoute(
+          path: '/leaderboard',
+          builder: (context, state) => const LeaderboardScreen(),
+        ),
+        GoRoute(
           path: '/workouts',
           builder: (context, state) => WorkoutScreen(
             coopPartnerId: state.uri.queryParameters['partner_id'],
@@ -109,8 +114,8 @@ class GymApp extends ConsumerWidget {
             StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: '/leaderboard',
-                  builder: (context, state) => const LeaderboardScreen(),
+                  path: '/community',
+                  builder: (context, state) => const CommunityScreen(),
                 ),
               ],
             ),

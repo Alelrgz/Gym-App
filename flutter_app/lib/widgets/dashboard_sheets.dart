@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:dio/dio.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -86,31 +87,28 @@ String _timeAgo(String? dateStr) {
 // ─── 1. NOTIFICATIONS SHEET ────────────────────────────────────
 
 Future<void> showNotificationsSheet(BuildContext context, WidgetRef ref) {
-  return showModalBottomSheet(
+  return showDialog(
     context: context,
-    backgroundColor: AppColors.surface,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (ctx) => DraggableScrollableSheet(
-      initialChildSize: 0.7,
-      minChildSize: 0.4,
-      maxChildSize: 0.9,
-      expand: false,
-      builder: (_, scrollController) => _NotificationsContent(
-        scrollController: scrollController,
-        ref: ref,
+    barrierColor: Colors.black54,
+    builder: (ctx) => Dialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.55,
+          child: _NotificationsContent(ref: ref),
+        ),
       ),
     ),
   );
 }
 
 class _NotificationsContent extends StatefulWidget {
-  final ScrollController scrollController;
   final WidgetRef ref;
 
-  const _NotificationsContent({required this.scrollController, required this.ref});
+  const _NotificationsContent({required this.ref});
 
   @override
   State<_NotificationsContent> createState() => _NotificationsContentState();
@@ -170,7 +168,6 @@ class _NotificationsContentState extends State<_NotificationsContent> {
                 : _notifications.isEmpty
                     ? _emptyState('Nessuna notifica', Icons.notifications_off_rounded)
                     : ListView.builder(
-                        controller: widget.scrollController,
                         itemCount: _notifications.length,
                         itemBuilder: (_, i) {
                           final n = _notifications[i] as Map<String, dynamic>;
@@ -2854,7 +2851,11 @@ class _JoinGymDialogState extends State<_JoinGymDialog> {
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        showSnack(context, 'Codice non valido', isError: true);
+        String msg = 'Codice non valido';
+        if (e is DioException && e.response?.data is Map) {
+          msg = (e.response!.data as Map)['detail']?.toString() ?? msg;
+        }
+        showSnack(context, msg, isError: true);
       }
     }
   }
@@ -3585,6 +3586,7 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
   // Strength progress
   Map<String, dynamic>? _strengthData;
   bool _loadingStrength = true;
+  String _strengthPeriod = 'month';
 
   @override
   void initState() {
@@ -3622,7 +3624,7 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
   Future<void> _loadStrength() async {
     try {
       final service = ref.read(clientServiceProvider);
-      final result = await service.getStrengthProgress();
+      final result = await service.getStrengthProgress(period: _strengthPeriod);
       if (mounted) setState(() { _strengthData = result; _loadingStrength = false; });
     } catch (_) {
       if (mounted) setState(() => _loadingStrength = false);
@@ -3759,6 +3761,16 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
 
           // ── Strength Progress ──
           _sectionHeader('FORZA'),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              _strengthPeriodChip('Sett', 'week'),
+              const SizedBox(width: 6),
+              _strengthPeriodChip('Mese', 'month'),
+              const SizedBox(width: 6),
+              _strengthPeriodChip('Anno', 'year'),
+            ],
+          ),
           const SizedBox(height: 12),
           _buildStrengthSection(),
         ],
@@ -3772,6 +3784,28 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
       onTap: () {
         setState(() { _weightPeriod = value; _loadingWeight = true; });
         _loadWeight();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.primary.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: isActive ? AppColors.primary.withValues(alpha: 0.3) : Colors.transparent),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isActive ? AppColors.primary : Colors.grey[500]),
+        ),
+      ),
+    );
+  }
+
+  Widget _strengthPeriodChip(String label, String value) {
+    final isActive = _strengthPeriod == value;
+    return GestureDetector(
+      onTap: () {
+        setState(() { _strengthPeriod = value; _loadingStrength = true; });
+        _loadStrength();
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -3858,60 +3892,86 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
             ),
           ),
           // Photos
-          ..._photos.map((photo) {
+          ..._photos.asMap().entries.map((entry) {
+            final photo = entry.value;
+            final photoIndex = entry.key;
             final url = _resolvePhotoUrl(photo['photo_url'] as String?);
             final date = photo['photo_date'] as String? ?? '';
-            return Container(
-              width: 96,
-              height: 128,
-              margin: const EdgeInsets.only(right: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    url.isNotEmpty
-                        ? Image.network(
-                            url,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => Container(
-                              color: Colors.white.withValues(alpha: 0.06),
-                              child: const Icon(Icons.broken_image_rounded, color: AppColors.textTertiary),
+            final heroTag = 'progress_photo_$photoIndex';
+            return GestureDetector(
+              onTap: url.isNotEmpty ? () => _openPhotoViewer(context, photoIndex) : null,
+              child: Container(
+                width: 96,
+                height: 128,
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                ),
+                child: Hero(
+                  tag: heroTag,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        url.isNotEmpty
+                            ? Image.network(
+                                url,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => Container(
+                                  color: Colors.white.withValues(alpha: 0.06),
+                                  child: const Icon(Icons.broken_image_rounded, color: AppColors.textTertiary),
+                                ),
+                              )
+                            : Container(
+                                color: Colors.white.withValues(alpha: 0.06),
+                                child: const Icon(Icons.image_rounded, color: AppColors.textTertiary),
+                              ),
+                        if (date.isNotEmpty)
+                          Positioned(
+                            bottom: 0, left: 0, right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
+                                ),
+                              ),
+                              child: Text(
+                                date,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w600),
+                              ),
                             ),
-                          )
-                        : Container(
-                            color: Colors.white.withValues(alpha: 0.06),
-                            child: const Icon(Icons.image_rounded, color: AppColors.textTertiary),
                           ),
-                    if (date.isNotEmpty)
-                      Positioned(
-                        bottom: 0, left: 0, right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
-                            ),
-                          ),
-                          child: Text(
-                            date,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ),
-                  ],
+                      ],
+                    ),
+                  ),
                 ),
               ),
             );
           }),
         ],
+      ),
+    );
+  }
+
+  void _openPhotoViewer(BuildContext context, int initialIndex) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        transitionDuration: const Duration(milliseconds: 350),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (_, animation, __) => _PhotoViewerPage(
+          photos: _photos,
+          initialIndex: initialIndex,
+          resolveUrl: _resolvePhotoUrl,
+          animation: animation,
+        ),
+        transitionsBuilder: (_, animation, __, child) => child,
       ),
     );
   }
@@ -4143,7 +4203,7 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
     }
 
     final categories = _strengthData!['categories'] as Map<String, dynamic>? ?? {};
-    final overall = (_strengthData!['overall_progress'] as num?)?.toDouble() ?? 0;
+    final overall = (_strengthData!['progress'] as num?)?.toDouble() ?? 0;
     final trend = _strengthData!['trend'] as String? ?? 'stable';
 
     return Column(
@@ -5166,6 +5226,134 @@ class _CoopModalContentState extends State<_CoopModalContent> {
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─── FULL-SCREEN PHOTO VIEWER ────────────────────────────────────
+
+class _PhotoViewerPage extends StatefulWidget {
+  final List<Map<String, dynamic>> photos;
+  final int initialIndex;
+  final String Function(String?) resolveUrl;
+  final Animation<double> animation;
+
+  const _PhotoViewerPage({
+    required this.photos,
+    required this.initialIndex,
+    required this.resolveUrl,
+    required this.animation,
+  });
+
+  @override
+  State<_PhotoViewerPage> createState() => _PhotoViewerPageState();
+}
+
+class _PhotoViewerPageState extends State<_PhotoViewerPage> {
+  late PageController _controller;
+  late int _current;
+
+  @override
+  void initState() {
+    super.initState();
+    _current = widget.initialIndex;
+    _controller = PageController(initialPage: _current);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: widget.animation,
+      builder: (context, child) {
+        return Scaffold(
+          backgroundColor: Colors.black.withValues(alpha: widget.animation.value),
+          body: child,
+        );
+      },
+      child: Stack(
+        children: [
+          PageView.builder(
+            controller: _controller,
+            itemCount: widget.photos.length,
+            onPageChanged: (i) => setState(() => _current = i),
+            itemBuilder: (_, i) {
+              final url = widget.resolveUrl(widget.photos[i]['photo_url'] as String?);
+              final heroTag = 'progress_photo_$i';
+              return InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Center(
+                  child: Hero(
+                    tag: heroTag,
+                    child: url.isNotEmpty
+                        ? Image.network(
+                            url,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, _, _) => const Icon(Icons.broken_image_rounded, color: Colors.white38, size: 48),
+                          )
+                        : const Icon(Icons.image_rounded, color: Colors.white38, size: 48),
+                  ),
+                ),
+              );
+            },
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 16,
+            right: 16,
+            child: FadeTransition(
+              opacity: widget.animation,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.close_rounded, color: Colors.white, size: 22),
+                    ),
+                  ),
+                  Text(
+                    widget.photos[_current]['photo_date'] as String? ?? '',
+                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(width: 38),
+                ],
+              ),
+            ),
+          ),
+          if (widget.photos.length > 1)
+            Positioned(
+              bottom: MediaQuery.of(context).padding.bottom + 24,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(widget.photos.length, (i) {
+                  return Container(
+                    width: i == _current ? 20 : 6,
+                    height: 6,
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    decoration: BoxDecoration(
+                      color: i == _current ? AppColors.primary : Colors.white.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  );
+                }),
+              ),
+            ),
+        ],
       ),
     );
   }

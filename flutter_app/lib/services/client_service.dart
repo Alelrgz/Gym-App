@@ -445,4 +445,76 @@ class ClientService {
     final response = await _api.post(ApiConfig.completeCoopWorkout, data: payload);
     return response.data as Map<String, dynamic>;
   }
+
+  // ── Community ────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> getCommunityFeed({String? cursor, int limit = 20}) async {
+    final params = <String, dynamic>{'limit': limit};
+    if (cursor != null) params['cursor'] = cursor;
+    final response = await _api.get(ApiConfig.communityFeed, queryParameters: params);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> createCommunityPost({
+    required String postType,
+    String? content,
+    List<int>? imageBytes,
+    String? imageFilename,
+    String? eventTitle,
+    String? eventDate,
+    String? eventTime,
+    String? eventLocation,
+    int? questXpReward,
+    String? questDeadline,
+  }) async {
+    final formData = FormData.fromMap(<String, dynamic>{
+      'post_type': postType,
+      if (content != null) 'content': content,
+      if (eventTitle != null) 'event_title': eventTitle,
+      if (eventDate != null) 'event_date': eventDate,
+      if (eventTime != null) 'event_time': eventTime,
+      if (eventLocation != null) 'event_location': eventLocation,
+      if (questXpReward != null) 'quest_xp_reward': questXpReward,
+      if (questDeadline != null) 'quest_deadline': questDeadline,
+      if (imageBytes != null && imageFilename != null)
+        'image': MultipartFile.fromBytes(imageBytes, filename: imageFilename),
+    });
+    final response = await _api.upload(ApiConfig.communityPosts, formData);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> togglePostLike(String postId) async {
+    final response = await _api.post(ApiConfig.communityPostLike(postId));
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getPostComments(String postId, {String? cursor, int limit = 20}) async {
+    final params = <String, dynamic>{'limit': limit};
+    if (cursor != null) params['cursor'] = cursor;
+    final response = await _api.get(ApiConfig.communityPostComments(postId), queryParameters: params);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> addComment(String postId, String content, {int? parentCommentId}) async {
+    final response = await _api.post(ApiConfig.communityPostComments(postId), data: {
+      'content': content,
+      if (parentCommentId != null) 'parent_comment_id': parentCommentId,
+    });
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> deleteCommunityPost(String postId) async {
+    final response = await _api.delete(ApiConfig.communityPostDelete(postId));
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> deleteCommunityComment(int commentId) async {
+    final response = await _api.delete(ApiConfig.communityCommentDelete(commentId));
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> pinCommunityPost(String postId) async {
+    final response = await _api.post(ApiConfig.communityPostPin(postId));
+    return response.data as Map<String, dynamic>;
+  }
 }

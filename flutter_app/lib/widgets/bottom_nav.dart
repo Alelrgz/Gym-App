@@ -1,3 +1,4 @@
+import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
 import '../config/theme.dart';
 
@@ -51,9 +52,9 @@ class AppBottomNav extends StatelessWidget {
                 ),
                 _FabButton(onTap: () => _showQuickActions(context)),
                 _NavItem(
-                  icon: Icons.emoji_events_outlined,
-                  activeIcon: Icons.emoji_events_rounded,
-                  label: 'Classifica',
+                  icon: Icons.forum_outlined,
+                  activeIcon: Icons.forum_rounded,
+                  label: 'Community',
                   isActive: currentIndex == 2,
                   onTap: () => onTap(2),
                 ),
@@ -73,61 +74,105 @@ class AppBottomNav extends StatelessWidget {
   }
 
   void _showQuickActions(BuildContext context) {
-    showModalBottomSheet(
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
+    final navBarTotal = 72.0 + bottomPadding;
+
+    showGeneralDialog(
       context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(24),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+      barrierDismissible: true,
+      barrierLabel: 'Quick Actions',
+      barrierColor: Colors.transparent,
+      transitionDuration: const Duration(milliseconds: 180),
+      transitionBuilder: (ctx, anim, _, child) {
+        final curved = CurvedAnimation(parent: anim, curve: Curves.easeOut);
+        return Stack(
           children: [
-            Container(
-              width: 40,
-              height: 4,
-              decoration: BoxDecoration(
-                color: AppColors.textTertiary,
-                borderRadius: BorderRadius.circular(2),
+            // Blurred background (stops above nav bar)
+            Positioned(
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: navBarTotal,
+              child: GestureDetector(
+                onTap: () => Navigator.pop(ctx),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: 8 * curved.value,
+                    sigmaY: 8 * curved.value,
+                  ),
+                  child: Container(
+                    color: Colors.black.withValues(alpha: 0.3 * curved.value),
+                  ),
+                ),
               ),
             ),
-            const SizedBox(height: 20),
-            _QuickAction(
-              icon: Icons.qr_code_scanner_rounded,
-              label: 'Scansiona QR',
-              onTap: () {
-                Navigator.pop(ctx);
-                onFabAction?.call('qr');
-              },
-            ),
-            _QuickAction(
-              icon: Icons.camera_alt_rounded,
-              label: 'Scansiona Pasto',
-              onTap: () {
-                Navigator.pop(ctx);
-                onFabAction?.call('meal_scan');
-              },
-            ),
-            _QuickAction(
-              icon: Icons.photo_camera_front_rounded,
-              label: 'Foto Fisico',
-              onTap: () {
-                Navigator.pop(ctx);
-                onFabAction?.call('physique_photo');
-              },
-            ),
-            _QuickAction(
-              icon: Icons.monitor_weight_rounded,
-              label: 'Registra Peso',
-              onTap: () {
-                Navigator.pop(ctx);
-                onFabAction?.call('log_weight');
-              },
+            // Actions sliding up above nav bar
+            Positioned(
+              left: 16,
+              right: 16,
+              bottom: navBarTotal + 12,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 1),
+                  end: Offset.zero,
+                ).animate(curved),
+                child: FadeTransition(
+                  opacity: curved,
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1A1E2A),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                      ),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _QuickAction(
+                            icon: Icons.qr_code_scanner_rounded,
+                            label: 'Scansiona QR',
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              onFabAction?.call('qr');
+                            },
+                          ),
+                          _QuickAction(
+                            icon: Icons.camera_alt_rounded,
+                            label: 'Scansiona Pasto',
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              onFabAction?.call('meal_scan');
+                            },
+                          ),
+                          _QuickAction(
+                            icon: Icons.photo_camera_front_rounded,
+                            label: 'Foto Fisico',
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              onFabAction?.call('physique_photo');
+                            },
+                          ),
+                          _QuickAction(
+                            icon: Icons.monitor_weight_rounded,
+                            label: 'Registra Peso',
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              onFabAction?.call('log_weight');
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
             ),
           ],
-        ),
-      ),
+        );
+      },
+      pageBuilder: (ctx, _, _) => const SizedBox.shrink(),
     );
   }
 }

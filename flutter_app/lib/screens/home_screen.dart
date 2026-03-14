@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import '../config/api_config.dart';
 import '../config/theme.dart';
 import '../providers/client_provider.dart';
@@ -132,6 +133,73 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     );
   }
 
+  Future<void> _takePhysiquePhoto() async {
+    final picker = ImagePicker();
+    final source = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Foto Fisico',
+                  style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700)),
+              const SizedBox(height: 20),
+              ListTile(
+                leading: const Icon(Icons.camera_alt_rounded,
+                    color: AppColors.primary),
+                title: const Text('Scatta Foto',
+                    style: TextStyle(color: Colors.white)),
+                onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              ),
+              ListTile(
+                leading: const Icon(Icons.photo_library_rounded,
+                    color: AppColors.primary),
+                title: const Text('Galleria',
+                    style: TextStyle(color: Colors.white)),
+                onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    if (source == null || !mounted) return;
+
+    final picked = await picker.pickImage(
+      source: source,
+      maxWidth: 1280,
+      imageQuality: 85,
+    );
+    if (picked == null || !mounted) return;
+
+    final bytes = await picked.readAsBytes();
+    if (bytes.isEmpty || !mounted) return;
+
+    try {
+      final today = DateTime.now();
+      final dateStr = '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
+      await ref.read(clientServiceProvider).uploadPhysiquePhotoBytes(
+        bytes: bytes,
+        fileName: 'physique_$dateStr.jpg',
+        mimeType: 'image/jpeg',
+        photoDate: dateStr,
+      );
+      if (mounted) showSnack(context, 'Foto fisico salvata!');
+    } catch (e) {
+      if (mounted) showSnack(context, 'Errore nel salvare la foto', isError: true);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final navIndex = widget.navigationShell.currentIndex;
@@ -150,7 +218,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           context.go('/diet');
           break;
         case 'physique_photo':
-          showSnack(context, 'Foto fisico — Prossimamente');
+          _takePhysiquePhoto();
           break;
         case 'log_weight':
           showLogWeightDialog(context, ref);
