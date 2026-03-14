@@ -27,11 +27,20 @@ import 'screens/owner/owner_dashboard_screen.dart';
 import 'screens/owner/owner_crm_screen.dart';
 import 'screens/owner/owner_facilities_screen.dart';
 import 'screens/owner/owner_settings_screen.dart';
+import 'screens/staff/staff_home_screen.dart';
+import 'screens/staff/staff_appointments_screen.dart';
+import 'screens/staff/staff_dashboard_screen.dart';
+import 'screens/staff/staff_documents_screen.dart';
+import 'screens/staff/staff_settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  MediaKit.ensureInitialized();
-  await LocalNotificationService().init();
+  try {
+    MediaKit.ensureInitialized();
+  } catch (_) {}
+  try {
+    await LocalNotificationService().init();
+  } catch (_) {}
   runApp(const ProviderScope(child: GymApp()));
 }
 
@@ -41,6 +50,7 @@ class GymApp extends ConsumerWidget {
   static String _homeForRole(String? role) {
     if (role == 'trainer') return '/trainer';
     if (role == 'owner') return '/owner';
+    if (role == 'staff') return '/staff';
     return '/home';
   }
 
@@ -178,6 +188,47 @@ class GymApp extends ConsumerWidget {
                 GoRoute(
                   path: '/owner/settings',
                   builder: (context, state) => const OwnerSettingsScreen(),
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        // ── Staff Shell ───────────────────────────────
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, navigationShell) {
+            return StaffHomeScreen(navigationShell: navigationShell);
+          },
+          branches: [
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/staff',
+                  builder: (context, state) => const StaffAppointmentsScreen(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/staff/members',
+                  builder: (context, state) => const StaffDashboardScreen(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/staff/documents',
+                  builder: (context, state) => const StaffDocumentsScreen(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/staff/settings',
+                  builder: (context, state) => const StaffSettingsScreen(),
                 ),
               ],
             ),

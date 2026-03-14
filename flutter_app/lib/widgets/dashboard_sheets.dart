@@ -5358,6 +5358,66 @@ class _PhotoViewerPageState extends State<_PhotoViewerPage> {
     );
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// ─── BOOKING APPOINTMENT SHEET ──────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+
+Future<void> showBookAppointmentSheet(BuildContext context, WidgetRef ref) {
+  return showModalBottomSheet(
+    context: context,
+    backgroundColor: AppColors.surface,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (ctx) => DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (_, scrollController) => _BookAppointmentContent(
+        scrollController: scrollController,
+        ref: ref,
+      ),
+    ),
+  );
+}
+
+class _BookAppointmentContent extends StatefulWidget {
+  final ScrollController scrollController;
+  final WidgetRef ref;
+
+  const _BookAppointmentContent({required this.scrollController, required this.ref});
+
+  @override
+  State<_BookAppointmentContent> createState() => _BookAppointmentContentState();
+}
+
+class _BookAppointmentContentState extends State<_BookAppointmentContent> {
+  List<Map<String, dynamic>> _trainers = [];
+  bool _loadingTrainers = true;
+  bool _trainerListExpanded = false;
+
+  // Selected trainer
+  int? _selectedTrainerId;
+  String? _selectedTrainerName;
+  String? _selectedTrainerPicture;
+  double? _trainerSessionRate;
+
+  // Form
+  DateTime? _selectedDate;
+  String? _selectedTime;
+  int _duration = 60;
+  final _notesController = TextEditingController();
+
+  // Slots
+  List<Map<String, dynamic>> _availableSlots = [];
+  bool _loadingSlots = false;
+
+  // Payment
+  String? _paymentMethod; // 'cash' or 'pos'
+
   bool _submitting = false;
 
   @override

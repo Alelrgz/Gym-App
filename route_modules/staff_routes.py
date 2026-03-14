@@ -442,6 +442,153 @@ async def get_member_details(
     }
 
 
+# ============ MEDICAL CERTIFICATE MANAGEMENT FOR STAFF ============
+
+@router.post("/upload-certificate/{member_id}")
+async def staff_upload_certificate(
+    member_id: str,
+    request: Request,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Staff uploads a medical certificate on behalf of a client."""
+    if user.role not in ("staff", "owner"):
+        raise HTTPException(status_code=403, detail="Staff/Owner access only")
+
+    member = db.query(UserORM).filter(UserORM.id == member_id, UserORM.role == "client").first()
+    if not member or member.gym_owner_id != user.gym_owner_id:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    data = await request.json()
+    file_data = data.get("file_data")  # base64 data URL
+    expiration_date = data.get("expiration_date")  # YYYY-MM-DD
+    filename = data.get("filename", "certificato_medico.pdf")
+
+    if not file_data:
+        raise HTTPException(status_code=400, detail="file_data is required")
+
+    import base64
+    from service_modules.upload_helper import save_file
+
+    # Parse data URL
+    file_ext = "pdf"
+    raw_data = file_data
+    if file_data.startswith("data:"):
+        mime_part = file_data.split(";")[0]
+        if "image/" in mime_part:
+            file_ext = mime_part.split("/")[1].split("+")[0]
+        raw_data = file_data.split(",")[1]
+
+    file_bytes = base64.b64decode(raw_data)
+    save_filename = f"certificato_medico.{file_ext}"
+    url = await save_file(file_bytes, f"certificates/{member_id}", save_filename, upload_type="document")
+
+    # Delete old certificates
+    old_certs = db.query(MedicalCertificateORM).filter(
+        MedicalCertificateORM.client_id == member_id
+    ).all()
+    for old in old_certs:
+        db.delete(old)
+
+    # Create new certificate record
+    cert = MedicalCertificateORM(
+        client_id=member_id,
+        filename=filename,
+        file_path=url,
+        expiration_date=expiration_date
+    )
+    db.add(cert)
+    db.commit()
+    db.refresh(cert)
+
+    # Calculate status
+    cert_status = "valid"
+    if expiration_date:
+        try:
+            exp = datetime.strptime(expiration_date, "%Y-%m-%d")
+            days_left = (exp - datetime.now()).days
+            if days_left < 0:
+                cert_status = "expired"
+            elif days_left <= 30:
+                cert_status = "expiring"
+        except ValueError:
+            pass
+
+    return {
+        "status": "success",
+        "certificate": {
+            "id": cert.id,
+            "filename": cert.filename,
+            "file_url": url,
+            "expiration_date": expiration_date,
+            "cert_status": cert_status
+        }
+    }
+
+
+@router.put("/update-certificate/{member_id}")
+async def staff_update_certificate_expiry(
+    member_id: str,
+    request: Request,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Staff updates the expiration date of a member's certificate."""
+    if user.role not in ("staff", "owner"):
+        raise HTTPException(status_code=403, detail="Staff/Owner access only")
+
+    member = db.query(UserORM).filter(UserORM.id == member_id, UserORM.role == "client").first()
+    if not member or member.gym_owner_id != user.gym_owner_id:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    data = await request.json()
+    new_expiration = data.get("expiration_date")
+    if not new_expiration:
+        raise HTTPException(status_code=400, detail="expiration_date is required")
+
+    cert = db.query(MedicalCertificateORM).filter(
+        MedicalCertificateORM.client_id == member_id
+    ).order_by(MedicalCertificateORM.id.desc()).first()
+
+    if not cert:
+        raise HTTPException(status_code=404, detail="No certificate found for this member")
+
+    cert.expiration_date = new_expiration
+    db.commit()
+
+    return {"status": "success", "message": "Expiration date updated"}
+
+
+@router.delete("/delete-certificate/{member_id}")
+async def staff_delete_certificate(
+    member_id: str,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Staff deletes a member's certificate."""
+    if user.role not in ("staff", "owner"):
+        raise HTTPException(status_code=403, detail="Staff/Owner access only")
+
+    member = db.query(UserORM).filter(UserORM.id == member_id, UserORM.role == "client").first()
+    if not member or member.gym_owner_id != user.gym_owner_id:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    certs = db.query(MedicalCertificateORM).filter(
+        MedicalCertificateORM.client_id == member_id
+    ).all()
+
+    if not certs:
+        raise HTTPException(status_code=404, detail="No certificate found")
+
+    from service_modules.upload_helper import delete_file
+    for cert in certs:
+        await delete_file(cert.file_path)
+        db.delete(cert)
+    db.commit()
+
+    return {"status": "success", "message": "Certificate deleted"}
+
+
 # ============ SUBSCRIPTION MANAGEMENT FOR STAFF ============
 
 @router.get("/subscription-plans")
@@ -605,18 +752,93 @@ async def cancel_client_subscription(
     }
 
 
+@router.post("/change-subscription/preview")
+async def preview_subscription_change(
+    data: dict,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Preview proration for changing a client's subscription plan"""
+    if user.role != "staff":
+        raise HTTPException(status_code=403, detail="Staff access only")
+
+    client_id = data.get("client_id")
+    new_plan_id = data.get("plan_id")
+
+    if not client_id or not new_plan_id:
+        raise HTTPException(status_code=400, detail="client_id and plan_id required")
+
+    client = db.query(UserORM).filter(
+        UserORM.id == client_id,
+        UserORM.gym_owner_id == user.gym_owner_id,
+        UserORM.role == "client"
+    ).first()
+    if not client:
+        raise HTTPException(status_code=404, detail="Client not found")
+
+    new_plan = db.query(SubscriptionPlanORM).filter(
+        SubscriptionPlanORM.id == new_plan_id,
+        SubscriptionPlanORM.gym_id == user.gym_owner_id,
+        SubscriptionPlanORM.is_active == True
+    ).first()
+    if not new_plan:
+        raise HTTPException(status_code=404, detail="Plan not found")
+
+    subscription = db.query(ClientSubscriptionORM).filter(
+        ClientSubscriptionORM.client_id == client_id,
+        ClientSubscriptionORM.gym_id == user.gym_owner_id,
+        ClientSubscriptionORM.status.in_(["active", "trialing"])
+    ).first()
+
+    old_plan_name = None
+    old_plan_price = 0.0
+    credit = 0.0
+    amount_due = new_plan.price
+
+    if subscription:
+        old_plan = db.query(SubscriptionPlanORM).filter(
+            SubscriptionPlanORM.id == subscription.plan_id
+        ).first()
+        if old_plan:
+            old_plan_name = old_plan.name
+            old_plan_price = old_plan.price or 0.0
+
+            # Calculate prorated credit for remaining days
+            try:
+                period_end = datetime.fromisoformat(subscription.current_period_end)
+                now = datetime.utcnow()
+                remaining_days = max(0, (period_end - now).days)
+                total_days = 365 if old_plan.billing_interval == "year" else 30
+                credit = round(old_plan_price * (remaining_days / total_days), 2)
+            except Exception:
+                credit = 0.0
+
+        amount_due = round(max(0, new_plan.price - credit), 2)
+
+    return {
+        "old_plan_name": old_plan_name,
+        "old_plan_price": old_plan_price,
+        "new_plan_name": new_plan.name,
+        "new_plan_price": new_plan.price,
+        "credit": credit,
+        "amount_due": amount_due,
+        "currency": new_plan.currency or "eur",
+    }
+
+
 @router.post("/change-subscription")
 async def change_client_subscription(
     data: dict,
     user: UserORM = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    """Change a client's subscription to a different plan"""
+    """Change a client's subscription to a different plan with payment"""
     if user.role != "staff":
         raise HTTPException(status_code=403, detail="Staff access only")
 
     client_id = data.get("client_id")
     new_plan_id = data.get("plan_id")
+    payment_method = data.get("payment_method", "cash")  # "cash" or "pos"
 
     if not client_id or not new_plan_id:
         raise HTTPException(status_code=400, detail="client_id and plan_id required")
@@ -627,7 +849,6 @@ async def change_client_subscription(
         UserORM.gym_owner_id == user.gym_owner_id,
         UserORM.role == "client"
     ).first()
-
     if not client:
         raise HTTPException(status_code=404, detail="Client not found")
 
@@ -637,27 +858,48 @@ async def change_client_subscription(
         SubscriptionPlanORM.gym_id == user.gym_owner_id,
         SubscriptionPlanORM.is_active == True
     ).first()
-
     if not new_plan:
         raise HTTPException(status_code=404, detail="Plan not found")
 
-    # Find and update existing subscription
+    # Find existing subscription
     subscription = db.query(ClientSubscriptionORM).filter(
         ClientSubscriptionORM.client_id == client_id,
         ClientSubscriptionORM.gym_id == user.gym_owner_id,
         ClientSubscriptionORM.status.in_(["active", "trialing"])
     ).first()
 
+    import uuid
+    now = datetime.utcnow().isoformat()
+
+    # Calculate proration
+    old_plan_name = None
+    credit = 0.0
     if subscription:
-        # Update existing subscription to new plan
+        old_plan = db.query(SubscriptionPlanORM).filter(
+            SubscriptionPlanORM.id == subscription.plan_id
+        ).first()
+        if old_plan:
+            old_plan_name = old_plan.name
+            try:
+                period_end = datetime.fromisoformat(subscription.current_period_end)
+                remaining_days = max(0, (period_end - datetime.utcnow()).days)
+                total_days = 365 if old_plan.billing_interval == "year" else 30
+                credit = round((old_plan.price or 0) * (remaining_days / total_days), 2)
+            except Exception:
+                credit = 0.0
+
+        # Update existing subscription
         subscription.plan_id = new_plan_id
-        subscription.updated_at = datetime.utcnow().isoformat()
-        db.commit()
-        logger.info(f"Staff {user.id} changed client {client_id} to plan {new_plan.name}")
+        subscription.current_period_start = now
+        period_end = datetime.utcnow()
+        if new_plan.billing_interval == "year":
+            period_end += timedelta(days=365)
+        else:
+            period_end += timedelta(days=30)
+        subscription.current_period_end = period_end.isoformat()
+        subscription.updated_at = now
     else:
         # Create new subscription
-        import uuid
-        now = datetime.utcnow().isoformat()
         period_end = datetime.utcnow()
         if new_plan.billing_interval == "year":
             period_end += timedelta(days=365)
@@ -677,12 +919,83 @@ async def change_client_subscription(
             updated_at=now
         )
         db.add(subscription)
-        db.commit()
-        logger.info(f"Staff {user.id} subscribed client {client_id} to plan {new_plan.name}")
+
+    amount_due = round(max(0, (new_plan.price or 0) - credit), 2)
+
+    # Record payment if amount > 0
+    if amount_due > 0:
+        payment_record = PaymentORM(
+            id=str(uuid.uuid4()),
+            client_id=client_id,
+            subscription_id=subscription.id,
+            gym_id=user.gym_owner_id,
+            amount=amount_due,
+            currency=new_plan.currency or "eur",
+            status="recorded",
+            description=f"Cambio piano: {old_plan_name or 'Nessuno'} → {new_plan.name}",
+            payment_method=payment_method,
+            paid_at=now,
+            created_at=now
+        )
+        db.add(payment_record)
+
+    db.commit()
+    logger.info(f"Staff {user.id} changed client {client_id} to plan {new_plan.name} (paid €{amount_due} via {payment_method})")
+
+    # Send notification + email in background
+    try:
+        from service_modules.notification_service import NotificationService
+        ns = NotificationService(db)
+        payment_label = "POS" if payment_method == "pos" else "Contanti"
+        ns.create_notification(
+            user_id=client_id,
+            notification_type="subscription_changed",
+            title="Abbonamento Aggiornato",
+            message=f"Il tuo piano è stato cambiato a {new_plan.name}. "
+                    f"{'Importo pagato: €' + f'{amount_due:.2f} ({payment_label})' if amount_due > 0 else 'Nessun importo aggiuntivo.'}",
+            data={"plan_name": new_plan.name, "amount": amount_due, "payment_method": payment_method}
+        )
+    except Exception as e:
+        logger.warning(f"Failed to send notification for plan change: {e}")
+
+    try:
+        from service_modules.email_service import get_email_service_for_gym
+        email_svc = get_email_service_for_gym(user.gym_owner_id, db)
+        client_email = client.email if hasattr(client, 'email') else None
+        if not client_email:
+            profile = db.query(ClientProfileORM).filter(ClientProfileORM.user_id == client_id).first()
+            client_email = profile.email if profile and hasattr(profile, 'email') else None
+
+        if client_email and email_svc and email_svc.is_configured():
+            gym_owner = db.query(UserORM).filter(UserORM.id == user.gym_owner_id).first()
+            gym_name = gym_owner.gym_name if gym_owner and gym_owner.gym_name else "La tua palestra"
+            payment_label = "POS" if payment_method == "pos" else "Contanti"
+
+            html = f"""
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+                <h2 style="color: #E8772E;">Abbonamento Aggiornato</h2>
+                <p>Ciao <b>{client.username}</b>,</p>
+                <p>Il tuo abbonamento presso <b>{gym_name}</b> è stato aggiornato.</p>
+                <table style="width: 100%; border-collapse: collapse; margin: 16px 0;">
+                    {'<tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Piano precedente</td><td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;"><b>' + (old_plan_name or "-") + '</b></td></tr>' if old_plan_name else ''}
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Nuovo piano</td><td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;"><b>{new_plan.name}</b></td></tr>
+                    <tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Prezzo</td><td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">€{new_plan.price:.2f}</td></tr>
+                    {f'<tr><td style="padding: 8px; border-bottom: 1px solid #eee; color: #666;">Credito residuo</td><td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right; color: #22c55e;">-€{credit:.2f}</td></tr>' if credit > 0 else ''}
+                    {f'<tr><td style="padding: 8px; color: #666;"><b>Importo pagato</b></td><td style="padding: 8px; text-align: right;"><b>€{amount_due:.2f}</b> ({payment_label})</td></tr>' if amount_due > 0 else '<tr><td style="padding: 8px; color: #666;" colspan="2">Nessun importo aggiuntivo dovuto.</td></tr>'}
+                </table>
+                <p style="color: #888; font-size: 12px;">Questo è un messaggio automatico da {gym_name}.</p>
+            </div>
+            """
+            email_svc.send_email(client_email, f"Abbonamento aggiornato - {gym_name}", html)
+    except Exception as e:
+        logger.warning(f"Failed to send email for plan change: {e}")
 
     return {
         "status": "success",
-        "message": f"{client.username} now on {new_plan.name} plan"
+        "message": f"{client.username} now on {new_plan.name} plan",
+        "amount_paid": amount_due,
+        "payment_method": payment_method,
+        "credit": credit
     }
 
 

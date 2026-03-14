@@ -102,15 +102,17 @@ class DietService:
 
         logger.info(f"Looking up barcode: {barcode}")
 
-        # Try Italian Open Food Facts first, then world database
+        # Try world database (more reliable), then Italian
         api_urls = [
-            f"https://it.openfoodfacts.org/api/v0/product/{barcode}.json",
-            f"https://world.openfoodfacts.org/api/v0/product/{barcode}.json"
+            f"https://world.openfoodfacts.org/api/v2/product/{barcode}",
+            f"https://it.openfoodfacts.org/api/v2/product/{barcode}",
         ]
+
+        headers = {"User-Agent": "FitOS-GymApp/1.0 (contact@fitos.app)"}
 
         for api_url in api_urls:
             try:
-                response = requests.get(api_url, timeout=10)
+                response = requests.get(api_url, timeout=15, headers=headers)
 
                 if not response.ok:
                     continue
@@ -148,16 +150,27 @@ class DietService:
                 carbs_100g = nutriments.get("carbohydrates_100g", 0) or 0
                 fat_100g = nutriments.get("fat_100g", 0) or 0
 
-                # Calculate per package (full product)
-                scale = package_weight / 100.0
+                # Use serving size if available, otherwise default to 100g
+                serving_size = nutriments.get("serving_quantity") or product.get("serving_quantity")
+                if serving_size:
+                    try:
+                        portion = float(serving_size)
+                    except (ValueError, TypeError):
+                        portion = 100.0
+                else:
+                    portion = 100.0
+
+                scale = portion / 100.0
                 total_calories = round(energy_100g * scale)
                 total_protein = round(protein_100g * scale, 1)
                 total_carbs = round(carbs_100g * scale, 1)
                 total_fat = round(fat_100g * scale, 1)
 
+                serving_label = product.get("serving_size", f"{int(portion)}g")
+
                 full_name = f"{brands} {product_name}".strip() if brands else product_name
 
-                logger.info(f"Found product: {full_name}, {package_weight}g, {total_calories} kcal")
+                logger.info(f"Found product: {full_name}, portion={serving_label}, {total_calories} kcal")
 
                 return {
                     "status": "success",
@@ -167,8 +180,9 @@ class DietService:
                         "protein": total_protein,
                         "carbs": total_carbs,
                         "fat": total_fat,
-                        "portion_size": f"{package_weight}g",
+                        "portion_size": serving_label,
                         "package_weight": package_weight,
+                        "serving_quantity": portion,
                         "per_100g": {
                             "cals": round(energy_100g),
                             "protein": round(protein_100g, 1),

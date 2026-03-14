@@ -247,6 +247,43 @@ class ApiConfig {
   static String communityCommentLike(int id) => '/api/community/comments/$id/like';
   static String communityPostPin(String id) => '/api/community/posts/$id/pin';
 
+  // ── Staff ───────────────────────────────────────────────
+  static const staffGymInfo = '/api/staff/gym-info';
+  static const staffMembers = '/api/staff/members';
+  static String staffMember(String id) => '/api/staff/member/$id';
+  static const staffCheckin = '/api/staff/checkin';
+  static const staffCheckinsToday = '/api/staff/checkins/today';
+  static const staffAppointmentsToday = '/api/staff/appointments/today';
+  static const staffTrainers = '/api/staff/trainers';
+  static String staffTrainerSchedule(String id) => '/api/staff/trainer/$id/schedule';
+  static const staffSubscriptionPlans = '/api/staff/subscription-plans';
+  static const staffSubscribeClient = '/api/staff/subscribe-client';
+  static const staffCancelSubscription = '/api/staff/cancel-subscription';
+  static const staffChangeSubscription = '/api/staff/change-subscription';
+  static const staffChangeSubscriptionPreview = '/api/staff/change-subscription/preview';
+  static const staffWaiverTemplate = '/api/staff/waiver-template';
+  static const staffOnboardClient = '/api/staff/onboard-client';
+  static const staffResetMemberPassword = '/api/staff/reset-member-password';
+  static const staffChangeMemberUsername = '/api/staff/change-member-username';
+  static const staffCreatePaymentIntent = '/api/staff/create-payment-intent';
+  static const staffOnboardingCheckoutSession = '/api/staff/onboarding-checkout-session';
+  static String staffCheckoutSessionStatus(String id) => '/api/staff/checkout-session-status/$id';
+  static const staffNfcTags = '/api/staff/nfc-tags';
+  static const staffRegisterNfc = '/api/staff/register-nfc';
+  static String staffUnregisterNfc(String id) => '/api/staff/unregister-nfc/$id';
+  static const staffShowerUsage = '/api/staff/shower-usage';
+  static const staffVerifyAccess = '/api/staff/verify-access';
+  static String staffUploadCertificate(String id) => '/api/staff/upload-certificate/$id';
+  static String staffUpdateCertificate(String id) => '/api/staff/update-certificate/$id';
+  static String staffDeleteCertificate(String id) => '/api/staff/delete-certificate/$id';
+  static String medicalCertificate(String clientId) => '/api/medical/certificate?client_id=$clientId';
+
+  // ── Terminal/POS ────────────────────────────────────────
+  static const terminalProcessCustomPayment = '/api/terminal/process-custom-payment';
+  static String terminalPaymentStatus(String id) => '/api/terminal/payment-status/$id';
+  static const terminalCancelPayment = '/api/terminal/cancel-payment';
+  static const terminalSimulatePayment = '/api/terminal/simulate-payment';
+
   // ── Spotify ──────────────────────────────────────────────
   static const String spotifyStatus = '/api/spotify/status';
   static const String spotifyAuthorize = '/api/spotify/authorize';
