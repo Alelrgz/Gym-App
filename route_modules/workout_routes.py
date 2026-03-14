@@ -67,3 +67,34 @@ async def assign_workout(
     """Assign a workout to a client."""
     require_trainer(current_user)
     return service.assign_workout(assignment)
+
+
+# ── Client workout endpoints ──────────────────────────────────
+
+@router.post("/api/client/workout/create")
+async def client_create_workout(
+    workout: dict,
+    service: WorkoutService = Depends(get_workout_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Client creates a personal workout and assigns it to today."""
+    result = service.create_workout(workout, current_user.id)
+    # Auto-assign to today
+    from datetime import date
+    service.assign_workout({
+        "client_id": current_user.id,
+        "workout_id": result["id"],
+        "date": date.today().isoformat(),
+    })
+    return result
+
+
+@router.put("/api/client/workout/{workout_id}")
+async def client_update_workout(
+    workout_id: str,
+    workout: dict,
+    service: WorkoutService = Depends(get_workout_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Client updates their own workout."""
+    return service.update_workout(workout_id, workout, current_user.id)

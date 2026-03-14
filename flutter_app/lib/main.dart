@@ -1,3 +1,4 @@
+import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -11,6 +12,7 @@ import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/diet_screen.dart';
+import 'screens/community_screen.dart';
 import 'screens/leaderboard_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/workout_screen.dart';
@@ -80,6 +82,10 @@ class GymApp extends ConsumerWidget {
           builder: (context, state) => const RegisterScreen(),
         ),
         GoRoute(
+          path: '/leaderboard',
+          builder: (context, state) => const LeaderboardScreen(),
+        ),
+        GoRoute(
           path: '/workouts',
           builder: (context, state) => WorkoutScreen(
             coopPartnerId: state.uri.queryParameters['partner_id'],
@@ -113,8 +119,8 @@ class GymApp extends ConsumerWidget {
             StatefulShellBranch(
               routes: [
                 GoRoute(
-                  path: '/leaderboard',
-                  builder: (context, state) => const LeaderboardScreen(),
+                  path: '/community',
+                  builder: (context, state) => const CommunityScreen(),
                 ),
               ],
             ),
@@ -234,6 +240,19 @@ class GymApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: AppTheme.darkTheme,
       routerConfig: router,
+      scrollBehavior: const _AppScrollBehavior(),
     );
   }
+}
+
+class _AppScrollBehavior extends MaterialScrollBehavior {
+  const _AppScrollBehavior();
+
+  @override
+  Set<PointerDeviceKind> get dragDevices => {
+    PointerDeviceKind.touch,
+    PointerDeviceKind.mouse,
+    PointerDeviceKind.trackpad,
+    PointerDeviceKind.stylus,
+  };
 }

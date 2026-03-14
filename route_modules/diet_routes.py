@@ -3,7 +3,7 @@ Diet Routes - API endpoints for diet management, meal scanning, and logging.
 """
 from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Query
 from auth import get_current_user
-from models import AssignDietRequest, SetWeeklyMealPlanRequest
+from models import AssignDietRequest, SelfAssignDietRequest, SetWeeklyMealPlanRequest, ClientAddMealRequest
 from models_orm import UserORM, WeeklyMealPlanORM, ClientDietLogORM, ClientDietSettingsORM, WeightHistoryORM, ClientProfileORM
 from service_modules.diet_service import DietService, get_diet_service
 from database import get_db_session
@@ -67,6 +67,101 @@ async def assign_diet(
 ):
     """Assign a complete diet plan to a client."""
     return service.assign_diet(diet_req)
+
+
+# ==================== CLIENT SELF-ASSIGN DIET ====================
+
+@router.post("/api/client/diet/self-assign")
+async def self_assign_diet(
+    req: SelfAssignDietRequest,
+    service: DietService = Depends(get_diet_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Let a client set their own diet targets (only if no nutritionist assigned)."""
+    db = get_db_session()
+    try:
+        profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == current_user.id).first()
+        if profile and profile.nutritionist_id:
+            raise HTTPException(status_code=403, detail="Hai un nutrizionista assegnato. Contattalo per modificare la dieta.")
+    finally:
+        db.close()
+
+    diet_req = AssignDietRequest(
+        client_id=current_user.id,
+        calories=req.calories,
+        protein=req.protein,
+        carbs=req.carbs,
+        fat=req.fat,
+        hydration_target=req.hydration_target,
+        consistency_target=req.consistency_target,
+    )
+    return service.assign_diet(diet_req)
+
+
+# ==================== CLIENT MEAL PLAN MANAGEMENT ====================
+
+@router.post("/api/client/weekly-meal-plan/add")
+async def client_add_meal_to_plan(
+    req: ClientAddMealRequest,
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Add a meal to the client's own weekly plan."""
+    db = get_db_session()
+    try:
+        # Block if has nutritionist
+        profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == current_user.id).first()
+        if profile and profile.nutritionist_id:
+            raise HTTPException(status_code=403, detail="Hai un nutrizionista assegnato.")
+
+        entry = WeeklyMealPlanORM(
+            client_id=current_user.id,
+            assigned_by=current_user.id,
+            day_of_week=req.day_of_week,
+            meal_type=req.meal_type,
+            meal_name=req.meal_name,
+            description=req.description,
+            calories=req.calories,
+            protein=req.protein,
+            carbs=req.carbs,
+            fat=req.fat,
+            updated_at=datetime.utcnow().isoformat()
+        )
+        db.add(entry)
+        db.commit()
+        return {"status": "success", "id": entry.id}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
+
+
+@router.delete("/api/client/weekly-meal-plan/{meal_id}")
+async def client_delete_meal_from_plan(
+    meal_id: int,
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Delete a meal from the client's own weekly plan."""
+    db = get_db_session()
+    try:
+        entry = db.query(WeeklyMealPlanORM).filter(
+            WeeklyMealPlanORM.id == meal_id,
+            WeeklyMealPlanORM.client_id == current_user.id
+        ).first()
+        if not entry:
+            raise HTTPException(status_code=404, detail="Pasto non trovato")
+        db.delete(entry)
+        db.commit()
+        return {"status": "success"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close()
 
 
 # ==================== HYDRATION ====================

@@ -252,6 +252,25 @@ class ClientService {
 
   // ── Diet & Nutrition ─────────────────────────────────────────
 
+  Future<Map<String, dynamic>> selfAssignDiet({
+    required int calories,
+    required int protein,
+    required int carbs,
+    required int fat,
+    int hydrationTarget = 2500,
+    int consistencyTarget = 80,
+  }) async {
+    final response = await _api.post(ApiConfig.dietSelfAssign, data: {
+      'calories': calories,
+      'protein': protein,
+      'carbs': carbs,
+      'fat': fat,
+      'hydration_target': hydrationTarget,
+      'consistency_target': consistencyTarget,
+    });
+    return response.data as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> logMeal(Map<String, dynamic> mealData) async {
     final response = await _api.post(ApiConfig.dietLog, data: mealData);
     return response.data as Map<String, dynamic>;
@@ -264,6 +283,34 @@ class ClientService {
 
   Future<Map<String, dynamic>> getWeeklyMealPlan() async {
     final response = await _api.get(ApiConfig.weeklyMealPlan);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> addMealToPlan({
+    required int dayOfWeek,
+    required String mealType,
+    required String mealName,
+    String? description,
+    int calories = 0,
+    int protein = 0,
+    int carbs = 0,
+    int fat = 0,
+  }) async {
+    final response = await _api.post(ApiConfig.weeklyMealPlanAdd, data: {
+      'day_of_week': dayOfWeek,
+      'meal_type': mealType,
+      'meal_name': mealName,
+      'description': description,
+      'calories': calories,
+      'protein': protein,
+      'carbs': carbs,
+      'fat': fat,
+    });
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> deleteMealFromPlan(int mealId) async {
+    final response = await _api.delete(ApiConfig.weeklyMealPlanDelete(mealId));
     return response.data as Map<String, dynamic>;
   }
 
@@ -346,6 +393,32 @@ class ClientService {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> createWorkout({
+    required String title,
+    required String duration,
+    required String difficulty,
+    required List<Map<String, dynamic>> exercises,
+  }) async {
+    final response = await _api.post(ApiConfig.clientCreateWorkout, data: {
+      'title': title,
+      'duration': duration,
+      'difficulty': difficulty,
+      'exercises': exercises,
+    });
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> updateClientWorkout(String workoutId, Map<String, dynamic> updates) async {
+    final response = await _api.put(ApiConfig.clientUpdateWorkout(workoutId), data: updates);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<List<Map<String, dynamic>>> getExerciseLibrary() async {
+    final response = await _api.get(ApiConfig.exercises);
+    final list = response.data as List<dynamic>;
+    return list.map((e) => e as Map<String, dynamic>).toList();
+  }
+
   // ── Profile Updates ──────────────────────────────────────────
 
   Future<void> updateProfile(Map<String, dynamic> data) async {
@@ -390,6 +463,78 @@ class ClientService {
 
   Future<Map<String, dynamic>> completeCoopWorkout(Map<String, dynamic> payload) async {
     final response = await _api.post(ApiConfig.completeCoopWorkout, data: payload);
+    return response.data as Map<String, dynamic>;
+  }
+
+  // ── Community ────────────────────────────────────────────
+
+  Future<Map<String, dynamic>> getCommunityFeed({String? cursor, int limit = 20}) async {
+    final params = <String, dynamic>{'limit': limit};
+    if (cursor != null) params['cursor'] = cursor;
+    final response = await _api.get(ApiConfig.communityFeed, queryParameters: params);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> createCommunityPost({
+    required String postType,
+    String? content,
+    List<int>? imageBytes,
+    String? imageFilename,
+    String? eventTitle,
+    String? eventDate,
+    String? eventTime,
+    String? eventLocation,
+    int? questXpReward,
+    String? questDeadline,
+  }) async {
+    final formData = FormData.fromMap(<String, dynamic>{
+      'post_type': postType,
+      if (content != null) 'content': content,
+      if (eventTitle != null) 'event_title': eventTitle,
+      if (eventDate != null) 'event_date': eventDate,
+      if (eventTime != null) 'event_time': eventTime,
+      if (eventLocation != null) 'event_location': eventLocation,
+      if (questXpReward != null) 'quest_xp_reward': questXpReward,
+      if (questDeadline != null) 'quest_deadline': questDeadline,
+      if (imageBytes != null && imageFilename != null)
+        'image': MultipartFile.fromBytes(imageBytes, filename: imageFilename),
+    });
+    final response = await _api.upload(ApiConfig.communityPosts, formData);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> togglePostLike(String postId) async {
+    final response = await _api.post(ApiConfig.communityPostLike(postId));
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getPostComments(String postId, {String? cursor, int limit = 20}) async {
+    final params = <String, dynamic>{'limit': limit};
+    if (cursor != null) params['cursor'] = cursor;
+    final response = await _api.get(ApiConfig.communityPostComments(postId), queryParameters: params);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> addComment(String postId, String content, {int? parentCommentId}) async {
+    final response = await _api.post(ApiConfig.communityPostComments(postId), data: {
+      'content': content,
+      if (parentCommentId != null) 'parent_comment_id': parentCommentId,
+    });
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> deleteCommunityPost(String postId) async {
+    final response = await _api.delete(ApiConfig.communityPostDelete(postId));
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> deleteCommunityComment(int commentId) async {
+    final response = await _api.delete(ApiConfig.communityCommentDelete(commentId));
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> pinCommunityPost(String postId) async {
+    final response = await _api.post(ApiConfig.communityPostPin(postId));
     return response.data as Map<String, dynamic>;
   }
 }
