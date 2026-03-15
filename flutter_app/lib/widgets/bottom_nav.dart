@@ -93,15 +93,17 @@ class AppBottomNav extends StatelessWidget {
               left: 0,
               right: 0,
               bottom: navBarTotal,
-              child: GestureDetector(
-                onTap: () => Navigator.pop(ctx),
-                child: BackdropFilter(
-                  filter: ImageFilter.blur(
-                    sigmaX: 8 * curved.value,
-                    sigmaY: 8 * curved.value,
-                  ),
-                  child: Container(
-                    color: Colors.black.withValues(alpha: 0.3 * curved.value),
+              child: ClipRect(
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(ctx),
+                  child: BackdropFilter(
+                    filter: ImageFilter.blur(
+                      sigmaX: 8 * curved.value,
+                      sigmaY: 8 * curved.value,
+                    ),
+                    child: Container(
+                      color: Colors.black.withValues(alpha: 0.3 * curved.value),
+                    ),
                   ),
                 ),
               ),

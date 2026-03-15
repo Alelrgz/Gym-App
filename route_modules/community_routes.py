@@ -37,6 +37,7 @@ async def create_community_post(
     event_date: str = Form(None),
     event_time: str = Form(None),
     event_location: str = Form(None),
+    max_participants: int = Form(None),
     quest_xp_reward: int = Form(None),
     quest_deadline: str = Form(None),
     image: UploadFile = File(None),
@@ -74,6 +75,7 @@ async def create_community_post(
         event_date=event_date,
         event_time=event_time,
         event_location=event_location,
+        max_participants=max_participants,
         quest_xp_reward=quest_xp_reward,
         quest_deadline=quest_deadline,
     )
@@ -140,6 +142,16 @@ async def toggle_comment_like(
 ):
     """Toggle like on a comment."""
     return service.toggle_comment_like(comment_id, current_user.id)
+
+
+@router.post("/api/community/posts/{post_id}/participate")
+async def toggle_event_participation(
+    post_id: str,
+    current_user: UserORM = Depends(get_current_user),
+    service: CommunityService = Depends(get_community_service),
+):
+    """Toggle participation in a community event."""
+    return service.toggle_event_participation(post_id, current_user.id)
 
 
 @router.post("/api/community/posts/{post_id}/pin")

@@ -223,6 +223,7 @@ class ApiConfig {
   static String communityPostComments(String id) => '/api/community/posts/$id/comments';
   static String communityCommentDelete(int id) => '/api/community/comments/$id';
   static String communityCommentLike(int id) => '/api/community/comments/$id/like';
+  static String communityPostParticipate(String id) => '/api/community/posts/$id/participate';
   static String communityPostPin(String id) => '/api/community/posts/$id/pin';
 
   // ── Spotify ──────────────────────────────────────────────

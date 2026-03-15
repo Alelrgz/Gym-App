@@ -139,7 +139,7 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
       child: Row(
         children: [
           GestureDetector(
-            onTap: () => Navigator.of(context).pop(),
+            onTap: () => context.canPop() ? context.pop() : context.go('/'),
             child: const Padding(
               padding: EdgeInsets.only(right: 12),
               child: Icon(Icons.arrow_back_ios_rounded, color: Colors.white, size: 20),

@@ -1074,12 +1074,25 @@ class CommunityPostORM(Base):
     is_pinned = Column(Boolean, default=False)
     is_deleted = Column(Boolean, default=False)
 
+    max_participants = Column(Integer, nullable=True)  # null = unlimited
+    participant_count = Column(Integer, default=0)
+
     like_count = Column(Integer, default=0)
     comment_count = Column(Integer, default=0)
     repost_count = Column(Integer, default=0)
 
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
     updated_at = Column(String, nullable=True)
+
+
+class CommunityEventParticipantORM(Base):
+    __tablename__ = "community_event_participants"
+    __table_args__ = (UniqueConstraint("post_id", "user_id", name="uq_event_participant"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    post_id = Column(String, ForeignKey("community_posts.id"), index=True)
+    user_id = Column(String, ForeignKey("users.id"), index=True)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
 
 
 class CommunityLikeORM(Base):

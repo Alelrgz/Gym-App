@@ -896,7 +896,7 @@ class _LeaderboardLinkCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GlassCard(
-      onTap: () => context.go('/leaderboard'),
+      onTap: () => context.push('/leaderboard'),
       child: Row(
         children: [
           Container(

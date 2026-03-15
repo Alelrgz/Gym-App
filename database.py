@@ -93,6 +93,26 @@ def _run_early_migrations():
     except Exception:
         pass  # Database might not be ready yet — startup_event will retry
 
+    # SQLite: add new columns to existing tables (ALTER TABLE ADD COLUMN is idempotent-safe via try/except)
+    if not IS_POSTGRES:
+        try:
+            with engine.connect() as conn:
+                sqlite_migrations = [
+                    "ALTER TABLE community_posts ADD COLUMN max_participants INTEGER",
+                    "ALTER TABLE community_posts ADD COLUMN participant_count INTEGER DEFAULT 0",
+                ]
+                for sql in sqlite_migrations:
+                    try:
+                        conn.execute(text(sql))
+                        conn.commit()
+                    except Exception:
+                        try:
+                            conn.rollback()
+                        except Exception:
+                            pass
+        except Exception:
+            pass
+
 _run_early_migrations()
 
 # --- DEPENDENCY ---

@@ -20,7 +20,7 @@ from models_orm import (
     LessonEnrollmentORM, LessonWaitlistORM,
     ActivityTypeORM, FacilityORM, FacilityAvailabilityORM, FacilityBookingORM,
     WeeklyMealPlanORM,
-    CommunityPostORM, CommunityLikeORM, CommunityCommentORM, CommunityCommentLikeORM
+    CommunityPostORM, CommunityEventParticipantORM, CommunityLikeORM, CommunityCommentORM, CommunityCommentLikeORM
 )
 
 # Re-export for convenience
@@ -37,7 +37,7 @@ __all__ = [
     'LessonEnrollmentORM', 'LessonWaitlistORM',
     'ActivityTypeORM', 'FacilityORM', 'FacilityAvailabilityORM', 'FacilityBookingORM',
     'WeeklyMealPlanORM',
-    'CommunityPostORM', 'CommunityLikeORM', 'CommunityCommentORM', 'CommunityCommentLikeORM'
+    'CommunityPostORM', 'CommunityEventParticipantORM', 'CommunityLikeORM', 'CommunityCommentORM', 'CommunityCommentLikeORM'
 ]
 
 logger = logging.getLogger("gym_app")

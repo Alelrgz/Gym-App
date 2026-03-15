@@ -1,5 +1,5 @@
-import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
@@ -138,11 +138,26 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
                             )
                           : const SizedBox.shrink();
                     }
+                    final postData = feedState.posts[index];
+                    final postId = postData['id'] as String;
                     return _PostCard(
-                      post: feedState.posts[index],
-                      onLike: () => ref.read(communityFeedProvider.notifier).toggleLike(feedState.posts[index]['id'] as String),
-                      onComment: () => _openComments(context, feedState.posts[index]),
-                      onDelete: () => _deletePost(feedState.posts[index]['id'] as String),
+                      post: postData,
+                      onLike: () => ref.read(communityFeedProvider.notifier).toggleLike(postId),
+                      onComment: () => _openComments(context, postData),
+                      onDelete: () => _deletePost(postId),
+                      onParticipate: () async {
+                        final joined = await ref.read(communityFeedProvider.notifier).toggleParticipation(postId);
+                        if (joined && context.mounted) {
+                          HapticFeedback.mediumImpact();
+                          final eventTitle = postData['event_title'] as String? ?? 'Evento';
+                          final eventDate = postData['event_date'] as String? ?? '';
+                          showDialog(
+                            context: context,
+                            barrierColor: Colors.black54,
+                            builder: (_) => _EventConfirmationDialog(title: eventTitle, date: eventDate),
+                          );
+                        }
+                      },
                     );
                   },
                   childCount: feedState.posts.length + (feedState.hasMore ? 1 : 0),
@@ -155,16 +170,21 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
   }
 
   void _showCreatePostSheet(BuildContext context) {
-    showModalBottomSheet(
+    final clientData = ref.read(clientDataProvider);
+    final profilePic = clientData.whenData((d) => d.profilePicture).value;
+    String? resolvedPic;
+    if (profilePic != null && profilePic.isNotEmpty) {
+      resolvedPic = profilePic.startsWith('http') ? profilePic : '${ApiConfig.baseUrl}/$profilePic';
+    }
+    showDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      barrierColor: Colors.black54,
       builder: (_) => _CreatePostSheet(
         onPostCreated: (post) {
           ref.read(communityFeedProvider.notifier).prependPost(post);
         },
         ref: ref,
+        profilePicUrl: resolvedPic,
       ),
     );
   }
@@ -207,8 +227,9 @@ class _PostCard extends StatelessWidget {
   final VoidCallback onLike;
   final VoidCallback onComment;
   final VoidCallback onDelete;
+  final VoidCallback? onParticipate;
 
-  const _PostCard({required this.post, required this.onLike, required this.onComment, required this.onDelete});
+  const _PostCard({required this.post, required this.onLike, required this.onComment, required this.onDelete, this.onParticipate});
 
   String _relativeTime(String? iso) {
     if (iso == null) return '';
@@ -346,7 +367,7 @@ class _PostCard extends StatelessWidget {
 
                 // ── Event Card ──
                 if (postType == 'event' || postType == 'quest')
-                  _EventQuestCard(post: post, postType: postType),
+                  _EventQuestCard(post: post, postType: postType, onParticipate: onParticipate),
 
                 // ── Action Bar ──
                 Padding(
@@ -461,8 +482,9 @@ class _ActionBtn extends StatelessWidget {
 class _EventQuestCard extends StatelessWidget {
   final Map<String, dynamic> post;
   final String postType;
+  final VoidCallback? onParticipate;
 
-  const _EventQuestCard({required this.post, required this.postType});
+  const _EventQuestCard({required this.post, required this.postType, this.onParticipate});
 
   @override
   Widget build(BuildContext context) {
@@ -472,6 +494,10 @@ class _EventQuestCard extends StatelessWidget {
     final time = post['event_time'] as String? ?? '';
     final location = post['event_location'] as String? ?? '';
     final xp = post['quest_xp_reward'] as int? ?? 0;
+    final participating = post['is_participating'] as bool? ?? false;
+    final participantCount = post['participant_count'] as int? ?? 0;
+    final maxParticipants = post['max_participants'] as int?;
+    final isFull = maxParticipants != null && participantCount >= maxParticipants && !participating;
 
     return Container(
       margin: const EdgeInsets.only(top: 10),
@@ -530,6 +556,60 @@ class _EventQuestCard extends StatelessWidget {
                 ],
               ),
             ),
+          // ── Participation section (events only) ──
+          if (isEvent) ...[
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                // Participant count
+                Icon(Icons.people_outline_rounded, size: 15, color: Colors.grey[500]),
+                const SizedBox(width: 4),
+                Text(
+                  '$participantCount${maxParticipants != null ? '/$maxParticipants' : ''} partecipanti',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                ),
+                const Spacer(),
+                // Partecipa button
+                GestureDetector(
+                  onTap: isFull ? null : onParticipate,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+                    decoration: BoxDecoration(
+                      color: isFull
+                          ? Colors.grey[800]
+                          : participating
+                              ? AppColors.primary
+                              : Colors.transparent,
+                      border: Border.all(
+                        color: isFull ? Colors.grey[700]! : AppColors.primary,
+                        width: 1.5,
+                      ),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        if (participating)
+                          const Padding(
+                            padding: EdgeInsets.only(right: 4),
+                            child: Icon(Icons.check_rounded, size: 14, color: Colors.white),
+                          ),
+                        Text(
+                          isFull ? 'Completo' : participating ? 'Partecipo' : 'Partecipa',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: isFull ? Colors.grey[500] : participating ? Colors.white : AppColors.primary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -541,8 +621,9 @@ class _EventQuestCard extends StatelessWidget {
 class _CreatePostSheet extends StatefulWidget {
   final void Function(Map<String, dynamic>) onPostCreated;
   final WidgetRef ref;
+  final String? profilePicUrl;
 
-  const _CreatePostSheet({required this.onPostCreated, required this.ref});
+  const _CreatePostSheet({required this.onPostCreated, required this.ref, this.profilePicUrl});
 
   @override
   State<_CreatePostSheet> createState() => _CreatePostSheetState();
@@ -550,14 +631,43 @@ class _CreatePostSheet extends StatefulWidget {
 
 class _CreatePostSheetState extends State<_CreatePostSheet> {
   final _textController = TextEditingController();
+  final _focusNode = FocusNode();
   Uint8List? _imageBytes;
   String? _imageFilename;
   bool _posting = false;
+  bool _hasText = false;
+
+  // Event mode
+  bool _isEventMode = false;
+  final _eventTitleController = TextEditingController();
+  final _eventLocationController = TextEditingController();
+  final _maxParticipantsController = TextEditingController();
+  DateTime? _eventDate;
+  TimeOfDay? _eventTime;
+
+  @override
+  void initState() {
+    super.initState();
+    _textController.addListener(() {
+      final has = _textController.text.trim().isNotEmpty;
+      if (has != _hasText) setState(() => _hasText = has);
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _focusNode.requestFocus());
+  }
 
   @override
   void dispose() {
     _textController.dispose();
+    _focusNode.dispose();
+    _eventTitleController.dispose();
+    _eventLocationController.dispose();
+    _maxParticipantsController.dispose();
     super.dispose();
+  }
+
+  bool get _canPost {
+    if (_isEventMode) return _eventTitleController.text.trim().isNotEmpty && _eventDate != null;
+    return _hasText || _imageBytes != null;
   }
 
   Future<void> _pickImage() async {
@@ -572,119 +682,293 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
     }
   }
 
+  Future<void> _pickDate() async {
+    final date = await showDatePicker(
+      context: context,
+      initialDate: _eventDate ?? DateTime.now(),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365)),
+      builder: (ctx, child) => Theme(data: ThemeData.dark().copyWith(colorScheme: ColorScheme.dark(primary: AppColors.primary, surface: AppColors.surface)), child: child!),
+    );
+    if (date != null) setState(() => _eventDate = date);
+  }
+
+  Future<void> _pickTime() async {
+    final time = await showTimePicker(
+      context: context,
+      initialTime: _eventTime ?? TimeOfDay.now(),
+      builder: (ctx, child) => Theme(data: ThemeData.dark().copyWith(colorScheme: ColorScheme.dark(primary: AppColors.primary, surface: AppColors.surface)), child: child!),
+    );
+    if (time != null) setState(() => _eventTime = time);
+  }
+
   Future<void> _submit() async {
+    if (!_canPost) return;
     final text = _textController.text.trim();
-    if (text.isEmpty && _imageBytes == null) return;
 
     setState(() => _posting = true);
     try {
       final service = widget.ref.read(clientServiceProvider);
-      final result = await service.createCommunityPost(
-        postType: _imageBytes != null ? 'image' : 'text',
-        content: text.isNotEmpty ? text : null,
-        imageBytes: _imageBytes != null ? _imageBytes!.toList() : null,
-        imageFilename: _imageFilename,
-      );
-      widget.onPostCreated(result);
+      if (_isEventMode) {
+        final maxP = int.tryParse(_maxParticipantsController.text.trim());
+        final result = await service.createCommunityPost(
+          postType: 'event',
+          content: text.isNotEmpty ? text : null,
+          eventTitle: _eventTitleController.text.trim(),
+          eventDate: '${_eventDate!.year}-${_eventDate!.month.toString().padLeft(2, '0')}-${_eventDate!.day.toString().padLeft(2, '0')}',
+          eventTime: _eventTime != null ? '${_eventTime!.hour.toString().padLeft(2, '0')}:${_eventTime!.minute.toString().padLeft(2, '0')}' : null,
+          eventLocation: _eventLocationController.text.trim().isNotEmpty ? _eventLocationController.text.trim() : null,
+          maxParticipants: maxP,
+          imageBytes: _imageBytes != null ? _imageBytes!.toList() : null,
+          imageFilename: _imageFilename,
+        );
+        widget.onPostCreated(result);
+      } else {
+        final result = await service.createCommunityPost(
+          postType: _imageBytes != null ? 'image' : 'text',
+          content: text.isNotEmpty ? text : null,
+          imageBytes: _imageBytes != null ? _imageBytes!.toList() : null,
+          imageFilename: _imageFilename,
+        );
+        widget.onPostCreated(result);
+      }
       if (mounted) Navigator.pop(context);
     } catch (_) {
       setState(() => _posting = false);
     }
   }
 
+  Widget _eventField({required TextEditingController controller, required String hint, required IconData icon, ValueChanged<String>? onChanged, TextInputType? keyboardType}) {
+    return TextField(
+      controller: controller,
+      onChanged: onChanged,
+      keyboardType: keyboardType,
+      style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+        prefixIcon: Icon(icon, size: 18, color: Colors.grey[600]),
+        prefixIconConstraints: const BoxConstraints(minWidth: 36),
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: 0.05),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        isDense: true,
+      ),
+    );
+  }
+
+  Widget _eventChip({required IconData icon, required String label, required bool active}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: active ? AppColors.primary.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(10),
+        border: active ? Border.all(color: AppColors.primary.withValues(alpha: 0.3)) : null,
+      ),
+      child: Row(
+        children: [
+          Icon(icon, size: 16, color: active ? AppColors.primary : Colors.grey[600]),
+          const SizedBox(width: 6),
+          Text(label, style: TextStyle(fontSize: 13, color: active ? AppColors.primary : Colors.grey[500])),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16, right: 16, top: 16,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 16,
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Handle
-          Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text('Nuovo Post', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-              GestureDetector(
-                onTap: _posting ? null : _submit,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: _posting ? Colors.grey[700] : AppColors.primary,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: _posting
-                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
-                      : const Text('Pubblica', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _textController,
-            maxLines: 5,
-            minLines: 3,
-            style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
-            decoration: InputDecoration(
-              hintText: 'Cosa hai in mente?',
-              hintStyle: TextStyle(color: Colors.grey[600]),
-              filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.05),
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide.none),
-            ),
-          ),
-          if (_imageBytes != null)
+    return Dialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 60),
+      child: Padding(
+        padding: const EdgeInsets.all(0),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // ── Top bar: Cancel / Post button ──
             Padding(
-              padding: const EdgeInsets.only(top: 12),
-              child: Stack(
+              padding: const EdgeInsets.fromLTRB(20, 16, 16, 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.memory(_imageBytes!, height: 150, width: double.infinity, fit: BoxFit.cover),
+                  GestureDetector(
+                    onTap: () => Navigator.pop(context),
+                    child: Text('Annulla', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: Colors.grey[400])),
                   ),
-                  Positioned(
-                    top: 6, right: 6,
-                    child: GestureDetector(
-                      onTap: () => setState(() { _imageBytes = null; _imageFilename = null; }),
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: const BoxDecoration(color: Colors.black54, shape: BoxShape.circle),
-                        child: const Icon(Icons.close_rounded, size: 16, color: Colors.white),
+                  const Spacer(),
+                  GestureDetector(
+                    onTap: (_posting || !_canPost) ? null : _submit,
+                    child: AnimatedContainer(
+                      duration: const Duration(milliseconds: 200),
+                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 9),
+                      decoration: BoxDecoration(
+                        color: (_canPost && !_posting) ? AppColors.primary : AppColors.primary.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: _posting
+                          ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Pubblica', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Divider(color: Colors.grey[800], height: 1),
+            // ── Compose area: avatar + text field ──
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  CircleAvatar(
+                    radius: 20,
+                    backgroundColor: Colors.grey[800],
+                    backgroundImage: widget.profilePicUrl != null ? NetworkImage(widget.profilePicUrl!) : null,
+                    child: widget.profilePicUrl == null
+                        ? Icon(Icons.person_rounded, size: 22, color: Colors.grey[500])
+                        : null,
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: TextField(
+                      controller: _textController,
+                      focusNode: _focusNode,
+                      maxLines: null,
+                      minLines: 5,
+                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, height: 1.4),
+                      decoration: InputDecoration(
+                        hintText: 'Cosa succede?',
+                        hintStyle: TextStyle(color: Colors.grey[600], fontSize: 16),
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: const EdgeInsets.fromLTRB(8, 10, 0, 10),
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              GestureDetector(
-                onTap: _pickImage,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.06),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.image_rounded, size: 18, color: Colors.green[400]),
-                      const SizedBox(width: 6),
-                      Text('Foto', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[400])),
-                    ],
-                  ),
+            // ── Attached image preview ──
+            if (_imageBytes != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(68, 8, 20, 0),
+                child: Stack(
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(14),
+                      child: Image.memory(_imageBytes!, height: 160, width: double.infinity, fit: BoxFit.cover),
+                    ),
+                    Positioned(
+                      top: 6, right: 6,
+                      child: GestureDetector(
+                        onTap: () => setState(() { _imageBytes = null; _imageFilename = null; }),
+                        child: Container(
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.65), shape: BoxShape.circle),
+                          child: const Icon(Icons.close_rounded, size: 16, color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
-        ],
+            // ── Event fields (when in event mode) ──
+            if (_isEventMode)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
+                child: Column(
+                  children: [
+                    _eventField(
+                      controller: _eventTitleController,
+                      hint: 'Titolo evento *',
+                      icon: Icons.title_rounded,
+                      onChanged: (_) => setState(() {}),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: _pickDate,
+                            child: _eventChip(
+                              icon: Icons.calendar_today_rounded,
+                              label: _eventDate != null
+                                  ? '${_eventDate!.day}/${_eventDate!.month}/${_eventDate!.year}'
+                                  : 'Data *',
+                              active: _eventDate != null,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: GestureDetector(
+                            onTap: _pickTime,
+                            child: _eventChip(
+                              icon: Icons.schedule_rounded,
+                              label: _eventTime != null
+                                  ? '${_eventTime!.hour.toString().padLeft(2, '0')}:${_eventTime!.minute.toString().padLeft(2, '0')}'
+                                  : 'Ora',
+                              active: _eventTime != null,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _eventField(
+                            controller: _eventLocationController,
+                            hint: 'Luogo',
+                            icon: Icons.location_on_outlined,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        SizedBox(
+                          width: 100,
+                          child: _eventField(
+                            controller: _maxParticipantsController,
+                            hint: 'Max',
+                            icon: Icons.people_outline_rounded,
+                            keyboardType: TextInputType.number,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 14),
+            // ── Bottom toolbar ──
+            Divider(color: Colors.grey[800], height: 1),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 8),
+              child: Row(
+                children: [
+                  IconButton(
+                    onPressed: _pickImage,
+                    icon: Icon(Icons.image_outlined, size: 22, color: AppColors.primary),
+                    splashRadius: 20,
+                  ),
+                  IconButton(
+                    onPressed: () => setState(() => _isEventMode = !_isEventMode),
+                    icon: Icon(Icons.event_rounded, size: 22, color: _isEventMode ? AppColors.primary : Colors.grey[700]),
+                    splashRadius: 20,
+                  ),
+                  IconButton(
+                    onPressed: null,
+                    icon: Icon(Icons.poll_outlined, size: 22, color: Colors.grey[700]),
+                    splashRadius: 20,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -952,5 +1236,157 @@ class _TopBarIconBadge extends StatelessWidget {
         ),
       ),
     );
+  }
+}
+
+// ─── EVENT CONFIRMATION DIALOG ───────────────────────────────────
+
+class _EventConfirmationDialog extends StatefulWidget {
+  final String title;
+  final String date;
+  const _EventConfirmationDialog({required this.title, required this.date});
+
+  @override
+  State<_EventConfirmationDialog> createState() => _EventConfirmationDialogState();
+}
+
+class _EventConfirmationDialogState extends State<_EventConfirmationDialog>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnim;
+  late Animation<double> _fadeAnim;
+  late Animation<double> _checkAnim;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 600),
+    );
+    _scaleAnim = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.5, curve: Curves.elasticOut),
+    );
+    _fadeAnim = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.0, 0.3, curve: Curves.easeOut),
+    );
+    _checkAnim = CurvedAnimation(
+      parent: _controller,
+      curve: const Interval(0.3, 0.7, curve: Curves.elasticOut),
+    );
+    _controller.forward();
+
+    // Auto dismiss after 2.5 seconds
+    Future.delayed(const Duration(milliseconds: 2500), () {
+      if (mounted) Navigator.of(context).pop();
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return FadeTransition(
+      opacity: _fadeAnim,
+      child: ScaleTransition(
+        scale: _scaleAnim,
+        child: Dialog(
+              backgroundColor: Colors.transparent,
+              elevation: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E1E1E),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: AppColors.primary.withValues(alpha:0.3), width: 1),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.primary.withValues(alpha:0.15),
+                      blurRadius: 30,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    // Animated check circle
+                    ScaleTransition(
+                      scale: _checkAnim,
+                      child: Container(
+                        width: 72,
+                        height: 72,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: LinearGradient(
+                            colors: [AppColors.primary, AppColors.primary.withValues(alpha:0.7)],
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha:0.4),
+                              blurRadius: 20,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.calendar_today_rounded,
+                          color: Colors.white,
+                          size: 32,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    const Text(
+                      'Iscrizione confermata!',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      widget.title,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.primary,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                    if (widget.date.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.access_time_rounded, size: 14, color: Colors.grey[400]),
+                          const SizedBox(width: 6),
+                          Text(
+                            widget.date,
+                            style: TextStyle(color: Colors.grey[400], fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ],
+                    const SizedBox(height: 16),
+                    Text(
+                      'Aggiunto al tuo calendario',
+                      style: TextStyle(color: Colors.grey[500], fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
   }
 }

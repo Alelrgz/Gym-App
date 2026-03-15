@@ -114,6 +114,36 @@ class CommunityFeedNotifier extends StateNotifier<CommunityFeedState> {
     state = state.copyWith(posts: posts);
   }
 
+  /// Optimistic participation toggle for events.
+  /// Returns true if the user just joined (for showing confirmation popup).
+  Future<bool> toggleParticipation(String postId) async {
+    bool joined = false;
+    final posts = state.posts.map((p) {
+      if (p['id'] == postId) {
+        final participating = p['is_participating'] as bool? ?? false;
+        final count = p['participant_count'] as int? ?? 0;
+        final maxP = p['max_participants'] as int?;
+        if (!participating && maxP != null && count >= maxP) return p;
+        joined = !participating;
+        return {
+          ...p,
+          'is_participating': !participating,
+          'participant_count': count + (participating ? -1 : 1),
+        };
+      }
+      return p;
+    }).toList();
+    state = state.copyWith(posts: posts);
+
+    try {
+      await ref.read(clientServiceProvider).toggleEventParticipation(postId);
+    } catch (_) {
+      loadFeed();
+      joined = false;
+    }
+    return joined;
+  }
+
   /// Remove a deleted post.
   void removePost(String postId) {
     state = state.copyWith(posts: state.posts.where((p) => p['id'] != postId).toList());

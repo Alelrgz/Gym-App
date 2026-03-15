@@ -507,17 +507,13 @@ class _DietHeroCard extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
                         // Diet progress ring (64x64 — compact to give macros more room)
-                        SizedBox(
-                          width: 64, height: 64,
-                          child: CustomPaint(
-                            painter: _RingPainter(
-                              progress: (score / 100).clamp(0.0, 1.0),
-                              color: AppColors.primary,  // ORANGE, not grey
-                              trackColor: Colors.white.withValues(alpha: 0.1),
-                              strokeWidth: 6,
-                            ),
-                            child: Center(child: Icon(Icons.restaurant_rounded, size: 20, color: const Color(0xFFFB923C))),
-                          ),
+                        _AnimatedRing(
+                          size: 64,
+                          progress: (score / 100).clamp(0.0, 1.0),
+                          color: AppColors.primary,
+                          trackColor: Colors.white.withValues(alpha: 0.1),
+                          strokeWidth: 6,
+                          child: Icon(Icons.restaurant_rounded, size: 20, color: const Color(0xFFFB923C)),
                         ),
                         const SizedBox(width: 10),
                         Column(
@@ -609,15 +605,13 @@ class _MacroRingSmall extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        SizedBox(
-          width: 48, height: 48,
-          child: CustomPaint(
-            painter: _RingPainter(progress: progress.clamp(0.0, 1.0), color: color, trackColor: const Color(0xFF333333), strokeWidth: 3.5),
-            child: Center(
-              // Value text in the ring's OWN color (not white)
-              child: Text(value, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
-            ),
-          ),
+        _AnimatedRing(
+          size: 48,
+          progress: progress.clamp(0.0, 1.0),
+          color: color,
+          trackColor: const Color(0xFF333333),
+          strokeWidth: 3.5,
+          child: Text(value, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: color)),
         ),
         const SizedBox(height: 4),
         Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w500, color: Colors.grey[400])),
@@ -941,19 +935,18 @@ class _MacroRingLarge extends StatelessWidget {
     final pct = target > 0 ? (current / target).clamp(0.0, 1.0) : 0.0;
     return Column(
       children: [
-        SizedBox(
-          width: 48, height: 48,
-          child: CustomPaint(
-            painter: _RingPainter(progress: pct, color: color, trackColor: const Color(0xFF333333), strokeWidth: 4),
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(label, style: TextStyle(fontSize: 7, color: Colors.grey[500])),
-                  Text('${current.toInt()}g', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: color)),
-                ],
-              ),
-            ),
+        _AnimatedRing(
+          size: 48,
+          progress: pct,
+          color: color,
+          trackColor: const Color(0xFF333333),
+          strokeWidth: 4,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(label, style: TextStyle(fontSize: 7, color: Colors.grey[500])),
+              Text('${current.toInt()}g', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: color)),
+            ],
           ),
         ),
       ],
@@ -1038,24 +1031,61 @@ class _CalendarMealPlanCardState extends ConsumerState<_CalendarMealPlanCard> {
   Future<void> _loadPlan() async {
     try {
       final service = ref.read(clientServiceProvider);
-      final result = await service.getWeeklyMealPlan();
-      if (mounted) setState(() { _plan = result['plan'] as Map<String, dynamic>?; _loading = false; });
+      final results = await Future.wait([
+        service.getWeeklyMealPlan(),
+        service.getDietLogForDate(DateTime.now().toIso8601String().substring(0, 10)),
+      ]);
+      final plan = results[0]['plan'] as Map<String, dynamic>?;
+      final logEntries = results[1]['meals'] as List<dynamic>? ?? [];
+
+      // Build a map of meal_type -> list of logged meal names
+      final logMap = <String, List<dynamic>>{};
+      for (final entry in logEntries) {
+        if (entry is Map<String, dynamic>) {
+          final type = entry['meal_type'] as String? ?? 'Snack';
+          logMap.putIfAbsent(type, () => []).add(entry);
+        }
+      }
+
+      // Pre-check meals that match today's logs
+      if (plan != null) {
+        final todayKey = (DateTime.now().weekday - 1).toString();
+        final dayMeals = plan[todayKey] as List<dynamic>?;
+        if (dayMeals != null) {
+          for (final meal in dayMeals) {
+            if (meal is Map<String, dynamic>) {
+              final type = meal['meal_type'] as String? ?? 'altro';
+              final name = meal['meal_name'] as String? ?? '';
+              final logged = logMap[type];
+              if (logged != null && logged.any((l) => l['meal_name'] == name)) {
+                final idx = dayMeals.indexOf(meal);
+                _checkedMeals.add('${type}_${name}_${meal['id'] ?? idx}');
+              }
+            }
+          }
+        }
+      }
+
+      if (mounted) setState(() { _plan = plan; _loading = false; });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
     }
   }
 
   void _toggleMealCheck(String mealId, Map<String, dynamic> meal) {
-    setState(() {
-      if (_checkedMeals.contains(mealId)) {
-        _checkedMeals.remove(mealId);
-      } else {
-        _checkedMeals.add(mealId);
-        ref.read(clientServiceProvider).logMeal({
-          'name': meal['meal_name'] ?? '', 'meal_type': meal['meal_type'] ?? 'Snack',
-          'cals': meal['calories'] ?? 0, 'protein': meal['protein'] ?? 0, 'carbs': meal['carbs'] ?? 0, 'fat': meal['fat'] ?? 0,
-        }).catchError((_) {});
-      }
+    if (_checkedMeals.contains(mealId)) return; // Already logged, can't uncheck
+
+    setState(() => _checkedMeals.add(mealId));
+
+    ref.read(clientServiceProvider).logMeal({
+      'name': meal['meal_name'] ?? '', 'meal_type': meal['meal_type'] ?? 'Snack',
+      'cals': meal['calories'] ?? 0, 'protein': meal['protein'] ?? 0, 'carbs': meal['carbs'] ?? 0, 'fat': meal['fat'] ?? 0,
+    }).then((_) {
+      // Refresh diet data so rings update in real time
+      ref.invalidate(clientDataProvider);
+    }).catchError((_) {
+      // Revert on failure
+      if (mounted) setState(() => _checkedMeals.remove(mealId));
     });
   }
 
@@ -1760,6 +1790,67 @@ class _ScanResultDialogState extends ConsumerState<_ScanResultDialog> {
 }
 
 // ─── RING PAINTER ────────────────────────────────────────────────
+
+class _AnimatedRing extends StatefulWidget {
+  final double progress;
+  final Color color;
+  final Color trackColor;
+  final double strokeWidth;
+  final double size;
+  final Widget? child;
+  const _AnimatedRing({required this.progress, required this.color, required this.trackColor, required this.strokeWidth, required this.size, this.child});
+
+  @override
+  State<_AnimatedRing> createState() => _AnimatedRingState();
+}
+
+class _AnimatedRingState extends State<_AnimatedRing> with SingleTickerProviderStateMixin {
+  late AnimationController _ctrl;
+  late Animation<double> _anim;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = AnimationController(vsync: this, duration: const Duration(milliseconds: 900));
+    _anim = Tween<double>(begin: 0, end: widget.progress.clamp(0.0, 1.0))
+        .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+    _ctrl.forward();
+  }
+
+  @override
+  void didUpdateWidget(_AnimatedRing old) {
+    super.didUpdateWidget(old);
+    if (old.progress != widget.progress) {
+      final prev = _anim.value;
+      _anim = Tween<double>(begin: prev, end: widget.progress.clamp(0.0, 1.0))
+          .animate(CurvedAnimation(parent: _ctrl, curve: Curves.easeOutCubic));
+      _ctrl
+        ..reset()
+        ..forward();
+    }
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: widget.size, height: widget.size,
+      child: AnimatedBuilder(
+        animation: _anim,
+        builder: (_, child) => CustomPaint(
+          painter: _RingPainter(progress: _anim.value, color: widget.color, trackColor: widget.trackColor, strokeWidth: widget.strokeWidth),
+          child: child,
+        ),
+        child: widget.child != null ? Center(child: widget.child) : null,
+      ),
+    );
+  }
+}
 
 class _RingPainter extends CustomPainter {
   final double progress;

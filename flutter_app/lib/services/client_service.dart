@@ -464,6 +464,7 @@ class ClientService {
     String? eventDate,
     String? eventTime,
     String? eventLocation,
+    int? maxParticipants,
     int? questXpReward,
     String? questDeadline,
   }) async {
@@ -474,12 +475,18 @@ class ClientService {
       if (eventDate != null) 'event_date': eventDate,
       if (eventTime != null) 'event_time': eventTime,
       if (eventLocation != null) 'event_location': eventLocation,
+      if (maxParticipants != null) 'max_participants': maxParticipants,
       if (questXpReward != null) 'quest_xp_reward': questXpReward,
       if (questDeadline != null) 'quest_deadline': questDeadline,
       if (imageBytes != null && imageFilename != null)
         'image': MultipartFile.fromBytes(imageBytes, filename: imageFilename),
     });
     final response = await _api.upload(ApiConfig.communityPosts, formData);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> toggleEventParticipation(String postId) async {
+    final response = await _api.post(ApiConfig.communityPostParticipate(postId));
     return response.data as Map<String, dynamic>;
   }
 

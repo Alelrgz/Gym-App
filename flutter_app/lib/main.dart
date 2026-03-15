@@ -171,6 +171,14 @@ class GymApp extends ConsumerWidget {
             StatefulShellBranch(
               routes: [
                 GoRoute(
+                  path: '/owner/community',
+                  builder: (context, state) => const CommunityScreen(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
                   path: '/owner/settings',
                   builder: (context, state) => const OwnerSettingsScreen(),
                 ),
