@@ -3633,8 +3633,39 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
 
   Future<void> _pickAndUploadPhoto() async {
     try {
+      final source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        backgroundColor: AppColors.surface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (ctx) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Foto Fisico', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
+                  title: const Text('Scatta Foto', style: TextStyle(color: AppColors.textPrimary)),
+                  onTap: () => Navigator.pop(ctx, ImageSource.camera),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library_rounded, color: AppColors.primary),
+                  title: const Text('Galleria', style: TextStyle(color: AppColors.textPrimary)),
+                  onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      if (source == null || !mounted) return;
+
       final picker = ImagePicker();
-      final image = await picker.pickImage(source: ImageSource.camera, maxWidth: 1200, maxHeight: 1600);
+      final image = await picker.pickImage(source: source, maxWidth: 1200, maxHeight: 1600);
       if (image == null) return;
 
       if (!mounted) return;

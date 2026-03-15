@@ -121,7 +121,7 @@ class AppBottomNav extends StatelessWidget {
                 child: FadeTransition(
                   opacity: curved,
                   child: Material(
-                    type: MaterialType.transparency,
+                    color: Colors.transparent,
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -164,20 +164,20 @@ class AppBottomNav extends StatelessWidget {
                               onFabAction?.call('log_weight');
                             },
                           ),
+                          _QuickAction(
+                            icon: Icons.calendar_month_rounded,
+                            label: 'Prenota Appuntamento',
+                            onTap: () {
+                              Navigator.pop(ctx);
+                              onFabAction?.call('book_appointment');
+                            },
+                          ),
                         ],
                       ),
                     ),
                   ),
                 ),
               ),
-            ),
-            _QuickAction(
-              icon: Icons.calendar_month_rounded,
-              label: 'Prenota Appuntamento',
-              onTap: () {
-                Navigator.pop(ctx);
-                onFabAction?.call('book_appointment');
-              },
             ),
           ],
         );
