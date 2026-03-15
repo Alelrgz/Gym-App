@@ -5358,3 +5358,870 @@ class _PhotoViewerPageState extends State<_PhotoViewerPage> {
     );
   }
 }
+
+// ═══════════════════════════════════════════════════════════════════════
+// ─── BOOKING APPOINTMENT SHEET ──────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════
+
+Future<void> showBookAppointmentSheet(BuildContext context, WidgetRef ref) {
+  return showModalBottomSheet(
+    context: context,
+    backgroundColor: AppColors.surface,
+    isScrollControlled: true,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (ctx) => DraggableScrollableSheet(
+      initialChildSize: 0.85,
+      minChildSize: 0.5,
+      maxChildSize: 0.95,
+      expand: false,
+      builder: (_, scrollController) => _BookAppointmentContent(
+        scrollController: scrollController,
+        ref: ref,
+      ),
+    ),
+  );
+}
+
+class _BookAppointmentContent extends StatefulWidget {
+  final ScrollController scrollController;
+  final WidgetRef ref;
+
+  const _BookAppointmentContent({required this.scrollController, required this.ref});
+
+  @override
+  State<_BookAppointmentContent> createState() => _BookAppointmentContentState();
+}
+
+class _BookAppointmentContentState extends State<_BookAppointmentContent> {
+  List<Map<String, dynamic>> _trainers = [];
+  bool _loadingTrainers = true;
+  bool _trainerListExpanded = false;
+
+  // Selected trainer
+  int? _selectedTrainerId;
+  String? _selectedTrainerName;
+  String? _selectedTrainerPicture;
+  double? _trainerSessionRate;
+
+  // Form
+  DateTime? _selectedDate;
+  String? _selectedTime;
+  int _duration = 60;
+  final _notesController = TextEditingController();
+
+  // Slots
+  List<Map<String, dynamic>> _availableSlots = [];
+  bool _loadingSlots = false;
+
+  // Payment
+  String? _paymentMethod; // 'cash' or 'pos'
+
+  bool _submitting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadTrainers();
+  }
+
+  @override
+  void dispose() {
+    _notesController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadTrainers() async {
+    try {
+      final service = widget.ref.read(clientServiceProvider);
+      final data = await service.getGymTrainers();
+      if (mounted) {
+        setState(() {
+          _trainers = data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          _loadingTrainers = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() => _loadingTrainers = false);
+    }
+  }
+
+  Future<void> _selectTrainer(Map<String, dynamic> trainer) async {
+    final id = trainer['id'];
+    final trainerId = id is int ? id : int.tryParse(id.toString()) ?? 0;
+    final name = trainer['name']?.toString() ?? trainer['username']?.toString() ?? '';
+    final pic = trainer['profile_picture']?.toString();
+
+    setState(() {
+      _selectedTrainerId = trainerId;
+      _selectedTrainerName = name;
+      _selectedTrainerPicture = pic;
+      _trainerListExpanded = false;
+      _trainerSessionRate = null;
+      _paymentMethod = null;
+      _selectedTime = null;
+      _availableSlots = [];
+    });
+
+    // Fetch session rate
+    try {
+      final service = widget.ref.read(clientServiceProvider);
+      final rateData = await service.getTrainerSessionRate(trainerId);
+      if (mounted) {
+        final rate = rateData['session_rate'];
+        setState(() {
+          _trainerSessionRate = rate != null ? (rate as num).toDouble() : null;
+        });
+      }
+    } catch (_) {}
+
+    // If date already selected, fetch slots
+    if (_selectedDate != null) {
+      _loadAvailableSlots();
+    }
+  }
+
+  Future<void> _loadAvailableSlots() async {
+    if (_selectedTrainerId == null || _selectedDate == null) return;
+
+    setState(() { _loadingSlots = true; _selectedTime = null; });
+
+    try {
+      final service = widget.ref.read(clientServiceProvider);
+      final dateStr = '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
+      final data = await service.getTrainerAvailableSlots(_selectedTrainerId!, dateStr);
+      if (mounted) {
+        setState(() {
+          _availableSlots = data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          _loadingSlots = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() { _loadingSlots = false; });
+    }
+  }
+
+  double get _sessionPrice {
+    if (_trainerSessionRate == null || _trainerSessionRate == 0) return 0;
+    return _trainerSessionRate! * (_duration / 60);
+  }
+
+  bool get _isFreeSession => _trainerSessionRate == null || _trainerSessionRate == 0;
+
+  Future<void> _confirmBooking() async {
+    // Validation
+    if (_selectedTrainerId == null) {
+      showSnack(context, 'Seleziona un trainer', isError: true);
+      return;
+    }
+    if (_selectedDate == null || _selectedTime == null) {
+      showSnack(context, 'Seleziona data e orario', isError: true);
+      return;
+    }
+    if (!_isFreeSession && _paymentMethod == null) {
+      showSnack(context, 'Seleziona un metodo di pagamento', isError: true);
+      return;
+    }
+
+    setState(() => _submitting = true);
+
+    try {
+      final service = widget.ref.read(clientServiceProvider);
+      final dateStr = '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
+
+      await service.bookAppointment({
+        'trainer_id': _selectedTrainerId,
+        'date': dateStr,
+        'start_time': _selectedTime,
+        'duration': _duration,
+        'notes': _notesController.text.isEmpty ? null : _notesController.text,
+        'payment_method': _isFreeSession ? null : _paymentMethod,
+      });
+
+      if (mounted) {
+        Navigator.pop(context);
+        showSnack(context, 'Appuntamento prenotato con $_selectedTrainerName!');
+        // Refresh appointments list
+        widget.ref.invalidate(appointmentsProvider);
+      }
+    } catch (e) {
+      if (mounted) {
+        showSnack(context, 'Impossibile prenotare: $e', isError: true);
+      }
+    } finally {
+      if (mounted) setState(() => _submitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _sheetHandle(),
+          _sheetTitle('Prenota Appuntamento'),
+          Expanded(
+            child: _loadingTrainers
+                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                : _trainers.isEmpty
+                    ? _emptyState('Nessun trainer disponibile', Icons.person_off_rounded)
+                    : ListView(
+                        controller: widget.scrollController,
+                        padding: const EdgeInsets.only(bottom: 24),
+                        children: [
+                          // 1. Trainer Selector
+                          _buildTrainerSelector(),
+                          const SizedBox(height: 16),
+
+                          // 2. Date Picker
+                          _buildLabel('Data'),
+                          const SizedBox(height: 6),
+                          _buildDatePicker(),
+                          const SizedBox(height: 16),
+
+                          // 3. Time Slot Selector
+                          _buildLabel('Orario'),
+                          const SizedBox(height: 6),
+                          _buildTimeSelector(),
+                          const SizedBox(height: 16),
+
+                          // 4. Duration
+                          _buildLabel('Durata'),
+                          const SizedBox(height: 6),
+                          _buildDurationSelector(),
+                          const SizedBox(height: 16),
+
+                          // 5. Notes
+                          _buildLabel('Note (Facoltativo)'),
+                          const SizedBox(height: 6),
+                          _buildNotesField(),
+                          const SizedBox(height: 16),
+
+                          // 6. Payment Section (if trainer has rate)
+                          if (_selectedTrainerId != null && !_isFreeSession) ...[
+                            _buildPaymentSection(),
+                            const SizedBox(height: 16),
+                          ],
+
+                          // 6b. Free session indicator
+                          if (_selectedTrainerId != null && _isFreeSession && _trainerSessionRate != null)
+                            _buildFreeSessionBadge(),
+                          if (_selectedTrainerId != null && _isFreeSession && _trainerSessionRate != null)
+                            const SizedBox(height: 16),
+
+                          // 7. Submit Button
+                          _buildSubmitButton(),
+                          const SizedBox(height: 16),
+                        ],
+                      ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── TRAINER SELECTOR ────────────────────────────────────────────
+
+  Widget _buildTrainerSelector() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Collapsed view
+        GestureDetector(
+          onTap: () => setState(() => _trainerListExpanded = !_trainerListExpanded),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: const Color(0xFF252525),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                // Avatar
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                  ),
+                  child: _selectedTrainerPicture != null
+                      ? ClipOval(
+                          child: Image.network(
+                            _selectedTrainerPicture!.startsWith('http')
+                                ? _selectedTrainerPicture!
+                                : '${ApiConfig.baseUrl}$_selectedTrainerPicture',
+                            width: 36, height: 36, fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 18, color: AppColors.primary),
+                          ),
+                        )
+                      : const Icon(Icons.person, size: 18, color: AppColors.primary),
+                ),
+                const SizedBox(width: 10),
+                // Name + status
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _selectedTrainerName ?? 'Scegli un trainer...',
+                        style: TextStyle(
+                          color: _selectedTrainerName != null ? Colors.white : AppColors.textTertiary,
+                          fontWeight: FontWeight.w500,
+                          fontSize: 13,
+                        ),
+                      ),
+                      if (_selectedTrainerName != null)
+                        const Text(
+                          'Selezionato',
+                          style: TextStyle(fontSize: 10, color: AppColors.primary),
+                        ),
+                    ],
+                  ),
+                ),
+                // Chevron
+                AnimatedRotation(
+                  turns: _trainerListExpanded ? 0.5 : 0,
+                  duration: const Duration(milliseconds: 200),
+                  child: Icon(
+                    Icons.keyboard_arrow_down_rounded,
+                    color: Colors.white.withValues(alpha: 0.4),
+                    size: 20,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        // Expanded list
+        if (_trainerListExpanded) ...[
+          const SizedBox(height: 6),
+          Container(
+            constraints: const BoxConstraints(maxHeight: 180),
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: _trainers.length,
+              separatorBuilder: (_, __) => const SizedBox(height: 4),
+              itemBuilder: (_, i) => _buildTrainerItem(_trainers[i]),
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _buildTrainerItem(Map<String, dynamic> trainer) {
+    final id = trainer['id'];
+    final trainerId = id is int ? id : int.tryParse(id.toString()) ?? 0;
+    final isSelected = _selectedTrainerId == trainerId;
+    final name = trainer['name']?.toString() ?? trainer['username']?.toString() ?? '';
+    final pic = trainer['profile_picture']?.toString();
+    final rate = trainer['session_rate'];
+
+    return GestureDetector(
+      onTap: () => _selectTrainer(trainer),
+      child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? const Color(0xFF3B82F6).withValues(alpha: 0.2)
+              : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isSelected
+                ? const Color(0xFF3B82F6)
+                : Colors.white.withValues(alpha: 0.1),
+          ),
+        ),
+        child: Row(
+          children: [
+            // Avatar
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: AppColors.primary.withValues(alpha: 0.2),
+              ),
+              child: pic != null
+                  ? ClipOval(
+                      child: Image.network(
+                        pic.startsWith('http') ? pic : '${ApiConfig.baseUrl}$pic',
+                        width: 44, height: 44, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 22, color: AppColors.primary),
+                      ),
+                    )
+                  : const Icon(Icons.person, size: 22, color: AppColors.primary),
+            ),
+            const SizedBox(width: 12),
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+                  Text(
+                    rate != null && (rate as num) > 0
+                        ? '${(rate as num).toStringAsFixed(0)}\u20AC/ora'
+                        : 'Disponibile per prenotazioni',
+                    style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                  ),
+                ],
+              ),
+            ),
+            // Arrow
+            Icon(
+              Icons.arrow_forward_rounded,
+              size: 18,
+              color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6).withValues(alpha: 0.6),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── LABEL ───────────────────────────────────────────────────────
+
+  Widget _buildLabel(String text) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 12,
+        fontWeight: FontWeight.w600,
+        color: Colors.grey[400],
+      ),
+    );
+  }
+
+  // ── DATE PICKER ─────────────────────────────────────────────────
+
+  Widget _buildDatePicker() {
+    return GestureDetector(
+      onTap: () async {
+        final picked = await showDatePicker(
+          context: context,
+          initialDate: _selectedDate ?? DateTime.now(),
+          firstDate: DateTime.now(),
+          lastDate: DateTime.now().add(const Duration(days: 90)),
+          builder: (context, child) => Theme(
+            data: Theme.of(context).copyWith(
+              colorScheme: const ColorScheme.dark(
+                primary: AppColors.primary,
+                onPrimary: Colors.white,
+                surface: Color(0xFF252525),
+                onSurface: Colors.white,
+              ),
+              dialogTheme: DialogThemeData(
+                backgroundColor: const Color(0xFF1E1E1E),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              ),
+            ),
+            child: child!,
+          ),
+        );
+        if (picked != null && mounted) {
+          setState(() => _selectedDate = picked);
+          _loadAvailableSlots();
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF252525),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.calendar_today_rounded, size: 16, color: Colors.grey[500]),
+            const SizedBox(width: 10),
+            Text(
+              _selectedDate != null
+                  ? '${_selectedDate!.day.toString().padLeft(2, '0')}/${_selectedDate!.month.toString().padLeft(2, '0')}/${_selectedDate!.year}'
+                  : 'Seleziona una data...',
+              style: TextStyle(
+                color: _selectedDate != null ? Colors.white : AppColors.textTertiary,
+                fontSize: 13,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── TIME SELECTOR ───────────────────────────────────────────────
+
+  Widget _buildTimeSelector() {
+    if (_selectedTrainerId == null || _selectedDate == null) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF252525),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Text(
+          'Seleziona prima trainer e data',
+          style: TextStyle(color: Colors.grey[600], fontSize: 13),
+        ),
+      );
+    }
+
+    if (_loadingSlots) {
+      return Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        decoration: BoxDecoration(
+          color: const Color(0xFF252525),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Center(
+          child: SizedBox(
+            width: 20, height: 20,
+            child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2),
+          ),
+        ),
+      );
+    }
+
+    if (_availableSlots.isEmpty) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF252525),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: const Text(
+          'Nessun orario disponibile',
+          style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+        ),
+      );
+    }
+
+    // Show time slots as a wrap of chips
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      children: _availableSlots.where((s) => s['available'] == true).map((slot) {
+        final time = slot['start_time']?.toString() ?? '';
+        final isSelected = _selectedTime == time;
+
+        return GestureDetector(
+          onTap: () => setState(() => _selectedTime = time),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? AppColors.primary.withValues(alpha: 0.2)
+                  : const Color(0xFF252525),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isSelected
+                    ? AppColors.primary
+                    : Colors.white.withValues(alpha: 0.1),
+              ),
+            ),
+            child: Text(
+              time,
+              style: TextStyle(
+                color: isSelected ? AppColors.primary : Colors.white,
+                fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                fontSize: 13,
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  // ── DURATION SELECTOR ───────────────────────────────────────────
+
+  Widget _buildDurationSelector() {
+    const durations = [
+      {'value': 30, 'label': '30 min'},
+      {'value': 60, 'label': '1 ora'},
+      {'value': 90, 'label': '1.5 ore'},
+      {'value': 120, 'label': '2 ore'},
+    ];
+
+    return Row(
+      children: durations.map((d) {
+        final val = d['value'] as int;
+        final label = d['label'] as String;
+        final isSelected = _duration == val;
+
+        return Expanded(
+          child: GestureDetector(
+            onTap: () => setState(() => _duration = val),
+            child: Container(
+              margin: EdgeInsets.only(right: d != durations.last ? 8 : 0),
+              padding: const EdgeInsets.symmetric(vertical: 10),
+              decoration: BoxDecoration(
+                color: isSelected
+                    ? AppColors.primary.withValues(alpha: 0.2)
+                    : const Color(0xFF252525),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: isSelected
+                      ? AppColors.primary
+                      : Colors.white.withValues(alpha: 0.1),
+                ),
+              ),
+              child: Text(
+                label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: isSelected ? AppColors.primary : Colors.white,
+                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  // ── NOTES ───────────────────────────────────────────────────────
+
+  Widget _buildNotesField() {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFF252525),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: TextField(
+        controller: _notesController,
+        maxLines: 3,
+        style: const TextStyle(color: Colors.white, fontSize: 13),
+        decoration: InputDecoration(
+          hintText: 'Su cosa vorresti concentrarti in questa sessione?',
+          hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+          filled: true,
+          fillColor: Colors.transparent,
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        ),
+      ),
+    );
+  }
+
+  // ── PAYMENT SECTION ─────────────────────────────────────────────
+
+  Widget _buildPaymentSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _buildLabel('Pagamento'),
+        const SizedBox(height: 6),
+
+        // Price display
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFF252525),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Prezzo Sessione',
+                style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.5)),
+              ),
+              Text(
+                '\u20AC${_sessionPrice.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                  color: AppColors.primary,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+
+        // Payment method buttons
+        Row(
+          children: [
+            // Cash
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _paymentMethod = 'cash'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: _paymentMethod == 'cash'
+                        ? AppColors.success.withValues(alpha: 0.2)
+                        : const Color(0xFF252525),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: _paymentMethod == 'cash'
+                          ? AppColors.success
+                          : Colors.white.withValues(alpha: 0.1),
+                      width: 2,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.payments_outlined,
+                        size: 22,
+                        color: _paymentMethod == 'cash' ? AppColors.success : Colors.white,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Contanti',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: _paymentMethod == 'cash' ? AppColors.success : Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            // POS
+            Expanded(
+              child: GestureDetector(
+                onTap: () => setState(() => _paymentMethod = 'pos'),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: _paymentMethod == 'pos'
+                        ? AppColors.primary.withValues(alpha: 0.2)
+                        : const Color(0xFF252525),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: _paymentMethod == 'pos'
+                          ? AppColors.primary
+                          : Colors.white.withValues(alpha: 0.1),
+                      width: 2,
+                    ),
+                  ),
+                  child: Column(
+                    children: [
+                      Icon(
+                        Icons.contactless_rounded,
+                        size: 22,
+                        color: _paymentMethod == 'pos' ? AppColors.primary : Colors.white,
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'POS',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: _paymentMethod == 'pos' ? AppColors.primary : Colors.white,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+
+        // Info message based on payment method
+        if (_paymentMethod == 'cash')
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.success.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+            ),
+            child: const Center(
+              child: Text(
+                'Paga in contanti in palestra prima della sessione',
+                style: TextStyle(color: Color(0xFF4ADE80), fontSize: 11, fontWeight: FontWeight.w600),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+        if (_paymentMethod == 'pos')
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+            ),
+            child: Center(
+              child: Text(
+                'Paga con carta al POS in palestra',
+                style: TextStyle(color: AppColors.primary.withValues(alpha: 0.9), fontSize: 11, fontWeight: FontWeight.w600),
+                textAlign: TextAlign.center,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+
+  // ── FREE SESSION BADGE ──────────────────────────────────────────
+
+  Widget _buildFreeSessionBadge() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.success.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
+      ),
+      child: const Column(
+        children: [
+          Text('\u2713', style: TextStyle(fontSize: 18, color: Color(0xFF4ADE80))),
+          SizedBox(height: 2),
+          Text(
+            'Sessione Gratuita',
+            style: TextStyle(color: Color(0xFF4ADE80), fontSize: 12, fontWeight: FontWeight.w600),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── SUBMIT BUTTON ───────────────────────────────────────────────
+
+  Widget _buildSubmitButton() {
+    return GestureDetector(
+      onTap: _submitting ? null : _confirmBooking,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 14),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFFF97316), Color(0xFFEA580C)],
+          ),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Center(
+          child: _submitting
+              ? const SizedBox(
+                  width: 20, height: 20,
+                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                )
+              : const Text(
+                  'Prenota Appuntamento',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+        ),
+      ),
+    );
+  }
+}

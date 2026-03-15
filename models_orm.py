@@ -61,6 +61,62 @@ class UserORM(Base):
     # Turnstile/QR system settings (for owners)
     turnstile_gate_seconds = Column(Integer, nullable=True)  # Gate open duration in seconds (default 5)
 
+    # SMTP email settings (per-gym, for owners)
+    smtp_host = Column(String, nullable=True)
+    smtp_port = Column(Integer, nullable=True)  # Default 587
+    smtp_user = Column(String, nullable=True)
+    smtp_password = Column(String, nullable=True)
+    smtp_from_email = Column(String, nullable=True)
+    smtp_from_name = Column(String, nullable=True)
+    smtp_oauth_provider = Column(String, nullable=True)       # 'google' or 'microsoft'
+    smtp_oauth_refresh_token = Column(String, nullable=True)
+    smtp_oauth_access_token = Column(String, nullable=True)
+    smtp_oauth_token_expiry = Column(String, nullable=True)   # ISO datetime
+
+    # Firebase Cloud Messaging (for push notifications)
+    fcm_server_key = Column(String, nullable=True)  # Firebase server key for sending push
+
+# --- GYM (Multi-gym support) ---
+
+class GymORM(Base):
+    __tablename__ = "gyms"
+
+    id = Column(String, primary_key=True, index=True)  # UUID (for migrated owners: same as owner.id)
+    owner_id = Column(String, ForeignKey("users.id"), index=True)
+    name = Column(String, nullable=True)
+    logo = Column(String, nullable=True)
+    gym_code = Column(String(6), unique=True, nullable=True, index=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+    # Hardware settings
+    shower_timer_minutes = Column(Integer, nullable=True)
+    shower_daily_limit = Column(Integer, nullable=True)
+    device_api_key = Column(String, nullable=True, unique=True, index=True)
+    turnstile_gate_seconds = Column(Integer, nullable=True)
+
+    # SMTP email settings
+    smtp_host = Column(String, nullable=True)
+    smtp_port = Column(Integer, nullable=True)
+    smtp_user = Column(String, nullable=True)
+    smtp_password = Column(String, nullable=True)
+    smtp_from_email = Column(String, nullable=True)
+    smtp_from_name = Column(String, nullable=True)
+    smtp_oauth_provider = Column(String, nullable=True)
+    smtp_oauth_refresh_token = Column(String, nullable=True)
+    smtp_oauth_access_token = Column(String, nullable=True)
+    smtp_oauth_token_expiry = Column(String, nullable=True)
+
+    # Stripe
+    stripe_account_id = Column(String, nullable=True)
+    stripe_account_status = Column(String, nullable=True)
+    stripe_terminal_location_id = Column(String, nullable=True)
+    stripe_terminal_reader_id = Column(String, nullable=True)
+
+    # Push notifications
+    fcm_server_key = Column(String, nullable=True)
+
+
 # --- EXERCISE & WORKOUT LIBRARY (Global + Personal) ---
 
 class ExerciseORM(Base):
@@ -745,6 +801,18 @@ class NotificationORM(Base):
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
 
 
+class FCMDeviceTokenORM(Base):
+    """Firebase Cloud Messaging device tokens for push notifications."""
+    __tablename__ = "fcm_device_tokens"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    user_id = Column(String, ForeignKey("users.id"), index=True)
+    token = Column(String, unique=True, index=True)
+    platform = Column(String, nullable=True)  # ios, android, web
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    updated_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
 class ChatRequestORM(Base):
     """Chat requests for private users - must be accepted before messaging."""
     __tablename__ = "chat_requests"
@@ -791,6 +859,7 @@ class AutomatedMessageTemplateORM(Base):
     subject = Column(String, nullable=True)  # For email
     message_template = Column(Text)  # Supports {client_name}, {days_inactive}, etc.
     delivery_methods = Column(Text)  # JSON: ["in_app", "email", "whatsapp"]
+    linked_offer_id = Column(String, ForeignKey("plan_offers.id"), nullable=True)  # Optional linked offer/coupon
     is_enabled = Column(Boolean, default=True)
     send_delay_hours = Column(Integer, default=0)
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())

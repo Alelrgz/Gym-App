@@ -223,6 +223,26 @@ class ClientService {
     return response.data as List<dynamic>;
   }
 
+  // ── Booking ─────────────────────────────────────────────────────
+
+  Future<List<dynamic>> getTrainerAvailableSlots(int trainerId, String date) async {
+    final response = await _api.get(
+      ApiConfig.trainerAvailableSlots(trainerId),
+      queryParameters: {'date': date},
+    );
+    return response.data as List<dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getTrainerSessionRate(int trainerId) async {
+    final response = await _api.get(ApiConfig.trainerSessionRate(trainerId));
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> bookAppointment(Map<String, dynamic> data) async {
+    final response = await _api.post(ApiConfig.clientAppointments, data: data);
+    return response.data as Map<String, dynamic>;
+  }
+
   // ── QR Access Token ──────────────────────────────────────────
 
   Future<Map<String, dynamic>> generateAccessToken() async {

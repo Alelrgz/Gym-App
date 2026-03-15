@@ -112,6 +112,7 @@ class ApiConfig {
   static String trainerAvailability(int id) => '/api/client/trainers/$id/availability';
   static String trainerAvailableSlots(int id) => '/api/client/trainers/$id/available-slots';
   static String trainerSessionTypes(int id) => '/api/client/trainers/$id/session-types';
+  static String trainerSessionRate(int id) => '/api/client/trainers/$id/session-rate';
   static const appointmentCheckoutSession = '/api/client/appointment-checkout-session';
 
   // ── Trainer ─────────────────────────────────────────────
@@ -142,6 +143,7 @@ class ApiConfig {
   static const trainerMyCommissions = '/api/trainer/my-commissions';
   static const exercises = '/api/exercises';
   static String exercise(String id) => '/api/exercises/$id';
+  static String exerciseVideo(String id) => '/api/exercises/$id/video';
 
   // ── Trainer Client Metrics ────────────────────────────────
   static String trainerClientWeightHistory(String id) => '/api/trainer/client/$id/weight-history';
@@ -150,6 +152,7 @@ class ApiConfig {
   static String trainerClientWeekStreak(String id) => '/api/trainer/client/$id/week-streak';
   static String trainerClientWorkoutLog(String id) => '/api/trainer/client/$id/workout-log';
   static String trainerClientNotes(String id) => '/api/trainer/client/$id/notes';
+  static String trainerClientCourseLog(String id) => '/api/trainer/client/$id/course-log';
 
   // ── Owner ───────────────────────────────────────────────
   // Dashboard / core
@@ -188,6 +191,13 @@ class ApiConfig {
   static const ownerCrmAtRisk = '/api/owner/crm/at-risk';
   static const ownerCrmAnalytics = '/api/owner/crm/analytics';
   static const ownerCrmInteractions = '/api/owner/crm/interactions';
+  static const ownerCrmExClients = '/api/owner/crm/ex-clients';
+  static String ownerCrmPipelineClients(String status) => '/api/owner/crm/pipeline-clients?status=$status';
+  static const ownerCrmWhatsappLink = '/api/owner/crm/whatsapp-link';
+
+  // Multi-gym
+  static const ownerGyms = '/api/owner/gyms';
+  static String ownerGym(String id) => '/api/owner/gyms/$id';
 
   // Facilities
   static const ownerActivityTypes = '/api/owner/activity-types';
@@ -202,6 +212,18 @@ class ApiConfig {
   static const ownerShowerSettings = '/api/owner/shower-settings';
   static const ownerGenerateDeviceKey = '/api/owner/generate-device-key';
   static const ownerImportClients = '/api/owner/import-clients';
+
+  // SMTP Email Settings
+  static const ownerSmtpSettings = '/api/owner/smtp-settings';
+  static const ownerSmtpTest = '/api/owner/smtp-settings/test';
+  static String ownerSmtpOAuthAuthorize(String provider) => '/api/owner/smtp-oauth/$provider/authorize';
+  static const ownerSmtpOAuthStatus = '/api/owner/smtp-oauth/status';
+  static const ownerSmtpOAuthDisconnect = '/api/owner/smtp-oauth';
+
+  // FCM Push Notification Settings
+  static const ownerFcmSettings = '/api/owner/fcm-settings';
+  static const registerDevice = '/api/notifications/register-device';
+  static const unregisterDevice = '/api/notifications/unregister-device';
 
   // Stripe Connect
   static const ownerStripeOnboard = '/api/owner/stripe-connect/onboard';
@@ -225,6 +247,43 @@ class ApiConfig {
   static String communityCommentLike(int id) => '/api/community/comments/$id/like';
   static String communityPostParticipate(String id) => '/api/community/posts/$id/participate';
   static String communityPostPin(String id) => '/api/community/posts/$id/pin';
+
+  // ── Staff ───────────────────────────────────────────────
+  static const staffGymInfo = '/api/staff/gym-info';
+  static const staffMembers = '/api/staff/members';
+  static String staffMember(String id) => '/api/staff/member/$id';
+  static const staffCheckin = '/api/staff/checkin';
+  static const staffCheckinsToday = '/api/staff/checkins/today';
+  static const staffAppointmentsToday = '/api/staff/appointments/today';
+  static const staffTrainers = '/api/staff/trainers';
+  static String staffTrainerSchedule(String id) => '/api/staff/trainer/$id/schedule';
+  static const staffSubscriptionPlans = '/api/staff/subscription-plans';
+  static const staffSubscribeClient = '/api/staff/subscribe-client';
+  static const staffCancelSubscription = '/api/staff/cancel-subscription';
+  static const staffChangeSubscription = '/api/staff/change-subscription';
+  static const staffChangeSubscriptionPreview = '/api/staff/change-subscription/preview';
+  static const staffWaiverTemplate = '/api/staff/waiver-template';
+  static const staffOnboardClient = '/api/staff/onboard-client';
+  static const staffResetMemberPassword = '/api/staff/reset-member-password';
+  static const staffChangeMemberUsername = '/api/staff/change-member-username';
+  static const staffCreatePaymentIntent = '/api/staff/create-payment-intent';
+  static const staffOnboardingCheckoutSession = '/api/staff/onboarding-checkout-session';
+  static String staffCheckoutSessionStatus(String id) => '/api/staff/checkout-session-status/$id';
+  static const staffNfcTags = '/api/staff/nfc-tags';
+  static const staffRegisterNfc = '/api/staff/register-nfc';
+  static String staffUnregisterNfc(String id) => '/api/staff/unregister-nfc/$id';
+  static const staffShowerUsage = '/api/staff/shower-usage';
+  static const staffVerifyAccess = '/api/staff/verify-access';
+  static String staffUploadCertificate(String id) => '/api/staff/upload-certificate/$id';
+  static String staffUpdateCertificate(String id) => '/api/staff/update-certificate/$id';
+  static String staffDeleteCertificate(String id) => '/api/staff/delete-certificate/$id';
+  static String medicalCertificate(String clientId) => '/api/medical/certificate?client_id=$clientId';
+
+  // ── Terminal/POS ────────────────────────────────────────
+  static const terminalProcessCustomPayment = '/api/terminal/process-custom-payment';
+  static String terminalPaymentStatus(String id) => '/api/terminal/payment-status/$id';
+  static const terminalCancelPayment = '/api/terminal/cancel-payment';
+  static const terminalSimulatePayment = '/api/terminal/simulate-payment';
 
   // ── Spotify ──────────────────────────────────────────────
   static const String spotifyStatus = '/api/spotify/status';

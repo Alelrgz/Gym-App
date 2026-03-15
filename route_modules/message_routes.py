@@ -6,6 +6,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 import uuid, os
 from auth import get_current_user
+from gym_context import get_gym_context
 from models_orm import UserORM, ClientProfileORM
 from database import get_db_session
 from service_modules.message_service import MessageService, get_message_service
@@ -108,17 +109,20 @@ async def get_unread_count(
 
 
 @router.get("/api/owner/gym-users")
-async def get_owner_gym_users(user: UserORM = Depends(get_current_user)):
+async def get_owner_gym_users(
+    user: UserORM = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
+):
     """Get all users in the owner's gym for the message new-chat picker."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Owner access only")
     db = get_db_session()
     try:
         staff_users = db.query(UserORM).filter(
-            UserORM.gym_owner_id == user.id,
+            UserORM.gym_owner_id == gym_id,
             UserORM.role.in_(["trainer", "staff", "nutritionist"])
         ).all()
-        client_ids = [r[0] for r in db.query(ClientProfileORM.id).filter(ClientProfileORM.gym_id == user.id).all()]
+        client_ids = [r[0] for r in db.query(ClientProfileORM.id).filter(ClientProfileORM.gym_id == gym_id).all()]
         clients = db.query(UserORM).filter(UserORM.id.in_(client_ids)).all() if client_ids else []
         result = []
         for u in staff_users + clients:

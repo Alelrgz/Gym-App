@@ -9,6 +9,9 @@ class ApiClient {
   /// Called when a 401 is received — the auth provider sets this to trigger logout.
   void Function()? onUnauthorized;
 
+  /// Active gym ID for multi-gym owners. Set by the gym provider.
+  String? activeGymId;
+
   ApiClient({required StorageService storage}) : _storage = storage {
     dio = Dio(BaseOptions(
       baseUrl: ApiConfig.baseUrl,
@@ -25,6 +28,10 @@ class ApiClient {
         final token = await _storage.getToken();
         if (token != null) {
           options.headers['Authorization'] = 'Bearer $token';
+        }
+        // Inject active gym context for multi-gym owners
+        if (activeGymId != null && activeGymId!.isNotEmpty) {
+          options.headers['X-Gym-Id'] = activeGymId;
         }
         return handler.next(options);
       },

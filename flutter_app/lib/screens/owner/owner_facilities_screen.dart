@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../config/theme.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/gym_provider.dart';
 import '../../providers/owner_provider.dart';
 import '../../widgets/glass_card.dart';
 
@@ -26,13 +29,20 @@ class _OwnerFacilitiesScreenState extends ConsumerState<OwnerFacilitiesScreen> {
   // Availability editing
   Map<String, dynamic>? _availability;
   bool _showAvailability = false;
+  Map<String, List<TextEditingController>> _dayControllers = {};
 
   static const _dayNames = ['Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato', 'Domenica'];
   static const _dayKeys = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
 
+  String? _lastGymId;
+
   @override
   void initState() {
     super.initState();
+    final gymId = ref.read(activeGymIdProvider);
+    if (gymId != null) {
+      ref.read(apiClientProvider).activeGymId = gymId;
+    }
     _loadAll();
   }
 
@@ -63,6 +73,14 @@ class _OwnerFacilitiesScreenState extends ConsumerState<OwnerFacilitiesScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final currentGymId = ref.watch(activeGymIdProvider);
+    if (_lastGymId != null && currentGymId != _lastGymId) {
+      _lastGymId = currentGymId;
+      ref.read(apiClientProvider).activeGymId = currentGymId;
+      Future.microtask(() => _loadAll());
+    }
+    _lastGymId = currentGymId;
+
     final isDesktop = MediaQuery.of(context).size.width > 1024;
 
     return Scaffold(
@@ -322,20 +340,29 @@ class _OwnerFacilitiesScreenState extends ConsumerState<OwnerFacilitiesScreen> {
   // ═══════════════════════════════════════════════════════════
   //  AVAILABILITY (Purple)
   // ═══════════════════════════════════════════════════════════
-  Widget _buildAvailabilitySection() {
-    final Map<String, List<TextEditingController>> dayControllers = {};
+  void _initDayControllers() {
+    // Dispose old controllers
+    for (final ctrls in _dayControllers.values) {
+      for (final c in ctrls) { c.dispose(); }
+    }
+    _dayControllers = {};
     for (int d = 0; d < 7; d++) {
       final key = _dayKeys[d];
       final dayData = _availability?[key];
       if (dayData != null && dayData is Map) {
-        dayControllers[key] = [
+        _dayControllers[key] = [
           TextEditingController(text: dayData['open'] as String? ?? ''),
           TextEditingController(text: dayData['close'] as String? ?? ''),
         ];
       } else {
-        dayControllers[key] = [TextEditingController(), TextEditingController()];
+        _dayControllers[key] = [TextEditingController(), TextEditingController()];
       }
     }
+  }
+
+  Widget _buildAvailabilitySection() {
+    if (_dayControllers.isEmpty) _initDayControllers();
+    final dayControllers = _dayControllers;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -386,6 +413,7 @@ class _OwnerFacilitiesScreenState extends ConsumerState<OwnerFacilitiesScreen> {
                   ...List.generate(7, (d) {
                     final key = _dayKeys[d];
                     final ctrls = dayControllers[key]!;
+                    final hasTime = ctrls[0].text.isNotEmpty || ctrls[1].text.isNotEmpty;
                     return Padding(
                       padding: const EdgeInsets.only(bottom: 10),
                       child: Row(
@@ -404,6 +432,30 @@ class _OwnerFacilitiesScreenState extends ConsumerState<OwnerFacilitiesScreen> {
                           Expanded(
                             child: _timeInput(ctrls[1], 'Chiusura'),
                           ),
+                          if (hasTime)
+                            GestureDetector(
+                              onTap: () {
+                                for (int i = 0; i < 7; i++) {
+                                  if (i == d) continue;
+                                  final otherKey = _dayKeys[i];
+                                  dayControllers[otherKey]![0].text = ctrls[0].text;
+                                  dayControllers[otherKey]![1].text = ctrls[1].text;
+                                }
+                                setState(() {});
+                              },
+                              child: Tooltip(
+                                message: 'Copia a tutti i giorni',
+                                child: Container(
+                                  margin: const EdgeInsets.only(left: 6),
+                                  width: 32, height: 32,
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFA78BFA).withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: const Icon(Icons.copy_all_rounded, size: 16, color: Color(0xFFA78BFA)),
+                                ),
+                              ),
+                            ),
                         ],
                       ),
                     );
@@ -425,31 +477,75 @@ class _OwnerFacilitiesScreenState extends ConsumerState<OwnerFacilitiesScreen> {
     );
   }
 
-  Widget _timeInput(TextEditingController ctrl, String hint) {
-    return TextField(
-      controller: ctrl,
-      style: const TextStyle(fontSize: 13, color: Colors.white),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: TextStyle(color: Colors.grey[700], fontSize: 12),
-        filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.06),
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
-        focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFA78BFA))),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+  Future<void> _pickTime(TextEditingController ctrl) async {
+    TimeOfDay initial = TimeOfDay.now();
+    if (ctrl.text.contains(':')) {
+      final parts = ctrl.text.split(':');
+      final h = int.tryParse(parts[0]) ?? 0;
+      final m = int.tryParse(parts[1]) ?? 0;
+      initial = TimeOfDay(hour: h, minute: m);
+    }
+    final time = await showTimePicker(
+      context: context,
+      initialTime: initial,
+      initialEntryMode: TimePickerEntryMode.input,
+      builder: (ctx, child) => Theme(
+        data: Theme.of(ctx).copyWith(
+          colorScheme: Theme.of(ctx).colorScheme.copyWith(primary: AppColors.primary),
+          timePickerTheme: const TimePickerThemeData(
+            entryModeIconColor: Color(0xFFA78BFA),
+          ),
+        ),
+        child: MediaQuery(data: MediaQuery.of(ctx).copyWith(alwaysUse24HourFormat: true), child: child!),
       ),
-      onTap: () async {
-        final time = await showTimePicker(
-          context: context,
-          initialTime: TimeOfDay.now(),
-          builder: (ctx, child) => Theme(data: Theme.of(ctx).copyWith(colorScheme: Theme.of(ctx).colorScheme.copyWith(primary: AppColors.primary)), child: child!),
-        );
-        if (time != null) {
-          ctrl.text = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
-        }
+    );
+    if (time != null) {
+      ctrl.text = '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}';
+      setState(() {});
+    }
+  }
+
+  void _autoCompleteTime(TextEditingController ctrl) {
+    final text = ctrl.text.replaceAll(RegExp(r'[^\d:]'), '').trim();
+    if (text.isEmpty) return;
+    if (text.contains(':')) {
+      final parts = text.split(':');
+      final h = (int.tryParse(parts[0]) ?? 0).clamp(0, 23);
+      final m = parts.length > 1 ? (int.tryParse(parts[1]) ?? 0).clamp(0, 59) : 0;
+      ctrl.text = '${h.toString().padLeft(2, '0')}:${m.toString().padLeft(2, '0')}';
+    } else {
+      final h = (int.tryParse(text) ?? 0).clamp(0, 23);
+      ctrl.text = '${h.toString().padLeft(2, '0')}:00';
+    }
+    setState(() {});
+  }
+
+  Widget _timeInput(TextEditingController ctrl, String hint) {
+    return Focus(
+      onFocusChange: (hasFocus) {
+        if (!hasFocus && ctrl.text.isNotEmpty) _autoCompleteTime(ctrl);
       },
-      readOnly: true,
+      child: TextField(
+        controller: ctrl,
+        style: const TextStyle(fontSize: 13, color: Colors.white),
+        keyboardType: TextInputType.datetime,
+        inputFormatters: [_TimeInputFormatter()],
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: TextStyle(color: Colors.grey[700], fontSize: 12),
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.06),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: Color(0xFFA78BFA))),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+          suffixIcon: GestureDetector(
+            onTap: () => _pickTime(ctrl),
+            child: const Icon(Icons.access_time, size: 18, color: Color(0xFFA78BFA)),
+          ),
+        ),
+        onChanged: (_) => setState(() {}),
+      ),
     );
   }
 
@@ -543,20 +639,32 @@ class _OwnerFacilitiesScreenState extends ConsumerState<OwnerFacilitiesScreen> {
     final id = facility['id'].toString();
     try {
       final avail = await ref.read(ownerServiceProvider).getFacilityAvailability(id);
+      // Backend returns a list of slots — convert to day-keyed map for the UI
+      final byDay = <String, dynamic>{};
+      for (final slot in avail) {
+        if (slot is Map) {
+          byDay[slot['day_of_week'] ?? ''] = {
+            'open': slot['start_time'] ?? '',
+            'close': slot['end_time'] ?? '',
+          };
+        }
+      }
       if (mounted) {
+        _availability = byDay;
+        _initDayControllers();
         setState(() {
           _selectedFacilityId = id;
           _selectedFacilityName = facility['name'] as String?;
-          _availability = avail;
           _showAvailability = true;
         });
       }
     } catch (_) {
       if (mounted) {
+        _availability = {};
+        _initDayControllers();
         setState(() {
           _selectedFacilityId = id;
           _selectedFacilityName = facility['name'] as String?;
-          _availability = {};
           _showAvailability = true;
         });
       }
@@ -565,16 +673,22 @@ class _OwnerFacilitiesScreenState extends ConsumerState<OwnerFacilitiesScreen> {
 
   Future<void> _saveAvailability(Map<String, List<TextEditingController>> ctrls) async {
     if (_selectedFacilityId == null) return;
-    final data = <String, dynamic>{};
+    final slots = <Map<String, dynamic>>[];
     for (final key in _dayKeys) {
       final open = ctrls[key]![0].text.trim();
       final close = ctrls[key]![1].text.trim();
       if (open.isNotEmpty && close.isNotEmpty) {
-        data[key] = {'open': open, 'close': close};
+        slots.add({'day_of_week': key, 'start_time': open, 'end_time': close});
       }
     }
     try {
-      await ref.read(ownerServiceProvider).setFacilityAvailability(_selectedFacilityId!, data);
+      await ref.read(ownerServiceProvider).setFacilityAvailability(_selectedFacilityId!, {'availability': slots});
+      // Update local state so UI stays in sync
+      final byDay = <String, dynamic>{};
+      for (final s in slots) {
+        byDay[s['day_of_week']] = {'open': s['start_time'], 'close': s['end_time']};
+      }
+      _availability = byDay;
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Disponibilità salvata')));
     } catch (e) {
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
@@ -840,6 +954,41 @@ class _OwnerFacilitiesScreenState extends ConsumerState<OwnerFacilitiesScreen> {
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       ),
+    );
+  }
+}
+
+/// Formats text input as HH:MM — auto-inserts colon after 2 digits,
+/// clamps hours to 0-23 and minutes to 0-59.
+class _TimeInputFormatter extends TextInputFormatter {
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    // Strip non-digits
+    String digits = newValue.text.replaceAll(RegExp(r'[^\d]'), '');
+    if (digits.length > 4) digits = digits.substring(0, 4);
+
+    String formatted = '';
+    if (digits.isEmpty) return newValue.copyWith(text: '');
+
+    if (digits.length <= 2) {
+      formatted = digits;
+    } else {
+      // Clamp hours
+      int h = int.parse(digits.substring(0, 2));
+      if (h > 23) h = 23;
+      // Clamp minutes
+      String minPart = digits.substring(2);
+      if (minPart.length == 2) {
+        int m = int.parse(minPart);
+        if (m > 59) m = 59;
+        minPart = m.toString().padLeft(2, '0');
+      }
+      formatted = '${h.toString().padLeft(2, '0')}:$minPart';
+    }
+
+    return TextEditingValue(
+      text: formatted,
+      selection: TextSelection.collapsed(offset: formatted.length),
     );
   }
 }

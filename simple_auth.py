@@ -254,6 +254,18 @@ async def _do_register(request, username, password, email, role, sub_role, secre
             "mode": "auth"
         })
 
+    # Helper: look up gym owner by gym code (checks GymORM first, then UserORM for backward compat)
+    def _find_gym_owner(code: str):
+        code_upper = code.strip().upper()
+        # Check GymORM first (multi-gym support)
+        from models_orm import GymORM
+        gym = db.query(GymORM).filter(GymORM.gym_code == code_upper, GymORM.is_active == True).first()
+        if gym:
+            owner = db.query(User).filter(User.id == gym.owner_id).first()
+            return owner
+        # Fallback: legacy UserORM.gym_code
+        return db.query(User).filter(User.gym_code == code_upper, User.role == "owner").first()
+
     # Initialize variables
     generated_gym_code = None
     gym_owner_id = None
@@ -265,10 +277,12 @@ async def _do_register(request, username, password, email, role, sub_role, secre
     # Handle registration based on role
     if role == "owner" and sub_role != "staff":
         # Generate a unique 6-character gym code for owners
+        from models_orm import GymORM
         while True:
             generated_gym_code = ''.join(random.choices(string.ascii_uppercase + string.digits, k=6))
-            existing_code = db.query(User).filter(User.gym_code == generated_gym_code).first()
-            if not existing_code:
+            existing_user = db.query(User).filter(User.gym_code == generated_gym_code).first()
+            existing_gym = db.query(GymORM).filter(GymORM.gym_code == generated_gym_code).first()
+            if not existing_user and not existing_gym:
                 break
 
     elif is_staff:
@@ -282,12 +296,8 @@ async def _do_register(request, username, password, email, role, sub_role, secre
                 "mode": "auth"
             })
 
-        # Look up the gym owner by gym code
-        # Only actual owners have gym_code set, so this is sufficient
-        gym_owner = db.query(User).filter(
-            User.gym_code == gym_code.strip().upper(),
-            User.role == "owner"
-        ).first()
+        # Look up the gym owner by gym code (checks GymORM first, then UserORM)
+        gym_owner = _find_gym_owner(gym_code)
 
         if not gym_owner:
             return templates.TemplateResponse("register.html", {
@@ -313,11 +323,7 @@ async def _do_register(request, username, password, email, role, sub_role, secre
                 "mode": "auth"
             })
 
-        # Look up the gym owner by gym code
-        gym_owner = db.query(User).filter(
-            User.gym_code == gym_code.strip().upper(),
-            User.role == "owner"
-        ).first()
+        gym_owner = _find_gym_owner(gym_code)
 
         if not gym_owner:
             return templates.TemplateResponse("register.html", {
@@ -342,10 +348,7 @@ async def _do_register(request, username, password, email, role, sub_role, secre
                 "mode": "auth"
             })
 
-        gym_owner = db.query(User).filter(
-            User.gym_code == gym_code.strip().upper(),
-            User.role == "owner"
-        ).first()
+        gym_owner = _find_gym_owner(gym_code)
 
         if not gym_owner:
             return templates.TemplateResponse("register.html", {
@@ -361,10 +364,7 @@ async def _do_register(request, username, password, email, role, sub_role, secre
 
     elif role == "client" and gym_code and gym_code.strip():
         # Clients can optionally join a gym
-        gym_owner = db.query(User).filter(
-            User.gym_code == gym_code.strip().upper(),
-            User.role == "owner"
-        ).first()
+        gym_owner = _find_gym_owner(gym_code)
 
         if gym_owner:
             gym_owner_id = gym_owner.id
@@ -405,8 +405,18 @@ async def _do_register(request, username, password, email, role, sub_role, secre
         db.add(new_profile)
         db.commit()
 
-    # If owner, show them their gym code
+    # If owner, create their first GymORM record
     if role == "owner" and generated_gym_code:
+        from models_orm import GymORM
+        new_gym = GymORM(
+            id=new_user.id,  # Use owner.id as gym.id for FK compatibility
+            owner_id=new_user.id,
+            name=username + "'s Gym",
+            gym_code=generated_gym_code,
+        )
+        db.add(new_gym)
+        db.commit()
+
         return templates.TemplateResponse("register.html", {
             "request": request,
             "success": f"Registration successful! Your Gym Code is: {generated_gym_code}",

@@ -29,6 +29,7 @@ class AutomatedMessageService:
                 subject=data.get("subject"),
                 message_template=data.get("message_template"),
                 delivery_methods=json.dumps(data.get("delivery_methods", ["in_app"])),
+                linked_offer_id=data.get("linked_offer_id"),
                 is_enabled=data.get("is_enabled", True),
                 send_delay_hours=data.get("send_delay_hours", 0),
                 created_at=datetime.utcnow().isoformat()
@@ -115,6 +116,8 @@ class AutomatedMessageService:
                 template.is_enabled = updates["is_enabled"]
             if "send_delay_hours" in updates:
                 template.send_delay_hours = updates["send_delay_hours"]
+            if "linked_offer_id" in updates:
+                template.linked_offer_id = updates["linked_offer_id"]
 
             template.updated_at = datetime.utcnow().isoformat()
 
@@ -224,7 +227,18 @@ class AutomatedMessageService:
                 "days_inactive": "7",
                 "workout_title": "Push Day",
                 "trainer_name": "Your Trainer",
-                "gym_name": "Your Gym"
+                "gym_name": "Your Gym",
+                "appointment_date": "2026-03-15",
+                "appointment_time": "10:00",
+                "plan_name": "Premium Mensile",
+                "canceled_at": "2026-03-01",
+                "days_since_cancellation": "14",
+                "offer_title": "Offerta Ritorno",
+                "discount_value": "20",
+                "discount_symbol": "%",
+                "coupon_code": "RITORNO20",
+                "offer_expires": "2026-04-01",
+                "checkout_link": "https://tuapalestra.com/api/redeem/example-offer-id",
             }
 
             # Substitute variables
@@ -381,6 +395,7 @@ class AutomatedMessageService:
             "subject": template.subject,
             "message_template": template.message_template,
             "delivery_methods": json.loads(template.delivery_methods) if template.delivery_methods else ["in_app"],
+            "linked_offer_id": template.linked_offer_id,
             "is_enabled": template.is_enabled,
             "send_delay_hours": template.send_delay_hours,
             "created_at": template.created_at,

@@ -1173,10 +1173,13 @@ class ClientService:
                 data.append({
                     "date": summary.date,
                     "score": score,
-                    "calories": summary.total_cals or 0,
+                    "calories": summary.total_calories or 0,
                     "protein": summary.total_protein or 0,
                     "carbs": summary.total_carbs or 0,
-                    "fat": summary.total_fat or 0
+                    "fat": summary.total_fat or 0,
+                    "hydration": summary.total_hydration or 0,
+                    "target_calories": summary.target_calories or 0,
+                    "target_protein": summary.target_protein or 0
                 })
 
             # Calculate average and streak

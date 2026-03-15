@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import '../config/api_config.dart';
 import '../models/trainer_profile.dart';
 import 'api_client.dart';
@@ -44,6 +45,14 @@ class TrainerService {
 
   Future<void> updateExercise(String id, Map<String, dynamic> data) async {
     await _api.put(ApiConfig.exercise(id), data: data);
+  }
+
+  Future<Map<String, dynamic>> uploadExerciseVideo(String id, String filePath, String fileName) async {
+    final formData = FormData.fromMap({
+      'file': await MultipartFile.fromFile(filePath, filename: fileName),
+    });
+    final response = await _api.upload(ApiConfig.exerciseVideo(id), formData);
+    return response.data as Map<String, dynamic>;
   }
 
   Future<void> deleteExercise(String id) async {

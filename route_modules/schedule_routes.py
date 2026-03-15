@@ -46,6 +46,17 @@ async def get_client_workout_log(
     return service.get_client_workout_log(client_id, limit)
 
 
+@router.get("/api/trainer/client/{client_id}/course-log")
+async def get_client_course_log(
+    client_id: str,
+    limit: int = 50,
+    service: ScheduleService = Depends(get_schedule_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Get completed course entries for a client."""
+    return service.get_client_course_log(client_id, limit)
+
+
 @router.post("/api/client/schedule/complete")
 async def complete_schedule_item(
     payload: dict,

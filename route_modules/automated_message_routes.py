@@ -3,6 +3,7 @@ Automated Message Routes - API endpoints for managing automated message template
 """
 from fastapi import APIRouter, Depends, HTTPException
 from auth import get_current_user
+from gym_context import get_gym_context
 from service_modules.automated_message_service import get_automated_message_service, AutomatedMessageService
 from service_modules.trigger_check_service import get_trigger_check_service, TriggerCheckService
 from pydantic import BaseModel
@@ -43,19 +44,21 @@ class UpdateTemplateRequest(BaseModel):
 async def get_templates(
     include_disabled: bool = True,
     user = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: AutomatedMessageService = Depends(get_automated_message_service)
 ):
     """Get all automated message templates for the owner's gym."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can manage automated messages")
 
-    return service.get_templates(user.id, include_disabled)
+    return service.get_templates(gym_id, include_disabled)
 
 
 @router.post("/api/owner/automated-messages")
 async def create_template(
     template_data: CreateTemplateRequest,
     user = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: AutomatedMessageService = Depends(get_automated_message_service)
 ):
     """Create a new automated message template."""
@@ -63,7 +66,7 @@ async def create_template(
         raise HTTPException(status_code=403, detail="Only gym owners can create automated messages")
 
     # Validate trigger type
-    valid_triggers = ["missed_workout", "days_inactive", "no_show_appointment"]
+    valid_triggers = ["missed_workout", "days_inactive", "no_show_appointment", "subscription_canceled", "payment_failed", "upcoming_appointment"]
     if template_data.trigger_type not in valid_triggers:
         raise HTTPException(
             status_code=400,
@@ -79,7 +82,7 @@ async def create_template(
                 detail=f"Invalid delivery method: {method}. Must be one of: {', '.join(valid_methods)}"
             )
 
-    return service.create_template(user.id, template_data.model_dump())
+    return service.create_template(gym_id, template_data.model_dump())
 
 
 # --- Message Log & Trigger Endpoints (MUST be before {template_id} routes) ---
@@ -88,18 +91,20 @@ async def create_template(
 async def get_message_log(
     limit: int = 50,
     user = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: AutomatedMessageService = Depends(get_automated_message_service)
 ):
     """Get the log of sent automated messages."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can view message logs")
 
-    return service.get_message_log(user.id, limit)
+    return service.get_message_log(gym_id, limit)
 
 
 @router.post("/api/owner/automated-messages/trigger-check")
 async def manual_trigger_check(
     user = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     trigger_service: TriggerCheckService = Depends(get_trigger_check_service)
 ):
     """
@@ -109,7 +114,7 @@ async def manual_trigger_check(
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can trigger automated message checks")
 
-    return trigger_service.check_all_triggers(user.id)
+    return trigger_service.check_all_triggers(gym_id)
 
 
 # --- Template by ID Endpoints (after specific path routes) ---
@@ -118,13 +123,14 @@ async def manual_trigger_check(
 async def get_template(
     template_id: str,
     user = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: AutomatedMessageService = Depends(get_automated_message_service)
 ):
     """Get a specific automated message template."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can view automated messages")
 
-    return service.get_template(template_id, user.id)
+    return service.get_template(template_id, gym_id)
 
 
 @router.put("/api/owner/automated-messages/{template_id}")
@@ -132,6 +138,7 @@ async def update_template(
     template_id: str,
     updates: UpdateTemplateRequest,
     user = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: AutomatedMessageService = Depends(get_automated_message_service)
 ):
     """Update an automated message template."""
@@ -144,33 +151,35 @@ async def update_template(
     if not update_data:
         raise HTTPException(status_code=400, detail="No updates provided")
 
-    return service.update_template(template_id, user.id, update_data)
+    return service.update_template(template_id, gym_id, update_data)
 
 
 @router.delete("/api/owner/automated-messages/{template_id}")
 async def delete_template(
     template_id: str,
     user = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: AutomatedMessageService = Depends(get_automated_message_service)
 ):
     """Delete an automated message template."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can delete automated messages")
 
-    return service.delete_template(template_id, user.id)
+    return service.delete_template(template_id, gym_id)
 
 
 @router.post("/api/owner/automated-messages/{template_id}/toggle")
 async def toggle_template(
     template_id: str,
     user = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: AutomatedMessageService = Depends(get_automated_message_service)
 ):
     """Enable or disable an automated message template."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can toggle automated messages")
 
-    return service.toggle_template(template_id, user.id)
+    return service.toggle_template(template_id, gym_id)
 
 
 @router.post("/api/owner/automated-messages/{template_id}/preview")
@@ -178,10 +187,11 @@ async def preview_template(
     template_id: str,
     sample_client_id: Optional[str] = None,
     user = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
     service: AutomatedMessageService = Depends(get_automated_message_service)
 ):
     """Preview an automated message with variable substitution."""
     if user.role != "owner":
         raise HTTPException(status_code=403, detail="Only gym owners can preview automated messages")
 
-    return service.preview_message(template_id, user.id, sample_client_id)
+    return service.preview_message(template_id, gym_id, sample_client_id)
