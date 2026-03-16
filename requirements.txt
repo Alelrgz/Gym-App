@@ -21,3 +21,4 @@ stripe
 Pillow
 slowapi
 cloudinary
+openpyxl
