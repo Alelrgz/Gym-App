@@ -13,14 +13,21 @@ class ApiConfig {
     return base.replaceFirst('http', 'ws');
   }
 
+  /// Production backend URL (Render deployment)
+  static const String productionUrl = 'https://gym-app-prototype-mm5g.onrender.com';
+
+  /// Set to true to use local dev server instead of production
+  static bool useLocalServer = false;
+
   static String get baseUrl {
     if (kIsWeb) {
-      // Use the same host the app was loaded from, so it works
-      // from both localhost and LAN IP on phones
       final host = Uri.base.host;
       return 'http://$host:$port';
     }
-    return 'http://$nativeHost:$port';
+    if (useLocalServer) {
+      return 'http://$nativeHost:$port';
+    }
+    return productionUrl;
   }
 
   // Auth

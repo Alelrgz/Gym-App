@@ -1,3 +1,6 @@
+import 'dart:io' show Platform;
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -1687,7 +1690,9 @@ class _DraggableExerciseListState extends State<_DraggableExerciseList> {
                             ),
                           ),
                           if (widget.isDraggable)
-                            Icon(Icons.drag_indicator_rounded, size: 18, color: Colors.grey[600]),
+                            Icon(Icons.drag_indicator_rounded, size: 18, color: Colors.grey[600])
+                          else
+                            Icon(Icons.edit_rounded, size: 16, color: Colors.grey[600]),
                         ],
                       ),
                     );
@@ -2949,7 +2954,7 @@ class _ExerciseTab extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              Icon(Icons.chevron_right_rounded, size: 20, color: Colors.grey[600]),
+                              Icon(Icons.edit_rounded, size: 18, color: Colors.grey[600]),
                             ],
                           ),
                         ),
@@ -3005,8 +3010,8 @@ class _ExerciseDetailSheetState extends ConsumerState<_ExerciseDetailSheet> {
 
   void _initVideo() {
     final ex = _exercise;
-    final videoUrl = ex['video_url'] as String?;
-    final videoId = ex['video_id'] as String?;
+    final videoUrl = ex['video_url']?.toString();
+    final videoId = ex['video_id']?.toString();
 
     String? url;
     if (videoUrl != null && videoUrl.isNotEmpty) {
@@ -3020,8 +3025,27 @@ class _ExerciseDetailSheetState extends ConsumerState<_ExerciseDetailSheet> {
       _player = Player();
       _videoCtrl = VideoController(_player!);
       _player!.setPlaylistMode(PlaylistMode.loop);
-      _player!.open(Media(url));
+      _player!.open(Media(url)).catchError((_) {
+        if (mounted) setState(() => _hasVideo = false);
+      });
+      // Listen for errors and stop showing spinner if video fails
+      _player!.stream.error.listen((error) {
+        if (mounted && error.isNotEmpty) {
+          setState(() => _hasVideo = false);
+          _player?.dispose();
+          _player = null;
+          _videoCtrl = null;
+        }
+      });
     }
+  }
+
+  void _reloadVideo() {
+    _player?.dispose();
+    _player = null;
+    _videoCtrl = null;
+    _hasVideo = false;
+    _initVideo();
   }
 
   @override
@@ -3245,12 +3269,12 @@ class _ExerciseDetailSheetState extends ConsumerState<_ExerciseDetailSheet> {
                     Expanded(child: _EditField(controller: videoUrlCtrl, label: 'Video URL (opzionale)')),
                     const SizedBox(width: 8),
                     _VideoUploadButton(
-                      exerciseId: _exercise['id'] as String,
+                      exerciseId: _exercise['id'].toString(),
                       onUploaded: (updatedEx) {
                         setModalState(() => videoUrlCtrl.text = '');
-                        setState(() {
-                          _exercise = {..._exercise, 'video_id': updatedEx['video_id']};
-                        });
+                        _exercise = {..._exercise, 'video_id': updatedEx['video_id']};
+                        setState(() {});
+                        _reloadVideo();
                       },
                     ),
                   ],
@@ -3318,12 +3342,12 @@ class _ExerciseDetailSheetState extends ConsumerState<_ExerciseDetailSheet> {
                       };
                       try {
                         final service = ref.read(trainerServiceProvider);
-                        await service.updateExercise(_exercise['id'] as String, data);
+                        await service.updateExercise(_exercise['id'].toString(), data);
                         if (ctx.mounted) Navigator.pop(ctx);
                         // Update local state
-                        setState(() {
-                          _exercise = {..._exercise, ...data, 'muscle': muscleCtrl.text.trim()};
-                        });
+                        _exercise = {..._exercise, ...data, 'muscle': muscleCtrl.text.trim()};
+                        setState(() {});
+                        _reloadVideo();
                         ref.invalidate(trainerExercisesProvider);
                       } catch (e) {
                         if (ctx.mounted) {
@@ -4704,14 +4728,33 @@ class _VideoUploadButtonState extends ConsumerState<_VideoUploadButton> {
   bool _uploading = false;
 
   Future<void> _pickAndUpload() async {
-    final picker = ImagePicker();
-    final video = await picker.pickVideo(source: ImageSource.gallery);
-    if (video == null) return;
+    String? filePath;
+    String? fileName;
+
+    // Use file_picker on desktop, image_picker on mobile/web
+    final isDesktop = !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
+    if (isDesktop) {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['mp4', 'mov', 'avi', 'webm', 'mkv'],
+      );
+      if (result == null || result.files.isEmpty) return;
+      filePath = result.files.single.path;
+      fileName = result.files.single.name;
+    } else {
+      final picker = ImagePicker();
+      final video = await picker.pickVideo(source: ImageSource.gallery);
+      if (video == null) return;
+      filePath = video.path;
+      fileName = video.name;
+    }
+
+    if (filePath == null) return;
 
     setState(() => _uploading = true);
     try {
       final service = ref.read(trainerServiceProvider);
-      final result = await service.uploadExerciseVideo(widget.exerciseId, video.path, video.name);
+      final result = await service.uploadExerciseVideo(widget.exerciseId, filePath, fileName ?? 'video.mp4');
       ref.invalidate(trainerExercisesProvider);
       widget.onUploaded(result);
       if (mounted) {

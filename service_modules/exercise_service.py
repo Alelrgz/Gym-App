@@ -4,7 +4,7 @@ Exercise Service - handles exercise CRUD operations.
 import json
 from .base import (
     HTTPException, uuid, logging,
-    get_db_session, ExerciseORM
+    get_db_session, ExerciseORM, WorkoutORM
 )
 
 logger = logging.getLogger("gym_app")
@@ -107,9 +107,14 @@ class ExerciseService:
 
             # If trainer owns it, update directly
             if ex.owner_id == trainer_id:
+                old_name = ex.name
                 for key, value in updates.items():
                     if hasattr(ex, key):
                         setattr(ex, key, value)
+                result = self._exercise_to_dict(ex)
+                if old_name != ex.name:
+                    result["_old_name"] = old_name
+                self._sync_exercise_to_workouts(db, result, trainer_id)
                 db.commit()
                 db.refresh(ex)
                 return self._exercise_to_dict(ex)
@@ -124,9 +129,14 @@ class ExerciseService:
 
                 if existing_fork:
                     # Update fork
+                    old_name = existing_fork.name
                     for key, value in updates.items():
                         if hasattr(existing_fork, key):
                             setattr(existing_fork, key, value)
+                    result = self._exercise_to_dict(existing_fork)
+                    if old_name != existing_fork.name:
+                        result["_old_name"] = old_name
+                    self._sync_exercise_to_workouts(db, result, trainer_id)
                     db.commit()
                     db.refresh(existing_fork)
                     return self._exercise_to_dict(existing_fork)
@@ -148,6 +158,10 @@ class ExerciseService:
                         steps_json=updates.get("steps_json", ex.steps_json)
                     )
                     db.add(new_ex)
+                    result = self._exercise_to_dict(new_ex)
+                    if ex.name != new_ex.name:
+                        result["_old_name"] = ex.name
+                    self._sync_exercise_to_workouts(db, result, trainer_id)
                     db.commit()
                     db.refresh(new_ex)
                     return self._exercise_to_dict(new_ex)
@@ -155,6 +169,40 @@ class ExerciseService:
             raise HTTPException(status_code=403, detail="Cannot edit exercise (Permission denied)")
         finally:
             db.close()
+
+    def _sync_exercise_to_workouts(self, db, exercise_dict: dict, trainer_id: str):
+        """Propagate exercise changes into all workouts owned by the trainer."""
+        old_name = exercise_dict.get("_old_name")  # Set when name changed
+        match_name = old_name or exercise_dict["name"]
+
+        workouts = db.query(WorkoutORM).filter(
+            WorkoutORM.owner_id == trainer_id
+        ).all()
+
+        # Fields to sync into workout exercise entries
+        sync_fields = ["name", "muscle", "muscle_group", "type", "video_id",
+                       "video_url", "thumbnail_url", "description",
+                       "default_duration", "difficulty", "steps"]
+
+        for w in workouts:
+            if not w.exercises_json:
+                continue
+            try:
+                exercises = json.loads(w.exercises_json)
+            except (json.JSONDecodeError, TypeError):
+                continue
+
+            changed = False
+            for ex in exercises:
+                ex_name = ex.get("name", "")
+                if ex_name == match_name:
+                    for field in sync_fields:
+                        if field in exercise_dict:
+                            ex[field] = exercise_dict[field]
+                    changed = True
+
+            if changed:
+                w.exercises_json = json.dumps(exercises)
 
     def delete_exercise(self, exercise_id: str, trainer_id: str) -> dict:
         """Delete a personal exercise."""
