@@ -117,6 +117,47 @@ async def health_check():
     """Health check endpoint for load balancers and monitoring."""
     return {"status": "ok"}
 
+@app.get("/api/migrate-data-once")
+async def migrate_data_once():
+    """One-time data migration from bundled JSON. Remove after use."""
+    import json as _json
+    from sqlalchemy import text as _text
+    data_path = os.path.join(os.path.dirname(__file__), "db", "migration_data.json")
+    if not os.path.exists(data_path):
+        return {"error": "migration_data.json not found"}
+    with open(data_path, "r") as f:
+        dump = _json.load(f)
+    results = {}
+    priority = ["users", "gyms", "client_profile", "exercises", "workouts"]
+    ordered = [t for t in priority if t in dump] + [t for t in dump if t not in priority]
+    db = SessionLocal()
+    try:
+        for table in ordered:
+            info = dump[table]
+            cols, rows = info["columns"], info["rows"]
+            col_names = ", ".join([f'"{c}"' for c in cols])
+            placeholders = ", ".join([f":{c}" for c in cols])
+            count = 0
+            for row in rows:
+                params = {cols[i]: row[i] for i in range(len(cols))}
+                try:
+                    db.execute(_text(f'INSERT INTO "{table}" ({col_names}) VALUES ({placeholders}) ON CONFLICT DO NOTHING'), params)
+                    db.commit()
+                    count += 1
+                except Exception:
+                    db.rollback()
+            results[table] = f"{count}/{len(rows)}"
+        # Fix sequences
+        for t in ordered:
+            try:
+                db.execute(_text(f"SELECT setval(pg_get_serial_sequence('{t}', 'id'), COALESCE((SELECT MAX(id) FROM \"{t}\"), 1))"))
+                db.commit()
+            except Exception:
+                db.rollback()
+    finally:
+        db.close()
+    return {"migrated": results}
+
 @app.get("/api/version")
 async def get_version():
     """Get app version info for debugging deployed instances."""
