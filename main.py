@@ -231,7 +231,7 @@ async def fix_passwords_once():
                 uid, uname = row[0], row[1]
                 try:
                     pwd = (str(uname or "changeme")[:30]).encode('utf-8')
-                    salt = bcrypt.gensalt(rounds=12)
+                    salt = bcrypt.gensalt(rounds=4)
                     new_hash = bcrypt.hashpw(pwd, salt).decode('utf-8')
                     db.execute(_t('UPDATE users SET hashed_password = :h WHERE id = :id'), {"h": new_hash, "id": uid})
                     count += 1
