@@ -215,6 +215,31 @@ async def _do_migrate():
         db.close()
     return {"migrated": results, "errors": errors}
 
+@app.get("/api/fix-passwords-once")
+async def fix_passwords_once():
+    """Re-hash all user passwords to username=password. Remove after use."""
+    try:
+        from database import SessionLocal as _SL
+        from sqlalchemy import text as _t
+        from passlib.context import CryptContext
+        pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        db = _SL()
+        try:
+            rows = db.execute(_t('SELECT id, username FROM users')).fetchall()
+            count = 0
+            for row in rows:
+                uid, uname = row[0], row[1]
+                new_hash = pwd_ctx.hash(uname)
+                db.execute(_t('UPDATE users SET hashed_password = :h WHERE id = :id'), {"h": new_hash, "id": uid})
+                count += 1
+            db.commit()
+            return {"fixed": count, "note": "All passwords set to username"}
+        finally:
+            db.close()
+    except Exception as e:
+        import traceback
+        return {"error": str(e), "trace": traceback.format_exc()[-300:]}
+
 @app.get("/api/version")
 async def get_version():
     """Get app version info for debugging deployed instances."""
