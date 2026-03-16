@@ -229,7 +229,11 @@ async def fix_passwords_once():
             count = 0
             for row in rows:
                 uid, uname = row[0], row[1]
-                new_hash = pwd_ctx.hash(uname[:60])
+                # Use username as password, but ensure < 72 bytes
+                pwd = uname.encode('utf-8')[:60].decode('utf-8', errors='ignore')
+                if not pwd:
+                    pwd = "changeme"
+                new_hash = pwd_ctx.hash(pwd)
                 db.execute(_t('UPDATE users SET hashed_password = :h WHERE id = :id'), {"h": new_hash, "id": uid})
                 count += 1
             db.commit()
