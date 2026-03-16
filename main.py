@@ -227,17 +227,19 @@ async def fix_passwords_once():
         try:
             rows = db.execute(_t('SELECT id, username FROM users')).fetchall()
             count = 0
+            skipped = []
             for row in rows:
                 uid, uname = row[0], row[1]
-                # Use username as password, but ensure < 72 bytes
-                pwd = uname.encode('utf-8')[:60].decode('utf-8', errors='ignore')
-                if not pwd:
-                    pwd = "changeme"
-                new_hash = pwd_ctx.hash(pwd)
-                db.execute(_t('UPDATE users SET hashed_password = :h WHERE id = :id'), {"h": new_hash, "id": uid})
-                count += 1
+                try:
+                    pwd = str(uname or "changeme")[:30]
+                    new_hash = pwd_ctx.hash(pwd)
+                    db.execute(_t('UPDATE users SET hashed_password = :h WHERE id = :id'), {"h": new_hash, "id": uid})
+                    count += 1
+                except Exception as e:
+                    skipped.append(f"{uname}: {str(e)[:50]}")
+                    db.rollback()
             db.commit()
-            return {"fixed": count, "note": "All passwords set to username"}
+            return {"fixed": count, "skipped": skipped, "note": "All passwords set to username"}
         finally:
             db.close()
     except Exception as e:
