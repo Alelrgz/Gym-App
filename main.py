@@ -120,6 +120,13 @@ async def health_check():
 @app.get("/api/migrate-data-once")
 async def migrate_data_once():
     """One-time data migration from bundled JSON. Remove after use."""
+    try:
+        return await _do_migrate()
+    except Exception as e:
+        import traceback
+        return {"error": str(e), "trace": traceback.format_exc()[-500:]}
+
+async def _do_migrate():
     import json as _json
     from sqlalchemy import text as _text, inspect as _inspect
     data_path = os.path.join(os.path.dirname(__file__), "db", "migration_data.json")
