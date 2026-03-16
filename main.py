@@ -129,6 +129,7 @@ async def migrate_data_once():
 async def _do_migrate():
     import json as _json
     from sqlalchemy import text as _text, inspect as _inspect
+    from database import SessionLocal, engine
     data_path = os.path.join(os.path.dirname(__file__), "db", "migration_data.json")
     if not os.path.exists(data_path):
         return {"error": "migration_data.json not found"}
