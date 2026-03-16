@@ -4020,13 +4020,13 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
         opaque: false,
         transitionDuration: const Duration(milliseconds: 350),
         reverseTransitionDuration: const Duration(milliseconds: 300),
-        pageBuilder: (_, animation, __) => _PhotoViewerPage(
+        pageBuilder: (_, animation, _) => _PhotoViewerPage(
           photos: _photos,
           initialIndex: initialIndex,
           resolveUrl: _resolvePhotoUrl,
           animation: animation,
         ),
-        transitionsBuilder: (_, animation, __, child) => child,
+        transitionsBuilder: (_, animation, _, child) => child,
       ),
     );
   }
@@ -5732,7 +5732,7 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
                                 ? _selectedTrainerPicture!
                                 : '${ApiConfig.baseUrl}$_selectedTrainerPicture',
                             width: 36, height: 36, fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 18, color: AppColors.primary),
+                            errorBuilder: (_, _, _) => const Icon(Icons.person, size: 18, color: AppColors.primary),
                           ),
                         )
                       : const Icon(Icons.person, size: 18, color: AppColors.primary),
@@ -5781,7 +5781,7 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
             child: ListView.separated(
               shrinkWrap: true,
               itemCount: _trainers.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 4),
+              separatorBuilder: (_, _) => const SizedBox(height: 4),
               itemBuilder: (_, i) => _buildTrainerItem(_trainers[i]),
             ),
           ),
@@ -5827,7 +5827,7 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
                       child: Image.network(
                         pic.startsWith('http') ? pic : '${ApiConfig.baseUrl}$pic',
                         width: 44, height: 44, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 22, color: AppColors.primary),
+                        errorBuilder: (_, _, _) => const Icon(Icons.person, size: 22, color: AppColors.primary),
                       ),
                     )
                   : const Icon(Icons.person, size: 22, color: AppColors.primary),
@@ -5841,7 +5841,7 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
                   Text(name, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
                   Text(
                     rate != null && (rate as num) > 0
-                        ? '${(rate as num).toStringAsFixed(0)}\u20AC/ora'
+                        ? '${(rate).toStringAsFixed(0)}\u20AC/ora'
                         : 'Disponibile per prenotazioni',
                     style: TextStyle(fontSize: 11, color: Colors.grey[400]),
                   ),

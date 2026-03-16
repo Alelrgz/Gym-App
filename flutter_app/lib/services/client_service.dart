@@ -495,14 +495,14 @@ class ClientService {
   }) async {
     final formData = FormData.fromMap(<String, dynamic>{
       'post_type': postType,
-      if (content != null) 'content': content,
-      if (eventTitle != null) 'event_title': eventTitle,
-      if (eventDate != null) 'event_date': eventDate,
-      if (eventTime != null) 'event_time': eventTime,
-      if (eventLocation != null) 'event_location': eventLocation,
-      if (maxParticipants != null) 'max_participants': maxParticipants,
-      if (questXpReward != null) 'quest_xp_reward': questXpReward,
-      if (questDeadline != null) 'quest_deadline': questDeadline,
+      'content': ?content,
+      'event_title': ?eventTitle,
+      'event_date': ?eventDate,
+      'event_time': ?eventTime,
+      'event_location': ?eventLocation,
+      'max_participants': ?maxParticipants,
+      'quest_xp_reward': ?questXpReward,
+      'quest_deadline': ?questDeadline,
       if (imageBytes != null && imageFilename != null)
         'image': MultipartFile.fromBytes(imageBytes, filename: imageFilename),
     });
@@ -530,7 +530,7 @@ class ClientService {
   Future<Map<String, dynamic>> addComment(String postId, String content, {int? parentCommentId}) async {
     final response = await _api.post(ApiConfig.communityPostComments(postId), data: {
       'content': content,
-      if (parentCommentId != null) 'parent_comment_id': parentCommentId,
+      'parent_comment_id': ?parentCommentId,
     });
     return response.data as Map<String, dynamic>;
   }

@@ -17,7 +17,7 @@ class ApiConfig {
   static const String productionUrl = 'https://gym-app-prototype-mm5g.onrender.com';
 
   /// Set to true to use local dev server instead of production
-  static bool useLocalServer = false;
+  static bool useLocalServer = true;
 
   static String get baseUrl {
     if (kIsWeb) {

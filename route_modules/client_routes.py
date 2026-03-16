@@ -5,8 +5,10 @@ from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
-import hashlib, time
+import hashlib, time, logging, traceback
 from auth import get_current_user
+
+logger = logging.getLogger("gym_app")
 from models import ClientData, ClientProfileUpdate
 from models_orm import UserORM, ClientProfileORM, ChatRequestORM, ClientDietSettingsORM
 from service_modules.client_service import ClientService, get_client_service
@@ -50,11 +52,17 @@ async def get_client_data(
     current_user: UserORM = Depends(get_current_user)
 ):
     """Get client's own data (current user)."""
-    workout_service = get_workout_service()
-    return service.get_client(
-        current_user.id,
-        get_workout_details_fn=workout_service.get_workout_details
-    )
+    try:
+        workout_service = get_workout_service()
+        return service.get_client(
+            current_user.id,
+            get_workout_details_fn=workout_service.get_workout_details
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"[CLIENT_DATA] 500 error for user {current_user.id}: {e}\n{traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Internal error: {str(e)}")
 
 
 @router.get("/api/trainer/client/{client_id}", response_model=ClientData)

@@ -8,7 +8,6 @@ import '../config/theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/client_provider.dart';
 import '../widgets/dashboard_sheets.dart';
-import '../services/client_service.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});

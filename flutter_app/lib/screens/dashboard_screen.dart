@@ -35,6 +35,13 @@ class DashboardScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               const Text('Errore nel caricamento',
                   style: TextStyle(color: AppColors.textSecondary)),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text('$error',
+                    style: const TextStyle(color: AppColors.textTertiary, fontSize: 11),
+                    textAlign: TextAlign.center),
+              ),
               const SizedBox(height: 12),
               ElevatedButton(
                 onPressed: () => ref.invalidate(clientDataProvider),
@@ -728,7 +735,7 @@ class _TodayMealsCardState extends State<_TodayMealsCard> {
                   : ListView.separated(
                       padding: EdgeInsets.zero,
                       itemCount: _todayMeals.length,
-                      separatorBuilder: (_, __) => Divider(color: Colors.white.withValues(alpha: 0.06), height: 1),
+                      separatorBuilder: (_, _) => Divider(color: Colors.white.withValues(alpha: 0.06), height: 1),
                       itemBuilder: (_, i) {
                         final m = _todayMeals[i];
                         final type = m['meal_type']?.toString() ?? '';
