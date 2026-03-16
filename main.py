@@ -148,24 +148,42 @@ async def _do_migrate():
         for t in pg_tables:
             pg_columns[t] = {c['name'] for c in inspector.get_columns(t)}
 
+        # Detect boolean columns per table
+        bool_cols_map = {}
+        for t in pg_tables:
+            bool_cols_map[t] = set()
+            for c in inspector.get_columns(t):
+                if str(c['type']).upper() == 'BOOLEAN':
+                    bool_cols_map[t].add(c['name'])
+
+        # Disable FK checks during migration
+        db.execute(_text("SET session_replication_role = 'replica'"))
+        db.commit()
+
         for table in ordered:
             if table not in pg_tables:
                 errors[table] = "table not in PG"
                 continue
             info = dump[table]
             src_cols, rows = info["columns"], info["rows"]
-            # Only use columns that exist in PG
             valid_cols = [c for c in src_cols if c in pg_columns.get(table, set())]
             valid_idx = [src_cols.index(c) for c in valid_cols]
             if not valid_cols:
-                errors[table] = f"no matching columns (src: {src_cols[:3]})"
+                errors[table] = f"no matching columns"
                 continue
+            bool_cols = bool_cols_map.get(table, set())
             col_names = ", ".join([f'"{c}"' for c in valid_cols])
             placeholders = ", ".join([f":{c}" for c in valid_cols])
             count = 0
             first_err = None
             for row in rows:
-                params = {valid_cols[j]: row[valid_idx[j]] for j in range(len(valid_cols))}
+                params = {}
+                for j in range(len(valid_cols)):
+                    col = valid_cols[j]
+                    val = row[valid_idx[j]]
+                    if col in bool_cols and isinstance(val, int):
+                        val = bool(val)
+                    params[col] = val
                 try:
                     db.execute(_text(f'INSERT INTO "{table}" ({col_names}) VALUES ({placeholders}) ON CONFLICT DO NOTHING'), params)
                     db.commit()
@@ -177,6 +195,10 @@ async def _do_migrate():
             results[table] = f"{count}/{len(rows)}"
             if first_err and count == 0:
                 errors[table] = first_err
+
+        # Re-enable FK checks
+        db.execute(_text("SET session_replication_role = 'origin'"))
+        db.commit()
         # Fix sequences
         for t in ordered:
             try:
