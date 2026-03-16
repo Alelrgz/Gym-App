@@ -156,10 +156,7 @@ async def _do_migrate():
                 if str(c['type']).upper() == 'BOOLEAN':
                     bool_cols_map[t].add(c['name'])
 
-        # Disable FK checks during migration
-        db.execute(_text("SET session_replication_role = 'replica'"))
-        db.commit()
-
+        # Disable FK triggers per table during insert
         for table in ordered:
             if table not in pg_tables:
                 errors[table] = "table not in PG"
@@ -174,6 +171,12 @@ async def _do_migrate():
             bool_cols = bool_cols_map.get(table, set())
             col_names = ", ".join([f'"{c}"' for c in valid_cols])
             placeholders = ", ".join([f":{c}" for c in valid_cols])
+            # Disable triggers (FK checks) for this table
+            try:
+                db.execute(_text(f'ALTER TABLE "{table}" DISABLE TRIGGER ALL'))
+                db.commit()
+            except Exception:
+                db.rollback()
             count = 0
             first_err = None
             for row in rows:
@@ -192,13 +195,15 @@ async def _do_migrate():
                     db.rollback()
                     if first_err is None:
                         first_err = str(e)[:120]
+            # Re-enable triggers
+            try:
+                db.execute(_text(f'ALTER TABLE "{table}" ENABLE TRIGGER ALL'))
+                db.commit()
+            except Exception:
+                db.rollback()
             results[table] = f"{count}/{len(rows)}"
             if first_err and count == 0:
                 errors[table] = first_err
-
-        # Re-enable FK checks
-        db.execute(_text("SET session_replication_role = 'origin'"))
-        db.commit()
         # Fix sequences
         for t in ordered:
             try:
