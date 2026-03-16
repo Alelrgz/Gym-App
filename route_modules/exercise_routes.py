@@ -105,7 +105,9 @@ async def upload_exercise_video(
     service: ExerciseService = Depends(get_exercise_service),
     current_user: UserORM = Depends(get_current_user),
 ):
-    """Upload a video file for an exercise and save it to static/videos/."""
+    """Upload a video file for an exercise to Cloudinary (or local fallback)."""
+    from service_modules.upload_helper import upload_file
+
     ext = os.path.splitext(file.filename or "")[1].lower()
     if ext not in _ALLOWED_VIDEO_EXTS:
         raise HTTPException(status_code=400, detail=f"Formato non supportato. Usa: {', '.join(_ALLOWED_VIDEO_EXTS)}")
@@ -114,10 +116,12 @@ async def upload_exercise_video(
     if len(content) > _MAX_VIDEO_BYTES:
         raise HTTPException(status_code=400, detail="File troppo grande (max 300 MB)")
 
-    os.makedirs(_VIDEOS_DIR, exist_ok=True)
     video_id = str(uuid.uuid4())
-    dest = os.path.join(_VIDEOS_DIR, f"{video_id}.mp4")
-    with open(dest, "wb") as f:
-        f.write(content)
+    filename = f"{video_id}.mp4"
+    video_url = upload_file(content, "exercise_videos", filename, upload_type="video")
 
-    return service.update_exercise(exercise_id, {"video_id": video_id}, current_user.id)
+    return service.update_exercise(
+        exercise_id,
+        {"video_id": video_id, "video_url": video_url},
+        current_user.id
+    )
