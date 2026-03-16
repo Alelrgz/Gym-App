@@ -117,6 +117,54 @@ async def health_check():
     """Health check endpoint for load balancers and monitoring."""
     return {"status": "ok"}
 
+@app.get("/api/sync-video-urls-once")
+async def sync_video_urls():
+    """TEMP: Sync Cloudinary video URLs to exercises. Remove after use."""
+    VIDEO_MAP = {
+        "ex_4": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683931/fitos/exercise_videos/MachineFly.mp4",
+        "ex_5": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683885/fitos/exercise_videos/d2303194-c3c7-4431-b583-299bd8263262.mp4",
+        "ex_12": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683874/fitos/exercise_videos/bd25b582-aa4c-4733-b623-48a13729eba7.mp4",
+        "ex_14": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683871/fitos/exercise_videos/b1dcba92-1720-41e4-9541-bbdc05ae0a96.mp4",
+        "ex_18": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683841/fitos/exercise_videos/FacePull.mp4",
+        "ex_23": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683916/fitos/exercise_videos/LateralRaise.mp4",
+        "ex_30": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683919/fitos/exercise_videos/LegPress.mp4",
+        "ex_32": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683854/fitos/exercise_videos/29da9016-7353-48c8-92b0-dbf796c2dbf8.mp4",
+        "ex_33": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683903/fitos/exercise_videos/fcd0a946-36ac-4f75-936d-b6362844304f.mp4",
+        "ex_34": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683923/fitos/exercise_videos/Lunges.mp4",
+        "ex_35": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683898/fitos/exercise_videos/e9b9fa42-8462-4c14-ad75-1e6777fc72d0.mp4",
+        "ex_36": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683882/fitos/exercise_videos/c63e972c-2a5e-4b79-9c1f-96dfac88f478.mp4",
+        "ex_42": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683935/fitos/exercise_videos/TricepPushdown.mp4",
+        "ex_44": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683888/fitos/exercise_videos/d898e34c-9e4d-4d34-afa3-864d7a481498.mp4",
+        "ex_47": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683878/fitos/exercise_videos/be72f313-9bd5-4c30-912d-a419931b0c3a.mp4",
+        "ex_49": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683906/fitos/exercise_videos/fe0f72dc-2a50-4470-813c-495347d94d4b.mp4",
+        "9efe897f-66a5-4bce-907a-bf744adab620": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683899/fitos/exercise_videos/eeb11123-5b8d-4b97-8ede-3d56e680f892.mp4",
+        "cb9b6a24-a8c5-455f-973f-df7ba29fb619": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683872/fitos/exercise_videos/7dccd2a0-1928-4f1f-9f86-249bd23059d2.mp4",
+        "43fdd5d2-fe2f-4e56-b63c-c49f74f3067f": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683868/fitos/exercise_videos/70d3b7d0-2cb3-46aa-a911-076857a5002d.mp4",
+        "ce037097-bab8-4b9b-b939-ba4eb68906da": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683875/fitos/exercise_videos/aecb16a7-9a46-4e84-ada5-c38ff21af502.mp4",
+        "28826de7-3657-45f2-9b73-d17e96b51bc3": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683909/fitos/exercise_videos/ff769f9d-faba-415c-944a-6291bf6d8149.mp4",
+        "da6b7660-009a-4439-a95c-e6c451c0ef50": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683861/fitos/exercise_videos/6bcb389d-b333-4d21-89b3-868b750a5c8d.mp4",
+        "8af9c846-b248-4d68-a205-b4f8ea5efa5d": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683865/fitos/exercise_videos/52d1c754-3160-470d-b8c0-2ff7e3e178ff.mp4",
+        "f9b16d47-66b1-455f-af9d-29da19f531d2": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683869/fitos/exercise_videos/76cf3ef8-621d-419e-8a0a-2a686fe968d8.mp4",
+        "48f29c17-28bc-4607-9e2f-06114bd21ddc": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683879/fitos/exercise_videos/c4b3622d-3f63-4913-965a-5d985ed96f07.mp4",
+        "35824add-4986-4d87-a0b8-0c526b66f7a8": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683862/fitos/exercise_videos/6a93dfd0-f625-4742-b6ce-289c2f70621a.mp4",
+        "47eb2bdf-91bc-4d3c-85aa-40646738f7ad": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683857/fitos/exercise_videos/47300e94-9c0e-46db-968a-c8ddca338d2e.mp4",
+        "aafd2a13-f938-48b9-b0c9-7ff0068cd084": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683914/fitos/exercise_videos/InclineDBPress.mp4",
+        "e041db49-9bcd-4d75-b7d5-65ee9526e9e8": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683893/fitos/exercise_videos/e6d0057f-b1f3-4023-bf61-3f1a64cc954f.mp4",
+        "c6d30159-8c8b-4d01-b8bb-0912105ae27e": "https://res.cloudinary.com/djsfrybgz/video/upload/v1773683900/fitos/exercise_videos/eb858575-5131-44ef-8379-39a1c2f1ecc0.mp4",
+    }
+    from database import get_db_session
+    from models_orm import ExerciseORM
+    db = get_db_session()
+    updated = 0
+    for ex_id, url in VIDEO_MAP.items():
+        ex = db.query(ExerciseORM).filter(ExerciseORM.id == ex_id).first()
+        if ex:
+            ex.video_url = url
+            updated += 1
+    db.commit()
+    db.close()
+    return {"updated": updated, "total": len(VIDEO_MAP)}
+
 @app.get("/api/version")
 async def get_version():
     """Get app version info for debugging deployed instances."""
