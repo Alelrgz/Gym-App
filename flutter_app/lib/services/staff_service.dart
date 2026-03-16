@@ -248,4 +248,21 @@ class StaffService {
   Future<void> deleteCertificate(String memberId) async {
     await _api.delete(ApiConfig.staffDeleteCertificate(memberId));
   }
+
+  // ── Certificate Approval ────────────────────────────────
+  Future<Map<String, dynamic>> getPendingCertificates() async {
+    final response = await _api.get(ApiConfig.staffPendingCertificates);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<void> approveCertificate(int certId) async {
+    await _api.post(ApiConfig.staffApproveCertificate(certId));
+  }
+
+  Future<void> rejectCertificate(int certId, {String? reason}) async {
+    await _api.post(
+      ApiConfig.staffRejectCertificate(certId),
+      data: {'reason': reason ?? ''},
+    );
+  }
 }

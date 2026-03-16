@@ -225,7 +225,7 @@ class ClientService {
 
   // ── Booking ─────────────────────────────────────────────────────
 
-  Future<List<dynamic>> getTrainerAvailableSlots(int trainerId, String date) async {
+  Future<List<dynamic>> getTrainerAvailableSlots(String trainerId, String date) async {
     final response = await _api.get(
       ApiConfig.trainerAvailableSlots(trainerId),
       queryParameters: {'date': date},
@@ -233,13 +233,18 @@ class ClientService {
     return response.data as List<dynamic>;
   }
 
-  Future<Map<String, dynamic>> getTrainerSessionRate(int trainerId) async {
+  Future<Map<String, dynamic>> getTrainerSessionRate(String trainerId) async {
     final response = await _api.get(ApiConfig.trainerSessionRate(trainerId));
     return response.data as Map<String, dynamic>;
   }
 
   Future<Map<String, dynamic>> bookAppointment(Map<String, dynamic> data) async {
     final response = await _api.post(ApiConfig.clientAppointments, data: data);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> createAppointmentCheckoutSession(Map<String, dynamic> data) async {
+    final response = await _api.post(ApiConfig.appointmentCheckoutSession, data: data);
     return response.data as Map<String, dynamic>;
   }
 
@@ -542,6 +547,22 @@ class ClientService {
 
   Future<Map<String, dynamic>> pinCommunityPost(String postId) async {
     final response = await _api.post(ApiConfig.communityPostPin(postId));
+    return response.data as Map<String, dynamic>;
+  }
+
+  // ── Medical Certificate ─────────────────────────────────
+  Future<Map<String, dynamic>> getMyCertificate() async {
+    final response = await _api.get(ApiConfig.medicalCertificateGet);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> uploadCertificate(List<int> fileBytes, String filename, {String? expirationDate}) async {
+    final map = <String, dynamic>{
+      'file': MultipartFile.fromBytes(fileBytes, filename: filename),
+    };
+    if (expirationDate != null) map['expiration_date'] = expirationDate;
+    final formData = FormData.fromMap(map);
+    final response = await _api.upload(ApiConfig.medicalCertificateUpload, formData);
     return response.data as Map<String, dynamic>;
   }
 }

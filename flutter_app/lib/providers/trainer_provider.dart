@@ -42,3 +42,9 @@ final courseExercisesProvider = FutureProvider.autoDispose<List<Map<String, dyna
   final service = ref.read(trainerServiceProvider);
   return service.getCourseExercises();
 });
+
+final trainerPendingAppointmentsProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final service = ref.read(trainerServiceProvider);
+  return service.getPendingAppointments();
+});

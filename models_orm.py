@@ -758,6 +758,12 @@ class MedicalCertificateORM(Base):
     # Expiration tracking
     expiration_date = Column(String, nullable=True)  # YYYY-MM-DD
 
+    # Approval workflow: pending (client upload), approved, rejected
+    approval_status = Column(String, default="approved", index=True)  # pending, approved, rejected
+    reviewed_by = Column(String, nullable=True)  # staff/owner user_id who reviewed
+    reviewed_at = Column(String, nullable=True)  # ISO timestamp of review
+    rejection_reason = Column(String, nullable=True)  # reason if rejected
+
     # Timestamps
     uploaded_at = Column(String, default=lambda: datetime.utcnow().isoformat())
 

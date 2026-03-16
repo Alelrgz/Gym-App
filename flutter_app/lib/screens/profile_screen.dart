@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../config/api_config.dart';
 import '../config/theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/client_provider.dart';
 import '../widgets/dashboard_sheets.dart';
+import '../services/client_service.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -127,7 +129,7 @@ class ProfileScreen extends ConsumerWidget {
                   iconColor: const Color(0xFF22C55E),
                   label: 'Il Mio Trainer',
                   subtitle: clientData.valueOrNull!.trainerName!,
-                  onTap: () {},
+                  onTap: () => showBookAppointmentSheet(context, ref),
                 ),
               ),
             _buildActionTile(
@@ -136,6 +138,14 @@ class ProfileScreen extends ConsumerWidget {
               label: 'Calendario',
               subtitle: 'Appuntamenti e allenamenti',
               onTap: () => showCalendarSheet(context, ref),
+            ),
+            const SizedBox(height: 10),
+            _buildActionTile(
+              icon: Icons.medical_information_rounded,
+              iconColor: const Color(0xFFEF4444),
+              label: 'Certificato Medico',
+              subtitle: 'Carica o visualizza il certificato',
+              onTap: () => _showCertificateSheet(context, ref),
             ),
           ],
         ),
@@ -314,6 +324,18 @@ class ProfileScreen extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => _PrivacySheet(ref: ref),
+    );
+  }
+
+  void _showCertificateSheet(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _CertificateSheet(ref: ref),
     );
   }
 }
@@ -756,6 +778,351 @@ class _PrivacyOption extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════
+// MEDICAL CERTIFICATE SHEET
+// ════════════════════════════════════════════════════════════════
+
+class _CertificateSheet extends StatefulWidget {
+  final WidgetRef ref;
+  const _CertificateSheet({required this.ref});
+
+  @override
+  State<_CertificateSheet> createState() => _CertificateSheetState();
+}
+
+class _CertificateSheetState extends State<_CertificateSheet> {
+  bool _loading = true;
+  bool _busy = false;
+  Map<String, dynamic>? _cert;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadCertificate();
+  }
+
+  Future<void> _loadCertificate() async {
+    try {
+      final service = widget.ref.read(clientServiceProvider);
+      final data = await service.getMyCertificate();
+      if (mounted) {
+        setState(() {
+          _cert = data['certificate'] as Map<String, dynamic>?;
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _uploadCertificate() async {
+    // Pick image first
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(
+      source: ImageSource.gallery,
+      maxWidth: 2000,
+      maxHeight: 2800,
+      imageQuality: 85,
+    );
+    if (picked == null || !mounted) return;
+
+    // Then pick expiration date
+    final expDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(days: 365)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+      helpText: 'Scadenza certificato',
+      builder: (context, child) => Theme(
+        data: ThemeData.dark().copyWith(
+          colorScheme: const ColorScheme.dark(
+            primary: AppColors.primary,
+            surface: AppColors.surface,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (expDate == null || !mounted) return;
+
+    final expString =
+        '${expDate.year}-${expDate.month.toString().padLeft(2, '0')}-${expDate.day.toString().padLeft(2, '0')}';
+
+    setState(() => _busy = true);
+    try {
+      final bytes = await picked.readAsBytes();
+      final service = widget.ref.read(clientServiceProvider);
+      await service.uploadCertificate(bytes.toList(), picked.name, expirationDate: expString);
+      if (mounted) {
+        showSnack(context, 'Certificato caricato! In attesa di approvazione.');
+        _loadCertificate();
+        setState(() => _busy = false);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        showSnack(context, 'Errore: $e');
+      }
+    }
+  }
+
+  Future<void> _viewFile() async {
+    final fileUrl = _cert?['file_url']?.toString() ?? '';
+    if (fileUrl.isEmpty) {
+      if (mounted) showSnack(context, 'Nessun file disponibile');
+      return;
+    }
+    final url = fileUrl.startsWith('http') ? fileUrl : '${ApiConfig.baseUrl}$fileUrl';
+    final uri = Uri.parse(url);
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (_) {
+      if (mounted) showSnack(context, 'Impossibile aprire il file');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.only(
+          left: 24, right: 24, top: 24,
+          bottom: MediaQuery.of(context).viewInsets.bottom + 24,
+        ),
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 40, height: 4,
+                decoration: BoxDecoration(
+                  color: AppColors.textTertiary,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text('Certificato Medico',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              const SizedBox(height: 4),
+              const Text(
+                'Il certificato medico sportivo è obbligatorio per allenarsi',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+
+              if (_loading)
+                const Padding(
+                  padding: EdgeInsets.all(32),
+                  child: CircularProgressIndicator(color: AppColors.primary),
+                )
+              else if (_cert != null) ...[
+                // Certificate exists — show status
+                _buildCertCard(),
+                const SizedBox(height: 16),
+                if (_busy)
+                  const CircularProgressIndicator(color: AppColors.primary)
+                else ...[
+                  if (_cert!['file_url'] != null)
+                    SizedBox(
+                      width: double.infinity,
+                      height: 48,
+                      child: ElevatedButton.icon(
+                        onPressed: _viewFile,
+                        icon: const Icon(Icons.open_in_new_rounded, size: 18),
+                        label: const Text('Visualizza'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppColors.primary,
+                          foregroundColor: Colors.white,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                      ),
+                    ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton.icon(
+                      onPressed: _uploadCertificate,
+                      icon: const Icon(Icons.upload_rounded, size: 18),
+                      label: Text(_cert!['approval_status'] == 'rejected'
+                          ? 'Carica Nuovo Certificato'
+                          : 'Sostituisci Certificato'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.textPrimary,
+                        side: const BorderSide(color: AppColors.border),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+                ],
+              ] else ...[
+                // No certificate — upload prompt
+                Icon(Icons.medical_information_outlined, size: 56,
+                    color: Colors.white.withValues(alpha: 0.15)),
+                const SizedBox(height: 12),
+                const Text('Nessun certificato caricato',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                const SizedBox(height: 4),
+                const Text(
+                  'Carica il tuo certificato medico sportivo.\nSarà verificato dallo staff della palestra.',
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 20),
+                if (_busy)
+                  const CircularProgressIndicator(color: AppColors.primary)
+                else
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: _uploadCertificate,
+                      icon: const Icon(Icons.upload_rounded, size: 18),
+                      label: const Text('Carica Certificato'),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.primary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                    ),
+                  ),
+              ],
+              const SizedBox(height: 16),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCertCard() {
+    final approvalStatus = _cert!['approval_status']?.toString() ?? 'approved';
+    final expirationDate = _cert!['expiration_date']?.toString();
+    final filename = _cert!['filename']?.toString() ?? 'Certificato';
+    final status = _cert!['status']?.toString() ?? '';
+    final rejectionReason = _cert!['rejection_reason']?.toString();
+
+    Color approvalColor;
+    IconData approvalIcon;
+    String approvalLabel;
+    switch (approvalStatus) {
+      case 'pending':
+        approvalColor = const Color(0xFFEAB308);
+        approvalIcon = Icons.hourglass_top_rounded;
+        approvalLabel = 'In attesa di verifica';
+      case 'rejected':
+        approvalColor = AppColors.danger;
+        approvalIcon = Icons.cancel_rounded;
+        approvalLabel = 'Rifiutato';
+      default:
+        approvalColor = AppColors.success;
+        approvalIcon = Icons.check_circle_rounded;
+        approvalLabel = 'Approvato';
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: approvalColor.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: approvalColor.withValues(alpha: 0.3)),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Icon(approvalIcon, color: approvalColor, size: 28),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(approvalLabel,
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: approvalColor)),
+                    Text(filename,
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      overflow: TextOverflow.ellipsis),
+                  ],
+                ),
+              ),
+              if (approvalStatus == 'approved' && status.isNotEmpty)
+                _expiryBadge(status),
+            ],
+          ),
+          if (expirationDate != null && approvalStatus == 'approved') ...[
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                const Icon(Icons.event_rounded, size: 16, color: AppColors.textTertiary),
+                const SizedBox(width: 6),
+                Text('Scadenza: $expirationDate',
+                  style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              ],
+            ),
+          ],
+          if (approvalStatus == 'rejected' && rejectionReason != null && rejectionReason.isNotEmpty) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppColors.danger.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Icon(Icons.info_outline, size: 16, color: AppColors.danger),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(rejectionReason,
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (approvalStatus == 'pending') ...[
+            const SizedBox(height: 10),
+            const Text(
+              'Lo staff verificherà il tuo certificato a breve.',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _expiryBadge(String status) {
+    Color color;
+    String label;
+    switch (status) {
+      case 'expired':
+        color = AppColors.danger;
+        label = 'Scaduto';
+      case 'expiring':
+        color = const Color(0xFFEAB308);
+        label = 'In scadenza';
+      default:
+        color = AppColors.success;
+        label = 'Valido';
+    }
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(label,
+        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
     );
   }
 }

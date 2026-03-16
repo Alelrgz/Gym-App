@@ -323,7 +323,7 @@ class AppointmentService:
                 duration=request.duration,
                 session_type=session_type,
                 notes=request.notes,
-                status="scheduled",
+                status="pending_trainer",
                 price=session_price,
                 payment_method=payment_method,
                 payment_status=payment_status,
@@ -363,12 +363,12 @@ class AppointmentService:
             )
             db.add(client_calendar_entry)
 
-            # Create notification for trainer
+            # Create notification for trainer — needs accept/decline
             notification = NotificationORM(
                 user_id=request.trainer_id,
-                type="appointment_booked",
-                title="New Appointment Booked",
-                message=f"{client_name} booked a {session_label} session on {request.date} at {time_12hr}",
+                type="appointment_pending",
+                title="Nuova Prenotazione",
+                message=f"{client_name} ha prenotato una sessione di {session_label} il {request.date} alle {time_12hr}. Accetta o rifiuta.",
                 data=json.dumps({
                     "appointment_id": appointment_id,
                     "client_id": client_id,
@@ -383,12 +383,12 @@ class AppointmentService:
             )
             db.add(notification)
 
-            # Notify client that appointment is on their schedule
+            # Notify client that appointment is pending trainer confirmation
             client_notification = NotificationORM(
                 user_id=client_id,
-                type="appointment_confirmed",
-                title="Appuntamento Confermato",
-                message=f"Il tuo appuntamento di {session_label} con {trainer.username} il {request.date} alle {time_12hr} è stato aggiunto al tuo calendario.",
+                type="appointment_pending",
+                title="Prenotazione in Attesa",
+                message=f"La tua prenotazione di {session_label} con {trainer.username} il {request.date} alle {time_12hr} è in attesa di conferma dal trainer.",
                 data=json.dumps({
                     "appointment_id": appointment_id,
                     "trainer_id": request.trainer_id,
@@ -650,6 +650,234 @@ class AppointmentService:
                 for appt, client in appointments
             ]
 
+        finally:
+            db.close()
+
+    def trainer_accept_appointment(self, appointment_id: str, trainer_id: str) -> dict:
+        """Trainer accepts a pending appointment."""
+        db = get_db_session()
+        try:
+            appointment = db.query(AppointmentORM).filter(
+                AppointmentORM.id == appointment_id,
+                AppointmentORM.trainer_id == trainer_id
+            ).first()
+
+            if not appointment:
+                raise HTTPException(status_code=404, detail="Appointment not found")
+
+            if appointment.status != "pending_trainer":
+                raise HTTPException(status_code=400, detail=f"Cannot accept appointment with status '{appointment.status}'")
+
+            appointment.status = "confirmed"
+            appointment.updated_at = datetime.utcnow().isoformat()
+
+            # Get names for notifications
+            client = db.query(UserORM).filter(UserORM.id == appointment.client_id).first()
+            trainer = db.query(UserORM).filter(UserORM.id == trainer_id).first()
+            client_name = client.username if client else "Cliente"
+            trainer_name = trainer.username if trainer else "Trainer"
+
+            session_type = (appointment.session_type or "training").replace("_", " ").title()
+
+            # Notify client that trainer accepted
+            notification = NotificationORM(
+                user_id=appointment.client_id,
+                type="appointment_confirmed",
+                title="Appuntamento Confermato",
+                message=f"{trainer_name} ha confermato il tuo appuntamento di {session_type} il {appointment.date} alle {appointment.start_time}.",
+                data=json.dumps({
+                    "appointment_id": appointment_id,
+                    "trainer_name": trainer_name,
+                    "date": appointment.date,
+                    "time": appointment.start_time,
+                }),
+                read=False,
+                created_at=datetime.utcnow().isoformat()
+            )
+            db.add(notification)
+
+            # Send email to client
+            try:
+                from service_modules.email_service import get_email_service_for_gym
+                gym_owner_id = trainer.gym_owner_id if trainer else None
+                if gym_owner_id:
+                    email_svc = get_email_service_for_gym(gym_owner_id, db)
+                    if email_svc and email_svc.is_configured() and client and client.email:
+                        email_svc.send_email(
+                            to_email=client.email,
+                            subject=f"Appuntamento Confermato - {session_type}",
+                            html_content=f"""
+                            <h2>Appuntamento Confermato!</h2>
+                            <p>Ciao {client_name},</p>
+                            <p>{trainer_name} ha confermato il tuo appuntamento:</p>
+                            <ul>
+                                <li><b>Tipo:</b> {session_type}</li>
+                                <li><b>Data:</b> {appointment.date}</li>
+                                <li><b>Ora:</b> {appointment.start_time}</li>
+                                <li><b>Durata:</b> {appointment.duration} minuti</li>
+                            </ul>
+                            <p>Buon allenamento!</p>
+                            """,
+                            text_content=f"Appuntamento confermato: {session_type} con {trainer_name} il {appointment.date} alle {appointment.start_time}"
+                        )
+            except Exception as e:
+                logger.warning(f"Failed to send confirmation email: {e}")
+
+            db.commit()
+            logger.info(f"Appointment accepted: {appointment_id} by trainer: {trainer_id}")
+
+            return {"status": "success", "message": "Appuntamento confermato"}
+
+        except HTTPException:
+            db.rollback()
+            raise
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error accepting appointment: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
+        finally:
+            db.close()
+
+    def trainer_decline_appointment(self, appointment_id: str, trainer_id: str, reason: str = None) -> dict:
+        """Trainer declines a pending appointment. Auto-refunds if paid by card."""
+        db = get_db_session()
+        try:
+            appointment = db.query(AppointmentORM).filter(
+                AppointmentORM.id == appointment_id,
+                AppointmentORM.trainer_id == trainer_id
+            ).first()
+
+            if not appointment:
+                raise HTTPException(status_code=404, detail="Appointment not found")
+
+            if appointment.status != "pending_trainer":
+                raise HTTPException(status_code=400, detail=f"Cannot decline appointment with status '{appointment.status}'")
+
+            # Get names
+            client = db.query(UserORM).filter(UserORM.id == appointment.client_id).first()
+            trainer = db.query(UserORM).filter(UserORM.id == trainer_id).first()
+            client_name = client.username if client else "Cliente"
+            trainer_name = trainer.username if trainer else "Trainer"
+            session_type = (appointment.session_type or "training").replace("_", " ").title()
+
+            # Auto-refund if paid by card
+            refund_result = None
+            if appointment.stripe_payment_intent_id and appointment.payment_status == "paid":
+                try:
+                    import stripe
+                    # Get the gym owner for connected account
+                    gym_owner = None
+                    if trainer and trainer.gym_owner_id:
+                        gym_owner = db.query(UserORM).filter(
+                            UserORM.id == trainer.gym_owner_id
+                        ).first()
+
+                    sk = {}
+                    if gym_owner and gym_owner.stripe_account_id:
+                        key = stripe.api_key or ""
+                        if not key.startswith("sk_test_"):
+                            sk = {"stripe_account": gym_owner.stripe_account_id}
+
+                    refund = stripe.Refund.create(
+                        payment_intent=appointment.stripe_payment_intent_id,
+                        **sk
+                    )
+                    refund_result = refund.id
+                    appointment.payment_status = "refunded"
+                    logger.info(f"Auto-refund created: {refund.id} for appointment {appointment_id}")
+                except Exception as e:
+                    logger.error(f"Auto-refund failed for appointment {appointment_id}: {e}")
+                    # Still decline even if refund fails — staff can handle manually
+
+            # Update appointment
+            appointment.status = "canceled"
+            appointment.canceled_by = trainer_id
+            appointment.canceled_at = datetime.utcnow().isoformat()
+            appointment.cancellation_reason = reason or "Rifiutato dal trainer"
+            appointment.updated_at = datetime.utcnow().isoformat()
+
+            # Remove calendar entries
+            calendar_entry = db.query(TrainerScheduleORM).filter(
+                TrainerScheduleORM.appointment_id == appointment_id
+            ).first()
+            if calendar_entry:
+                db.delete(calendar_entry)
+
+            from models_orm import ClientScheduleORM
+            client_entries = db.query(ClientScheduleORM).filter(
+                ClientScheduleORM.client_id == appointment.client_id,
+                ClientScheduleORM.date == appointment.date,
+                ClientScheduleORM.type == "appointment"
+            ).all()
+            for entry in client_entries:
+                if appointment.start_time in (entry.title or ""):
+                    db.delete(entry)
+                    break
+
+            # Notify client
+            refund_msg = " Il pagamento è stato rimborsato." if refund_result else ""
+            notification = NotificationORM(
+                user_id=appointment.client_id,
+                type="appointment_declined",
+                title="Prenotazione Rifiutata",
+                message=f"{trainer_name} non è disponibile per la sessione di {session_type} il {appointment.date} alle {appointment.start_time}.{refund_msg}",
+                data=json.dumps({
+                    "appointment_id": appointment_id,
+                    "trainer_name": trainer_name,
+                    "date": appointment.date,
+                    "time": appointment.start_time,
+                    "refunded": refund_result is not None,
+                }),
+                read=False,
+                created_at=datetime.utcnow().isoformat()
+            )
+            db.add(notification)
+
+            # Send email to client
+            try:
+                from service_modules.email_service import get_email_service_for_gym
+                gym_owner_id = trainer.gym_owner_id if trainer else None
+                if gym_owner_id:
+                    email_svc = get_email_service_for_gym(gym_owner_id, db)
+                    if email_svc and email_svc.is_configured() and client and client.email:
+                        email_svc.send_email(
+                            to_email=client.email,
+                            subject=f"Prenotazione Rifiutata - {session_type}",
+                            html_content=f"""
+                            <h2>Prenotazione Non Confermata</h2>
+                            <p>Ciao {client_name},</p>
+                            <p>{trainer_name} non è disponibile per la tua sessione:</p>
+                            <ul>
+                                <li><b>Tipo:</b> {session_type}</li>
+                                <li><b>Data:</b> {appointment.date}</li>
+                                <li><b>Ora:</b> {appointment.start_time}</li>
+                            </ul>
+                            {f'<p><b>Il pagamento di €{appointment.price:.2f} è stato rimborsato sulla tua carta.</b></p>' if refund_result else ''}
+                            {f'<p><b>Motivo:</b> {reason}</p>' if reason else ''}
+                            <p>Ti invitiamo a prenotare un altro orario.</p>
+                            """,
+                            text_content=f"Prenotazione rifiutata: {session_type} il {appointment.date}.{' Rimborso effettuato.' if refund_result else ''}"
+                        )
+            except Exception as e:
+                logger.warning(f"Failed to send decline email: {e}")
+
+            db.commit()
+            logger.info(f"Appointment declined: {appointment_id} by trainer: {trainer_id}, refund: {refund_result}")
+
+            return {
+                "status": "success",
+                "message": "Prenotazione rifiutata",
+                "refunded": refund_result is not None,
+                "refund_id": refund_result,
+            }
+
+        except HTTPException:
+            db.rollback()
+            raise
+        except Exception as e:
+            db.rollback()
+            logger.error(f"Error declining appointment: {e}")
+            raise HTTPException(status_code=500, detail=str(e))
         finally:
             db.close()
 

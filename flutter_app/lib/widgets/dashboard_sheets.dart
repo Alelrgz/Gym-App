@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:record/record.dart';
 import '../config/api_config.dart';
@@ -2485,7 +2486,23 @@ class _AppointmentsContentState extends State<_AppointmentsContent> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _sheetHandle(),
-          _sheetTitle('Appuntamenti'),
+          Row(
+            children: [
+              Expanded(child: _sheetTitle('Appuntamenti')),
+              Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: TextButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    showBookAppointmentSheet(context, widget.ref);
+                  },
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Prenota'),
+                  style: TextButton.styleFrom(foregroundColor: AppColors.primary),
+                ),
+              ),
+            ],
+          ),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -2570,14 +2587,21 @@ class _AppointmentsContentState extends State<_AppointmentsContent> {
         label = 'Confermato';
         break;
       case 'pending':
+      case 'pending_trainer':
         bg = const Color(0xFFEAB308).withValues(alpha: 0.2);
         text = const Color(0xFFEAB308);
-        label = 'In attesa';
+        label = status == 'pending_trainer' ? 'In attesa del trainer' : 'In attesa';
         break;
       case 'cancelled':
+      case 'canceled':
         bg = AppColors.danger.withValues(alpha: 0.2);
         text = AppColors.danger;
         label = 'Annullato';
+        break;
+      case 'completed':
+        bg = const Color(0xFF60A5FA).withValues(alpha: 0.2);
+        text = const Color(0xFF60A5FA);
+        label = 'Completato';
         break;
       default:
         bg = Colors.white.withValues(alpha: 0.1);
@@ -5431,7 +5455,7 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
   bool _trainerListExpanded = false;
 
   // Selected trainer
-  int? _selectedTrainerId;
+  String? _selectedTrainerId;
   String? _selectedTrainerName;
   String? _selectedTrainerPicture;
   double? _trainerSessionRate;
@@ -5447,7 +5471,7 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
   bool _loadingSlots = false;
 
   // Payment
-  String? _paymentMethod; // 'cash' or 'pos'
+  String? _paymentMethod; // 'cash' or 'card'
 
   bool _submitting = false;
 
@@ -5479,8 +5503,7 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
   }
 
   Future<void> _selectTrainer(Map<String, dynamic> trainer) async {
-    final id = trainer['id'];
-    final trainerId = id is int ? id : int.tryParse(id.toString()) ?? 0;
+    final trainerId = trainer['id']?.toString() ?? '';
     final name = trainer['name']?.toString() ?? trainer['username']?.toString() ?? '';
     final pic = trainer['profile_picture']?.toString();
 
@@ -5561,20 +5584,43 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
       final service = widget.ref.read(clientServiceProvider);
       final dateStr = '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
 
-      await service.bookAppointment({
-        'trainer_id': _selectedTrainerId,
-        'date': dateStr,
-        'start_time': _selectedTime,
-        'duration': _duration,
-        'notes': _notesController.text.isEmpty ? null : _notesController.text,
-        'payment_method': _isFreeSession ? null : _paymentMethod,
-      });
+      if (_paymentMethod == 'card') {
+        // Stripe Checkout flow
+        final result = await service.createAppointmentCheckoutSession({
+          'trainer_id': _selectedTrainerId,
+          'date': dateStr,
+          'start_time': _selectedTime,
+          'duration': _duration,
+          'notes': _notesController.text.isEmpty ? null : _notesController.text,
+        });
+        final checkoutUrl = result['checkout_url']?.toString();
+        if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
+          final uri = Uri.parse(checkoutUrl);
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          if (mounted) {
+            Navigator.pop(context);
+            showSnack(context, 'Completa il pagamento nel browser');
+            widget.ref.invalidate(appointmentsProvider);
+          }
+        } else {
+          if (mounted) showSnack(context, 'Errore: URL pagamento non disponibile', isError: true);
+        }
+      } else {
+        // Cash or free — book directly
+        await service.bookAppointment({
+          'trainer_id': _selectedTrainerId,
+          'date': dateStr,
+          'start_time': _selectedTime,
+          'duration': _duration,
+          'notes': _notesController.text.isEmpty ? null : _notesController.text,
+          'payment_method': _isFreeSession ? null : _paymentMethod,
+        });
 
-      if (mounted) {
-        Navigator.pop(context);
-        showSnack(context, 'Appuntamento prenotato con $_selectedTrainerName!');
-        // Refresh appointments list
-        widget.ref.invalidate(appointmentsProvider);
+        if (mounted) {
+          Navigator.pop(context);
+          showSnack(context, 'Appuntamento prenotato con $_selectedTrainerName!');
+          widget.ref.invalidate(appointmentsProvider);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -5745,8 +5791,7 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
   }
 
   Widget _buildTrainerItem(Map<String, dynamic> trainer) {
-    final id = trainer['id'];
-    final trainerId = id is int ? id : int.tryParse(id.toString()) ?? 0;
+    final trainerId = trainer['id']?.toString() ?? '';
     final isSelected = _selectedTrainerId == trainerId;
     final name = trainer['name']?.toString() ?? trainer['username']?.toString() ?? '';
     final pic = trainer['profile_picture']?.toString();
@@ -6120,19 +6165,19 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
               ),
             ),
             const SizedBox(width: 8),
-            // POS
+            // Card (Stripe Checkout)
             Expanded(
               child: GestureDetector(
-                onTap: () => setState(() => _paymentMethod = 'pos'),
+                onTap: () => setState(() => _paymentMethod = 'card'),
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
-                    color: _paymentMethod == 'pos'
+                    color: _paymentMethod == 'card'
                         ? AppColors.primary.withValues(alpha: 0.2)
                         : const Color(0xFF252525),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: _paymentMethod == 'pos'
+                      color: _paymentMethod == 'card'
                           ? AppColors.primary
                           : Colors.white.withValues(alpha: 0.1),
                       width: 2,
@@ -6141,17 +6186,17 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
                   child: Column(
                     children: [
                       Icon(
-                        Icons.contactless_rounded,
+                        Icons.credit_card_rounded,
                         size: 22,
-                        color: _paymentMethod == 'pos' ? AppColors.primary : Colors.white,
+                        color: _paymentMethod == 'card' ? AppColors.primary : Colors.white,
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'POS',
+                        'Carta',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: _paymentMethod == 'pos' ? AppColors.primary : Colors.white,
+                          color: _paymentMethod == 'card' ? AppColors.primary : Colors.white,
                         ),
                       ),
                     ],
@@ -6180,7 +6225,7 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
               ),
             ),
           ),
-        if (_paymentMethod == 'pos')
+        if (_paymentMethod == 'card')
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
@@ -6189,10 +6234,19 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
               border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
             ),
             child: Center(
-              child: Text(
-                'Paga con carta al POS in palestra',
-                style: TextStyle(color: AppColors.primary.withValues(alpha: 0.9), fontSize: 11, fontWeight: FontWeight.w600),
-                textAlign: TextAlign.center,
+              child: Column(
+                children: [
+                  Text(
+                    'Pagamento sicuro con Fit Pay',
+                    style: TextStyle(color: AppColors.primary.withValues(alpha: 0.9), fontSize: 11, fontWeight: FontWeight.w600),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'powered by Stripe',
+                    style: TextStyle(color: Colors.grey[500], fontSize: 9),
+                  ),
+                ],
               ),
             ),
           ),

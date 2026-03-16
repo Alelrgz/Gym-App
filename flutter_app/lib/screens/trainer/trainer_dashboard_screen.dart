@@ -6,6 +6,7 @@ import '../../models/trainer_profile.dart';
 import '../../providers/trainer_provider.dart';
 import '../../services/trainer_service.dart';
 import '../../widgets/glass_card.dart';
+import '../../widgets/stat_card.dart';
 
 const double _kDesktopBreakpoint = 1024;
 
@@ -286,6 +287,14 @@ class _TrainerDashboardScreenState extends ConsumerState<TrainerDashboardScreen>
             sliver: _buildMobileClientList(trainer.clients),
           ),
 
+          // ── Pending Appointments ─────────────────────
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 0),
+              child: _buildPendingAppointments(),
+            ),
+          ),
+
           // ── Schedule Section ──────────────────────────
           SliverToBoxAdapter(
             child: Padding(
@@ -298,6 +307,168 @@ class _TrainerDashboardScreenState extends ConsumerState<TrainerDashboardScreen>
         ],
       ),
     );
+  }
+
+  // ── Pending Appointments ───────────────────────────────────
+
+  Widget _buildPendingAppointments() {
+    final pending = ref.watch(trainerPendingAppointmentsProvider);
+
+    return pending.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (appointments) {
+        if (appointments.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(Icons.pending_actions_rounded,
+                      size: 18, color: AppColors.warning),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'In Attesa di Conferma (${appointments.length})',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...appointments.map((appt) => _PendingAppointmentCard(
+                  appt: appt,
+                  onAccept: () => _handleAccept(appt['id']),
+                  onDecline: () => _handleDecline(appt),
+                )),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _handleAccept(String appointmentId) async {
+    try {
+      final service = ref.read(trainerServiceProvider);
+      await service.acceptAppointment(appointmentId);
+      ref.invalidate(trainerPendingAppointmentsProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Appuntamento confermato')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleDecline(Map<String, dynamic> appt) async {
+    final reason = await showDialog<String>(
+      context: context,
+      builder: (ctx) {
+        final controller = TextEditingController();
+        return AlertDialog(
+          backgroundColor: AppColors.surface,
+          title: const Text('Rifiuta Prenotazione',
+              style: TextStyle(color: AppColors.textPrimary)),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${appt['client_name']} — ${appt['date']} alle ${appt['time']}',
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: controller,
+                decoration: const InputDecoration(
+                  hintText: 'Motivo (opzionale)',
+                ),
+                maxLines: 2,
+              ),
+              if (appt['payment_method'] == 'card') ...[
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Row(
+                    children: [
+                      Icon(Icons.info_outline_rounded,
+                          size: 16, color: AppColors.warning),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Il pagamento verrà rimborsato automaticamente',
+                          style: TextStyle(
+                              fontSize: 12, color: AppColors.warning),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text('Annulla'),
+            ),
+            FilledButton(
+              onPressed: () => Navigator.pop(ctx, controller.text),
+              style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.danger),
+              child: const Text('Rifiuta'),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (reason == null) return; // canceled dialog
+
+    try {
+      final service = ref.read(trainerServiceProvider);
+      final result = await service.declineAppointment(
+        appt['id'],
+        reason: reason.isNotEmpty ? reason : null,
+      );
+      ref.invalidate(trainerPendingAppointmentsProvider);
+      if (mounted) {
+        final refunded = result['refunded'] == true;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(refunded
+                ? 'Prenotazione rifiutata — rimborso effettuato'
+                : 'Prenotazione rifiutata'),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore: $e')),
+        );
+      }
+    }
   }
 
   // ── Shared helpers ─────────────────────────────────────────
@@ -1825,4 +1996,174 @@ class _StrengthLineChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _StrengthLineChartPainter old) => true;
+}
+
+// ── Pending Appointment Card ──────────────────────────────────
+
+class _PendingAppointmentCard extends StatelessWidget {
+  final Map<String, dynamic> appt;
+  final VoidCallback onAccept;
+  final VoidCallback onDecline;
+
+  const _PendingAppointmentCard({
+    required this.appt,
+    required this.onAccept,
+    required this.onDecline,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final clientName = appt['client_name']?.toString() ?? 'Cliente';
+    final date = appt['date']?.toString() ?? '';
+    final time = appt['time']?.toString() ?? '';
+    final endTime = appt['end_time']?.toString() ?? '';
+    final sessionType = (appt['session_type']?.toString() ?? 'training')
+        .replaceAll('_', ' ');
+    final price = appt['price'] as num?;
+    final paymentMethod = appt['payment_method']?.toString();
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GlassCard(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 20,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                  child: Text(
+                    clientName.substring(0, 1).toUpperCase(),
+                    style: const TextStyle(
+                      color: AppColors.primary,
+                      fontWeight: FontWeight.w700,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        clientName,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w600,
+                          fontSize: 15,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                      Text(
+                        '$sessionType · $date',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.warning.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Text(
+                    'In attesa',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.warning,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            // Time and payment info
+            Row(
+              children: [
+                const Icon(Icons.access_time_rounded,
+                    size: 14, color: AppColors.textTertiary),
+                const SizedBox(width: 4),
+                Text(
+                  '$time - $endTime',
+                  style: const TextStyle(
+                      fontSize: 13, color: AppColors.textSecondary),
+                ),
+                if (price != null && price > 0) ...[
+                  const Spacer(),
+                  Icon(
+                    paymentMethod == 'card'
+                        ? Icons.credit_card_rounded
+                        : Icons.payments_rounded,
+                    size: 14,
+                    color: AppColors.textTertiary,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '€${price.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+            if (appt['notes'] != null &&
+                appt['notes'].toString().isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                appt['notes'].toString(),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textTertiary,
+                  fontStyle: FontStyle.italic,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            const SizedBox(height: 14),
+            // Accept / Decline buttons
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: onDecline,
+                    icon: const Icon(Icons.close_rounded, size: 18),
+                    label: const Text('Rifiuta'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.danger,
+                      side: const BorderSide(color: AppColors.danger),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: FilledButton.icon(
+                    onPressed: onAccept,
+                    icon: const Icon(Icons.check_rounded, size: 18),
+                    label: const Text('Accetta'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.success,
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

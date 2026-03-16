@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session
 from database import get_db_session
-from models_orm import UserORM, AppointmentORM, CheckInORM, ClientProfileORM, SubscriptionPlanORM, ClientSubscriptionORM, ClientDocumentORM, MedicalCertificateORM, PaymentORM, TrainerAvailabilityORM
+from models_orm import UserORM, AppointmentORM, CheckInORM, ClientProfileORM, SubscriptionPlanORM, ClientSubscriptionORM, ClientDocumentORM, MedicalCertificateORM, PaymentORM, TrainerAvailabilityORM, NotificationORM
 from auth import get_current_user, get_password_hash
 from datetime import datetime, date, timedelta
 from service_modules.subscription_service import subscription_service
@@ -16,6 +16,11 @@ import os
 logger = logging.getLogger("gym_app")
 
 router = APIRouter(prefix="/api/staff", tags=["staff"])
+
+
+def _effective_gym_id(user: UserORM) -> str:
+    """Get the gym owner ID for access checks. Owners use their own ID, staff use gym_owner_id."""
+    return str(user.id) if user.role == "owner" else (user.gym_owner_id or "")
 
 
 def get_db():
@@ -196,7 +201,7 @@ async def get_todays_appointments(
     appointments = db.query(AppointmentORM).filter(
         AppointmentORM.trainer_id.in_(trainer_ids),
         AppointmentORM.date == today,
-        AppointmentORM.status.in_(["scheduled", "confirmed"])
+        AppointmentORM.status.in_(["scheduled", "confirmed", "pending_trainer"])
     ).order_by(AppointmentORM.start_time).all()
 
     result = []
@@ -268,12 +273,13 @@ async def get_trainer_schedule(
     if not trainer:
         raise HTTPException(status_code=404, detail="Trainer not found")
 
-    today = date.today().isoformat()
+    today = date.today()
+    today_str = today.isoformat()
 
     # Get today's appointments for this trainer
     appointments = db.query(AppointmentORM).filter(
         AppointmentORM.trainer_id == trainer_id,
-        AppointmentORM.date == today,
+        AppointmentORM.date == today_str,
         AppointmentORM.status.in_(["scheduled", "confirmed"])
     ).order_by(AppointmentORM.start_time).all()
 
@@ -284,6 +290,33 @@ async def get_trainer_schedule(
             "id": appt.id,
             "client_name": client.username if client else "Unknown",
             "time": appt.start_time,
+            "duration": appt.duration,
+            "status": appt.status,
+            "session_type": appt.session_type or "General"
+        })
+
+    # Get this week's appointments (Mon-Sun)
+    from datetime import timedelta
+    weekday = today.weekday()  # 0=Mon
+    week_start = today - timedelta(days=weekday)
+    week_end = week_start + timedelta(days=6)
+
+    week_appointments = db.query(AppointmentORM).filter(
+        AppointmentORM.trainer_id == trainer_id,
+        AppointmentORM.date >= week_start.isoformat(),
+        AppointmentORM.date <= week_end.isoformat(),
+        AppointmentORM.status.in_(["scheduled", "confirmed", "completed"])
+    ).order_by(AppointmentORM.date, AppointmentORM.start_time).all()
+
+    week_appt_list = []
+    for appt in week_appointments:
+        client = db.query(UserORM).filter(UserORM.id == appt.client_id).first()
+        week_appt_list.append({
+            "id": appt.id,
+            "client_name": client.username if client else "Unknown",
+            "date": appt.date,
+            "time": appt.start_time,
+            "end_time": appt.end_time,
             "duration": appt.duration,
             "status": appt.status,
             "session_type": appt.session_type or "General"
@@ -306,7 +339,10 @@ async def get_trainer_schedule(
         "trainer_name": trainer.username,
         "sub_role": trainer.sub_role or "trainer",
         "availability": availability,
-        "today_appointments": appt_list
+        "today_appointments": appt_list,
+        "week_appointments": week_appt_list,
+        "week_start": week_start.isoformat(),
+        "week_end": week_end.isoformat(),
     }
 
 
@@ -420,7 +456,9 @@ async def get_member_details(
                 "filename": cert.filename,
                 "file_url": cert.file_path,
                 "expiration_date": cert.expiration_date,
-                "status": cert_status
+                "status": cert_status,
+                "approval_status": cert.approval_status or "approved",
+                "rejection_reason": cert.rejection_reason,
             }
     except Exception:
         pass
@@ -490,12 +528,15 @@ async def staff_upload_certificate(
     for old in old_certs:
         db.delete(old)
 
-    # Create new certificate record
+    # Create new certificate record (staff uploads are auto-approved)
     cert = MedicalCertificateORM(
         client_id=member_id,
         filename=filename,
         file_path=url,
-        expiration_date=expiration_date
+        expiration_date=expiration_date,
+        approval_status="approved",
+        reviewed_by=str(user.id),
+        reviewed_at=datetime.utcnow().isoformat(),
     )
     db.add(cert)
     db.commit()
@@ -587,6 +628,118 @@ async def staff_delete_certificate(
     db.commit()
 
     return {"status": "success", "message": "Certificate deleted"}
+
+
+@router.post("/approve-certificate/{cert_id}")
+async def staff_approve_certificate(
+    cert_id: int,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Staff approves a client-uploaded medical certificate."""
+    if user.role not in ("staff", "owner"):
+        raise HTTPException(status_code=403, detail="Staff/Owner access only")
+
+    cert = db.query(MedicalCertificateORM).filter(MedicalCertificateORM.id == cert_id).first()
+    if not cert:
+        raise HTTPException(status_code=404, detail="Certificate not found")
+
+    # Verify same gym
+    client_user = db.query(UserORM).filter(UserORM.id == cert.client_id).first()
+    if not client_user or client_user.gym_owner_id != _effective_gym_id(user):
+        raise HTTPException(status_code=404, detail="Certificate not found")
+
+    cert.approval_status = "approved"
+    cert.reviewed_by = str(user.id)
+    cert.reviewed_at = datetime.utcnow().isoformat()
+    cert.rejection_reason = None
+
+    # Notify client
+    db.add(NotificationORM(
+        user_id=cert.client_id,
+        type="certificate_approved",
+        title="Certificato approvato",
+        message="Il tuo certificato medico è stato approvato dallo staff.",
+    ))
+
+    db.commit()
+    return {"status": "success", "message": "Certificato approvato"}
+
+
+@router.post("/reject-certificate/{cert_id}")
+async def staff_reject_certificate(
+    cert_id: int,
+    request: Request,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Staff rejects a client-uploaded medical certificate."""
+    if user.role not in ("staff", "owner"):
+        raise HTTPException(status_code=403, detail="Staff/Owner access only")
+
+    cert = db.query(MedicalCertificateORM).filter(MedicalCertificateORM.id == cert_id).first()
+    if not cert:
+        raise HTTPException(status_code=404, detail="Certificate not found")
+
+    # Verify same gym
+    client_user = db.query(UserORM).filter(UserORM.id == cert.client_id).first()
+    if not client_user or client_user.gym_owner_id != _effective_gym_id(user):
+        raise HTTPException(status_code=404, detail="Certificate not found")
+
+    data = await request.json()
+    reason = data.get("reason", "")
+
+    cert.approval_status = "rejected"
+    cert.reviewed_by = str(user.id)
+    cert.reviewed_at = datetime.utcnow().isoformat()
+    cert.rejection_reason = reason
+
+    # Notify client
+    reason_text = f" Motivo: {reason}" if reason else ""
+    db.add(NotificationORM(
+        user_id=cert.client_id,
+        type="certificate_rejected",
+        title="Certificato rifiutato",
+        message=f"Il tuo certificato medico è stato rifiutato dallo staff.{reason_text} Carica un nuovo certificato.",
+    ))
+
+    db.commit()
+    return {"status": "success", "message": "Certificato rifiutato"}
+
+
+@router.get("/pending-certificates")
+async def get_pending_certificates(
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Get all pending certificates for staff review."""
+    if user.role not in ("staff", "owner"):
+        raise HTTPException(status_code=403, detail="Staff/Owner access only")
+
+    pending = db.query(MedicalCertificateORM).filter(
+        MedicalCertificateORM.approval_status == "pending"
+    ).order_by(MedicalCertificateORM.id.desc()).all()
+
+    gym_id = _effective_gym_id(user)
+    results = []
+    for cert in pending:
+        client_user = db.query(UserORM).filter(UserORM.id == cert.client_id).first()
+        if not client_user or client_user.gym_owner_id != gym_id:
+            continue
+        profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == cert.client_id).first()
+        name = (profile.name if profile and profile.name else client_user.username) if client_user else "Unknown"
+
+        results.append({
+            "id": cert.id,
+            "client_id": cert.client_id,
+            "client_name": name,
+            "filename": cert.filename,
+            "file_url": cert.file_path,
+            "expiration_date": cert.expiration_date,
+            "uploaded_at": cert.uploaded_at,
+        })
+
+    return {"pending": results, "count": len(results)}
 
 
 # ============ SUBSCRIPTION MANAGEMENT FOR STAFF ============

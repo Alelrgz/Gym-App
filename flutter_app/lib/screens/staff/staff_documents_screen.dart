@@ -21,7 +21,7 @@ class StaffDocumentsScreen extends ConsumerStatefulWidget {
 class _StaffDocumentsScreenState extends ConsumerState<StaffDocumentsScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
-  String? _activeFilter; // 'valid', 'expiring', 'expired', 'missing' or null
+  String? _activeFilter; // 'valid', 'expiring', 'expired', 'missing', 'pending' or null
 
   final Map<String, Map<String, dynamic>> _memberDetails = {};
   bool _loadingDetails = false;
@@ -126,7 +126,7 @@ class _StaffDocumentsScreenState extends ConsumerState<StaffDocumentsScreen> {
                     // ── Stats row ─────────────────────────
                     membersAsync.when(
                       data: (members) {
-                        int valid = 0, expiring = 0, expired = 0, missing = 0;
+                        int valid = 0, expiring = 0, expired = 0, missing = 0, pending = 0;
                         for (final m in members) {
                           final id = m['id']?.toString();
                           if (id == null) continue;
@@ -136,6 +136,10 @@ class _StaffDocumentsScreenState extends ConsumerState<StaffDocumentsScreen> {
                               as Map<String, dynamic>?;
                           if (cert == null) {
                             missing++;
+                          } else if (cert['approval_status']?.toString() == 'pending') {
+                            pending++;
+                          } else if (cert['approval_status']?.toString() == 'rejected') {
+                            missing++; // rejected = needs re-upload
                           } else {
                             switch (cert['status']?.toString()) {
                               case 'expired':
@@ -147,62 +151,95 @@ class _StaffDocumentsScreenState extends ConsumerState<StaffDocumentsScreen> {
                             }
                           }
                         }
-                        return Row(
+                        return Column(
                           children: [
-                            Expanded(
+                            if (pending > 0)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8),
                                 child: GestureDetector(
-                                    onTap: () => setState(() => _activeFilter =
-                                        _activeFilter == 'valid'
-                                            ? null
-                                            : 'valid'),
-                                    child: StatCard(
-                                        label: 'Validi',
-                                        value: '$valid',
-                                        icon: Icons.check_circle_rounded,
-                                        valueColor: AppColors.success,
-                                        highlighted:
-                                            _activeFilter == 'valid'))),
-                            const SizedBox(width: 8),
-                            Expanded(
-                                child: GestureDetector(
-                                    onTap: () => setState(() => _activeFilter =
-                                        _activeFilter == 'expiring'
-                                            ? null
-                                            : 'expiring'),
-                                    child: StatCard(
-                                        label: 'In scadenza',
-                                        value: '$expiring',
-                                        icon: Icons.warning_rounded,
-                                        valueColor: AppColors.warning,
-                                        highlighted:
-                                            _activeFilter == 'expiring'))),
-                            const SizedBox(width: 8),
-                            Expanded(
-                                child: GestureDetector(
-                                    onTap: () => setState(() => _activeFilter =
-                                        _activeFilter == 'expired'
-                                            ? null
-                                            : 'expired'),
-                                    child: StatCard(
-                                        label: 'Scaduti',
-                                        value: '$expired',
-                                        icon: Icons.cancel_rounded,
-                                        valueColor: AppColors.danger,
-                                        highlighted:
-                                            _activeFilter == 'expired'))),
-                            const SizedBox(width: 8),
-                            Expanded(
-                                child: GestureDetector(
-                                    onTap: () => setState(() => _activeFilter =
-                                        _activeFilter == 'missing'
-                                            ? null
-                                            : 'missing'),
-                                    child: StatCard(
-                                        label: 'Mancanti',
-                                        value: '$missing',
-                                        icon: Icons.help_outline_rounded,
-                                        highlighted:
-                                            _activeFilter == 'missing'))),
+                                  onTap: () => setState(() => _activeFilter =
+                                      _activeFilter == 'pending' ? null : 'pending'),
+                                  child: Container(
+                                    width: double.infinity,
+                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEAB308).withValues(alpha: _activeFilter == 'pending' ? 0.2 : 0.08),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: const Color(0xFFEAB308).withValues(alpha: _activeFilter == 'pending' ? 0.6 : 0.3),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      children: [
+                                        const Icon(Icons.hourglass_top_rounded, color: Color(0xFFEAB308), size: 22),
+                                        const SizedBox(width: 10),
+                                        Text('$pending certificat${pending == 1 ? 'o' : 'i'} da verificare',
+                                          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFFEAB308))),
+                                        const Spacer(),
+                                        const Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Color(0xFFEAB308)),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            Row(
+                              children: [
+                                Expanded(
+                                    child: GestureDetector(
+                                        onTap: () => setState(() => _activeFilter =
+                                            _activeFilter == 'valid'
+                                                ? null
+                                                : 'valid'),
+                                        child: StatCard(
+                                            label: 'Validi',
+                                            value: '$valid',
+                                            icon: Icons.check_circle_rounded,
+                                            valueColor: AppColors.success,
+                                            highlighted:
+                                                _activeFilter == 'valid'))),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                    child: GestureDetector(
+                                        onTap: () => setState(() => _activeFilter =
+                                            _activeFilter == 'expiring'
+                                                ? null
+                                                : 'expiring'),
+                                        child: StatCard(
+                                            label: 'In scadenza',
+                                            value: '$expiring',
+                                            icon: Icons.warning_rounded,
+                                            valueColor: AppColors.warning,
+                                            highlighted:
+                                                _activeFilter == 'expiring'))),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                    child: GestureDetector(
+                                        onTap: () => setState(() => _activeFilter =
+                                            _activeFilter == 'expired'
+                                                ? null
+                                                : 'expired'),
+                                        child: StatCard(
+                                            label: 'Scaduti',
+                                            value: '$expired',
+                                            icon: Icons.cancel_rounded,
+                                            valueColor: AppColors.danger,
+                                            highlighted:
+                                                _activeFilter == 'expired'))),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                    child: GestureDetector(
+                                        onTap: () => setState(() => _activeFilter =
+                                            _activeFilter == 'missing'
+                                                ? null
+                                                : 'missing'),
+                                        child: StatCard(
+                                            label: 'Mancanti',
+                                            value: '$missing',
+                                            icon: Icons.help_outline_rounded,
+                                            highlighted:
+                                                _activeFilter == 'missing'))),
+                              ],
+                            ),
                           ],
                         );
                       },
@@ -259,8 +296,10 @@ class _StaffDocumentsScreenState extends ConsumerState<StaffDocumentsScreen> {
                   displayList = displayList.where((m) {
                     final cert = _memberDetails[m['id']?.toString()]
                         ?['medical_certificate'] as Map<String, dynamic>?;
-                    if (_activeFilter == 'missing') return cert == null;
-                    if (cert == null) return false;
+                    final approval = cert?['approval_status']?.toString();
+                    if (_activeFilter == 'pending') return approval == 'pending';
+                    if (_activeFilter == 'missing') return cert == null || approval == 'rejected';
+                    if (cert == null || approval == 'pending' || approval == 'rejected') return false;
                     final status = cert['status']?.toString();
                     if (_activeFilter == 'valid') {
                       return status != 'expired' && status != 'expiring';
@@ -353,17 +392,35 @@ class _StaffDocumentsScreenState extends ConsumerState<StaffDocumentsScreen> {
     );
   }
 
+  Widget _approvalBadge(String status) {
+    final isPending = status == 'pending';
+    final color = isPending ? const Color(0xFFEAB308) : AppColors.danger;
+    final label = isPending ? 'Da verificare' : 'Rifiutato';
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(6),
+      ),
+      child: Text(label,
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+    );
+  }
+
   int _certPriority(Map<String, dynamic>? cert) {
-    if (cert == null) return 2;
+    if (cert == null) return 3;
+    final approval = cert['approval_status']?.toString();
+    if (approval == 'pending') return -1; // pending first
+    if (approval == 'rejected') return 0;
     switch (cert['status']?.toString()) {
       case 'expired':
-        return 0;
-      case 'expiring':
         return 1;
+      case 'expiring':
+        return 2;
       case 'valid':
-        return 3;
+        return 4;
       default:
-        return 3;
+        return 4;
     }
   }
 
@@ -435,7 +492,12 @@ class _StaffDocumentsScreenState extends ConsumerState<StaffDocumentsScreen> {
               ),
             ),
             if (hasCert) ...[
-              certStatusBadge(cert['status']?.toString() ?? ''),
+              if (cert['approval_status']?.toString() == 'pending')
+                _approvalBadge('pending')
+              else if (cert['approval_status']?.toString() == 'rejected')
+                _approvalBadge('rejected')
+              else
+                certStatusBadge(cert['status']?.toString() ?? ''),
               const SizedBox(width: 8),
               const Icon(Icons.chevron_right,
                   size: 18, color: AppColors.textTertiary),
@@ -523,9 +585,16 @@ class _CertificateDetailSheet extends StatefulWidget {
 
 class _CertificateDetailSheetState extends State<_CertificateDetailSheet> {
   bool _busy = false;
+  late Map<String, dynamic>? _cert;
+
+  @override
+  void initState() {
+    super.initState();
+    _cert = widget.certificate != null ? Map<String, dynamic>.from(widget.certificate!) : null;
+  }
 
   String get _fullUrl {
-    final fileUrl = widget.certificate?['file_url']?.toString() ?? '';
+    final fileUrl = _cert?['file_url']?.toString() ?? '';
     if (fileUrl.isEmpty) return '';
     return fileUrl.startsWith('http') ? fileUrl : '${ApiConfig.baseUrl}$fileUrl';
   }
@@ -552,20 +621,7 @@ class _CertificateDetailSheetState extends State<_CertificateDetailSheet> {
 
   // ── Upload new certificate ──────────────────────────────
   Future<void> _uploadCertificate() async {
-    // Pick expiration date first
-    final expDate = await showDatePicker(
-      context: context,
-      initialDate: DateTime.now().add(const Duration(days: 365)),
-      firstDate: DateTime.now(),
-      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
-      helpText: 'Scadenza certificato',
-    );
-    if (expDate == null || !mounted) return;
-
-    final expString =
-        '${expDate.year}-${expDate.month.toString().padLeft(2, '0')}-${expDate.day.toString().padLeft(2, '0')}';
-
-    // Pick file
+    // Pick file first
     final picker = ImagePicker();
     final picked = await picker.pickImage(
       source: ImageSource.gallery,
@@ -574,6 +630,28 @@ class _CertificateDetailSheetState extends State<_CertificateDetailSheet> {
       imageQuality: 85,
     );
     if (picked == null || !mounted) return;
+
+    // Then pick expiration date
+    final expDate = await showDatePicker(
+      context: context,
+      initialDate: DateTime.now().add(const Duration(days: 365)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime.now().add(const Duration(days: 365 * 5)),
+      helpText: 'Scadenza certificato',
+      builder: (context, child) => Theme(
+        data: ThemeData.dark().copyWith(
+          colorScheme: const ColorScheme.dark(
+            primary: AppColors.primary,
+            surface: AppColors.surface,
+          ),
+        ),
+        child: child!,
+      ),
+    );
+    if (expDate == null || !mounted) return;
+
+    final expString =
+        '${expDate.year}-${expDate.month.toString().padLeft(2, '0')}-${expDate.day.toString().padLeft(2, '0')}';
 
     setState(() => _busy = true);
 
@@ -596,7 +674,7 @@ class _CertificateDetailSheetState extends State<_CertificateDetailSheet> {
 
       widget.onChanged();
       if (mounted) {
-        Navigator.pop(context);
+        setState(() => _busy = false);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Certificato caricato')),
         );
@@ -616,7 +694,7 @@ class _CertificateDetailSheetState extends State<_CertificateDetailSheet> {
     DateTime initial;
     try {
       initial = DateTime.parse(
-          widget.certificate?['expiration_date']?.toString() ?? '');
+          _cert?['expiration_date']?.toString() ?? '');
     } catch (_) {
       initial = DateTime.now().add(const Duration(days: 365));
     }
@@ -639,7 +717,10 @@ class _CertificateDetailSheetState extends State<_CertificateDetailSheet> {
       await service.updateCertificateExpiry(widget.memberId, expString);
       widget.onChanged();
       if (mounted) {
-        Navigator.pop(context);
+        setState(() {
+          _busy = false;
+          _cert?['expiration_date'] = expString;
+        });
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Scadenza aggiornata')),
         );
@@ -701,13 +782,102 @@ class _CertificateDetailSheetState extends State<_CertificateDetailSheet> {
     }
   }
 
+  Future<void> _approveCertificate() async {
+    final certId = _cert?['id'];
+    if (certId == null) return;
+    setState(() => _busy = true);
+    try {
+      final service = widget.ref.read(staffServiceProvider);
+      await service.approveCertificate(certId as int);
+      widget.onChanged();
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Certificato approvato')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _rejectCertificate() async {
+    final certId = _cert?['id'];
+    if (certId == null) return;
+
+    final reasonCtrl = TextEditingController();
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Rifiuta Certificato',
+            style: TextStyle(color: AppColors.textPrimary)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text('Rifiutare il certificato di ${widget.memberName}?',
+                style: const TextStyle(color: AppColors.textSecondary)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: reasonCtrl,
+              maxLines: 2,
+              decoration: const InputDecoration(
+                hintText: 'Motivo del rifiuto (opzionale)',
+                hintStyle: TextStyle(color: AppColors.textTertiary),
+              ),
+              style: const TextStyle(color: AppColors.textPrimary),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Annulla')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.danger),
+            child: const Text('Rifiuta'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() => _busy = true);
+    try {
+      final service = widget.ref.read(staffServiceProvider);
+      await service.rejectCertificate(certId as int, reason: reasonCtrl.text.trim());
+      widget.onChanged();
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Certificato rifiutato')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _busy = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final cert = widget.certificate;
+    final cert = _cert;
     final hasCert = cert != null;
     final status = cert?['status']?.toString() ?? '';
     final filename = cert?['filename']?.toString() ?? '';
     final expiration = cert?['expiration_date']?.toString();
+    final approvalStatus = cert?['approval_status']?.toString() ?? 'approved';
+    final isPending = approvalStatus == 'pending';
 
     return DraggableScrollableSheet(
       initialChildSize: hasCert ? 0.65 : 0.4,
@@ -762,6 +932,34 @@ class _CertificateDetailSheetState extends State<_CertificateDetailSheet> {
                   const SizedBox(height: 16),
                   // Info rows
                   _infoRow('File', filename),
+                  if (isPending) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Stato',
+                            style: TextStyle(
+                                color: AppColors.textSecondary,
+                                fontSize: 13)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFEAB308).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.hourglass_top_rounded, size: 14, color: Color(0xFFEAB308)),
+                              SizedBox(width: 4),
+                              Text('In attesa di verifica',
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFFEAB308))),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                   if (expiration != null) ...[
                     const SizedBox(height: 8),
                     Row(
@@ -778,8 +976,10 @@ class _CertificateDetailSheetState extends State<_CertificateDetailSheet> {
                                     color: AppColors.textPrimary,
                                     fontWeight: FontWeight.w500,
                                     fontSize: 13)),
-                            const SizedBox(width: 8),
-                            certStatusBadge(status),
+                            if (!isPending) ...[
+                              const SizedBox(width: 8),
+                              certStatusBadge(status),
+                            ],
                           ],
                         ),
                       ],
@@ -809,6 +1009,39 @@ class _CertificateDetailSheetState extends State<_CertificateDetailSheet> {
                 ),
               ),
               const SizedBox(height: 8),
+
+              // ── Approve / Reject for pending certificates ──
+              if (isPending) ...[
+                Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _approveCertificate,
+                        icon: const Icon(Icons.check_rounded, size: 18),
+                        label: const Text('Approva'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.success,
+                          minimumSize: const Size(0, 48),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _rejectCertificate,
+                        icon: const Icon(Icons.close_rounded, size: 18),
+                        label: const Text('Rifiuta'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.danger,
+                          minimumSize: const Size(0, 48),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+              ],
+
               Row(
                 children: [
                   Expanded(

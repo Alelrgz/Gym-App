@@ -109,10 +109,10 @@ class ApiConfig {
   static String friendProgress(String id) => '/api/friends/$id/progress';
 
   // Appointments
-  static String trainerAvailability(int id) => '/api/client/trainers/$id/availability';
-  static String trainerAvailableSlots(int id) => '/api/client/trainers/$id/available-slots';
-  static String trainerSessionTypes(int id) => '/api/client/trainers/$id/session-types';
-  static String trainerSessionRate(int id) => '/api/client/trainers/$id/session-rate';
+  static String trainerAvailability(String id) => '/api/client/trainers/$id/availability';
+  static String trainerAvailableSlots(String id) => '/api/client/trainers/$id/available-slots';
+  static String trainerSessionTypes(String id) => '/api/client/trainers/$id/session-types';
+  static String trainerSessionRate(String id) => '/api/client/trainers/$id/session-rate';
   static const appointmentCheckoutSession = '/api/client/appointment-checkout-session';
 
   // ── Trainer ─────────────────────────────────────────────
@@ -144,6 +144,11 @@ class ApiConfig {
   static const exercises = '/api/exercises';
   static String exercise(String id) => '/api/exercises/$id';
   static String exerciseVideo(String id) => '/api/exercises/$id/video';
+
+  // ── Trainer Appointments ────────────────────────────────
+  static const trainerPendingAppointments = '/api/trainer/appointments/pending';
+  static String trainerAcceptAppointment(String id) => '/api/trainer/appointments/$id/accept';
+  static String trainerDeclineAppointment(String id) => '/api/trainer/appointments/$id/decline';
 
   // ── Trainer Client Metrics ────────────────────────────────
   static String trainerClientWeightHistory(String id) => '/api/trainer/client/$id/weight-history';
@@ -277,6 +282,11 @@ class ApiConfig {
   static String staffUploadCertificate(String id) => '/api/staff/upload-certificate/$id';
   static String staffUpdateCertificate(String id) => '/api/staff/update-certificate/$id';
   static String staffDeleteCertificate(String id) => '/api/staff/delete-certificate/$id';
+  static String staffApproveCertificate(int id) => '/api/staff/approve-certificate/$id';
+  static String staffRejectCertificate(int id) => '/api/staff/reject-certificate/$id';
+  static const staffPendingCertificates = '/api/staff/pending-certificates';
+  static const medicalCertificateUpload = '/api/medical/certificate';
+  static const medicalCertificateGet = '/api/medical/certificate';
   static String medicalCertificate(String clientId) => '/api/medical/certificate?client_id=$clientId';
 
   // ── Terminal/POS ────────────────────────────────────────
