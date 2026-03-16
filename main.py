@@ -221,8 +221,7 @@ async def fix_passwords_once():
     try:
         from database import SessionLocal as _SL
         from sqlalchemy import text as _t
-        from passlib.context import CryptContext
-        pwd_ctx = CryptContext(schemes=["bcrypt"], deprecated="auto")
+        import bcrypt
         db = _SL()
         try:
             rows = db.execute(_t('SELECT id, username FROM users')).fetchall()
@@ -231,13 +230,17 @@ async def fix_passwords_once():
             for row in rows:
                 uid, uname = row[0], row[1]
                 try:
-                    pwd = str(uname or "changeme")[:30]
-                    new_hash = pwd_ctx.hash(pwd)
+                    pwd = (str(uname or "changeme")[:30]).encode('utf-8')
+                    salt = bcrypt.gensalt(rounds=12)
+                    new_hash = bcrypt.hashpw(pwd, salt).decode('utf-8')
                     db.execute(_t('UPDATE users SET hashed_password = :h WHERE id = :id'), {"h": new_hash, "id": uid})
                     count += 1
                 except Exception as e:
-                    skipped.append(f"{uname}: {str(e)[:50]}")
-                    db.rollback()
+                    skipped.append(f"{uname}: {str(e)[:80]}")
+                    try:
+                        db.rollback()
+                    except Exception:
+                        pass
             db.commit()
             return {"fixed": count, "skipped": skipped, "note": "All passwords set to username"}
         finally:
