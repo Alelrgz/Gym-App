@@ -121,32 +121,54 @@ async def health_check():
 async def migrate_data_once():
     """One-time data migration from bundled JSON. Remove after use."""
     import json as _json
-    from sqlalchemy import text as _text
+    from sqlalchemy import text as _text, inspect as _inspect
     data_path = os.path.join(os.path.dirname(__file__), "db", "migration_data.json")
     if not os.path.exists(data_path):
         return {"error": "migration_data.json not found"}
     with open(data_path, "r") as f:
         dump = _json.load(f)
     results = {}
+    errors = {}
     priority = ["users", "gyms", "client_profile", "exercises", "workouts"]
     ordered = [t for t in priority if t in dump] + [t for t in dump if t not in priority]
     db = SessionLocal()
     try:
+        # Get existing PG columns per table
+        inspector = _inspect(engine)
+        pg_tables = inspector.get_table_names()
+        pg_columns = {}
+        for t in pg_tables:
+            pg_columns[t] = {c['name'] for c in inspector.get_columns(t)}
+
         for table in ordered:
+            if table not in pg_tables:
+                errors[table] = "table not in PG"
+                continue
             info = dump[table]
-            cols, rows = info["columns"], info["rows"]
-            col_names = ", ".join([f'"{c}"' for c in cols])
-            placeholders = ", ".join([f":{c}" for c in cols])
+            src_cols, rows = info["columns"], info["rows"]
+            # Only use columns that exist in PG
+            valid_cols = [c for c in src_cols if c in pg_columns.get(table, set())]
+            valid_idx = [src_cols.index(c) for c in valid_cols]
+            if not valid_cols:
+                errors[table] = f"no matching columns (src: {src_cols[:3]})"
+                continue
+            col_names = ", ".join([f'"{c}"' for c in valid_cols])
+            placeholders = ", ".join([f":{c}" for c in valid_cols])
             count = 0
+            first_err = None
             for row in rows:
-                params = {cols[i]: row[i] for i in range(len(cols))}
+                params = {valid_cols[j]: row[valid_idx[j]] for j in range(len(valid_cols))}
                 try:
                     db.execute(_text(f'INSERT INTO "{table}" ({col_names}) VALUES ({placeholders}) ON CONFLICT DO NOTHING'), params)
                     db.commit()
                     count += 1
-                except Exception:
+                except Exception as e:
                     db.rollback()
+                    if first_err is None:
+                        first_err = str(e)[:120]
             results[table] = f"{count}/{len(rows)}"
+            if first_err and count == 0:
+                errors[table] = first_err
         # Fix sequences
         for t in ordered:
             try:
@@ -156,7 +178,7 @@ async def migrate_data_once():
                 db.rollback()
     finally:
         db.close()
-    return {"migrated": results}
+    return {"migrated": results, "errors": errors}
 
 @app.get("/api/version")
 async def get_version():
