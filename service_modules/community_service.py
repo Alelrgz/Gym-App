@@ -36,6 +36,8 @@ class CommunityService:
             "author_profile_picture": author.profile_picture if author else None,
             "author_role": author.role if author else "client",
             "gym_id": post.gym_id,
+            "scope": getattr(post, "scope", "local") or "local",
+            "gym_name": None,
             "post_type": post.post_type,
             "content": post.content,
             "image_url": post.image_url,
@@ -56,27 +58,37 @@ class CommunityService:
             "created_at": post.created_at,
         }
 
-    def get_feed(self, user_id: str, cursor: Optional[str] = None, limit: int = 20) -> dict:
-        """Get the community feed for the user's gym."""
+    def get_feed(self, user_id: str, scope: str = "local", cursor: Optional[str] = None, limit: int = 20) -> dict:
+        """Get the community feed — local (gym) or global."""
         db = get_db_session()
         try:
-            gym_id = self._get_user_gym_id(user_id, db)
-            if not gym_id:
-                return {"posts": [], "next_cursor": None, "has_more": False}
+            if scope == "global":
+                # Global feed: all global-scoped text/image posts
+                query = db.query(CommunityPostORM).filter(
+                    CommunityPostORM.scope == "global",
+                    CommunityPostORM.is_deleted == False,
+                    CommunityPostORM.post_type.in_(["text", "image"]),
+                )
+                if cursor:
+                    query = query.filter(CommunityPostORM.created_at < cursor)
+                posts = query.order_by(CommunityPostORM.created_at.desc()).limit(limit + 1).all()
+            else:
+                # Local feed: gym-scoped (existing behavior)
+                gym_id = self._get_user_gym_id(user_id, db)
+                if not gym_id:
+                    return {"posts": [], "next_cursor": None, "has_more": False}
 
-            query = db.query(CommunityPostORM).filter(
-                CommunityPostORM.gym_id == gym_id,
-                CommunityPostORM.is_deleted == False,
-            )
-
-            if cursor:
-                query = query.filter(CommunityPostORM.created_at < cursor)
-
-            # Pinned first, then by date
-            posts = query.order_by(
-                CommunityPostORM.is_pinned.desc(),
-                CommunityPostORM.created_at.desc()
-            ).limit(limit + 1).all()
+                query = db.query(CommunityPostORM).filter(
+                    CommunityPostORM.gym_id == gym_id,
+                    CommunityPostORM.is_deleted == False,
+                )
+                if cursor:
+                    query = query.filter(CommunityPostORM.created_at < cursor)
+                # Pinned first, then by date
+                posts = query.order_by(
+                    CommunityPostORM.is_pinned.desc(),
+                    CommunityPostORM.created_at.desc()
+                ).limit(limit + 1).all()
 
             has_more = len(posts) > limit
             posts = posts[:limit]
@@ -133,10 +145,20 @@ class CommunityService:
                         "content": c.content,
                     }
 
+            # Batch fetch gym names for global posts
+            gym_names = {}
+            if scope == "global":
+                gym_ids_set = list({p.gym_id for p in posts if p.gym_id})
+                if gym_ids_set:
+                    gyms = db.query(UserORM.id, UserORM.gym_name).filter(UserORM.id.in_(gym_ids_set)).all()
+                    gym_names = {g.id: g.gym_name for g in gyms if g.gym_name}
+
             result = []
             for p in posts:
                 d = self._post_to_dict(p, authors.get(p.author_id), p.id in liked_ids, p.id in participating_ids)
                 d["first_comment"] = first_comments.get(p.id)
+                if scope == "global" and p.gym_id:
+                    d["gym_name"] = gym_names.get(p.gym_id)
                 result.append(d)
 
             next_cursor = posts[-1].created_at if has_more and posts else None
@@ -146,7 +168,8 @@ class CommunityService:
             db.close()
 
     def create_post(
-        self, author_id: str, post_type: str, content: Optional[str] = None,
+        self, author_id: str, post_type: str, scope: str = "local",
+        content: Optional[str] = None,
         image_url: Optional[str] = None, event_title: Optional[str] = None,
         event_date: Optional[str] = None, event_time: Optional[str] = None,
         event_location: Optional[str] = None, max_participants: Optional[int] = None,
@@ -167,10 +190,15 @@ class CommunityService:
             if post_type in ("event", "quest") and user.role not in ("owner", "trainer"):
                 raise HTTPException(status_code=403, detail="Only trainers and owners can create events/quests")
 
+            # Force events/quests to local scope
+            if post_type in ("event", "quest"):
+                scope = "local"
+
             post = CommunityPostORM(
                 id=str(uuid.uuid4()),
                 author_id=author_id,
                 gym_id=gym_id,
+                scope=scope,
                 post_type=post_type,
                 content=content,
                 image_url=image_url,

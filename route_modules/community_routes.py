@@ -22,16 +22,20 @@ def _allowed_image(filename: str) -> bool:
 async def get_community_feed(
     cursor: str = Query(None),
     limit: int = Query(20, ge=1, le=50),
+    scope: str = Query("local"),
     current_user: UserORM = Depends(get_current_user),
     service: CommunityService = Depends(get_community_service),
 ):
-    """Get the community feed for the user's gym."""
-    return service.get_feed(current_user.id, cursor=cursor, limit=limit)
+    """Get the community feed — local (gym) or global."""
+    if scope not in ("local", "global"):
+        raise HTTPException(status_code=400, detail="scope must be 'local' or 'global'")
+    return service.get_feed(current_user.id, scope=scope, cursor=cursor, limit=limit)
 
 
 @router.post("/api/community/posts")
 async def create_community_post(
     post_type: str = Form("text"),
+    scope: str = Form("local"),
     content: str = Form(None),
     event_title: str = Form(None),
     event_date: str = Form(None),
@@ -69,6 +73,7 @@ async def create_community_post(
     return service.create_post(
         author_id=current_user.id,
         post_type=post_type,
+        scope=scope,
         content=content,
         image_url=image_url,
         event_title=event_title,

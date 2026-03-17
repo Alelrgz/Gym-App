@@ -16,30 +16,26 @@ class CommunityScreen extends ConsumerStatefulWidget {
   ConsumerState<CommunityScreen> createState() => _CommunityScreenState();
 }
 
-class _CommunityScreenState extends ConsumerState<CommunityScreen> {
-  final _scrollController = ScrollController();
+class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  String get _activeScope => _tabController.index == 0 ? 'local' : 'global';
 
   @override
   void initState() {
     super.initState();
-    _scrollController.addListener(_onScroll);
+    _tabController = TabController(length: 2, vsync: this);
+    _tabController.addListener(() => setState(() {})); // rebuild FAB scope
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _tabController.dispose();
     super.dispose();
-  }
-
-  void _onScroll() {
-    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
-      ref.read(communityFeedProvider.notifier).loadMore();
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final feedState = ref.watch(communityFeedProvider);
     final unreadMessages = ref.watch(unreadMessagesProvider);
     final unreadNotifications = ref.watch(unreadNotificationsProvider);
 
@@ -69,115 +65,65 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
           ),
         ),
       ),
-      body: RefreshIndicator(
-        color: AppColors.primary,
-        onRefresh: () => ref.read(communityFeedProvider.notifier).loadFeed(),
-        child: CustomScrollView(
-          controller: _scrollController,
-          slivers: [
-            // ── Top Bar (same as Dashboard) ──
-            SliverAppBar(
-              floating: true,
-              backgroundColor: AppColors.background,
-              surfaceTintColor: Colors.transparent,
-              toolbarHeight: 68,
-              title: Padding(
-                padding: const EdgeInsets.only(top: 8),
-                child: SvgPicture.asset('assets/fitos-logo.svg', height: 34),
+      body: NestedScrollView(
+        headerSliverBuilder: (context, innerBoxIsScrolled) => [
+          SliverAppBar(
+            floating: true,
+            pinned: true,
+            backgroundColor: AppColors.background,
+            surfaceTintColor: Colors.transparent,
+            toolbarHeight: 68,
+            title: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: SvgPicture.asset('assets/fitos-logo.svg', height: 34),
+            ),
+            centerTitle: false,
+            actions: [
+              _TopBarIcon(
+                icon: Icons.qr_code_rounded,
+                onTap: () => showQrAccessDialog(context, ref),
               ),
-              centerTitle: false,
-              actions: [
-                _TopBarIcon(
-                  icon: Icons.qr_code_rounded,
-                  onTap: () => showQrAccessDialog(context, ref),
-                ),
-                const SizedBox(width: 8),
-                _TopBarIcon(
-                  icon: Icons.calendar_today_rounded,
-                  onTap: () => showCalendarSheet(context, ref),
-                ),
-                const SizedBox(width: 8),
-                _TopBarIconBadge(
-                  icon: Icons.notifications_none_rounded,
-                  count: unreadNotifications.valueOrNull ?? 0,
-                  onTap: () => showNotificationsSheet(context, ref),
-                ),
-                const SizedBox(width: 8),
-                _TopBarIconBadge(
-                  icon: Icons.send_rounded,
-                  count: unreadMessages.valueOrNull ?? 0,
-                  onTap: () => showConversationsSheet(context, ref),
-                ),
-                const SizedBox(width: 16),
+              const SizedBox(width: 8),
+              _TopBarIcon(
+                icon: Icons.calendar_today_rounded,
+                onTap: () => showCalendarSheet(context, ref),
+              ),
+              const SizedBox(width: 8),
+              _TopBarIconBadge(
+                icon: Icons.notifications_none_rounded,
+                count: unreadNotifications.valueOrNull ?? 0,
+                onTap: () => showNotificationsSheet(context, ref),
+              ),
+              const SizedBox(width: 8),
+              _TopBarIconBadge(
+                icon: Icons.send_rounded,
+                count: unreadMessages.valueOrNull ?? 0,
+                onTap: () => showConversationsSheet(context, ref),
+              ),
+              const SizedBox(width: 16),
+            ],
+            bottom: TabBar(
+              controller: _tabController,
+              indicatorColor: AppColors.primary,
+              indicatorWeight: 2.5,
+              labelColor: AppColors.primary,
+              unselectedLabelColor: Colors.grey[500],
+              labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700),
+              unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+              dividerHeight: 0.5,
+              dividerColor: Colors.white.withValues(alpha: 0.06),
+              tabs: const [
+                Tab(text: 'Palestra'),
+                Tab(text: 'Globale'),
               ],
             ),
-
-            // ── Content ──
-            if (feedState.loading)
-              const SliverFillRemaining(
-                child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
-              )
-            else if (feedState.posts.isEmpty)
-              SliverFillRemaining(
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.forum_outlined, size: 48, color: Colors.grey[700]),
-                      const SizedBox(height: 12),
-                      Text('Nessun post', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey[500])),
-                      const SizedBox(height: 4),
-                      Text('Sii il primo a postare!', style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-                    ],
-                  ),
-                ),
-              )
-            else
-              SliverList(
-                delegate: SliverChildBuilderDelegate(
-                  (context, index) {
-                    if (index == feedState.posts.length) {
-                      return feedState.loadingMore
-                          ? const Padding(
-                              padding: EdgeInsets.all(20),
-                              child: Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)),
-                            )
-                          : const SizedBox.shrink();
-                    }
-                    final postData = feedState.posts[index];
-                    final postId = postData['id'] as String;
-                    return GestureDetector(
-                      onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => _PostDetailPage(
-                          post: postData,
-                          ref: ref,
-                          onDelete: () => _deletePost(postId),
-                        )),
-                      ),
-                      child: _PostCard(
-                      post: postData,
-                      onLike: () => ref.read(communityFeedProvider.notifier).toggleLike(postId),
-                      onComment: () => _openComments(context, postData),
-                      onDelete: () => _deletePost(postId),
-                      onParticipate: () async {
-                        final joined = await ref.read(communityFeedProvider.notifier).toggleParticipation(postId);
-                        if (joined && context.mounted) {
-                          HapticFeedback.mediumImpact();
-                          final eventTitle = postData['event_title'] as String? ?? 'Evento';
-                          final eventDate = postData['event_date'] as String? ?? '';
-                          showDialog(
-                            context: context,
-                            barrierColor: Colors.black54,
-                            builder: (_) => _EventConfirmationDialog(title: eventTitle, date: eventDate),
-                          );
-                        }
-                      },
-                    ),
-                    );
-                  },
-                  childCount: feedState.posts.length + (feedState.hasMore ? 1 : 0),
-                ),
-              ),
+          ),
+        ],
+        body: TabBarView(
+          controller: _tabController,
+          children: [
+            _FeedTab(scope: 'local', onCreatePost: () => _showCreatePostSheet(context)),
+            _FeedTab(scope: 'global', onCreatePost: () => _showCreatePostSheet(context)),
           ],
         ),
       ),
@@ -185,6 +131,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
   }
 
   void _showCreatePostSheet(BuildContext context) {
+    final scope = _activeScope;
     final clientData = ref.read(clientDataProvider);
     final profilePic = clientData.whenData((d) => d.profilePicture).value;
     String? resolvedPic;
@@ -203,8 +150,9 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
           return FadeTransition(
             opacity: curved,
             child: _CreatePostSheet(
+              scope: scope,
               onPostCreated: (post) {
-                ref.read(communityFeedProvider.notifier).prependPost(post);
+                ref.read(communityFeedProvider(scope).notifier).prependPost(post);
               },
               ref: ref,
               profilePicUrl: resolvedPic,
@@ -213,6 +161,42 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
         },
       ),
     );
+  }
+}
+
+// ─── FEED TAB (reusable per scope) ─────────────────────────────
+
+class _FeedTab extends ConsumerStatefulWidget {
+  final String scope;
+  final VoidCallback onCreatePost;
+  const _FeedTab({required this.scope, required this.onCreatePost});
+
+  @override
+  ConsumerState<_FeedTab> createState() => _FeedTabState();
+}
+
+class _FeedTabState extends ConsumerState<_FeedTab> with AutomaticKeepAliveClientMixin {
+  final _scrollController = ScrollController();
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      ref.read(communityFeedProvider(widget.scope).notifier).loadMore();
+    }
   }
 
   void _openComments(BuildContext context, Map<String, dynamic> post) {
@@ -231,7 +215,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
           scrollController: scrollController,
           ref: ref,
           onCommentAdded: () {
-            ref.read(communityFeedProvider.notifier).incrementCommentCount(post['id'] as String);
+            ref.read(communityFeedProvider(widget.scope).notifier).incrementCommentCount(post['id'] as String);
           },
         ),
       ),
@@ -241,8 +225,88 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> {
   Future<void> _deletePost(String postId) async {
     try {
       await ref.read(clientServiceProvider).deleteCommunityPost(postId);
-      ref.read(communityFeedProvider.notifier).removePost(postId);
+      ref.read(communityFeedProvider(widget.scope).notifier).removePost(postId);
     } catch (_) {}
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final feedState = ref.watch(communityFeedProvider(widget.scope));
+    final isGlobal = widget.scope == 'global';
+
+    if (feedState.loading) {
+      return const Center(child: CircularProgressIndicator(color: AppColors.primary));
+    }
+
+    if (feedState.posts.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(isGlobal ? Icons.public_rounded : Icons.forum_outlined, size: 48, color: Colors.grey[700]),
+            const SizedBox(height: 12),
+            Text('Nessun post', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey[500])),
+            const SizedBox(height: 4),
+            Text(
+              isGlobal ? 'Sii il primo a condividere con tutti!' : 'Sii il primo a postare!',
+              style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return RefreshIndicator(
+      color: AppColors.primary,
+      onRefresh: () => ref.read(communityFeedProvider(widget.scope).notifier).loadFeed(),
+      child: ListView.builder(
+        controller: _scrollController,
+        padding: EdgeInsets.zero,
+        itemCount: feedState.posts.length + (feedState.hasMore ? 1 : 0),
+        itemBuilder: (context, index) {
+          if (index == feedState.posts.length) {
+            return feedState.loadingMore
+                ? const Padding(
+                    padding: EdgeInsets.all(20),
+                    child: Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)),
+                  )
+                : const SizedBox.shrink();
+          }
+          final postData = feedState.posts[index];
+          final postId = postData['id'] as String;
+          return GestureDetector(
+            onTap: () => Navigator.of(context).push(
+              MaterialPageRoute(builder: (_) => _PostDetailPage(
+                post: postData,
+                ref: ref,
+                onDelete: () => _deletePost(postId),
+                scope: widget.scope,
+              )),
+            ),
+            child: _PostCard(
+              post: postData,
+              onLike: () => ref.read(communityFeedProvider(widget.scope).notifier).toggleLike(postId),
+              onComment: () => _openComments(context, postData),
+              onDelete: () => _deletePost(postId),
+              onParticipate: () async {
+                final joined = await ref.read(communityFeedProvider(widget.scope).notifier).toggleParticipation(postId);
+                if (joined && context.mounted) {
+                  HapticFeedback.mediumImpact();
+                  final eventTitle = postData['event_title'] as String? ?? 'Evento';
+                  final eventDate = postData['event_date'] as String? ?? '';
+                  showDialog(
+                    context: context,
+                    barrierColor: Colors.black54,
+                    builder: (_) => _EventConfirmationDialog(title: eventTitle, date: eventDate),
+                  );
+                }
+              },
+            ),
+          );
+        },
+      ),
+    );
   }
 }
 
@@ -350,7 +414,17 @@ class _PostCard extends StatelessWidget {
                               ],
                             ],
                           ),
-                          Text(time, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                          Row(
+                            children: [
+                              Text(time, style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                              if (post['gym_name'] != null) ...[
+                                Text('  ·  ', style: TextStyle(fontSize: 11, color: Colors.grey[700])),
+                                Icon(Icons.fitness_center_rounded, size: 10, color: Colors.grey[500]),
+                                const SizedBox(width: 3),
+                                Flexible(child: Text(post['gym_name'] as String, style: TextStyle(fontSize: 11, color: Colors.grey[500]), overflow: TextOverflow.ellipsis)),
+                              ],
+                            ],
+                          ),
                         ],
                       ),
                     ),
@@ -685,8 +759,9 @@ class _CreatePostSheet extends StatefulWidget {
   final void Function(Map<String, dynamic>) onPostCreated;
   final WidgetRef ref;
   final String? profilePicUrl;
+  final String scope;
 
-  const _CreatePostSheet({required this.onPostCreated, required this.ref, this.profilePicUrl});
+  const _CreatePostSheet({required this.onPostCreated, required this.ref, this.profilePicUrl, this.scope = 'local'});
 
   @override
   State<_CreatePostSheet> createState() => _CreatePostSheetState();
@@ -776,6 +851,7 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
         final maxP = int.tryParse(_maxParticipantsController.text.trim());
         final result = await service.createCommunityPost(
           postType: 'event',
+          scope: 'local', // events are always local
           content: text.isNotEmpty ? text : null,
           eventTitle: _eventTitleController.text.trim(),
           eventDate: '${_eventDate!.year}-${_eventDate!.month.toString().padLeft(2, '0')}-${_eventDate!.day.toString().padLeft(2, '0')}',
@@ -789,6 +865,7 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
       } else {
         final result = await service.createCommunityPost(
           postType: _imageBytes != null ? 'image' : 'text',
+          scope: widget.scope,
           content: text.isNotEmpty ? text : null,
           imageBytes: _imageBytes?.toList(),
           imageFilename: _imageFilename,
@@ -1054,8 +1131,9 @@ class _PostDetailPage extends StatefulWidget {
   final Map<String, dynamic> post;
   final WidgetRef ref;
   final VoidCallback onDelete;
+  final String scope;
 
-  const _PostDetailPage({required this.post, required this.ref, required this.onDelete});
+  const _PostDetailPage({required this.post, required this.ref, required this.onDelete, this.scope = 'local'});
 
   @override
   State<_PostDetailPage> createState() => _PostDetailPageState();
@@ -1111,7 +1189,7 @@ class _PostDetailPageState extends State<_PostDetailPage> with SingleTickerProvi
       final comment = await service.addComment(_postId, text);
       if (mounted) {
         setState(() { _comments.add(comment); _sending = false; });
-        widget.ref.read(communityFeedProvider.notifier).incrementCommentCount(_postId);
+        widget.ref.read(communityFeedProvider(widget.scope).notifier).incrementCommentCount(_postId);
       }
     } catch (_) {
       if (mounted) setState(() => _sending = false);
@@ -1251,7 +1329,7 @@ class _PostDetailPageState extends State<_PostDetailPage> with SingleTickerProvi
                         GestureDetector(
                           onTap: () {
                             _likeCtrl.forward(from: 0);
-                            widget.ref.read(communityFeedProvider.notifier).toggleLike(_postId);
+                            widget.ref.read(communityFeedProvider(widget.scope).notifier).toggleLike(_postId);
                           },
                           child: Row(
                             children: [

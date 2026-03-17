@@ -34,8 +34,9 @@ class CommunityFeedState {
 
 class CommunityFeedNotifier extends StateNotifier<CommunityFeedState> {
   final Ref ref;
+  final String scope;
 
-  CommunityFeedNotifier(this.ref) : super(const CommunityFeedState()) {
+  CommunityFeedNotifier(this.ref, this.scope) : super(const CommunityFeedState()) {
     loadFeed();
   }
 
@@ -43,7 +44,7 @@ class CommunityFeedNotifier extends StateNotifier<CommunityFeedState> {
     state = state.copyWith(loading: true);
     try {
       final service = ref.read(clientServiceProvider);
-      final data = await service.getCommunityFeed();
+      final data = await service.getCommunityFeed(scope: scope);
       final posts = (data['posts'] as List?)?.cast<Map<String, dynamic>>() ?? [];
       state = CommunityFeedState(
         posts: posts,
@@ -61,7 +62,7 @@ class CommunityFeedNotifier extends StateNotifier<CommunityFeedState> {
     state = state.copyWith(loadingMore: true);
     try {
       final service = ref.read(clientServiceProvider);
-      final data = await service.getCommunityFeed(cursor: state.nextCursor);
+      final data = await service.getCommunityFeed(cursor: state.nextCursor, scope: scope);
       final newPosts = (data['posts'] as List?)?.cast<Map<String, dynamic>>() ?? [];
       state = CommunityFeedState(
         posts: [...state.posts, ...newPosts],
@@ -150,6 +151,8 @@ class CommunityFeedNotifier extends StateNotifier<CommunityFeedState> {
   }
 }
 
-final communityFeedProvider = StateNotifierProvider.autoDispose<CommunityFeedNotifier, CommunityFeedState>((ref) {
-  return CommunityFeedNotifier(ref);
+/// Family provider keyed by scope ("local" or "global").
+final communityFeedProvider = StateNotifierProvider.autoDispose
+    .family<CommunityFeedNotifier, CommunityFeedState, String>((ref, scope) {
+  return CommunityFeedNotifier(ref, scope);
 });

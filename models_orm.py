@@ -1133,6 +1133,7 @@ class CommunityPostORM(Base):
     id = Column(String, primary_key=True, index=True)  # UUID
     author_id = Column(String, ForeignKey("users.id"), index=True)
     gym_id = Column(String, index=True)
+    scope = Column(String, default="local", index=True)  # "local" or "global"
 
     post_type = Column(String, index=True)  # text, image, event, quest
     content = Column(Text, nullable=True)

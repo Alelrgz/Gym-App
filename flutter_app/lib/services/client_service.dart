@@ -473,8 +473,8 @@ class ClientService {
 
   // ── Community ────────────────────────────────────────────
 
-  Future<Map<String, dynamic>> getCommunityFeed({String? cursor, int limit = 20}) async {
-    final params = <String, dynamic>{'limit': limit};
+  Future<Map<String, dynamic>> getCommunityFeed({String? cursor, int limit = 20, String scope = 'local'}) async {
+    final params = <String, dynamic>{'limit': limit, 'scope': scope};
     if (cursor != null) params['cursor'] = cursor;
     final response = await _api.get(ApiConfig.communityFeed, queryParameters: params);
     return response.data as Map<String, dynamic>;
@@ -482,6 +482,7 @@ class ClientService {
 
   Future<Map<String, dynamic>> createCommunityPost({
     required String postType,
+    String scope = 'local',
     String? content,
     List<int>? imageBytes,
     String? imageFilename,
@@ -495,6 +496,7 @@ class ClientService {
   }) async {
     final formData = FormData.fromMap(<String, dynamic>{
       'post_type': postType,
+      'scope': scope,
       'content': ?content,
       'event_title': ?eventTitle,
       'event_date': ?eventDate,

@@ -3775,12 +3775,6 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
         children: [
-          // ── Physique Photos ──
-          _sectionHeader('FOTO FISICO', action: 'Aggiungi', onAction: _pickAndUploadPhoto),
-          const SizedBox(height: 12),
-          _buildPhotoGallery(),
-          const SizedBox(height: 24),
-
           // ── Weight History ──
           _sectionHeader('PESO', action: '+ Registra', onAction: _showAddWeightDialog),
           const SizedBox(height: 4),
@@ -3795,6 +3789,12 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
           ),
           const SizedBox(height: 12),
           _buildWeightChart(),
+          const SizedBox(height: 24),
+
+          // ── Physique Photos ──
+          _sectionHeader('FOTO FISICO', action: 'Aggiungi', onAction: _pickAndUploadPhoto),
+          const SizedBox(height: 12),
+          _buildPhotoGallery(),
           const SizedBox(height: 24),
 
           // ── Strength Progress ──
