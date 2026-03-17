@@ -280,6 +280,9 @@ class ApiConfig {
   static const staffChangeMemberUsername = '/api/staff/change-member-username';
   static const staffCreatePaymentIntent = '/api/staff/create-payment-intent';
   static const staffOnboardingCheckoutSession = '/api/staff/onboarding-checkout-session';
+  static const staffSendCredentials = '/api/staff/send-credentials';
+  static const staffSigningSession = '/api/staff/signing-session';
+  static String staffSigningSessionStatus(String token) => '/api/staff/signing-session/$token/status';
   static String staffCheckoutSessionStatus(String id) => '/api/staff/checkout-session-status/$id';
   static const staffNfcTags = '/api/staff/nfc-tags';
   static const staffRegisterNfc = '/api/staff/register-nfc';
@@ -301,6 +304,23 @@ class ApiConfig {
   static String terminalPaymentStatus(String id) => '/api/terminal/payment-status/$id';
   static const terminalCancelPayment = '/api/terminal/cancel-payment';
   static const terminalSimulatePayment = '/api/terminal/simulate-payment';
+
+  // ── Nutritionist ────────────────────────────────────────
+  static const nutritionistData = '/api/nutritionist/data';
+  static String nutritionistClientDetail(String id) => '/api/nutritionist/client/$id';
+  static const nutritionistBodyComposition = '/api/nutritionist/client/body-composition';
+  static const nutritionistWeightGoal = '/api/nutritionist/client/weight-goal';
+  static const nutritionistHealthData = '/api/nutritionist/client/health-data';
+  static const nutritionistAssignDiet = '/api/nutritionist/assign_diet';
+  static String nutritionistClientWeightHistory(String id) => '/api/nutritionist/client/$id/weight-history';
+  static String nutritionistClientDietConsistency(String id) => '/api/nutritionist/client/$id/diet-consistency';
+  static String nutritionistClientWeeklyMealPlan(String id) => '/api/nutritionist/client/$id/weekly-meal-plan';
+  static const nutritionistAvailability = '/api/nutritionist/availability';
+  static const nutritionistSessionRate = '/api/nutritionist/session-rate';
+  static const nutritionistAppointments = '/api/nutritionist/appointments';
+  static String nutritionistAppointmentComplete(String id) => '/api/nutritionist/appointments/$id/complete';
+  static const nutritionistNotes = '/api/trainer/notes'; // shared notes API
+  static const nutritionistProfileUpdate = '/api/profile/update';
 
   // ── Spotify ──────────────────────────────────────────────
   static const String spotifyStatus = '/api/spotify/status';

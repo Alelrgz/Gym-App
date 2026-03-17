@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:dio/dio.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
@@ -173,7 +174,9 @@ class _NotificationsContentState extends State<_NotificationsContent> {
                         itemBuilder: (_, i) {
                           final n = _notifications[i] as Map<String, dynamic>;
                           final isRead = n['read'] == true;
-                          return Container(
+                          return GestureDetector(
+                            onTap: () => _handleNotificationTap(n, context),
+                            child: Container(
                             margin: const EdgeInsets.only(bottom: 8),
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
@@ -224,6 +227,7 @@ class _NotificationsContentState extends State<_NotificationsContent> {
                                   ),
                               ],
                             ),
+                          ),
                           );
                         },
                       ),
@@ -231,6 +235,28 @@ class _NotificationsContentState extends State<_NotificationsContent> {
         ],
       ),
     );
+  }
+
+  void _handleNotificationTap(Map<String, dynamic> n, BuildContext context) {
+    final type = n['type']?.toString() ?? '';
+    if (type == 'send_credentials_link') {
+      final rawData = n['data'];
+      if (rawData != null) {
+        try {
+          final Map<String, dynamic> data;
+          if (rawData is Map) {
+            data = Map<String, dynamic>.from(rawData);
+          } else {
+            data = jsonDecode(rawData.toString()) as Map<String, dynamic>;
+          }
+          final link = data['link']?.toString();
+          if (link != null && link.isNotEmpty) {
+            final uri = Uri.parse(link);
+            launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        } catch (_) {}
+      }
+    }
   }
 }
 
@@ -241,6 +267,7 @@ IconData _notifIcon(String type) {
     case 'workout': return Icons.fitness_center_rounded;
     case 'appointment': return Icons.calendar_today_rounded;
     case 'achievement': return Icons.emoji_events_rounded;
+    case 'send_credentials_link': return Icons.send_rounded;
     default: return Icons.notifications_none_rounded;
   }
 }

@@ -168,6 +168,9 @@ app.include_router(simple_auth_router, prefix="/auth")
 from route_modules.gym_assignment_routes import router as gym_assignment_router
 app.include_router(gym_assignment_router)
 
+# Register FCM push listener (fires on every NotificationORM insert)
+import service_modules.notification_service  # noqa: F401
+
 # Include message routes
 from route_modules.message_routes import router as message_router
 app.include_router(message_router)
@@ -177,8 +180,172 @@ from route_modules.profile_routes import router as profile_router
 app.include_router(profile_router)
 
 # Include staff routes
-from route_modules.staff_routes import router as staff_router
+from route_modules.staff_routes import router as staff_router, _signing_sessions
 app.include_router(staff_router)
+
+# ── Remote signing page (phone browser) ────────────────────
+from fastapi.responses import HTMLResponse as _HTMLResponse
+
+@app.get("/sign/{token}", response_class=_HTMLResponse)
+async def signing_page(token: str):
+    """Serve a self-contained HTML signing page for phone browser."""
+    session = _signing_sessions.get(token)
+    if not session or session["status"] == "signed":
+        return _HTMLResponse(content="<html><body style='background:#111;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;'><h2>Sessione scaduta o già firmata</h2></body></html>", status_code=404)
+
+    import html as _html
+    client_name = _html.escape(session["client_name"] or "")
+    waiver_text = _html.escape(session["waiver_text"] or "").replace("\n", "<br>")
+
+    return _HTMLResponse(content=f'''<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Firma Liberatoria</title>
+<style>
+* {{ margin:0; padding:0; box-sizing:border-box; }}
+body {{ background:#111; color:#fff; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; min-height:100dvh; display:flex; flex-direction:column; overflow:hidden; }}
+.header {{ padding:16px 20px; text-align:center; }}
+.header h1 {{ font-size:22px; font-weight:800; }}
+.header p {{ font-size:13px; color:#999; margin-top:4px; }}
+.waiver {{ flex:1; overflow-y:auto; margin:0 16px; padding:16px; background:#1a1a1a; border-radius:12px; border:1px solid rgba(255,255,255,0.06); font-size:13px; color:#999; line-height:1.7; min-height:120px; max-height:35dvh; }}
+.checkbox {{ margin:12px 16px; padding:12px 16px; background:#1a1a1a; border-radius:12px; border:1px solid rgba(255,255,255,0.06); display:flex; align-items:center; gap:10px; cursor:pointer; transition:all 0.2s; }}
+.checkbox.checked {{ background:rgba(34,197,94,0.08); border-color:rgba(34,197,94,0.3); }}
+.checkbox input {{ width:20px; height:20px; accent-color:#22c55e; }}
+.checkbox span {{ font-size:14px; }}
+.sig-section {{ margin:8px 16px 0; flex:1; display:flex; flex-direction:column; min-height:0; }}
+.sig-label {{ font-size:13px; color:#999; margin-bottom:6px; display:flex; justify-content:space-between; align-items:center; }}
+.sig-clear {{ font-size:12px; color:#ef4444; cursor:pointer; background:rgba(239,68,68,0.1); padding:3px 10px; border-radius:6px; border:none; }}
+canvas {{ flex:1; width:100%; background:#fff; border-radius:10px; border:2px solid rgba(150,150,150,0.3); touch-action:none; cursor:crosshair; min-height:100px; }}
+canvas.signed {{ border-color:#22c55e; }}
+.hint {{ text-align:center; font-size:11px; color:#666; margin-top:4px; }}
+.confirm {{ margin:12px 16px 20px; padding:16px; border:none; border-radius:14px; font-size:17px; font-weight:700; color:#fff; cursor:pointer; transition:all 0.2s; }}
+.confirm.ready {{ background:#22c55e; }}
+.confirm.not-ready {{ background:#444; pointer-events:none; }}
+.done {{ display:none; flex-direction:column; align-items:center; justify-content:center; height:100dvh; text-align:center; padding:40px; }}
+.done h2 {{ font-size:28px; font-weight:800; color:#22c55e; margin-bottom:8px; }}
+.done p {{ color:#999; font-size:14px; }}
+</style>
+</head>
+<body>
+<div id="form">
+  <div class="header">
+    <h1>{"Ciao " + client_name + "!" if client_name else "Benvenuto!"}</h1>
+    <p>Leggi la liberatoria e firma in basso</p>
+  </div>
+  <div class="waiver">{waiver_text}</div>
+  <div class="checkbox" id="cb" onclick="toggleCb()">
+    <input type="checkbox" id="cbInput">
+    <span>Ho letto e accetto i termini della liberatoria</span>
+  </div>
+  <div class="sig-section">
+    <div class="sig-label">
+      <span>Firma qui sotto</span>
+      <button class="sig-clear" onclick="clearSig()" id="clearBtn" style="display:none">Cancella</button>
+    </div>
+    <canvas id="sigCanvas"></canvas>
+    <div class="hint" id="sigHint">Usa il dito per firmare</div>
+  </div>
+  <button class="confirm not-ready" id="confirmBtn" onclick="submit()">Conferma Firma</button>
+</div>
+<div class="done" id="done">
+  <h2>Firma Registrata!</h2>
+  <p>Puoi restituire il dispositivo allo staff.<br>Questa pagina si chiuder&agrave; automaticamente.</p>
+</div>
+<script>
+const canvas = document.getElementById('sigCanvas');
+const ctx = canvas.getContext('2d');
+let drawing = false, hasSigned = false, hasRead = false, strokes = [], current = [];
+
+function resize() {{
+  const r = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = r.width * dpr;
+  canvas.height = r.height * dpr;
+  ctx.scale(dpr, dpr);
+  redraw();
+}}
+window.addEventListener('resize', resize);
+setTimeout(resize, 50);
+
+function getPos(e) {{
+  const r = canvas.getBoundingClientRect();
+  const t = e.touches ? e.touches[0] : e;
+  return {{ x: t.clientX - r.left, y: t.clientY - r.top }};
+}}
+
+canvas.addEventListener('pointerdown', e => {{ e.preventDefault(); drawing = true; current = [getPos(e)]; }});
+canvas.addEventListener('pointermove', e => {{ if(!drawing) return; e.preventDefault(); current.push(getPos(e)); redraw(); }});
+canvas.addEventListener('pointerup', e => {{ if(!drawing) return; drawing = false; if(current.length>1) strokes.push(current); current=[]; hasSigned=strokes.length>0; update(); }});
+canvas.addEventListener('pointerleave', e => {{ if(!drawing) return; drawing = false; if(current.length>1) strokes.push(current); current=[]; hasSigned=strokes.length>0; update(); }});
+
+function redraw() {{
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = '#1a1a1a';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+  [...strokes, current].forEach(s => {{
+    if(s.length<2) return;
+    ctx.beginPath();
+    ctx.moveTo(s[0].x, s[0].y);
+    for(let i=1;i<s.length;i++) ctx.lineTo(s[i].x, s[i].y);
+    ctx.stroke();
+  }});
+}}
+
+function clearSig() {{ strokes=[]; current=[]; hasSigned=false; redraw(); update(); }}
+
+function toggleCb() {{
+  hasRead = !hasRead;
+  document.getElementById('cbInput').checked = hasRead;
+  document.getElementById('cb').classList.toggle('checked', hasRead);
+  update();
+}}
+
+function update() {{
+  const btn = document.getElementById('confirmBtn');
+  btn.className = 'confirm ' + (hasSigned && hasRead ? 'ready' : 'not-ready');
+  canvas.className = hasSigned ? 'signed' : '';
+  document.getElementById('clearBtn').style.display = hasSigned ? '' : 'none';
+  document.getElementById('sigHint').style.display = hasSigned ? 'none' : '';
+}}
+
+async function submit() {{
+  if(!hasSigned || !hasRead) return;
+  const btn = document.getElementById('confirmBtn');
+  btn.textContent = 'Invio...';
+  btn.style.pointerEvents = 'none';
+
+  // Export canvas as base64 PNG
+  const dataUrl = canvas.toDataURL('image/png');
+
+  try {{
+    const res = await fetch('/api/staff/signing-session/{token}/submit', {{
+      method: 'POST',
+      headers: {{'Content-Type': 'application/json'}},
+      body: JSON.stringify({{ signature_data: dataUrl }})
+    }});
+    if(res.ok) {{
+      document.getElementById('form').style.display = 'none';
+      document.getElementById('done').style.display = 'flex';
+    }} else {{
+      const err = await res.json();
+      alert(err.detail || 'Errore');
+      btn.textContent = 'Conferma Firma';
+      btn.style.pointerEvents = '';
+    }}
+  }} catch(e) {{
+    alert('Errore di rete');
+    btn.textContent = 'Conferma Firma';
+    btn.style.pointerEvents = '';
+  }}
+}}
+</script>
+</body>
+</html>''')
+
 
 # Include automated message routes
 from route_modules.automated_message_routes import router as auto_msg_router

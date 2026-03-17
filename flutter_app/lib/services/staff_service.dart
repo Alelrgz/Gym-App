@@ -133,6 +133,43 @@ class StaffService {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> sendCredentials({
+    required String clientId,
+    required String method,
+    required String username,
+    required String temporaryPassword,
+    String? name,
+  }) async {
+    final response = await _api.post(
+      ApiConfig.staffSendCredentials,
+      data: {
+        'client_id': clientId,
+        'method': method,
+        'username': username,
+        'temporary_password': temporaryPassword,
+        'name': name,
+      },
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  // ── Remote Signing Session ───────────────────────────────
+  Future<Map<String, dynamic>> createSigningSession({
+    required String clientName,
+    required String waiverText,
+  }) async {
+    final response = await _api.post(
+      ApiConfig.staffSigningSession,
+      data: {'client_name': clientName, 'waiver_text': waiverText},
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> pollSigningSession(String token) async {
+    final response = await _api.get(ApiConfig.staffSigningSessionStatus(token));
+    return response.data as Map<String, dynamic>;
+  }
+
   // ── Password / Username ───────────────────────────────────
   Future<Map<String, dynamic>> resetMemberPassword(String memberId) async {
     final response = await _api.post(
