@@ -1566,9 +1566,16 @@ class WorkoutBuilderPage extends ConsumerStatefulWidget {
   ConsumerState<WorkoutBuilderPage> createState() => _WorkoutBuilderPageState();
 }
 
-class _WorkoutBuilderPageState extends ConsumerState<WorkoutBuilderPage> {
+class _WorkoutBuilderPageState extends ConsumerState<WorkoutBuilderPage>
+    with SingleTickerProviderStateMixin {
   int _step = 0; // 0=details, 1=select exercises, 2=configure
   bool _saving = false;
+
+  // Validation
+  bool _titleError = false;
+  bool _exercisesError = false;
+  late AnimationController _wiggleController;
+  late Animation<double> _wiggleAnimation;
 
   // Step 1: Details
   late TextEditingController _titleCtrl;
@@ -1592,6 +1599,18 @@ class _WorkoutBuilderPageState extends ConsumerState<WorkoutBuilderPage> {
   void initState() {
     super.initState();
     final w = widget.existingWorkout;
+    _wiggleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _wiggleAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0, end: -10), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -10, end: 10), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 10, end: -8), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: -8, end: 6), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 6, end: -3), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: -3, end: 0), weight: 1),
+    ]).animate(CurvedAnimation(parent: _wiggleController, curve: Curves.easeOut));
     _titleCtrl = TextEditingController(text: w?['title'] ?? '');
     _durationCtrl = TextEditingController(text: w?['duration']?.toString().replaceAll(' min', '') ?? '45');
     if (w != null) {
@@ -1615,6 +1634,7 @@ class _WorkoutBuilderPageState extends ConsumerState<WorkoutBuilderPage> {
 
   @override
   void dispose() {
+    _wiggleController.dispose();
     _titleCtrl.dispose();
     _durationCtrl.dispose();
     super.dispose();
@@ -1629,19 +1649,26 @@ class _WorkoutBuilderPageState extends ConsumerState<WorkoutBuilderPage> {
     }
   }
 
+  void _triggerWiggle() {
+    _wiggleController.reset();
+    _wiggleController.forward();
+  }
+
   void _nextStep() {
     if (_step == 0) {
       if (_titleCtrl.text.trim().isEmpty) {
-        _showSnack('Inserisci un titolo per l\'allenamento');
+        setState(() => _titleError = true);
+        _triggerWiggle();
         return;
       }
-      setState(() => _step = 1);
+      setState(() { _titleError = false; _step = 1; });
     } else if (_step == 1) {
       if (_selected.isEmpty) {
-        _showSnack('Seleziona almeno un esercizio');
+        setState(() => _exercisesError = true);
+        _triggerWiggle();
         return;
       }
-      setState(() => _step = 2);
+      setState(() { _exercisesError = false; _step = 2; });
     } else {
       _save();
     }
@@ -1669,6 +1696,7 @@ class _WorkoutBuilderPageState extends ConsumerState<WorkoutBuilderPage> {
           type: ex['type'] ?? '',
           videoId: ex['video_id']?.toString(),
         ));
+        if (_exercisesError) _exercisesError = false;
       }
     });
   }
@@ -1799,21 +1827,28 @@ class _WorkoutBuilderPageState extends ConsumerState<WorkoutBuilderPage> {
                   if (_step > 0) const SizedBox(width: 10),
                   Expanded(
                     flex: 2,
-                    child: GestureDetector(
-                      onTap: _saving ? null : _nextStep,
-                      child: Container(
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(12),
+                    child: AnimatedBuilder(
+                      animation: _wiggleAnimation,
+                      builder: (context, child) => Transform.translate(
+                        offset: Offset(_wiggleAnimation.value, 0),
+                        child: child,
+                      ),
+                      child: GestureDetector(
+                        onTap: _saving ? null : _nextStep,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: _saving
+                              ? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
+                              : Text(
+                                  _step < 2 ? 'Avanti' : (_isEditing ? 'Aggiorna Allenamento' : 'Crea Allenamento'),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
+                                ),
                         ),
-                        child: _saving
-                            ? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
-                            : Text(
-                                _step < 2 ? 'Avanti' : (_isEditing ? 'Aggiorna Allenamento' : 'Crea Allenamento'),
-                                textAlign: TextAlign.center,
-                                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
-                              ),
                       ),
                     ),
                   ),
@@ -1861,9 +1896,11 @@ class _WorkoutBuilderPageState extends ConsumerState<WorkoutBuilderPage> {
         const SizedBox(height: 24),
 
         // Title
-        _inputLabel('Titolo Allenamento'),
+        _inputLabel('Titolo Allenamento', error: _titleError),
         const SizedBox(height: 6),
-        _buildInput(_titleCtrl, 'es. Push Day, Full Body...'),
+        _buildInput(_titleCtrl, 'es. Push Day, Full Body...', error: _titleError, onChanged: (_) {
+          if (_titleError) setState(() => _titleError = false);
+        }),
         const SizedBox(height: 18),
 
         // Duration
@@ -1897,19 +1934,31 @@ class _WorkoutBuilderPageState extends ConsumerState<WorkoutBuilderPage> {
     );
   }
 
-  Widget _inputLabel(String text) => Text(text, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[400]));
+  Widget _inputLabel(String text, {bool error = false}) => Text(
+    text,
+    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: error ? AppColors.danger : Colors.grey[400]),
+  );
 
-  Widget _buildInput(TextEditingController ctrl, String hint, {TextInputType keyboard = TextInputType.text}) {
+  Widget _buildInput(TextEditingController ctrl, String hint, {TextInputType keyboard = TextInputType.text, bool error = false, ValueChanged<String>? onChanged}) {
     return TextField(
       controller: ctrl,
       keyboardType: keyboard,
+      onChanged: onChanged,
       style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
       decoration: InputDecoration(
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
         filled: true,
-        fillColor: const Color(0xFF252525),
+        fillColor: error ? AppColors.danger.withValues(alpha: 0.08) : const Color(0xFF252525),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: error ? const BorderSide(color: AppColors.danger, width: 1.5) : BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: error ? AppColors.danger : AppColors.primary, width: 1.5),
+        ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       ),
     );
@@ -1927,8 +1976,13 @@ class _WorkoutBuilderPageState extends ConsumerState<WorkoutBuilderPage> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Seleziona Esercizi', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+              Text('Seleziona Esercizi', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: _exercisesError ? AppColors.danger : AppColors.textPrimary)),
               const SizedBox(height: 4),
+              if (_exercisesError)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text('Seleziona almeno un esercizio', style: TextStyle(fontSize: 12, color: AppColors.danger, fontWeight: FontWeight.w500)),
+                ),
               if (_selected.isNotEmpty)
                 Container(
                   margin: const EdgeInsets.only(top: 4),

@@ -22,17 +22,8 @@ class ProfileScreen extends ConsumerWidget {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+          padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
           children: [
-            // ── Top bar: settings gear ──
-            Align(
-              alignment: Alignment.centerRight,
-              child: IconButton(
-                icon: const Icon(Icons.settings_outlined, color: AppColors.textSecondary, size: 24),
-                onPressed: () => _showSettingsSheet(context, ref),
-              ),
-            ),
-
             // ── Avatar + Name + Bio ──
             Center(
               child: Column(
@@ -101,50 +92,96 @@ class ProfileScreen extends ConsumerWidget {
               loading: () => const SizedBox(height: 80),
               error: (_, _) => const SizedBox.shrink(),
             ),
+            const SizedBox(height: 28),
+
+            // ── Section: Attività ──
+            _sectionHeader('Attività'),
+            const SizedBox(height: 8),
+            _buildGroupedTiles([
+              _TileData(
+                icon: Icons.emoji_events_rounded,
+                iconColor: const Color(0xFFEAB308),
+                label: 'Classifica',
+                subtitle: 'Vedi la tua posizione',
+                onTap: () => context.push('/leaderboard'),
+              ),
+              _TileData(
+                icon: Icons.trending_up_rounded,
+                iconColor: const Color(0xFF60A5FA),
+                label: 'I Miei Progressi',
+                subtitle: 'Peso, forza e foto fisico',
+                onTap: () => showProgressSheet(context, ref),
+              ),
+              _TileData(
+                icon: Icons.calendar_today_rounded,
+                iconColor: const Color(0xFF8B5CF6),
+                label: 'Calendario',
+                subtitle: 'Appuntamenti e allenamenti',
+                onTap: () => showCalendarSheet(context, ref),
+              ),
+            ]),
             const SizedBox(height: 24),
 
-            // ── Quick Actions ──
-            _buildActionTile(
-              icon: Icons.emoji_events_rounded,
-              iconColor: const Color(0xFFEAB308),
-              label: 'Classifica',
-              subtitle: 'Vedi la tua posizione',
-              onTap: () => context.push('/leaderboard'),
-            ),
-            const SizedBox(height: 10),
-            _buildActionTile(
-              icon: Icons.trending_up_rounded,
-              iconColor: const Color(0xFF60A5FA),
-              label: 'I Miei Progressi',
-              subtitle: 'Peso, forza e foto fisico',
-              onTap: () => showProgressSheet(context, ref),
-            ),
-            const SizedBox(height: 10),
-            if (clientData.valueOrNull?.trainerName != null)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 10),
-                child: _buildActionTile(
+            // ── Section: Personale ──
+            _sectionHeader('Personale'),
+            const SizedBox(height: 8),
+            _buildGroupedTiles([
+              if (clientData.valueOrNull?.trainerName != null)
+                _TileData(
                   icon: Icons.person_rounded,
                   iconColor: const Color(0xFF22C55E),
                   label: 'Il Mio Trainer',
                   subtitle: clientData.valueOrNull!.trainerName!,
                   onTap: () => showBookAppointmentSheet(context, ref),
                 ),
+              _TileData(
+                icon: Icons.medical_information_rounded,
+                iconColor: const Color(0xFFEF4444),
+                label: 'Certificato Medico',
+                subtitle: 'Carica o visualizza il certificato',
+                onTap: () => _showCertificateSheet(context, ref),
               ),
-            _buildActionTile(
-              icon: Icons.calendar_today_rounded,
-              iconColor: const Color(0xFF8B5CF6),
-              label: 'Calendario',
-              subtitle: 'Appuntamenti e allenamenti',
-              onTap: () => showCalendarSheet(context, ref),
-            ),
-            const SizedBox(height: 10),
-            _buildActionTile(
-              icon: Icons.medical_information_rounded,
-              iconColor: const Color(0xFFEF4444),
-              label: 'Certificato Medico',
-              subtitle: 'Carica o visualizza il certificato',
-              onTap: () => _showCertificateSheet(context, ref),
+            ]),
+            const SizedBox(height: 24),
+
+            // ── Section: Account ──
+            _sectionHeader('Account'),
+            const SizedBox(height: 8),
+            _buildGroupedTiles([
+              _TileData(
+                icon: Icons.person_outline_rounded,
+                iconColor: Colors.grey[400]!,
+                label: 'Modifica Profilo',
+                subtitle: 'Nome, email, password',
+                onTap: () => _showEditProfile(context, ref),
+              ),
+              _TileData(
+                icon: Icons.lock_outline_rounded,
+                iconColor: Colors.grey[400]!,
+                label: 'Privacy',
+                subtitle: 'Chi può contattarti',
+                onTap: () => _showPrivacySettings(context, ref),
+              ),
+            ]),
+            const SizedBox(height: 24),
+
+            // ── Logout ──
+            GestureDetector(
+              onTap: () async {
+                await ref.read(authProvider.notifier).logout();
+                if (context.mounted) context.go('/login');
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: AppColors.danger.withValues(alpha: 0.2)),
+                ),
+                child: const Center(
+                  child: Text('Esci', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.danger)),
+                ),
+              ),
             ),
           ],
         ),
@@ -196,107 +233,65 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildActionTile({
-    required IconData icon,
-    required Color iconColor,
-    required String label,
-    required String subtitle,
-    required VoidCallback onTap,
-  }) {
+  Widget _sectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[500], letterSpacing: 0.8),
+      ),
+    );
+  }
+
+  Widget _buildGroupedTiles(List<_TileData> tiles) {
+    final filtered = tiles.where((t) => true).toList();
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        children: [
+          for (int i = 0; i < filtered.length; i++) ...[
+            _buildTileRow(filtered[i]),
+            if (i < filtered.length - 1)
+              Divider(height: 0.5, thickness: 0.5, color: Colors.white.withValues(alpha: 0.06), indent: 72),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTileRow(_TileData tile) {
     return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-        ),
+      onTap: tile.onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
             Container(
-              width: 42,
-              height: 42,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(12),
+                color: tile.iconColor.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: iconColor, size: 22),
+              child: Icon(tile.icon, color: tile.iconColor, size: 20),
             ),
             const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                  Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                  Text(tile.label, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500, color: AppColors.textPrimary)),
+                  Text(tile.subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
                 ],
               ),
             ),
-            Icon(Icons.chevron_right_rounded, color: Colors.grey[600], size: 22),
+            Icon(Icons.chevron_right_rounded, color: Colors.grey[600], size: 20),
           ],
-        ),
-      ),
-    );
-  }
-
-  void _showSettingsSheet(BuildContext context, WidgetRef ref) {
-    showModalBottomSheet(
-      context: context,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (_) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 16),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                width: 40, height: 4,
-                decoration: BoxDecoration(color: Colors.grey[700], borderRadius: BorderRadius.circular(2)),
-              ),
-              const SizedBox(height: 16),
-              const Text('Impostazioni', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-              const SizedBox(height: 12),
-              _SettingsItem(
-                icon: Icons.person_outline,
-                label: 'Modifica Profilo',
-                onTap: () {
-                  Navigator.pop(context);
-                  _showEditProfile(context, ref);
-                },
-              ),
-              _SettingsItem(
-                icon: Icons.lock_outline,
-                label: 'Privacy',
-                onTap: () {
-                  Navigator.pop(context);
-                  _showPrivacySettings(context, ref);
-                },
-              ),
-              _SettingsItem(
-                icon: Icons.notifications_none,
-                label: 'Notifiche',
-                onTap: () {
-                  Navigator.pop(context);
-                  showNotificationsSheet(context, ref);
-                },
-              ),
-              const Divider(color: AppColors.border, height: 24, indent: 16, endIndent: 16),
-              _SettingsItem(
-                icon: Icons.logout_rounded,
-                label: 'Esci',
-                color: AppColors.danger,
-                onTap: () async {
-                  Navigator.pop(context);
-                  await ref.read(authProvider.notifier).logout();
-                  if (context.mounted) context.go('/login');
-                },
-              ),
-            ],
-          ),
         ),
       ),
     );
@@ -339,6 +334,18 @@ class ProfileScreen extends ConsumerWidget {
   }
 }
 
+// ─── TILE DATA ──────────────────────────────────────────────────
+
+class _TileData {
+  final IconData icon;
+  final Color iconColor;
+  final String label;
+  final String subtitle;
+  final VoidCallback onTap;
+
+  const _TileData({required this.icon, required this.iconColor, required this.label, required this.subtitle, required this.onTap});
+}
+
 // ─── STAT CARD ──────────────────────────────────────────────────
 
 class _StatCard extends StatelessWidget {
@@ -369,29 +376,6 @@ class _StatCard extends StatelessWidget {
           ],
         ),
       ),
-    );
-  }
-}
-
-// ─── SETTINGS ITEM ──────────────────────────────────────────────
-
-class _SettingsItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-  final Color? color;
-
-  const _SettingsItem({required this.icon, required this.label, required this.onTap, this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    final c = color ?? AppColors.textPrimary;
-    return ListTile(
-      leading: Icon(icon, color: color ?? AppColors.textSecondary, size: 22),
-      title: Text(label, style: TextStyle(color: c, fontWeight: FontWeight.w500)),
-      trailing: Icon(Icons.chevron_right, color: Colors.grey[600], size: 20),
-      onTap: onTap,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20),
     );
   }
 }

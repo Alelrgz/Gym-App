@@ -248,43 +248,23 @@ IconData _notifIcon(String type) {
 // ─── 2. CONVERSATIONS SHEET ────────────────────────────────────
 
 Future<void> showConversationsSheet(BuildContext context, WidgetRef ref) {
-  return showModalBottomSheet(
-    context: context,
-    backgroundColor: AppColors.surface,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (ctx) => DraggableScrollableSheet(
-      initialChildSize: 0.85,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (_, scrollController) => _ConversationsContent(
-        scrollController: scrollController,
-        ref: ref,
-        parentContext: context,
-      ),
+  return Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => _ConversationsPage(ref: ref),
     ),
   );
 }
 
-class _ConversationsContent extends StatefulWidget {
-  final ScrollController scrollController;
+class _ConversationsPage extends StatefulWidget {
   final WidgetRef ref;
-  final BuildContext parentContext;
 
-  const _ConversationsContent({
-    required this.scrollController,
-    required this.ref,
-    required this.parentContext,
-  });
+  const _ConversationsPage({required this.ref});
 
   @override
-  State<_ConversationsContent> createState() => _ConversationsContentState();
+  State<_ConversationsPage> createState() => _ConversationsPageState();
 }
 
-class _ConversationsContentState extends State<_ConversationsContent> {
+class _ConversationsPageState extends State<_ConversationsPage> {
   List<dynamic> _conversations = [];
   bool _loading = true;
 
@@ -312,133 +292,136 @@ class _ConversationsContentState extends State<_ConversationsContent> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sheetHandle(),
-          _sheetTitle('Messaggi'),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-                : _conversations.isEmpty
-                    ? _emptyState('Nessuna conversazione', Icons.chat_bubble_outline_rounded)
-                    : ListView.builder(
-                        controller: widget.scrollController,
-                        itemCount: _conversations.length,
-                        itemBuilder: (_, i) {
-                          final c = _conversations[i] as Map<String, dynamic>;
-                          final unread = (c['unread_count'] as int?) ?? 0;
-                          final name = c['other_user_name']?.toString() ?? 'Utente';
-                          final picUrl = _profilePictureUrl(c['other_user_profile_picture']?.toString());
-                          final lastMsg = c['last_message_preview']?.toString() ?? '';
-                          final lastTime = _timeAgo(c['last_message_at']?.toString());
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Messaggi',
+          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 18),
+        ),
+        centerTitle: true,
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          : _conversations.isEmpty
+              ? _emptyState('Nessuna conversazione', Icons.chat_bubble_outline_rounded)
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _conversations.length,
+                  itemBuilder: (_, i) {
+                    final c = _conversations[i] as Map<String, dynamic>;
+                    final unread = (c['unread_count'] as int?) ?? 0;
+                    final name = c['other_user_name']?.toString() ?? 'Utente';
+                    final picUrl = _profilePictureUrl(c['other_user_profile_picture']?.toString());
+                    final lastMsg = c['last_message_preview']?.toString() ?? '';
+                    final lastTime = _timeAgo(c['last_message_at']?.toString());
 
-                          return GestureDetector(
-                            onTap: () {
-                              Navigator.pop(context);
-                              showChatSheet(widget.parentContext, widget.ref, c);
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 4),
-                              padding: const EdgeInsets.all(12),
+                    return GestureDetector(
+                      onTap: () {
+                        showChatSheet(context, widget.ref, c);
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 4),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: unread > 0
+                              ? Colors.white.withValues(alpha: 0.04)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            // Avatar
+                            Container(
+                              width: 48,
+                              height: 48,
                               decoration: BoxDecoration(
-                                color: unread > 0
-                                    ? Colors.white.withValues(alpha: 0.04)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(12),
+                                shape: BoxShape.circle,
+                                gradient: picUrl.isEmpty
+                                    ? const LinearGradient(
+                                        colors: [AppColors.primary, Color(0xFFE04E1A)],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      )
+                                    : null,
                               ),
-                              child: Row(
+                              clipBehavior: Clip.antiAlias,
+                              child: picUrl.isNotEmpty
+                                  ? Image.network(picUrl, fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => const Icon(Icons.person, color: Colors.white70, size: 22))
+                                  : const Icon(Icons.person, color: Colors.white70, size: 22),
+                            ),
+                            const SizedBox(width: 12),
+                            // Name + last message
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Avatar
-                                  Container(
-                                    width: 48,
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: picUrl.isEmpty
-                                          ? const LinearGradient(
-                                              colors: [AppColors.primary, Color(0xFFE04E1A)],
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                            )
-                                          : null,
-                                    ),
-                                    clipBehavior: Clip.antiAlias,
-                                    child: picUrl.isNotEmpty
-                                        ? Image.network(picUrl, fit: BoxFit.cover,
-                                            errorBuilder: (_, _, _) => const Icon(Icons.person, color: Colors.white70, size: 22))
-                                        : const Icon(Icons.person, color: Colors.white70, size: 22),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  // Name + last message
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          name,
-                                          style: TextStyle(
-                                            color: AppColors.textPrimary,
-                                            fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w500,
-                                            fontSize: 15,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          lastMsg,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            color: unread > 0 ? AppColors.textSecondary : AppColors.textTertiary,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ],
+                                  Text(
+                                    name,
+                                    style: TextStyle(
+                                      color: AppColors.textPrimary,
+                                      fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w500,
+                                      fontSize: 15,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  // Time + badge
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(lastTime,
-                                          style: TextStyle(
-                                            color: unread > 0 ? AppColors.primary : AppColors.textTertiary,
-                                            fontSize: 11,
-                                          )),
-                                      if (unread > 0) ...[
-                                        const SizedBox(height: 6),
-                                        Container(
-                                          width: 22,
-                                          height: 22,
-                                          decoration: const BoxDecoration(
-                                            color: AppColors.primary,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          alignment: Alignment.center,
-                                          child: Text(
-                                            '$unread',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    lastMsg,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: unread > 0 ? AppColors.textSecondary : AppColors.textTertiary,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                          );
-                        },
+                            const SizedBox(width: 8),
+                            // Time + badge
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(lastTime,
+                                    style: TextStyle(
+                                      color: unread > 0 ? AppColors.primary : AppColors.textTertiary,
+                                      fontSize: 11,
+                                    )),
+                                if (unread > 0) ...[
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    width: 22,
+                                    height: 22,
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.primary,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      '$unread',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-          ),
-        ],
-      ),
+                    );
+                  },
+                ),
     );
   }
 }
@@ -446,25 +429,32 @@ class _ConversationsContentState extends State<_ConversationsContent> {
 // ─── 2b. CHAT SHEET (single conversation) ──────────────────────
 
 Future<void> showChatSheet(BuildContext context, WidgetRef ref, Map<String, dynamic> conversation) {
-  return showModalBottomSheet(
-    context: context,
-    backgroundColor: AppColors.surface,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (ctx) => DraggableScrollableSheet(
-      initialChildSize: 0.95,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (_, scrollController) => _ChatContent(
-        scrollController: scrollController,
-        ref: ref,
-        conversation: conversation,
-      ),
+  return Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => _ChatPage(ref: ref, conversation: conversation),
     ),
   );
+}
+
+class _ChatPage extends StatelessWidget {
+  final WidgetRef ref;
+  final Map<String, dynamic> conversation;
+
+  const _ChatPage({required this.ref, required this.conversation});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: _ChatContent(
+          scrollController: ScrollController(),
+          ref: ref,
+          conversation: conversation,
+        ),
+      ),
+    );
+  }
 }
 
 class _ChatContent extends StatefulWidget {
@@ -756,15 +746,10 @@ class _ChatContentState extends State<_ChatContent> {
         Container(
           padding: const EdgeInsets.fromLTRB(12, 12, 16, 10),
           decoration: const BoxDecoration(
-            color: AppColors.elevated,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            color: AppColors.background,
             border: Border(bottom: BorderSide(color: AppColors.border)),
           ),
-          child: Column(
-            children: [
-              _sheetHandle(),
-              const SizedBox(height: 4),
-              Row(
+          child: Row(
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
@@ -816,8 +801,6 @@ class _ChatContentState extends State<_ChatContent> {
                   ),
                 ],
               ),
-            ],
-          ),
         ),
         // ── Messages ──
         Expanded(
@@ -845,7 +828,7 @@ class _ChatContentState extends State<_ChatContent> {
                             margin: const EdgeInsets.only(bottom: 6),
                             constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
                             decoration: BoxDecoration(
-                              color: isMe ? AppColors.primary : Colors.white.withValues(alpha: 0.1),
+                              color: isMe ? Colors.white.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.06),
                               borderRadius: BorderRadius.only(
                                 topLeft: const Radius.circular(18),
                                 topRight: const Radius.circular(18),
@@ -993,8 +976,8 @@ class _ChatContentState extends State<_ChatContent> {
     required bool isRead,
     required dynamic duration,
   }) {
-    final textColor = isMe ? Colors.black : AppColors.textPrimary;
-    final metaColor = isMe ? Colors.black.withValues(alpha: 0.5) : AppColors.textTertiary;
+    final textColor = isMe ? Colors.white : AppColors.textPrimary;
+    final metaColor = isMe ? Colors.white.withValues(alpha: 0.5) : AppColors.textTertiary;
 
     // Image message
     if (mediaType == 'image' && fileUrl.isNotEmpty) {

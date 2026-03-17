@@ -29,7 +29,7 @@ class AppBottomNav extends StatelessWidget {
           child: Container(
             height: 72,
             decoration: BoxDecoration(
-              color: const Color(0xFF1A1E2A),
+              color: const Color(0xFF181818),
               borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
               border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
             ),
@@ -82,17 +82,13 @@ class AppBottomNav extends StatelessWidget {
       barrierDismissible: true,
       barrierLabel: 'Quick Actions',
       barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 180),
+      transitionDuration: const Duration(milliseconds: 280),
       transitionBuilder: (ctx, anim, _, child) {
-        final curved = CurvedAnimation(parent: anim, curve: Curves.easeOut);
+        final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
         return Stack(
           children: [
-            // Blurred background (stops above nav bar)
-            Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              bottom: navBarTotal,
+            // Blurred background (full screen, tappable to dismiss)
+            Positioned.fill(
               child: ClipRect(
                 child: GestureDetector(
                   onTap: () => Navigator.pop(ctx),
@@ -108,14 +104,14 @@ class AppBottomNav extends StatelessWidget {
                 ),
               ),
             ),
-            // Actions sliding up above nav bar
+            // Actions panel — slides up from behind the nav bar
             Positioned(
               left: 16,
               right: 16,
-              bottom: navBarTotal + 12,
+              bottom: navBarTotal + 8,
               child: SlideTransition(
                 position: Tween<Offset>(
-                  begin: const Offset(0, 1),
+                  begin: const Offset(0, 1.5),
                   end: Offset.zero,
                 ).animate(curved),
                 child: FadeTransition(
@@ -125,7 +121,7 @@ class AppBottomNav extends StatelessWidget {
                     child: Container(
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1A1E2A),
+                        color: const Color(0xFF181818),
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
                       ),
@@ -177,6 +173,67 @@ class AppBottomNav extends StatelessWidget {
                     ),
                   ),
                 ),
+              ),
+            ),
+            // Nav bar rendered ON TOP so the panel slides from behind it
+            Positioned(
+              left: 0,
+              right: 0,
+              bottom: 0,
+              child: Material(
+                color: Colors.transparent,
+                child: SafeArea(
+                top: false,
+                child: Container(
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF181818),
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: [
+                      _NavItem(
+                        icon: Icons.home_outlined,
+                        activeIcon: Icons.home_rounded,
+                        label: 'Home',
+                        isActive: currentIndex == 0,
+                        onTap: () { Navigator.pop(ctx); onTap(0); },
+                      ),
+                      _NavItem(
+                        icon: Icons.bar_chart_outlined,
+                        activeIcon: Icons.bar_chart_rounded,
+                        label: 'Stats',
+                        isActive: currentIndex == 1,
+                        onTap: () { Navigator.pop(ctx); onTap(1); },
+                      ),
+                      // FAB closes the menu (animated rotation)
+                      AnimatedBuilder(
+                        animation: curved,
+                        builder: (_, __) => _FabButton(
+                          onTap: () => Navigator.pop(ctx),
+                          rotation: curved.value,
+                        ),
+                      ),
+                      _NavItem(
+                        icon: Icons.forum_outlined,
+                        activeIcon: Icons.forum_rounded,
+                        label: 'Community',
+                        isActive: currentIndex == 2,
+                        onTap: () { Navigator.pop(ctx); onTap(2); },
+                      ),
+                      _NavItem(
+                        icon: Icons.person_outline_rounded,
+                        activeIcon: Icons.person_rounded,
+                        label: 'Profilo',
+                        isActive: currentIndex == 3,
+                        onTap: () { Navigator.pop(ctx); onTap(3); },
+                      ),
+                    ],
+                  ),
+                ),
+              ),
               ),
             ),
           ],
@@ -235,25 +292,33 @@ class _NavItem extends StatelessWidget {
 
 class _FabButton extends StatelessWidget {
   final VoidCallback onTap;
+  final double rotation;
 
-  const _FabButton({required this.onTap});
+  const _FabButton({required this.onTap, this.rotation = 0});
 
   @override
   Widget build(BuildContext context) {
+    final isOpen = rotation > 0;
     return GestureDetector(
       onTap: onTap,
-      child: Container(
-        width: 52,
-        height: 52,
-        decoration: BoxDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [AppColors.primary, AppColors.primaryHover],
+      child: Transform.rotate(
+        angle: rotation * 0.785398, // 45 degrees in radians
+        child: Container(
+          width: isOpen ? 44 : 52,
+          height: isOpen ? 44 : 52,
+          decoration: BoxDecoration(
+            gradient: isOpen
+                ? null
+                : const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [AppColors.primary, AppColors.primaryHover],
+                  ),
+            color: isOpen ? Colors.white.withValues(alpha: 0.12) : null,
+            borderRadius: BorderRadius.circular(isOpen ? 14 : 16),
           ),
-          borderRadius: BorderRadius.circular(16),
+          child: Icon(Icons.add_rounded, color: Colors.white, size: isOpen ? 26 : 30),
         ),
-        child: const Icon(Icons.add_rounded, color: Colors.white, size: 30),
       ),
     );
   }

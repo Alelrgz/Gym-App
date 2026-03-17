@@ -102,15 +102,17 @@ class DashboardScreen extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    // 1. Workout Card
-                    _WorkoutCard(profile: profile),
-                    const SizedBox(height: 16),
-
-                    // 2. Streak + Gems (tap to open calendar)
+                    // 1. Streak + Gems (tap to open streak page)
                     GestureDetector(
-                      onTap: () => showCalendarSheet(context, ref),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => _StreakPage(streak: profile.streak, gems: profile.gems)),
+                      ),
                       child: _StreakGemsCard(streak: profile.streak, gems: profile.gems),
                     ),
+                    const SizedBox(height: 16),
+
+                    // 2. Workout Card
+                    _WorkoutCard(profile: profile),
                     const SizedBox(height: 16),
 
                     // 3. Photo + Meals Grid
@@ -407,26 +409,21 @@ class _StreakGemsCardState extends State<_StreakGemsCard>
     super.dispose();
   }
 
-  String _streakDisplay() {
-    if (widget.streak >= 7) {
-      return '${widget.streak ~/ 7}';
-    }
-    return '${widget.streak}';
-  }
+  int get _weeks => widget.streak ~/ 7;
+
+  String _streakDisplay() => '$_weeks';
 
   String _streakLabel() {
-    if (widget.streak >= 7) {
-      return widget.streak ~/ 7 == 1 ? 'SETTIMANA DI\nSERIE' : 'SETTIMANE DI\nSERIE';
-    }
-    return widget.streak == 1 ? 'GIORNO DI\nSERIE' : 'GIORNI DI\nSERIE';
+    return _weeks == 1 ? 'SETTIMANA DI\nSERIE' : 'SETTIMANE DI\nSERIE';
   }
 
   String _nextGoal() {
-    const milestones = [3, 7, 14, 21, 30, 60, 90, 180, 365];
-    final next = milestones.cast<int?>().firstWhere((m) => m! > widget.streak, orElse: () => null);
-    final target = next ?? (widget.streak + 30);
-    final remaining = target - widget.streak;
-    return '$remaining GIORNI';
+    const milestones = [2, 4, 8, 12, 16, 24, 36, 52];
+    final weeks = _weeks;
+    final next = milestones.cast<int?>().firstWhere((m) => m! > weeks, orElse: () => null);
+    final target = next ?? (weeks + 4);
+    final remaining = target - weeks;
+    return '$remaining SETTIMANE';
   }
 
   static const _lucideFlame = '''
@@ -555,6 +552,274 @@ class _StreakGemsCardState extends State<_StreakGemsCard>
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ─── STREAK PAGE (Duolingo-style) ──────────────────────────────
+
+class _StreakPage extends StatefulWidget {
+  final int streak;
+  final int gems;
+
+  const _StreakPage({required this.streak, required this.gems});
+
+  @override
+  State<_StreakPage> createState() => _StreakPageState();
+}
+
+class _StreakPageState extends State<_StreakPage> with SingleTickerProviderStateMixin {
+  late final AnimationController _flameController;
+
+  @override
+  void initState() {
+    super.initState();
+    _flameController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _flameController.dispose();
+    super.dispose();
+  }
+
+  static const _lucideFlame = '''
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4"/>
+</svg>
+''';
+
+  int get _weeks => widget.streak ~/ 7;
+
+  int get _nextMilestone {
+    const milestones = [2, 4, 8, 12, 16, 24, 36, 52];
+    return milestones.cast<int?>().firstWhere((m) => m! > _weeks, orElse: () => null) ?? (_weeks + 4);
+  }
+
+  /// Simulates which days this week had workouts.
+  /// In a real app this would come from workout log data.
+  List<bool> get _weekActivity {
+    final today = DateTime.now().weekday; // 1=Mon, 7=Sun
+    final daysIntoStreak = widget.streak % 7;
+    return List.generate(7, (i) {
+      final dayIndex = i + 1;
+      if (dayIndex > today) return false;
+      // Show recent activity days within current week
+      return (today - dayIndex) < daysIntoStreak;
+    });
+  }
+
+  int get _workoutDaysThisWeek => _weekActivity.where((a) => a).length;
+
+  static const _dayLabels = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = _weeks / _nextMilestone;
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('La Tua Serie', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 18)),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+        child: Column(
+          children: [
+            // ── Big flame + streak number ──
+            const SizedBox(height: 20),
+            AnimatedBuilder(
+              animation: _flameController,
+              builder: (context, child) {
+                final t = _flameController.value;
+                final scaleY = 1.0 + 0.06 * sin(t * 2 * 3.14159 * 2);
+                final scaleX = 1.0 - 0.02 * sin(t * 2 * 3.14159 * 3);
+                return Transform(
+                  alignment: Alignment.bottomCenter,
+                  transform: Matrix4.identity()..scale(scaleX, scaleY),
+                  child: child,
+                );
+              },
+              child: SvgPicture.string(
+                _lucideFlame.replaceAll('currentColor', '#F97316'),
+                width: 80,
+                height: 80,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                colors: [Color(0xFFFB923C), Color(0xFFF87171), Color(0xFFFB923C)],
+              ).createShader(bounds),
+              child: Text(
+                '$_weeks',
+                style: const TextStyle(
+                  fontSize: 72,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  height: 1.0,
+                ),
+              ),
+            ),
+            Text(
+              _weeks == 1 ? 'settimana di serie' : 'settimane di serie',
+              style: TextStyle(fontSize: 16, color: Colors.grey[400], fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 36),
+
+            // ── Weekly activity dots ──
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Questa settimana', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                      Text(
+                        '$_workoutDaysThisWeek/2 allenamenti',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _workoutDaysThisWeek >= 2 ? AppColors.primary : Colors.grey[500],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: List.generate(7, (i) {
+                      final active = _weekActivity[i];
+                      final isToday = i + 1 == DateTime.now().weekday;
+                      return Column(
+                        children: [
+                          Text(
+                            _dayLabels[i],
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isToday ? AppColors.primary : Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: active
+                                  ? AppColors.primary.withValues(alpha: 0.15)
+                                  : Colors.white.withValues(alpha: 0.04),
+                              border: isToday
+                                  ? Border.all(color: AppColors.primary, width: 2)
+                                  : Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                            ),
+                            child: active
+                                ? SvgPicture.string(
+                                    _lucideFlame.replaceAll('currentColor', '#F97316'),
+                                    width: 18,
+                                    height: 18,
+                                    fit: BoxFit.scaleDown,
+                                  )
+                                : null,
+                          ),
+                        ],
+                      );
+                    }),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Next milestone progress ──
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Prossimo obiettivo', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                      Text('$_nextMilestone settimane', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFFFB923C))),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: progress.clamp(0.0, 1.0),
+                      minHeight: 10,
+                      backgroundColor: Colors.white.withValues(alpha: 0.06),
+                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFB923C)),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '${_nextMilestone - _weeks} settimane rimanenti',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Gems ──
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEAB308).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Center(child: Text('🔶', style: TextStyle(fontSize: 22))),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${widget.gems}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                        Text('Gemme totali', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

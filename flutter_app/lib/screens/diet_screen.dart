@@ -174,12 +174,6 @@ class _DietScreenState extends ConsumerState<DietScreen> {
 
                             // C. Calendar Meal Plan
                             _CalendarMealPlanCard(selectedDay: _selectedDay, onDaySelected: (d) => setState(() => _selectedDay = d)),
-                            const SizedBox(height: 16),
-
-                            const SizedBox(height: 24),
-
-                            // E. Footer
-                            _buildFooter(),
                           ],
                         ),
                     ]),
@@ -201,7 +195,10 @@ class _DietScreenState extends ConsumerState<DietScreen> {
         onPageChanged: (i) => setState(() => _heroPage = i),
         children: [
           _DietHeroCard(score: score, calsCurrent: calsCurrent, calsTarget: calsTarget, diet: diet, onGoToDiet: () => _openDietPlanPage(context)),
-          _WeightHeroCard(),
+          GestureDetector(
+            onTap: () => showProgressSheet(context, ref),
+            child: _WeightHeroCard(),
+          ),
           _ConsistencyHeroCard(diet: diet),
         ],
       ),
@@ -219,22 +216,6 @@ class _DietScreenState extends ConsumerState<DietScreen> {
           color: i == _heroPage ? Colors.white.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.2),
         ),
       )),
-    );
-  }
-
-  Widget _buildFooter() {
-    return Padding(
-      padding: const EdgeInsets.only(top: 8, bottom: 16),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Text('Termini', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-          Text('  \u00b7  ', style: TextStyle(color: Colors.grey[700])),
-          Text('Privacy', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-          Text('  \u00b7  ', style: TextStyle(color: Colors.grey[700])),
-          Text('Cookie', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-        ],
-      ),
     );
   }
 
@@ -473,7 +454,8 @@ class _DietHeroCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Stack(
         children: [
@@ -498,6 +480,7 @@ class _DietHeroCard extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.all(14),
             child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Row(
                   crossAxisAlignment: CrossAxisAlignment.center,
@@ -568,20 +551,17 @@ class _DietHeroCard extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
-                // VAI A DIETA button
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: onGoToDiet,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primary,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(vertical: 19),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      elevation: 0,
-                    ),
-                    child: const Text('Vedi Piano Completo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+                const SizedBox(height: 10),
+                // Subtle text link
+                GestureDetector(
+                  onTap: onGoToDiet,
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('Vedi Piano Completo', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                      const SizedBox(width: 4),
+                      Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.primary),
+                    ],
                   ),
                 ),
               ],
@@ -649,7 +629,8 @@ class _WeightHeroCard extends ConsumerWidget {
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -773,7 +754,8 @@ class _ConsistencyHeroCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -966,11 +948,11 @@ class _QuickActions extends StatelessWidget {
   Widget build(BuildContext context) {
     return Row(
       children: [
-        Expanded(child: _ActionPill(icon: Icons.edit_rounded, label: 'AGGIUNGI PASTO', onTap: onAddMeal)),
+        Expanded(child: _ActionPill(icon: Icons.edit_rounded, label: 'Aggiungi', onTap: onAddMeal)),
         const SizedBox(width: 8),
-        Expanded(child: _ActionPill(icon: Icons.camera_alt_rounded, label: 'SCANSIONA PASTO', onTap: onScanMeal)),
+        Expanded(child: _ActionPill(icon: Icons.camera_alt_rounded, label: 'Scansiona', onTap: onScanMeal)),
         const SizedBox(width: 8),
-        Expanded(child: _ActionPill(icon: Icons.search_rounded, label: 'CERCA', onTap: onSearch)),
+        Expanded(child: _ActionPill(icon: Icons.search_rounded, label: 'Cerca', onTap: onSearch)),
       ],
     );
   }
@@ -987,19 +969,17 @@ class _ActionPill extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(999),  // rounded-full
-          border: Border.all(color: AppColors.primary, width: 2),  // border-2 border-orange-500
+          color: Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(14),
         ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, size: 14, color: const Color(0xFFFB923C)),
-            const SizedBox(width: 4),
-            Flexible(
-              child: Text(label, style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Color(0xFFFB923C), letterSpacing: 0.3), overflow: TextOverflow.ellipsis, maxLines: 1),
-            ),
+            Icon(icon, size: 20, color: AppColors.textPrimary),
+            const SizedBox(height: 4),
+            Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: Colors.grey[400]), overflow: TextOverflow.ellipsis, maxLines: 1),
           ],
         ),
       ),
@@ -2001,7 +1981,8 @@ class _DietPlanPageState extends ConsumerState<DietPlanPage> {
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(24),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -2477,7 +2458,7 @@ class _CreateDietCTA extends StatelessWidget {
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
       ),
       child: Column(
