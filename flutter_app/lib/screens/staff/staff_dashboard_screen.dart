@@ -1,6 +1,11 @@
+import 'dart:convert';
+import 'dart:ui' as ui;
+import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:qr_flutter/qr_flutter.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../config/theme.dart';
 import '../../providers/staff_provider.dart';
 import '../../services/staff_service.dart';
@@ -976,12 +981,20 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
   int _step = 0;
   bool _submitting = false;
 
-  // Step 1: Client Info
+  // Step 0: Client Info
   final _nameController = TextEditingController();
   final _phoneController = TextEditingController();
   final _emailController = TextEditingController();
   final _usernameController = TextEditingController();
   final _dobController = TextEditingController();
+
+  // Step 1: Document (waiver or medical cert)
+  String _documentType = 'waiver'; // 'waiver' or 'medical_certificate'
+  String? _waiverText;
+  bool _waiverSigned = false;
+  String? _signatureBase64; // base64 PNG of the signature
+  String? _medicalCertBase64;
+  String? _medicalCertFilename;
 
   // Step 2: Plan selection
   List<Map<String, dynamic>> _plans = [];
@@ -994,6 +1007,7 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
   void initState() {
     super.initState();
     _loadPlans();
+    _loadWaiverTemplate();
   }
 
   Future<void> _loadPlans() async {
@@ -1001,6 +1015,16 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
       final service = widget.ref.read(staffServiceProvider);
       final plans = await service.getSubscriptionPlans();
       if (mounted) setState(() => _plans = plans);
+    } catch (_) {}
+  }
+
+  Future<void> _loadWaiverTemplate() async {
+    try {
+      final service = widget.ref.read(staffServiceProvider);
+      final data = await service.getWaiverTemplate();
+      if (mounted) {
+        setState(() => _waiverText = data['waiver_text']?.toString() ?? data['text']?.toString());
+      }
     } catch (_) {}
   }
 
@@ -1020,7 +1044,7 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
 
     try {
       final service = widget.ref.read(staffServiceProvider);
-      final result = await service.onboardClient({
+      final payload = {
         'name': _nameController.text.trim(),
         'phone': _phoneController.text.trim(),
         'username': _usernameController.text.trim(),
@@ -1028,7 +1052,15 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
         'date_of_birth': _dobController.text.trim(),
         if (_selectedPlanId != null) 'plan_id': _selectedPlanId,
         'payment_method': _paymentMethod,
-      });
+        'document_type': _documentType,
+      };
+      if (_documentType == 'waiver' && _waiverSigned) {
+        payload['waiver_text'] = _waiverText ?? '';
+        payload['document_data'] = _signatureBase64 ?? 'signed_on_device';
+      } else if (_documentType == 'medical_certificate' && _medicalCertBase64 != null) {
+        payload['document_data'] = _medicalCertBase64!;
+      }
+      final result = await service.onboardClient(payload);
       if (mounted) {
         Navigator.pop(context);
         widget.ref.invalidate(staffMembersProvider);
@@ -1048,99 +1080,25 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
     final tempPw = result['temporary_password']?.toString() ?? '';
     final name = result['name']?.toString() ?? '';
     final username = result['username']?.toString() ?? '';
+    final clientId = result['client_id']?.toString() ?? '';
+    final phone = _phoneController.text.trim();
+    final email = _emailController.text.trim();
 
     showDialog(
       context: widget.parentContext,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: const Row(
-          children: [
-            Icon(Icons.check_circle, color: AppColors.success, size: 28),
-            SizedBox(width: 8),
-            Flexible(
-              child: Text('Cliente Registrato!',
-                  style: TextStyle(color: AppColors.textPrimary)),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Credenziali del cliente:',
-                style: TextStyle(color: AppColors.textSecondary)),
-            const SizedBox(height: 12),
-            _credentialRow('Nome', name),
-            _credentialRow('Username', username),
-            const SizedBox(height: 8),
-            const Text('Password Temporanea:',
-                style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
-            const SizedBox(height: 4),
-            Container(
-              padding: const EdgeInsets.all(12),
-              width: double.infinity,
-              decoration: BoxDecoration(
-                color: AppColors.background,
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: SelectableText(
-                      tempPw,
-                      style: const TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: AppColors.success,
-                        fontFamily: 'monospace',
-                      ),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.copy, size: 18, color: AppColors.textSecondary),
-                    onPressed: () {
-                      Clipboard.setData(ClipboardData(text: tempPw));
-                      ScaffoldMessenger.of(ctx).showSnackBar(
-                        const SnackBar(content: Text('Copiato!')),
-                      );
-                    },
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            const Text(
-              'Il cliente deve cambiare questa password al primo accesso.',
-              style: TextStyle(fontSize: 11, color: AppColors.warning),
-            ),
-          ],
-        ),
-        actions: [
-          FilledButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('OK'),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (ctx) => _SuccessCredentialsDialog(
+        tempPw: tempPw,
+        name: name,
+        username: username,
+        clientId: clientId,
+        phone: phone,
+        email: email,
+        ref: widget.ref,
       ),
     );
   }
 
-  Widget _credentialRow(String label, String value) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          Text('$label: ',
-              style: const TextStyle(color: AppColors.textSecondary, fontSize: 13)),
-          Text(value,
-              style: const TextStyle(
-                  color: AppColors.textPrimary,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13)),
-        ],
-      ),
-    );
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -1185,7 +1143,7 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
                 const SizedBox(height: 12),
                 // Progress
                 Row(
-                  children: List.generate(3, (i) {
+                  children: List.generate(4, (i) {
                     return Expanded(
                       child: Container(
                         height: 3,
@@ -1202,7 +1160,7 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  ['Informazioni', 'Piano', 'Riepilogo'][_step],
+                  ['Informazioni', 'Documenti', 'Piano', 'Riepilogo'][_step],
                   style: const TextStyle(
                       fontSize: 12, color: AppColors.textSecondary),
                 ),
@@ -1218,8 +1176,9 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
               padding: const EdgeInsets.symmetric(horizontal: 24),
               children: [
                 if (_step == 0) _buildStep1(),
-                if (_step == 1) _buildStep2(),
-                if (_step == 2) _buildStep3(),
+                if (_step == 1) _buildStepDocument(),
+                if (_step == 2) _buildStep2(),
+                if (_step == 3) _buildStep3(),
               ],
             ),
           ),
@@ -1241,7 +1200,7 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
                   child: FilledButton(
                     onPressed: _submitting
                         ? null
-                        : _step < 2
+                        : _step < 3
                             ? () {
                                 if (_step == 0) {
                                   if (_nameController.text.trim().isEmpty ||
@@ -1256,6 +1215,27 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
                                     return;
                                   }
                                 }
+                                if (_step == 1) {
+                                  // Document step - must sign waiver or upload cert
+                                  if (_documentType == 'waiver' && !_waiverSigned) {
+                                    ScaffoldMessenger.of(widget.parentContext)
+                                        .showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'Il cliente deve firmare la liberatoria')),
+                                    );
+                                    return;
+                                  }
+                                  if (_documentType == 'medical_certificate' && _medicalCertBase64 == null) {
+                                    ScaffoldMessenger.of(widget.parentContext)
+                                        .showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              'Carica il certificato medico')),
+                                    );
+                                    return;
+                                  }
+                                }
                                 setState(() => _step++);
                               }
                             : _submit,
@@ -1266,7 +1246,7 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
                             child: CircularProgressIndicator(
                                 strokeWidth: 2, color: Colors.white),
                           )
-                        : Text(_step < 2 ? 'Avanti' : 'Completa Registrazione'),
+                        : Text(_step < 3 ? 'Avanti' : 'Completa Registrazione'),
                   ),
                 ),
               ],
@@ -1345,6 +1325,351 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
         ),
       ],
     );
+  }
+
+  // ── Step 1: Document (Waiver or Medical Certificate) ────
+  Widget _buildStepDocument() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 8),
+        const Text(
+          'Documento Obbligatorio',
+          style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: AppColors.textPrimary),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Il cliente deve firmare la liberatoria oppure fornire un certificato medico.',
+          style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+        ),
+        const SizedBox(height: 16),
+
+        // Toggle: Waiver vs Medical Certificate
+        Row(
+          children: [
+            _docTypeOption('waiver', Icons.edit_document, 'Liberatoria'),
+            const SizedBox(width: 8),
+            _docTypeOption('medical_certificate', Icons.medical_services_rounded, 'Certificato Medico'),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        if (_documentType == 'waiver') ...[
+          // Waiver text preview
+          GlassCard(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Testo della Liberatoria',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary)),
+                const SizedBox(height: 8),
+                Container(
+                  height: 120,
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.background,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: SingleChildScrollView(
+                    child: Text(
+                      _waiverText ?? 'Caricamento...',
+                      style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textSecondary,
+                          height: 1.5),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Signature section
+          if (_waiverSigned && _signatureBase64 != null) ...[
+            // Signed — show signature preview
+            GlassCard(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.check_circle,
+                          size: 18, color: AppColors.success),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Firmata da ${_nameController.text.trim().isNotEmpty ? _nameController.text.trim() : "cliente"}',
+                          style: const TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.success),
+                        ),
+                      ),
+                      GestureDetector(
+                        onTap: () => setState(() {
+                          _waiverSigned = false;
+                          _signatureBase64 = null;
+                        }),
+                        child: const Text('Rifirma',
+                            style: TextStyle(
+                                fontSize: 12, color: AppColors.primary)),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    height: 80,
+                    width: double.infinity,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Image.memory(
+                      base64Decode(_signatureBase64!.split(',').last),
+                      fit: BoxFit.contain,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            // Not signed — show sign button
+            GlassCard(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.draw_rounded,
+                          size: 18, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      const Text('Firma del Cliente',
+                          style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary)),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  const Text(
+                    'Il cliente deve firmare la liberatoria. Passa il dispositivo al cliente per firmare.',
+                    style: TextStyle(
+                        fontSize: 11, color: AppColors.textTertiary),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: FilledButton.icon(
+                      onPressed: () => _openSigningScreen(),
+                      icon: const Icon(Icons.edit_rounded, size: 18),
+                      label: const Text('Firma Ora'),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ] else ...[
+          // Medical Certificate Upload
+          GlassCard(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Carica Certificato Medico',
+                    style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: AppColors.textSecondary)),
+                const SizedBox(height: 4),
+                const Text(
+                  'Accetta JPG, PNG o PDF',
+                  style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                ),
+                const SizedBox(height: 12),
+                if (_medicalCertFilename != null) ...[
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: AppColors.success.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                          color: AppColors.success.withValues(alpha: 0.3)),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.description,
+                            size: 20, color: AppColors.success),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(_medicalCertFilename!,
+                              style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.success,
+                                  fontWeight: FontWeight.w500),
+                              overflow: TextOverflow.ellipsis),
+                        ),
+                        GestureDetector(
+                          onTap: () => setState(() {
+                            _medicalCertBase64 = null;
+                            _medicalCertFilename = null;
+                          }),
+                          child: const Icon(Icons.close,
+                              size: 18, color: AppColors.textSecondary),
+                        ),
+                      ],
+                    ),
+                  ),
+                ] else
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _pickMedicalCert,
+                      icon: const Icon(Icons.upload_file, size: 20),
+                      label: const Text('Scegli File'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _docTypeOption(String type, IconData icon, String label) {
+    final isSelected = _documentType == type;
+    return Expanded(
+      child: GlassCard(
+        onTap: () => setState(() => _documentType = type),
+        variant: isSelected ? GlassVariant.accent : GlassVariant.base,
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: Column(
+          children: [
+            Icon(icon,
+                size: 28,
+                color:
+                    isSelected ? AppColors.primary : AppColors.textSecondary),
+            const SizedBox(height: 6),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isSelected
+                        ? AppColors.primary
+                        : AppColors.textSecondary)),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _pickMedicalCert() async {
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['jpg', 'jpeg', 'png', 'pdf'],
+        withData: true,
+      );
+      if (result != null && result.files.single.bytes != null) {
+        final bytes = result.files.single.bytes!;
+        final filename = result.files.single.name;
+        final base64Str = 'data:application/octet-stream;base64,${base64Encode(bytes)}';
+        setState(() {
+          _medicalCertBase64 = base64Str;
+          _medicalCertFilename = filename;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+          SnackBar(content: Text('Errore selezione file: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _openSigningScreen() async {
+    // On desktop/web with wide screen → use QR handoff to phone
+    // On mobile/tablet → open signing screen directly on this device
+    final isDesktop = MediaQuery.of(context).size.shortestSide > 600 &&
+        MediaQuery.of(context).size.width > 900;
+
+    if (isDesktop) {
+      await _openRemoteSigningSession();
+    } else {
+      final signatureData = await Navigator.push<String>(
+        context,
+        MaterialPageRoute(
+          builder: (_) => _WaiverSigningScreen(
+            clientName: _nameController.text.trim(),
+            waiverText: _waiverText ?? '',
+          ),
+        ),
+      );
+      if (signatureData != null && mounted) {
+        setState(() {
+          _signatureBase64 = signatureData;
+          _waiverSigned = true;
+        });
+      }
+    }
+  }
+
+  Future<void> _openRemoteSigningSession() async {
+    final service = widget.ref.read(staffServiceProvider);
+    try {
+      final result = await service.createSigningSession(
+        clientName: _nameController.text.trim(),
+        waiverText: _waiverText ?? '',
+      );
+      final token = result['token'] as String;
+      final url = result['url'] as String;
+
+      if (!mounted) return;
+
+      // Show QR code dialog and poll for signature
+      final signatureData = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => _RemoteSigningDialog(
+          url: url,
+          token: token,
+          clientName: _nameController.text.trim(),
+          service: service,
+        ),
+      );
+
+      if (signatureData != null && mounted) {
+        setState(() {
+          _signatureBase64 = signatureData;
+          _waiverSigned = true;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+          SnackBar(content: Text('Errore: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildStep2() {
@@ -1463,6 +1788,12 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
               _summaryRow('Telefono', _phoneController.text),
               if (_emailController.text.isNotEmpty)
                 _summaryRow('Email', _emailController.text),
+              _summaryRow(
+                'Documento',
+                _documentType == 'waiver'
+                    ? (_waiverSigned ? 'Liberatoria firmata' : 'Liberatoria non firmata')
+                    : (_medicalCertFilename ?? 'Certificato non caricato'),
+              ),
               _summaryRow('Piano', planName ?? 'Nessuno'),
             ],
           ),
@@ -1529,6 +1860,502 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
                     color: isSelected
                         ? AppColors.primary
                         : AppColors.textSecondary)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  REMOTE SIGNING DIALOG (QR code handoff for desktop)
+// ═══════════════════════════════════════════════════════════
+class _RemoteSigningDialog extends StatefulWidget {
+  final String url;
+  final String token;
+  final String clientName;
+  final StaffService service;
+
+  const _RemoteSigningDialog({
+    required this.url,
+    required this.token,
+    required this.clientName,
+    required this.service,
+  });
+
+  @override
+  State<_RemoteSigningDialog> createState() => _RemoteSigningDialogState();
+}
+
+class _RemoteSigningDialogState extends State<_RemoteSigningDialog> {
+  bool _polling = true;
+  String? _signatureData;
+
+  @override
+  void initState() {
+    super.initState();
+    _startPolling();
+  }
+
+  @override
+  void dispose() {
+    _polling = false;
+    super.dispose();
+  }
+
+  Future<void> _startPolling() async {
+    while (_polling && mounted) {
+      await Future.delayed(const Duration(seconds: 2));
+      if (!_polling || !mounted) break;
+      try {
+        final result = await widget.service.pollSigningSession(widget.token);
+        if (result['status'] == 'signed' && mounted) {
+          _polling = false;
+          _signatureData = result['signature_data']?.toString();
+          // Auto-close with result after a brief delay
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (mounted) Navigator.pop(context, _signatureData);
+          return;
+        }
+      } catch (_) {
+        // Session may have expired — keep polling
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.phone_android, size: 18, color: AppColors.primary),
+          ),
+          const SizedBox(width: 10),
+          const Flexible(
+            child: Text('Firma dal Telefono',
+                style: TextStyle(fontSize: 18, color: AppColors.textPrimary)),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 340,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Scansiona il QR code con il telefono e passa il dispositivo al cliente per firmare.',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+
+            // QR Code
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: QrImageView(
+                data: widget.url,
+                version: QrVersions.auto,
+                size: 200,
+                backgroundColor: Colors.white,
+                eyeStyle: const QrEyeStyle(
+                  eyeShape: QrEyeShape.square,
+                  color: Color(0xFF1A1A1A),
+                ),
+                dataModuleStyle: const QrDataModuleStyle(
+                  dataModuleShape: QrDataModuleShape.square,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // URL for manual copy
+            GestureDetector(
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: widget.url));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Link copiato!')),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        widget.url,
+                        style: const TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.copy, size: 14, color: AppColors.textTertiary),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // Waiting indicator
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primary.withValues(alpha: 0.6),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Text(
+                  'In attesa della firma di ${widget.clientName.isNotEmpty ? widget.clientName : "cliente"}...',
+                  style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Annulla'),
+        ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SUCCESS DIALOG WITH SEND-CREDENTIALS BUTTONS
+// ═══════════════════════════════════════════════════════════
+class _SuccessCredentialsDialog extends StatefulWidget {
+  final String tempPw;
+  final String name;
+  final String username;
+  final String clientId;
+  final String phone;
+  final String email;
+  final WidgetRef ref;
+
+  const _SuccessCredentialsDialog({
+    required this.tempPw,
+    required this.name,
+    required this.username,
+    required this.clientId,
+    required this.phone,
+    required this.email,
+    required this.ref,
+  });
+
+  @override
+  State<_SuccessCredentialsDialog> createState() =>
+      _SuccessCredentialsDialogState();
+}
+
+class _SuccessCredentialsDialogState
+    extends State<_SuccessCredentialsDialog> {
+  bool _sendingEmail = false;
+  bool _emailSent = false;
+  String? _sendError;
+
+  Future<void> _sendVia(String method) async {
+    final service = widget.ref.read(staffServiceProvider);
+    try {
+      if (method == 'email') {
+        setState(() { _sendingEmail = true; _sendError = null; });
+      }
+      final result = await service.sendCredentials(
+        clientId: widget.clientId,
+        method: method,
+        username: widget.username,
+        temporaryPassword: widget.tempPw,
+        name: widget.name,
+      );
+      if (method == 'email') {
+        if (mounted) setState(() { _sendingEmail = false; _emailSent = true; });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(result['message'] ?? 'Email inviata!')),
+          );
+        }
+      } else {
+        // WhatsApp or SMS
+        final link = result['link']?.toString();
+        if (link != null && link.isNotEmpty) {
+          final isDesktop = MediaQuery.of(context).size.width > 900;
+          if (isDesktop) {
+            // On PC: notification was pushed to staff's phone
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    method == 'whatsapp'
+                        ? 'Notifica inviata al tuo telefono — apri WhatsApp da lì'
+                        : 'Notifica inviata al tuo telefono — apri SMS da lì',
+                  ),
+                  duration: const Duration(seconds: 4),
+                ),
+              );
+            }
+          } else {
+            // On phone: open directly
+            final uri = Uri.parse(link);
+            if (await canLaunchUrl(uri)) {
+              await launchUrl(uri, mode: LaunchMode.externalApplication);
+            } else {
+              await Clipboard.setData(ClipboardData(text: link));
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Link copiato negli appunti')),
+                );
+              }
+            }
+          }
+        }
+      }
+    } catch (e) {
+      if (method == 'email' && mounted) {
+        setState(() { _sendingEmail = false; _sendError = e.toString(); });
+      }
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: const Row(
+        children: [
+          Icon(Icons.check_circle, color: AppColors.success, size: 28),
+          SizedBox(width: 8),
+          Flexible(
+            child: Text('Cliente Registrato!',
+                style: TextStyle(color: AppColors.textPrimary)),
+          ),
+        ],
+      ),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text('Credenziali del cliente:',
+                style: TextStyle(color: AppColors.textSecondary)),
+            const SizedBox(height: 12),
+            _credRow('Nome', widget.name),
+            _credRow('Username', widget.username),
+            const SizedBox(height: 8),
+            const Text('Password Temporanea:',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.all(12),
+              width: double.infinity,
+              decoration: BoxDecoration(
+                color: AppColors.background,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: SelectableText(
+                      widget.tempPw,
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.success,
+                        fontFamily: 'monospace',
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.copy,
+                        size: 18, color: AppColors.textSecondary),
+                    onPressed: () {
+                      Clipboard.setData(
+                          ClipboardData(text: widget.tempPw));
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Copiato!')),
+                      );
+                    },
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Il cliente deve cambiare questa password al primo accesso.',
+              style: TextStyle(fontSize: 11, color: AppColors.warning),
+            ),
+
+            // ── Send credentials section ──────────────────
+            const SizedBox(height: 16),
+            const Text('Invia credenziali al cliente:',
+                style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textPrimary)),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                // WhatsApp
+                Expanded(
+                  child: _sendButton(
+                    icon: Icons.chat,
+                    label: 'WhatsApp',
+                    color: const Color(0xFF25D366),
+                    enabled: widget.phone.isNotEmpty,
+                    onTap: () => _sendVia('whatsapp'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // SMS
+                Expanded(
+                  child: _sendButton(
+                    icon: Icons.sms_rounded,
+                    label: 'SMS',
+                    color: const Color(0xFF60A5FA),
+                    enabled: widget.phone.isNotEmpty,
+                    onTap: () => _sendVia('sms'),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                // Email
+                Expanded(
+                  child: _sendButton(
+                    icon: _emailSent
+                        ? Icons.check_circle
+                        : Icons.email_rounded,
+                    label: _emailSent ? 'Inviata!' : 'Email',
+                    color: _emailSent
+                        ? AppColors.success
+                        : AppColors.primary,
+                    enabled: widget.email.isNotEmpty && !_sendingEmail,
+                    loading: _sendingEmail,
+                    onTap: () => _sendVia('email'),
+                  ),
+                ),
+              ],
+            ),
+            if (widget.phone.isEmpty && widget.email.isEmpty)
+              const Padding(
+                padding: EdgeInsets.only(top: 8),
+                child: Text(
+                  'Nessun contatto disponibile. Aggiungi telefono o email.',
+                  style: TextStyle(fontSize: 11, color: AppColors.danger),
+                ),
+              ),
+            if (_sendError != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 6),
+                child: Text(_sendError!,
+                    style: const TextStyle(
+                        fontSize: 11, color: AppColors.danger)),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        FilledButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('OK'),
+        ),
+      ],
+    );
+  }
+
+  Widget _credRow(String label, String value) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: Row(
+        children: [
+          Text('$label: ',
+              style: const TextStyle(
+                  color: AppColors.textSecondary, fontSize: 13)),
+          Text(value,
+              style: const TextStyle(
+                  color: AppColors.textPrimary,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 13)),
+        ],
+      ),
+    );
+  }
+
+  Widget _sendButton({
+    required IconData icon,
+    required String label,
+    required Color color,
+    required bool enabled,
+    bool loading = false,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: enabled ? onTap : null,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        decoration: BoxDecoration(
+          color: enabled
+              ? color.withValues(alpha: 0.12)
+              : Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: enabled
+                ? color.withValues(alpha: 0.3)
+                : Colors.white.withValues(alpha: 0.06),
+          ),
+        ),
+        child: Column(
+          children: [
+            if (loading)
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: color),
+              )
+            else
+              Icon(icon,
+                  size: 22,
+                  color: enabled
+                      ? color
+                      : AppColors.textTertiary),
+            const SizedBox(height: 4),
+            Text(label,
+                style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: enabled
+                        ? color
+                        : AppColors.textTertiary)),
           ],
         ),
       ),
@@ -2165,4 +2992,565 @@ class _PlanSelectorSheetState extends State<_PlanSelectorSheet> {
       ),
     );
   }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  FULLSCREEN WAIVER SIGNING SCREEN
+//  - Client-facing: large text, clear UI, signature pad
+//  - Works on tablets (landscape) and phones (portrait)
+//  - Returns base64 PNG via Navigator.pop
+// ═══════════════════════════════════════════════════════════
+class _WaiverSigningScreen extends StatefulWidget {
+  final String clientName;
+  final String waiverText;
+
+  const _WaiverSigningScreen({
+    required this.clientName,
+    required this.waiverText,
+  });
+
+  @override
+  State<_WaiverSigningScreen> createState() => _WaiverSigningScreenState();
+}
+
+class _WaiverSigningScreenState extends State<_WaiverSigningScreen> {
+  final List<List<Offset>> _strokes = [];
+  List<Offset> _currentStroke = [];
+  bool _hasRead = false;
+  bool _saving = false;
+  final _scrollCtrl = ScrollController();
+
+  bool get _hasSigned => _strokes.isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    // Enter immersive fullscreen — hide system bars
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
+  }
+
+  @override
+  void dispose() {
+    // Restore system bars
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
+    _scrollCtrl.dispose();
+    super.dispose();
+  }
+
+  void _cancel() {
+    Navigator.pop(context);
+  }
+
+  void _clear() {
+    setState(() {
+      _strokes.clear();
+      _currentStroke = [];
+    });
+  }
+
+  Future<void> _confirm() async {
+    if (!_hasRead) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Per favore, leggi e accetta la liberatoria')),
+      );
+      return;
+    }
+    if (!_hasSigned) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Per favore, firma nell\'area sottostante')),
+      );
+      return;
+    }
+
+    setState(() => _saving = true);
+
+    try {
+      // Render the signature to a PNG image
+      final recorder = ui.PictureRecorder();
+      final canvas = Canvas(recorder);
+
+      // White background
+      canvas.drawRect(
+        const Rect.fromLTWH(0, 0, 600, 200),
+        Paint()..color = Colors.white,
+      );
+
+      // Draw strokes — normalize to fit 600x200
+      final paint = Paint()
+        ..color = Colors.black
+        ..strokeWidth = 2.5
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeJoin = StrokeJoin.round;
+
+      final allPoints = _strokes.expand((s) => s).toList();
+      if (allPoints.isEmpty) {
+        setState(() => _saving = false);
+        return;
+      }
+      double minX = allPoints.first.dx, maxX = allPoints.first.dx;
+      double minY = allPoints.first.dy, maxY = allPoints.first.dy;
+      for (final p in allPoints) {
+        if (p.dx < minX) minX = p.dx;
+        if (p.dx > maxX) maxX = p.dx;
+        if (p.dy < minY) minY = p.dy;
+        if (p.dy > maxY) maxY = p.dy;
+      }
+      final srcW = (maxX - minX).clamp(1.0, double.infinity);
+      final srcH = (maxY - minY).clamp(1.0, double.infinity);
+      final scale = (560 / srcW).clamp(0.0, 180 / srcH);
+      final offsetX = (600 - srcW * scale) / 2 - minX * scale;
+      final offsetY = (200 - srcH * scale) / 2 - minY * scale;
+
+      for (final stroke in _strokes) {
+        if (stroke.length < 2) continue;
+        final path = Path();
+        path.moveTo(
+          stroke.first.dx * scale + offsetX,
+          stroke.first.dy * scale + offsetY,
+        );
+        for (var i = 1; i < stroke.length; i++) {
+          path.lineTo(
+            stroke[i].dx * scale + offsetX,
+            stroke[i].dy * scale + offsetY,
+          );
+        }
+        canvas.drawPath(path, paint);
+      }
+
+      final picture = recorder.endRecording();
+      final img = await picture.toImage(600, 200);
+      final byteData = await img.toByteData(format: ui.ImageByteFormat.png);
+      if (byteData == null) {
+        setState(() => _saving = false);
+        return;
+      }
+      final pngBytes = byteData.buffer.asUint8List();
+      final base64Str = 'data:image/png;base64,${base64Encode(pngBytes)}';
+
+      if (mounted) Navigator.pop(context, base64Str);
+    } catch (e) {
+      setState(() => _saving = false);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore: $e')),
+        );
+      }
+    }
+  }
+
+  // ── Shared UI pieces ────────────────────────────────────
+
+  Widget _buildGreeting() {
+    return Column(
+      children: [
+        Text(
+          widget.clientName.isNotEmpty
+              ? 'Ciao ${widget.clientName}!'
+              : 'Benvenuto!',
+          style: const TextStyle(
+            fontSize: 26,
+            fontWeight: FontWeight.w800,
+            color: Colors.white,
+          ),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'Leggi la liberatoria e firma in basso',
+          style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildWaiverText({bool expanded = true}) {
+    final content = Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+      ),
+      child: Scrollbar(
+        controller: _scrollCtrl,
+        thumbVisibility: true,
+        child: SingleChildScrollView(
+          controller: _scrollCtrl,
+          child: Text(
+            widget.waiverText,
+            style: const TextStyle(
+              fontSize: 14,
+              color: AppColors.textSecondary,
+              height: 1.6,
+            ),
+          ),
+        ),
+      ),
+    );
+    return expanded ? Expanded(child: content) : content;
+  }
+
+  Widget _buildCheckbox() {
+    return GestureDetector(
+      onTap: () => setState(() => _hasRead = !_hasRead),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: BoxDecoration(
+          color: _hasRead
+              ? AppColors.success.withValues(alpha: 0.08)
+              : AppColors.surface,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _hasRead
+                ? AppColors.success.withValues(alpha: 0.3)
+                : Colors.white.withValues(alpha: 0.06),
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              _hasRead ? Icons.check_box : Icons.check_box_outline_blank,
+              color: _hasRead ? AppColors.success : AppColors.textTertiary,
+              size: 22,
+            ),
+            const SizedBox(width: 10),
+            const Expanded(
+              child: Text(
+                'Ho letto e accetto i termini della liberatoria',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: Colors.white,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSignaturePad({bool expanded = true}) {
+    final content = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            const Icon(Icons.draw_rounded, size: 16, color: AppColors.textSecondary),
+            const SizedBox(width: 6),
+            const Text('Firma qui sotto',
+                style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.textSecondary)),
+            const Spacer(),
+            if (_hasSigned)
+              GestureDetector(
+                onTap: _clear,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.danger.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.refresh, size: 14, color: AppColors.danger.withValues(alpha: 0.8)),
+                      const SizedBox(width: 4),
+                      Text('Cancella',
+                          style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.danger.withValues(alpha: 0.8))),
+                    ],
+                  ),
+                ),
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: Container(
+            width: double.infinity,
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: _hasSigned
+                    ? AppColors.success
+                    : Colors.grey.withValues(alpha: 0.3),
+                width: _hasSigned ? 2 : 1,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.2),
+                  blurRadius: 8,
+                  offset: const Offset(0, 2),
+                ),
+              ],
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(11),
+              child: GestureDetector(
+                onPanStart: (details) {
+                  setState(() {
+                    _currentStroke = [details.localPosition];
+                  });
+                },
+                onPanUpdate: (details) {
+                  setState(() {
+                    _currentStroke.add(details.localPosition);
+                  });
+                },
+                onPanEnd: (_) {
+                  setState(() {
+                    _strokes.add(List.from(_currentStroke));
+                    _currentStroke = [];
+                  });
+                },
+                child: CustomPaint(
+                  painter: _SignaturePainter(
+                    strokes: _strokes,
+                    currentStroke: _currentStroke,
+                  ),
+                  size: Size.infinite,
+                ),
+              ),
+            ),
+          ),
+        ),
+        if (!_hasSigned)
+          const Padding(
+            padding: EdgeInsets.only(top: 6),
+            child: Center(
+              child: Text(
+                'Usa il dito o una penna per firmare',
+                style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
+              ),
+            ),
+          ),
+      ],
+    );
+    return expanded ? Expanded(child: content) : SizedBox(height: 200, child: content);
+  }
+
+  Widget _buildConfirmButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: FilledButton.icon(
+        onPressed: _saving ? null : _confirm,
+        style: FilledButton.styleFrom(
+          backgroundColor: _hasSigned && _hasRead
+              ? AppColors.success
+              : AppColors.textTertiary,
+          shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(14)),
+        ),
+        icon: _saving
+            ? const SizedBox(
+                width: 22,
+                height: 22,
+                child: CircularProgressIndicator(
+                    strokeWidth: 2, color: Colors.white),
+              )
+            : const Icon(Icons.check_circle_outline, size: 22),
+        label: Text(
+          _saving ? '' : 'Conferma Firma',
+          style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+        ),
+      ),
+    );
+  }
+
+  // ── Build ─────────────────────────────────────────────
+
+  @override
+  Widget build(BuildContext context) {
+    final size = MediaQuery.of(context).size;
+    final isTablet = size.shortestSide > 600;
+    final isLandscape = size.width > size.height;
+
+    return Scaffold(
+      backgroundColor: const Color(0xFF111111),
+      body: Column(
+        children: [
+          // ── Tiny staff bar (only visible before handing device) ──
+          SafeArea(
+            bottom: false,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+              color: Colors.black.withValues(alpha: 0.5),
+              child: Row(
+                children: [
+                  GestureDetector(
+                    onTap: _cancel,
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(Icons.close, color: AppColors.textTertiary, size: 18),
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      isTablet
+                          ? 'Il cliente può firmare direttamente su questo dispositivo'
+                          : 'Passa il telefono al cliente per firmare',
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Client-facing content ──────────────────────────
+          Expanded(
+            child: isTablet && isLandscape
+                ? _buildTabletLandscape()
+                : _buildPortrait(isTablet),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── TABLET LANDSCAPE: side-by-side ─────────────────────
+  Widget _buildTabletLandscape() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(32, 16, 32, 24),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // LEFT: waiver text + checkbox
+          Expanded(
+            flex: 5,
+            child: Column(
+              children: [
+                _buildGreeting(),
+                const SizedBox(height: 16),
+                _buildWaiverText(),
+                const SizedBox(height: 12),
+                _buildCheckbox(),
+              ],
+            ),
+          ),
+          const SizedBox(width: 24),
+          // RIGHT: signature + confirm
+          Expanded(
+            flex: 4,
+            child: Column(
+              children: [
+                const SizedBox(height: 50), // align with text area
+                _buildSignaturePad(),
+                const SizedBox(height: 16),
+                _buildConfirmButton(),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── PORTRAIT (phone or tablet portrait) ────────────────
+  Widget _buildPortrait(bool isTablet) {
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: isTablet ? 40 : 20,
+        vertical: 12,
+      ),
+      child: Column(
+        children: [
+          _buildGreeting(),
+          const SizedBox(height: 12),
+          _buildWaiverText(),
+          const SizedBox(height: 10),
+          _buildCheckbox(),
+          const SizedBox(height: 10),
+          _buildSignaturePad(),
+          const SizedBox(height: 12),
+          _buildConfirmButton(),
+        ],
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SIGNATURE PAINTER (CustomPainter)
+// ═══════════════════════════════════════════════════════════
+class _SignaturePainter extends CustomPainter {
+  final List<List<Offset>> strokes;
+  final List<Offset> currentStroke;
+
+  _SignaturePainter({required this.strokes, required this.currentStroke});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = const Color(0xFF1A1A1A)
+      ..strokeWidth = 2.5
+      ..style = PaintingStyle.stroke
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+
+    for (final stroke in strokes) {
+      _drawStroke(canvas, stroke, paint);
+    }
+    if (currentStroke.isNotEmpty) {
+      _drawStroke(canvas, currentStroke, paint);
+    }
+
+    // Draw baseline hint when empty
+    if (strokes.isEmpty && currentStroke.isEmpty) {
+      final hintPaint = Paint()
+        ..color = Colors.grey.withValues(alpha: 0.2)
+        ..strokeWidth = 1
+        ..style = PaintingStyle.stroke;
+      final y = size.height * 0.7;
+      canvas.drawLine(
+        Offset(size.width * 0.1, y),
+        Offset(size.width * 0.9, y),
+        hintPaint,
+      );
+      // "X" mark
+      final xPaint = Paint()
+        ..color = Colors.grey.withValues(alpha: 0.3)
+        ..strokeWidth = 1.5
+        ..style = PaintingStyle.stroke;
+      final xLeft = size.width * 0.08;
+      final xTop = y - 12;
+      canvas.drawLine(Offset(xLeft, xTop), Offset(xLeft + 10, xTop + 12), xPaint);
+      canvas.drawLine(Offset(xLeft + 10, xTop), Offset(xLeft, xTop + 12), xPaint);
+    }
+  }
+
+  void _drawStroke(Canvas canvas, List<Offset> points, Paint paint) {
+    if (points.length < 2) return;
+    final path = Path();
+    path.moveTo(points.first.dx, points.first.dy);
+    for (var i = 1; i < points.length; i++) {
+      // Smooth with quadratic bezier
+      if (i < points.length - 1) {
+        final mid = Offset(
+          (points[i].dx + points[i + 1].dx) / 2,
+          (points[i].dy + points[i + 1].dy) / 2,
+        );
+        path.quadraticBezierTo(points[i].dx, points[i].dy, mid.dx, mid.dy);
+      } else {
+        path.lineTo(points[i].dx, points[i].dy);
+      }
+    }
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(covariant _SignaturePainter oldDelegate) => true;
 }

@@ -10,6 +10,7 @@ from models_orm import UserORM, AppointmentORM, CheckInORM, ClientProfileORM, Su
 from auth import get_current_user, get_password_hash
 from datetime import datetime, date, timedelta
 from service_modules.subscription_service import subscription_service
+import json
 import logging
 import os
 
@@ -1472,6 +1473,214 @@ async def onboard_new_client(
         db.rollback()
         logger.error(f"Onboarding error: {e}")
         raise HTTPException(status_code=500, detail=f"Registration failed: {str(e)}")
+
+
+# ═══════════════════════════════════════════════════════════
+#  REMOTE SIGNING SESSIONS (QR handoff for desktop → phone)
+# ═══════════════════════════════════════════════════════════
+import secrets as _secrets
+_signing_sessions: dict = {}  # token -> {client_name, waiver_text, signature_data, created_at, status}
+
+
+@router.post("/signing-session")
+async def create_signing_session(
+    data: dict,
+    request: Request,
+    user: UserORM = Depends(get_current_user)
+):
+    """Create a temporary signing session. Returns a token and URL for the phone."""
+    if user.role not in ("staff", "owner"):
+        raise HTTPException(status_code=403, detail="Only staff/owner can create signing sessions")
+
+    token = _secrets.token_urlsafe(24)
+    _signing_sessions[token] = {
+        "client_name": data.get("client_name", ""),
+        "waiver_text": data.get("waiver_text", ""),
+        "signature_data": None,
+        "status": "pending",  # pending | signed
+        "created_at": datetime.utcnow().isoformat(),
+    }
+
+    base_url = str(request.base_url).rstrip("/")
+    signing_url = f"{base_url}/sign/{token}"
+
+    return {"token": token, "url": signing_url}
+
+
+@router.get("/signing-session/{token}/status")
+async def get_signing_session_status(token: str):
+    """Poll for signing completion. No auth required (token is the secret)."""
+    session = _signing_sessions.get(token)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found or expired")
+
+    if session["status"] == "signed":
+        sig = session["signature_data"]
+        # Clean up after retrieval
+        del _signing_sessions[token]
+        return {"status": "signed", "signature_data": sig}
+
+    return {"status": "pending"}
+
+
+@router.post("/signing-session/{token}/submit")
+async def submit_signing_session(token: str, data: dict):
+    """Submit signature from the phone browser. No auth required (token is the secret)."""
+    session = _signing_sessions.get(token)
+    if not session:
+        raise HTTPException(status_code=404, detail="Session not found or expired")
+    if session["status"] == "signed":
+        raise HTTPException(status_code=400, detail="Already signed")
+
+    sig = data.get("signature_data")
+    if not sig:
+        raise HTTPException(status_code=400, detail="signature_data is required")
+
+    session["signature_data"] = sig
+    session["status"] = "signed"
+    return {"status": "success", "message": "Firma registrata!"}
+
+
+
+@router.post("/send-credentials")
+async def send_client_credentials(
+    data: dict,
+    user: UserORM = Depends(get_current_user)
+):
+    """Send welcome credentials to a newly registered client via email, WhatsApp link, or SMS link."""
+    if user.role not in ("staff", "owner"):
+        raise HTTPException(status_code=403, detail="Only staff/owner can send credentials")
+
+    client_id = data.get("client_id")
+    method = data.get("method")  # "email", "whatsapp", "sms"
+    username = data.get("username", "")
+    temp_password = data.get("temporary_password", "")
+    name = data.get("name", "")
+
+    if not client_id or not method:
+        raise HTTPException(status_code=400, detail="client_id and method are required")
+
+    db = get_db_session()
+    try:
+        client = db.query(UserORM).filter(UserORM.id == client_id).first()
+        if not client:
+            raise HTTPException(status_code=404, detail="Client not found")
+
+        profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
+        phone = client.phone or ""
+        email = client.email or (profile.email if profile else None) or ""
+        client_name = name or (profile.name if profile else None) or client.username
+
+        # Get gym name
+        gym_id = _effective_gym_id(user)
+        gym_owner = db.query(UserORM).filter(UserORM.id == gym_id).first()
+        gym_name = getattr(gym_owner, 'gym_name', None) or "FitOS"
+
+        message = (
+            f"Benvenuto in {gym_name}!\n\n"
+            f"Le tue credenziali per accedere all'app:\n"
+            f"Username: {username}\n"
+            f"Password: {temp_password}\n\n"
+            f"Cambia la password al primo accesso.\n"
+            f"Scarica l'app FitOS per iniziare!"
+        )
+
+        if method == "email":
+            if not email:
+                raise HTTPException(status_code=400, detail="Nessuna email disponibile per questo cliente")
+            try:
+                from service_modules.email_service import get_email_service_for_gym
+                email_svc = get_email_service_for_gym(gym_id, db)
+                if not email_svc or not email_svc.is_configured():
+                    raise HTTPException(status_code=400, detail="Email non configurata. Configura SMTP nelle impostazioni.")
+
+                html = f"""
+                <div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;background:#1a1a1a;color:#fff;padding:24px;border-radius:12px;">
+                    <h2 style="color:#f97316;">Benvenuto in {gym_name}!</h2>
+                    <p>Ciao <strong>{client_name}</strong>,</p>
+                    <p>Il tuo account è stato creato. Ecco le tue credenziali:</p>
+                    <div style="background:#252525;padding:16px;border-radius:8px;margin:16px 0;">
+                        <p style="margin:4px 0;"><strong>Username:</strong> {username}</p>
+                        <p style="margin:4px 0;"><strong>Password:</strong> <code style="color:#22c55e;font-size:18px;">{temp_password}</code></p>
+                    </div>
+                    <p style="color:#facc15;font-size:13px;">⚠️ Cambia la password al primo accesso.</p>
+                    <p>Scarica l'app FitOS per iniziare il tuo percorso fitness!</p>
+                </div>
+                """
+                sent = email_svc.send_email(email, f"Le tue credenziali - {gym_name}", html)
+                if not sent:
+                    raise HTTPException(status_code=500, detail="Invio email fallito")
+                return {"status": "success", "method": "email", "message": f"Credenziali inviate a {email}"}
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.error(f"Failed to send credentials email: {e}")
+                raise HTTPException(status_code=500, detail=f"Invio email fallito: {str(e)}")
+
+        elif method == "whatsapp":
+            if not phone:
+                raise HTTPException(status_code=400, detail="Nessun numero di telefono disponibile")
+            import re
+            import urllib.parse
+            phone_clean = re.sub(r'[\s\-\(\)]', '', phone)
+            if not phone_clean.startswith('+'):
+                if phone_clean.startswith('0'):
+                    phone_clean = '+39' + phone_clean[1:]
+                else:
+                    phone_clean = '+39' + phone_clean
+            wa_message = urllib.parse.quote(message)
+            whatsapp_link = f"https://wa.me/{phone_clean.lstrip('+')}?text={wa_message}"
+
+            # Push notification to staff's phone so they can tap to open
+            notif_title = f"Invia credenziali a {client_name}"
+            notif_body = "Tocca per aprire WhatsApp e inviare le credenziali"
+            notif_data = {"link": whatsapp_link, "method": "whatsapp", "client_name": client_name}
+
+            db.add(NotificationORM(
+                user_id=user.id,
+                type="send_credentials_link",
+                title=notif_title,
+                message=notif_body,
+                data=json.dumps(notif_data),
+                read=False,
+                created_at=datetime.utcnow().isoformat()
+            ))
+            db.commit()
+
+
+            return {"status": "success", "method": "whatsapp", "link": whatsapp_link, "message": "Notifica inviata al tuo telefono"}
+
+        elif method == "sms":
+            if not phone:
+                raise HTTPException(status_code=400, detail="Nessun numero di telefono disponibile")
+            import urllib.parse
+            sms_body = urllib.parse.quote(message)
+            sms_link = f"sms:{phone}?body={sms_body}"
+
+            notif_title = f"Invia credenziali a {client_name}"
+            notif_body = "Tocca per aprire SMS e inviare le credenziali"
+            notif_data = {"link": sms_link, "method": "sms", "client_name": client_name}
+
+            db.add(NotificationORM(
+                user_id=user.id,
+                type="send_credentials_link",
+                title=notif_title,
+                message=notif_body,
+                data=json.dumps(notif_data),
+                read=False,
+                created_at=datetime.utcnow().isoformat()
+            ))
+            db.commit()
+
+            _send_fcm_push(db, user.id, gym_id, notif_title, notif_body, notif_data)
+
+            return {"status": "success", "method": "sms", "link": sms_link, "message": "Notifica inviata al tuo telefono"}
+
+        else:
+            raise HTTPException(status_code=400, detail=f"Metodo non supportato: {method}")
+
+    finally:
+        db.close()
 
 
 @router.post("/onboarding-checkout-session")
