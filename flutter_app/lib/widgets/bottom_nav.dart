@@ -74,108 +74,122 @@ class AppBottomNav extends StatelessWidget {
   }
 
   void _showQuickActions(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
-    final navBarTotal = 72.0 + bottomPadding;
-
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Quick Actions',
       barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 280),
+      transitionDuration: const Duration(milliseconds: 400),
       transitionBuilder: (ctx, anim, _, child) {
-        final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+        final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutBack);
+        final fadeCurved = CurvedAnimation(parent: anim, curve: Curves.easeOut);
+
+        final actions = <_FabActionData>[
+          _FabActionData(Icons.camera_alt_rounded, 'Pasto', 'meal_scan'),
+          _FabActionData(Icons.photo_camera_front_rounded, 'Fisico', 'physique_photo'),
+          _FabActionData(Icons.qr_code_scanner_rounded, 'QR', 'qr'),
+          _FabActionData(Icons.monitor_weight_rounded, 'Peso', 'log_weight'),
+          _FabActionData(Icons.calendar_month_rounded, 'Prenota', 'book_appointment'),
+        ];
+
+        // Evenly spaced horizontally, gentle arc upward
+        const double itemSize = 56;
+        final double margin = 40.0;
+        final double usableWidth = screenWidth - margin * 2 - itemSize;
+        final double spacing = usableWidth / (actions.length - 1);
+        // Base height above nav bar top
+        const double baseY = 90.0;
+        const double arcHeight = 30.0;
+
         return Stack(
           children: [
-            // Blurred background (full screen, tappable to dismiss)
+            // Blurred dimmed background
             Positioned.fill(
-              child: ClipRect(
-                child: GestureDetector(
-                  onTap: () => Navigator.pop(ctx),
-                  child: BackdropFilter(
+              child: GestureDetector(
+                onTap: () => Navigator.pop(ctx),
+                child: AnimatedBuilder(
+                  animation: fadeCurved,
+                  builder: (_, __) => BackdropFilter(
                     filter: ImageFilter.blur(
-                      sigmaX: 8 * curved.value,
-                      sigmaY: 8 * curved.value,
+                      sigmaX: 14 * fadeCurved.value,
+                      sigmaY: 14 * fadeCurved.value,
                     ),
                     child: Container(
-                      color: Colors.black.withValues(alpha: 0.3 * curved.value),
+                      color: Colors.black.withValues(alpha: 0.5 * fadeCurved.value),
                     ),
                   ),
                 ),
               ),
             ),
-            // Actions panel — slides up from behind the nav bar
-            Positioned(
-              left: 16,
-              right: 16,
-              bottom: navBarTotal + 8,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 1.5),
-                  end: Offset.zero,
-                ).animate(curved),
-                child: FadeTransition(
-                  opacity: curved,
-                  child: Material(
-                    color: Colors.transparent,
-                    child: Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: const Color(0xFF181818),
-                        borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-                      ),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          _QuickAction(
-                            icon: Icons.qr_code_scanner_rounded,
-                            label: 'Scansiona QR',
-                            onTap: () {
-                              Navigator.pop(ctx);
-                              onFabAction?.call('qr');
-                            },
-                          ),
-                          _QuickAction(
-                            icon: Icons.camera_alt_rounded,
-                            label: 'Scansiona Pasto',
-                            onTap: () {
-                              Navigator.pop(ctx);
-                              onFabAction?.call('meal_scan');
-                            },
-                          ),
-                          _QuickAction(
-                            icon: Icons.photo_camera_front_rounded,
-                            label: 'Foto Fisico',
-                            onTap: () {
-                              Navigator.pop(ctx);
-                              onFabAction?.call('physique_photo');
-                            },
-                          ),
-                          _QuickAction(
-                            icon: Icons.monitor_weight_rounded,
-                            label: 'Registra Peso',
-                            onTap: () {
-                              Navigator.pop(ctx);
-                              onFabAction?.call('log_weight');
-                            },
-                          ),
-                          _QuickAction(
-                            icon: Icons.calendar_month_rounded,
-                            label: 'Prenota Appuntamento',
-                            onTap: () {
-                              Navigator.pop(ctx);
-                              onFabAction?.call('book_appointment');
-                            },
-                          ),
-                        ],
+            // Arc items — evenly spaced horizontally, parabolic curve
+            ...List.generate(actions.length, (i) {
+              // t goes from 0 to 1 across items
+              final t = i / (actions.length - 1);
+              // Parabola: peaks at center (t=0.5), zero at edges
+              final arcOffset = arcHeight * 4 * t * (1 - t);
+              final y = baseY + arcOffset;
+
+              final delay = i * 0.06;
+              final itemAnim = CurvedAnimation(
+                parent: anim,
+                curve: Interval(delay, 1.0, curve: Curves.easeOutBack),
+              );
+              final action = actions[i];
+
+              return Positioned(
+                left: margin + spacing * i,
+                bottom: (y * itemAnim.value) + bottomPadding,
+                child: AnimatedBuilder(
+                  animation: itemAnim,
+                  builder: (_, __) => Opacity(
+                    opacity: itemAnim.value.clamp(0.0, 1.0),
+                    child: Transform.scale(
+                      scale: itemAnim.value,
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.pop(ctx);
+                          onFabAction?.call(action.actionId);
+                        },
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              width: 56,
+                              height: 56,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: AppColors.primary,
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.primary.withValues(alpha: 0.4),
+                                    blurRadius: 12,
+                                    spreadRadius: 0,
+                                  ),
+                                ],
+                              ),
+                              child: Icon(action.icon, color: Colors.white, size: 24),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              action.label,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                decoration: TextDecoration.none,
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
                   ),
                 ),
-              ),
-            ),
-            // Nav bar rendered ON TOP so the panel slides from behind it
+              );
+            }),
+            // Nav bar on top
             Positioned(
               left: 0,
               right: 0,
@@ -183,65 +197,48 @@ class AppBottomNav extends StatelessWidget {
               child: Material(
                 color: Colors.transparent,
                 child: SafeArea(
-                top: false,
-                child: Container(
-                  height: 72,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF181818),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _NavItem(
-                        icon: Icons.home_outlined,
-                        activeIcon: Icons.home_rounded,
-                        label: 'Home',
-                        isActive: currentIndex == 0,
-                        onTap: () { Navigator.pop(ctx); onTap(0); },
-                      ),
-                      _NavItem(
-                        icon: Icons.bar_chart_outlined,
-                        activeIcon: Icons.bar_chart_rounded,
-                        label: 'Stats',
-                        isActive: currentIndex == 1,
-                        onTap: () { Navigator.pop(ctx); onTap(1); },
-                      ),
-                      // FAB closes the menu (animated rotation)
-                      AnimatedBuilder(
-                        animation: curved,
-                        builder: (_, __) => _FabButton(
-                          onTap: () => Navigator.pop(ctx),
-                          rotation: curved.value,
+                  top: false,
+                  child: Container(
+                    height: 72,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF181818),
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                      children: [
+                        _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home', isActive: currentIndex == 0, onTap: () { Navigator.pop(ctx); onTap(0); }),
+                        _NavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart_rounded, label: 'Stats', isActive: currentIndex == 1, onTap: () { Navigator.pop(ctx); onTap(1); }),
+                        AnimatedBuilder(
+                          animation: curved,
+                          builder: (_, __) => _FabButton(
+                            onTap: () => Navigator.pop(ctx),
+                            rotation: curved.value,
+                          ),
                         ),
-                      ),
-                      _NavItem(
-                        icon: Icons.forum_outlined,
-                        activeIcon: Icons.forum_rounded,
-                        label: 'Community',
-                        isActive: currentIndex == 2,
-                        onTap: () { Navigator.pop(ctx); onTap(2); },
-                      ),
-                      _NavItem(
-                        icon: Icons.person_outline_rounded,
-                        activeIcon: Icons.person_rounded,
-                        label: 'Profilo',
-                        isActive: currentIndex == 3,
-                        onTap: () { Navigator.pop(ctx); onTap(3); },
-                      ),
-                    ],
+                        _NavItem(icon: Icons.forum_outlined, activeIcon: Icons.forum_rounded, label: 'Community', isActive: currentIndex == 2, onTap: () { Navigator.pop(ctx); onTap(2); }),
+                        _NavItem(icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: 'Profilo', isActive: currentIndex == 3, onTap: () { Navigator.pop(ctx); onTap(3); }),
+                      ],
+                    ),
                   ),
                 ),
-              ),
               ),
             ),
           ],
         );
       },
-      pageBuilder: (ctx, _, _) => const SizedBox.shrink(),
+      pageBuilder: (ctx, _, __) => const SizedBox.shrink(),
     );
   }
+
+}
+
+class _FabActionData {
+  final IconData icon;
+  final String label;
+  final String actionId;
+  const _FabActionData(this.icon, this.label, this.actionId);
 }
 
 class _NavItem extends StatelessWidget {
@@ -324,32 +321,3 @@ class _FabButton extends StatelessWidget {
   }
 }
 
-class _QuickAction extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final VoidCallback onTap;
-
-  const _QuickAction({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ListTile(
-      leading: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          color: AppColors.primary.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(10),
-        ),
-        child: Icon(icon, color: AppColors.primary, size: 22),
-      ),
-      title: Text(label, style: const TextStyle(color: AppColors.textPrimary)),
-      onTap: onTap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    );
-  }
-}

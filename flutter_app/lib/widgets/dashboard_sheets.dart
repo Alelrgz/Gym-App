@@ -89,22 +89,36 @@ String _timeAgo(String? dateStr) {
 // ─── 1. NOTIFICATIONS SHEET ────────────────────────────────────
 
 Future<void> showNotificationsSheet(BuildContext context, WidgetRef ref) {
-  return showDialog(
-    context: context,
-    barrierColor: Colors.black54,
-    builder: (ctx) => Dialog(
-      backgroundColor: AppColors.surface,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: SizedBox(
-          height: MediaQuery.of(context).size.height * 0.55,
-          child: _NotificationsContent(ref: ref),
-        ),
-      ),
+  return Navigator.of(context).push(
+    PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) =>
+          _NotificationsPage(ref: ref),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(1.0, 0.0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+          child: child,
+        );
+      },
     ),
   );
+}
+
+class _NotificationsPage extends StatelessWidget {
+  final WidgetRef ref;
+  const _NotificationsPage({required this.ref});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: _NotificationsContent(ref: ref),
+      ),
+    );
+  }
 }
 
 class _NotificationsContent extends StatefulWidget {
@@ -148,15 +162,20 @@ class _NotificationsContentState extends State<_NotificationsContent> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sheetHandle(),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _sheetTitle('Notifiche'),
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: const Icon(Icons.arrow_back_ios_rounded, color: AppColors.textPrimary, size: 22),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text('Notifiche', style: TextStyle(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.bold)),
+              ),
               if (_notifications.isNotEmpty)
                 TextButton(
                   onPressed: _markAllRead,
@@ -164,6 +183,7 @@ class _NotificationsContentState extends State<_NotificationsContent> {
                 ),
             ],
           ),
+          const SizedBox(height: 12),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -3090,24 +3110,39 @@ class _LogWeightDialogState extends State<_LogWeightDialog> {
 // ─── 7. CALENDAR SHEET ──────────────────────────────────────────
 
 Future<void> showCalendarSheet(BuildContext context, WidgetRef ref) {
-  return showModalBottomSheet(
-    context: context,
-    backgroundColor: AppColors.surface,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (ctx) => DraggableScrollableSheet(
-      initialChildSize: 0.85,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (_, scrollController) => _CalendarContent(
-        scrollController: scrollController,
-        ref: ref,
-      ),
+  return Navigator.of(context).push(
+    PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) =>
+          _CalendarPage(ref: ref),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(1.0, 0.0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+          child: child,
+        );
+      },
     ),
   );
+}
+
+class _CalendarPage extends StatelessWidget {
+  final WidgetRef ref;
+  const _CalendarPage({required this.ref});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: _CalendarContent(
+          scrollController: ScrollController(),
+          ref: ref,
+        ),
+      ),
+    );
+  }
 }
 
 class _CalendarContent extends StatefulWidget {
@@ -3238,12 +3273,24 @@ class _CalendarContentState extends State<_CalendarContent> {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sheetHandle(),
-          _sheetTitle('Calendario'),
+          // Apple-style header with back button
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () => Navigator.of(context).pop(),
+                child: const Icon(Icons.arrow_back_ios_rounded, color: AppColors.textPrimary, size: 22),
+              ),
+              const SizedBox(width: 12),
+              const Expanded(
+                child: Text('Calendario', style: TextStyle(color: AppColors.textPrimary, fontSize: 22, fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+          const SizedBox(height: 20),
           if (_loading)
             const Expanded(
               child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
@@ -3254,19 +3301,11 @@ class _CalendarContentState extends State<_CalendarContent> {
                 controller: widget.scrollController,
                 children: [
                   _buildMonthHeader(),
-                  const SizedBox(height: 12),
-                  // Calendar grid inside glass card (matching web app)
-                  GlassCard(
-                    padding: const EdgeInsets.all(16),
-                    child: Column(
-                      children: [
-                        _buildDayHeaders(),
-                        const SizedBox(height: 8),
-                        _buildCalendarGrid(),
-                      ],
-                    ),
-                  ),
                   const SizedBox(height: 20),
+                  _buildDayHeaders(),
+                  const SizedBox(height: 12),
+                  _buildCalendarGrid(),
+                  const SizedBox(height: 24),
                   if (_selectedDay != null) _buildDayDetails(),
                   const SizedBox(height: 24),
                 ],
@@ -3279,38 +3318,29 @@ class _CalendarContentState extends State<_CalendarContent> {
 
   Widget _buildMonthHeader() {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        GestureDetector(
-          onTap: _prevMonth,
-          child: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.1),
-            ),
-            child: const Icon(Icons.chevron_left_rounded, color: AppColors.textPrimary, size: 20),
-          ),
-        ),
         Text(
           '${_monthNames[_currentMonth - 1]} $_currentYear',
           style: const TextStyle(
-            fontSize: 18,
+            fontSize: 20,
             fontWeight: FontWeight.w700,
             color: AppColors.textPrimary,
           ),
         ),
+        const Spacer(),
+        GestureDetector(
+          onTap: _prevMonth,
+          child: const Padding(
+            padding: EdgeInsets.all(8),
+            child: Icon(Icons.chevron_left_rounded, color: AppColors.primary, size: 28),
+          ),
+        ),
+        const SizedBox(width: 4),
         GestureDetector(
           onTap: _nextMonth,
-          child: Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: Colors.white.withValues(alpha: 0.1),
-            ),
-            child: const Icon(Icons.chevron_right_rounded, color: AppColors.textPrimary, size: 20),
+          child: const Padding(
+            padding: EdgeInsets.all(8),
+            child: Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 28),
           ),
         ),
       ],
@@ -3323,11 +3353,12 @@ class _CalendarContentState extends State<_CalendarContent> {
           .map((d) => Expanded(
                 child: Center(
                   child: Text(
-                    d,
+                    d.toUpperCase(),
                     style: TextStyle(
                       fontSize: 11,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey[500],
+                      letterSpacing: 0.5,
                     ),
                   ),
                 ),
@@ -3378,8 +3409,8 @@ class _CalendarContentState extends State<_CalendarContent> {
       crossAxisCount: 7,
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.0,
-      mainAxisSpacing: 4,
+      childAspectRatio: 0.85,
+      mainAxisSpacing: 2,
       crossAxisSpacing: 0,
       children: cells,
     );
@@ -3395,62 +3426,63 @@ class _CalendarContentState extends State<_CalendarContent> {
     required bool prevCompleted,
     required bool nextCompleted,
   }) {
-    BorderRadius borderRadius;
-    if (isCompleted) {
-      borderRadius = BorderRadius.horizontal(
-        left: prevCompleted ? Radius.zero : const Radius.circular(8),
-        right: nextCompleted ? Radius.zero : const Radius.circular(8),
-      );
-    } else {
-      borderRadius = BorderRadius.circular(8);
-    }
+    final bool showFilled = isToday || isSelected;
 
     return GestureDetector(
       onTap: () => setState(() => _selectedDay = date),
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 1),
-        decoration: BoxDecoration(
-          color: isCompleted
-              ? const Color(0xFF22C55E).withValues(alpha: 0.2)
-              : (isSelected ? Colors.white.withValues(alpha: 0.08) : Colors.transparent),
-          borderRadius: borderRadius,
-          border: isToday ? Border.all(color: AppColors.primary, width: 1.5) : null,
-        ),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Text(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isToday
+                  ? AppColors.primary
+                  : isSelected
+                      ? Colors.white.withValues(alpha: 0.15)
+                      : Colors.transparent,
+            ),
+            alignment: Alignment.center,
+            child: Text(
               '$day',
               style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w700,
-                color: dayEvents.isNotEmpty ? AppColors.textPrimary : AppColors.textTertiary,
+                fontSize: 15,
+                fontWeight: (isToday || isSelected) ? FontWeight.w700 : FontWeight.w400,
+                color: isToday
+                    ? Colors.white
+                    : isSelected
+                        ? AppColors.textPrimary
+                        : dayEvents.isNotEmpty
+                            ? AppColors.textPrimary
+                            : AppColors.textTertiary,
               ),
             ),
-            const SizedBox(height: 2),
-            if (isCompleted)
-              const Text(
-                '\u2713',
-                style: TextStyle(fontSize: 9, color: Color(0xFF4ADE80)),
-              )
-            else if (dayEvents.isNotEmpty)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: dayEvents
-                    .take(3)
-                    .map((e) => Container(
-                          width: 4,
-                          height: 4,
-                          margin: const EdgeInsets.symmetric(horizontal: 1),
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: _dotColor(e),
-                          ),
-                        ))
-                    .toList(),
-              ),
-          ],
-        ),
+          ),
+          const SizedBox(height: 3),
+          // Event dots below the date (Apple style)
+          SizedBox(
+            height: 6,
+            child: dayEvents.isNotEmpty
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: dayEvents
+                        .take(3)
+                        .map((e) => Container(
+                              width: 5,
+                              height: 5,
+                              margin: const EdgeInsets.symmetric(horizontal: 1),
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: _dotColor(e),
+                              ),
+                            ))
+                        .toList(),
+                  )
+                : const SizedBox.shrink(),
+          ),
+        ],
       ),
     );
   }

@@ -1,15 +1,12 @@
-import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:media_kit/media_kit.dart';
 
 import 'config/theme.dart';
 import 'services/local_notification_service.dart';
-import 'services/fcm_service.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
@@ -36,25 +33,18 @@ import 'screens/staff/staff_appointments_screen.dart';
 import 'screens/staff/staff_dashboard_screen.dart';
 import 'screens/staff/staff_documents_screen.dart';
 import 'screens/staff/staff_settings_screen.dart';
-import 'screens/nutritionist/nutritionist_home_screen.dart';
-import 'screens/nutritionist/nutritionist_dashboard_screen.dart';
-import 'screens/nutritionist/nutritionist_schedule_screen.dart';
-import 'screens/nutritionist/nutritionist_settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  try {
-    MediaKit.ensureInitialized();
-  } catch (_) {}
+  if (!kIsWeb) {
+    try {
+      MediaKit.ensureInitialized();
+    } catch (_) {}
+  }
   try {
     await LocalNotificationService().init();
   } catch (_) {}
-  // Initialize Firebase on mobile platforms only (not supported on Windows/Linux/macOS desktop)
-  if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
-    try {
-      await Firebase.initializeApp();
-    } catch (_) {}
-  }
+
   runApp(const ProviderScope(child: GymApp()));
 }
 
@@ -65,7 +55,6 @@ class GymApp extends ConsumerWidget {
     if (role == 'trainer') return '/trainer';
     if (role == 'owner') return '/owner';
     if (role == 'staff') return '/staff';
-    if (role == 'nutritionist') return '/nutritionist';
     return '/home';
   }
 
@@ -73,22 +62,28 @@ class GymApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
 
-    // Initialize FCM when user authenticates (mobile only)
-    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS) && authState.status == AuthStatus.authenticated) {
-      FcmService().init(ref.read(apiClientProvider));
+    // Show a loading screen while auth is initializing
+    if (authState.status == AuthStatus.initial ||
+        authState.status == AuthStatus.loading) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.darkTheme,
+        home: const Scaffold(
+          body: Center(
+            child: CircularProgressIndicator(color: Color(0xFFE5A84B)),
+          ),
+        ),
+      );
     }
 
     final router = GoRouter(
-      initialLocation: '/login',
+      initialLocation: authState.status == AuthStatus.authenticated
+          ? _homeForRole(authState.user?.role)
+          : '/login',
       redirect: (context, state) {
         final isAuth = authState.status == AuthStatus.authenticated;
         final isAuthRoute = state.matchedLocation == '/login' ||
             state.matchedLocation == '/register';
-
-        if (authState.status == AuthStatus.initial ||
-            authState.status == AuthStatus.loading) {
-          return null;
-        }
 
         if (!isAuth && !isAuthRoute) return '/login';
 
@@ -263,47 +258,6 @@ class GymApp extends ConsumerWidget {
           ],
         ),
 
-        // ── Nutritionist Shell ─────────────────────────
-        StatefulShellRoute.indexedStack(
-          builder: (context, state, navigationShell) {
-            return NutritionistHomeScreen(navigationShell: navigationShell);
-          },
-          branches: [
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/nutritionist',
-                  builder: (context, state) => const NutritionistDashboardScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/nutritionist/schedule',
-                  builder: (context, state) => const NutritionistScheduleScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/nutritionist/community',
-                  builder: (context, state) => const CommunityScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/nutritionist/settings',
-                  builder: (context, state) => const NutritionistSettingsScreen(),
-                ),
-              ],
-            ),
-          ],
-        ),
-
         // ── Trainer Shell ──────────────────────────────
         StatefulShellRoute.indexedStack(
           builder: (context, state, navigationShell) {
@@ -339,14 +293,6 @@ class GymApp extends ConsumerWidget {
                 GoRoute(
                   path: '/trainer/schedule',
                   builder: (context, state) => const TrainerScheduleScreen(),
-                ),
-              ],
-            ),
-            StatefulShellBranch(
-              routes: [
-                GoRoute(
-                  path: '/trainer/community',
-                  builder: (context, state) => const CommunityScreen(),
                 ),
               ],
             ),
