@@ -3,12 +3,82 @@ Notification Service - handles creating and managing user notifications.
 """
 from .base import (
     HTTPException, json, logging, datetime,
-    get_db_session, NotificationORM
+    get_db_session, NotificationORM, UserORM
 )
 from typing import List, Optional
 import uuid
 
 logger = logging.getLogger("gym_app")
+
+
+def send_fcm_push(db, user_id: str, title: str, body: str, data: dict = None):
+    """Send an FCM push notification to a user's registered devices.
+
+    Resolves the gym's FCM server key automatically from the user's gym_owner_id.
+    Can be called with an existing db session (e.g. from inline notification creation).
+    """
+    try:
+        import requests as req
+        from models_orm import FCMDeviceTokenORM
+
+        # Find the user to get their gym owner
+        user = db.query(UserORM).filter(UserORM.id == user_id).first()
+        if not user:
+            return
+
+        # Resolve FCM server key: check user themselves (if owner), then their gym owner
+        server_key = getattr(user, 'fcm_server_key', None)
+        if not server_key and user.gym_owner_id:
+            owner = db.query(UserORM).filter(UserORM.id == user.gym_owner_id).first()
+            if owner:
+                server_key = getattr(owner, 'fcm_server_key', None)
+
+        if not server_key:
+            return
+
+        # Get device tokens for this user
+        tokens = db.query(FCMDeviceTokenORM).filter(
+            FCMDeviceTokenORM.user_id == user_id
+        ).all()
+        if not tokens:
+            return
+
+        for device in tokens:
+            try:
+                payload = {
+                    "to": device.token,
+                    "notification": {
+                        "title": title,
+                        "body": body[:200],
+                        "sound": "default",
+                    },
+                    "data": {
+                        **(data or {}),
+                        "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                    },
+                }
+                resp = req.post(
+                    "https://fcm.googleapis.com/fcm/send",
+                    json=payload,
+                    headers={
+                        "Authorization": f"key={server_key}",
+                        "Content-Type": "application/json",
+                    },
+                    timeout=10,
+                )
+                if resp.status_code == 200:
+                    result = resp.json()
+                    if result.get("failure", 0) > 0:
+                        for r in result.get("results", []):
+                            if r.get("error") in ("NotRegistered", "InvalidRegistration"):
+                                db.query(FCMDeviceTokenORM).filter(
+                                    FCMDeviceTokenORM.token == device.token
+                                ).delete()
+                                db.commit()
+            except Exception as e:
+                logger.error(f"FCM push error for token {device.token[:20]}...: {e}")
+    except Exception as e:
+        logger.error(f"FCM push setup error: {e}")
 
 
 class NotificationService:
@@ -174,6 +244,31 @@ class NotificationService:
 
 # Singleton instance
 notification_service = NotificationService()
+
+
+# ── SQLAlchemy event: auto-send FCM push on every new notification ──
+from sqlalchemy import event
+
+@event.listens_for(NotificationORM, "after_insert")
+def _auto_fcm_on_notification(mapper, connection, target):
+    """Automatically send an FCM push whenever a NotificationORM row is inserted."""
+    try:
+        # Parse data JSON if present
+        data = None
+        if target.data:
+            try:
+                data = json.loads(target.data) if isinstance(target.data, str) else target.data
+            except Exception:
+                data = None
+
+        # Use a fresh session (connection is low-level, we need ORM queries)
+        db = get_db_session()
+        try:
+            send_fcm_push(db, target.user_id, target.title or "", target.message or "", data)
+        finally:
+            db.close()
+    except Exception as e:
+        logger.error(f"Auto FCM push error: {e}")
 
 
 def get_notification_service() -> NotificationService:

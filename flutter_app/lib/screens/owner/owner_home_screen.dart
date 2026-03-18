@@ -17,6 +17,7 @@ class OwnerHomeScreen extends ConsumerWidget {
     (icon: Icons.dashboard_rounded, label: 'Dashboard'),
     (icon: Icons.bar_chart_rounded, label: 'CRM'),
     (icon: Icons.place_rounded, label: 'Strutture'),
+    (icon: Icons.forum_rounded, label: 'Community'),
     (icon: Icons.settings_rounded, label: 'Impostazioni'),
   ];
 

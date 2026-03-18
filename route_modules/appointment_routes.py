@@ -112,6 +112,66 @@ async def complete_appointment(
     return service.complete_appointment(appointment_id, user.id, trainer_notes)
 
 
+@router.post("/api/trainer/appointments/{appointment_id}/accept")
+async def accept_appointment(
+    appointment_id: str,
+    user = Depends(get_current_user),
+    service: AppointmentService = Depends(get_appointment_service)
+):
+    """Trainer accepts a pending appointment."""
+    _require_staff(user)
+    return service.trainer_accept_appointment(appointment_id, user.id)
+
+
+@router.post("/api/trainer/appointments/{appointment_id}/decline")
+async def decline_appointment(
+    appointment_id: str,
+    request: dict = None,
+    user = Depends(get_current_user),
+    service: AppointmentService = Depends(get_appointment_service)
+):
+    """Trainer declines a pending appointment. Auto-refunds card payments."""
+    _require_staff(user)
+    reason = request.get("reason") if request else None
+    return service.trainer_decline_appointment(appointment_id, user.id, reason)
+
+
+@router.get("/api/trainer/appointments/pending")
+async def get_pending_appointments(
+    user = Depends(get_current_user),
+    service: AppointmentService = Depends(get_appointment_service)
+):
+    """Get all pending appointments for the trainer."""
+    _require_staff(user)
+    db = get_db_session()
+    try:
+        appointments = db.query(AppointmentORM).filter(
+            AppointmentORM.trainer_id == user.id,
+            AppointmentORM.status == "pending_trainer"
+        ).order_by(AppointmentORM.date, AppointmentORM.start_time).all()
+
+        result = []
+        for appt in appointments:
+            client = db.query(UserORM).filter(UserORM.id == appt.client_id).first()
+            result.append({
+                "id": appt.id,
+                "client_name": client.username if client else "Unknown",
+                "client_id": appt.client_id,
+                "date": appt.date,
+                "time": appt.start_time,
+                "end_time": appt.end_time,
+                "duration": appt.duration,
+                "session_type": appt.session_type or "general",
+                "notes": appt.notes,
+                "price": appt.price,
+                "payment_method": appt.payment_method,
+                "created_at": appt.created_at,
+            })
+        return result
+    finally:
+        db.close()
+
+
 @router.post("/api/trainer/book-appointment")
 async def trainer_book_appointment(
     request: BookAppointmentRequest,
@@ -382,9 +442,10 @@ async def create_appointment_checkout_session(
             mode="payment",
             line_items=[{
                 "price_data": {
-                    "currency": "usd",
+                    "currency": "eur",
                     "product_data": {
-                        "name": f"1-on-1 Session with {trainer.username} ({duration} min)",
+                        "name": f"Sessione 1-a-1 con {trainer.username} ({duration} min)",
+                        "description": "Fit Pay - Pagamento sicuro per la tua sessione di allenamento",
                     },
                     "unit_amount": amount_cents,
                 },
@@ -399,6 +460,13 @@ async def create_appointment_checkout_session(
                 "duration": str(duration),
                 "notes": (notes or "")[:500],
                 "trainer_name": trainer.username,
+            },
+            payment_intent_data={
+                "description": f"Fit Pay - Sessione con {trainer.username}",
+                "statement_descriptor": "FIT PAY SESSION",
+            },
+            custom_text={
+                "submit": {"message": "Fit Pay elabora il pagamento in modo sicuro tramite Stripe."},
             },
             success_url=success_url,
             cancel_url=cancel_url,

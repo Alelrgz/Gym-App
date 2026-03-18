@@ -349,6 +349,16 @@ class ClientService:
                 today_logs=today_logs if diet_settings else []
             )
 
+            # --- GYM & TRAINER INFO ---
+            gym_name = None
+            if profile.gym_id:
+                gym_owner = db.query(UserORM).filter(UserORM.id == profile.gym_id).first()
+                gym_name = (gym_owner.gym_name or gym_owner.username) if gym_owner else None
+            trainer_name = None
+            if profile.trainer_id:
+                trainer_user = db.query(UserORM).filter(UserORM.id == profile.trainer_id).first()
+                trainer_name = trainer_user.username if trainer_user else None
+
             return ClientData(
                 id=client_id,
                 username=user.username,
@@ -358,6 +368,11 @@ class ClientService:
                 gems=profile.gems,
                 health_score=profile.health_score,
                 weight=profile.weight,
+                gym_id=profile.gym_id,
+                gym_name=gym_name,
+                trainer_id=profile.trainer_id,
+                trainer_name=trainer_name,
+                profile_picture=user.profile_picture,
                 todays_workout=todays_workout,
                 daily_quests=daily_quests,
                 progress=progress_data if progress_data else None,

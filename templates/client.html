@@ -1202,6 +1202,11 @@ function renderFriendHealthBars(data) {
                 + '</div>'
                 + '<p style="font-size:12px;font-weight:500;color:#fff;margin-top:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;' + nameStrike + '">' + meal.meal_name + '</p>'
                 + (meal.description ? '<p style="font-size:10px;color:rgba(255,255,255,0.4);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + meal.description + '</p>' : '')
+                + '<div style="display:flex;gap:8px;margin-top:3px">'
+                + '<span style="font-size:9px;font-weight:600"><span style="color:#FF9500">P</span> <span style="color:rgba(255,255,255,0.45)">' + (meal.protein || 0) + 'g</span></span>'
+                + '<span style="font-size:9px;font-weight:600"><span style="color:#34C759">C</span> <span style="color:rgba(255,255,255,0.45)">' + (meal.carbs || 0) + 'g</span></span>'
+                + '<span style="font-size:9px;font-weight:600"><span style="color:#FF3B30">G</span> <span style="color:rgba(255,255,255,0.45)">' + (meal.fat || 0) + 'g</span></span>'
+                + '</div>'
                 + '</div></div>';
         }
 

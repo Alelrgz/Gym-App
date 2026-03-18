@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Boolean, Float, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Boolean, Float, ForeignKey, Text, UniqueConstraint
 from database import Base
 from datetime import datetime
 
@@ -758,6 +758,12 @@ class MedicalCertificateORM(Base):
     # Expiration tracking
     expiration_date = Column(String, nullable=True)  # YYYY-MM-DD
 
+    # Approval workflow: pending (client upload), approved, rejected
+    approval_status = Column(String, default="approved", index=True)  # pending, approved, rejected
+    reviewed_by = Column(String, nullable=True)  # staff/owner user_id who reviewed
+    reviewed_at = Column(String, nullable=True)  # ISO timestamp of review
+    rejection_reason = Column(String, nullable=True)  # reason if rejected
+
     # Timestamps
     uploaded_at = Column(String, default=lambda: datetime.utcnow().isoformat())
 
@@ -1117,3 +1123,83 @@ class FacilityBookingORM(Base):
 
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
     updated_at = Column(String, nullable=True)
+
+
+# --- COMMUNITY / SOCIAL FEED ---
+
+class CommunityPostORM(Base):
+    __tablename__ = "community_posts"
+
+    id = Column(String, primary_key=True, index=True)  # UUID
+    author_id = Column(String, ForeignKey("users.id"), index=True)
+    gym_id = Column(String, index=True)
+    scope = Column(String, default="local", index=True)  # "local" or "global"
+
+    post_type = Column(String, index=True)  # text, image, event, quest
+    content = Column(Text, nullable=True)
+    image_url = Column(String, nullable=True)
+
+    # Event / Quest fields
+    event_title = Column(String, nullable=True)
+    event_date = Column(String, nullable=True)   # YYYY-MM-DD
+    event_time = Column(String, nullable=True)   # HH:MM
+    event_location = Column(String, nullable=True)
+    quest_xp_reward = Column(Integer, nullable=True)
+    quest_deadline = Column(String, nullable=True)
+
+    is_pinned = Column(Boolean, default=False)
+    is_deleted = Column(Boolean, default=False)
+
+    max_participants = Column(Integer, nullable=True)  # null = unlimited
+    participant_count = Column(Integer, default=0)
+
+    like_count = Column(Integer, default=0)
+    comment_count = Column(Integer, default=0)
+    repost_count = Column(Integer, default=0)
+
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    updated_at = Column(String, nullable=True)
+
+
+class CommunityEventParticipantORM(Base):
+    __tablename__ = "community_event_participants"
+    __table_args__ = (UniqueConstraint("post_id", "user_id", name="uq_event_participant"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    post_id = Column(String, ForeignKey("community_posts.id"), index=True)
+    user_id = Column(String, ForeignKey("users.id"), index=True)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
+class CommunityLikeORM(Base):
+    __tablename__ = "community_likes"
+    __table_args__ = (UniqueConstraint("post_id", "user_id", name="uq_community_like"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    post_id = Column(String, ForeignKey("community_posts.id"), index=True)
+    user_id = Column(String, ForeignKey("users.id"), index=True)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
+class CommunityCommentORM(Base):
+    __tablename__ = "community_comments"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    post_id = Column(String, ForeignKey("community_posts.id"), index=True)
+    author_id = Column(String, ForeignKey("users.id"), index=True)
+    content = Column(Text)
+    parent_comment_id = Column(Integer, nullable=True)
+    like_count = Column(Integer, default=0)
+    is_deleted = Column(Boolean, default=False)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    updated_at = Column(String, nullable=True)
+
+
+class CommunityCommentLikeORM(Base):
+    __tablename__ = "community_comment_likes"
+    __table_args__ = (UniqueConstraint("comment_id", "user_id", name="uq_community_comment_like"),)
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    comment_id = Column(Integer, ForeignKey("community_comments.id"), index=True)
+    user_id = Column(String, ForeignKey("users.id"), index=True)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())

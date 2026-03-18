@@ -1,3 +1,6 @@
+import 'dart:io' show Platform;
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -278,7 +281,7 @@ class _TrainerWorkoutsScreenState extends ConsumerState<TrainerWorkoutsScreen> w
                 ),
                 const SizedBox(height: 16),
 
-                // Exercise list label
+                // Exercise list label + global rest
                 Row(
                   children: [
                     Icon(Icons.list_rounded, size: 16, color: Colors.grey[500]),
@@ -288,6 +291,29 @@ class _TrainerWorkoutsScreenState extends ConsumerState<TrainerWorkoutsScreen> w
                       style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[400]),
                     ),
                     const Spacer(),
+                    if (_builderExercises.isNotEmpty) ...[
+                      Icon(Icons.timer_outlined, size: 13, color: Colors.grey[500]),
+                      const SizedBox(width: 4),
+                      Text('Tutti:', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                      const SizedBox(width: 4),
+                      _MiniInput(
+                        initialValue: '${_builderExercises.first.rest}',
+                        label: 's',
+                        onChanged: (v) {
+                          final n = int.tryParse(v);
+                          if (n != null) {
+                            setState(() {
+                              for (final ex in _builderExercises) {
+                                ex.rest = n;
+                              }
+                            });
+                          }
+                        },
+                      ),
+                      const SizedBox(width: 4),
+                      Text('s', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                      const SizedBox(width: 8),
+                    ],
                     Icon(Icons.drag_indicator_rounded, size: 14, color: Colors.grey[600]),
                     const SizedBox(width: 4),
                     Text('Trascina dalla lista', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
@@ -295,22 +321,36 @@ class _TrainerWorkoutsScreenState extends ConsumerState<TrainerWorkoutsScreen> w
                 ),
                 const SizedBox(height: 8),
 
-                // Added exercises
-                ..._builderExercises.asMap().entries.map((entry) {
-                  final i = entry.key;
-                  final ex = entry.value;
-                  return Padding(
-                    padding: const EdgeInsets.only(bottom: 6),
-                    child: _BuilderExerciseCard(
-                      exercise: ex,
-                      index: i,
-                      onRemove: () => setState(() => _builderExercises.removeAt(i)),
-                      onSetsChanged: (v) => setState(() => ex.sets = int.tryParse(v) ?? ex.sets),
-                      onRepsChanged: (v) => setState(() => ex.reps = int.tryParse(v) ?? ex.reps),
-                      onRestChanged: (v) => setState(() => ex.rest = int.tryParse(v) ?? ex.rest),
+                // Added exercises (reorderable)
+                if (_builderExercises.isNotEmpty)
+                  ReorderableListView.builder(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    proxyDecorator: (child, index, animation) => Material(
+                      color: Colors.transparent,
+                      elevation: 4,
+                      borderRadius: BorderRadius.circular(14),
+                      child: child,
                     ),
-                  );
-                }),
+                    itemCount: _builderExercises.length,
+                    onReorder: (oldIndex, newIndex) {
+                      setState(() {
+                        if (newIndex > oldIndex) newIndex--;
+                        final item = _builderExercises.removeAt(oldIndex);
+                        _builderExercises.insert(newIndex, item);
+                      });
+                    },
+                    itemBuilder: (context, i) {
+                      final ex = _builderExercises[i];
+                      return _BuilderExerciseCard(
+                        key: ValueKey('${ex.id}_${i}_${ex.rest}'),
+                        exercise: ex,
+                        index: i,
+                        onRemove: () => setState(() => _builderExercises.removeAt(i)),
+                        onChanged: () => setState(() {}),
+                      );
+                    },
+                  ),
 
                 // Drop zone
                 DragTarget<Map<String, dynamic>>(
@@ -426,6 +466,7 @@ class _TrainerWorkoutsScreenState extends ConsumerState<TrainerWorkoutsScreen> w
         'sets': e.sets,
         'reps': e.reps,
         'rest': e.rest,
+        'set_reps': e.setReps,
       }).toList();
 
       final payload = {
@@ -558,6 +599,87 @@ class _TrainerWorkoutsScreenState extends ConsumerState<TrainerWorkoutsScreen> w
     );
   }
 
+  /// Searchable workout picker for split day assignment.
+  /// Returns workout id, '__rest__' for rest, or null if dismissed.
+  Future<String?> _showWorkoutPicker(BuildContext context, List<Map<String, dynamic>> workouts, String? currentId) async {
+    String search = '';
+    return showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      isScrollControlled: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setPickerState) {
+          final filtered = workouts.where((w) {
+            if (search.isEmpty) return true;
+            return (w['title'] as String? ?? '').toLowerCase().contains(search.toLowerCase());
+          }).toList();
+          return Padding(
+            padding: EdgeInsets.fromLTRB(16, 12, 16, MediaQuery.of(ctx).viewInsets.bottom + 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey[600], borderRadius: BorderRadius.circular(2))),
+                const SizedBox(height: 12),
+                TextField(
+                  autofocus: true,
+                  style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                  decoration: InputDecoration(
+                    hintText: 'Cerca workout...',
+                    hintStyle: TextStyle(color: Colors.grey[600]),
+                    prefixIcon: Icon(Icons.search_rounded, size: 20, color: Colors.grey[500]),
+                    filled: true,
+                    fillColor: Colors.white.withValues(alpha: 0.06),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                  ),
+                  onChanged: (v) => setPickerState(() => search = v),
+                ),
+                const SizedBox(height: 8),
+                // Rest option
+                ListTile(
+                  dense: true,
+                  leading: Icon(Icons.hotel_rounded, size: 20, color: Colors.grey[500]),
+                  title: Text('— Riposo —', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
+                  selected: currentId == null,
+                  selectedTileColor: AppColors.primary.withValues(alpha: 0.08),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  onTap: () => Navigator.pop(ctx, '__rest__'),
+                ),
+                const Divider(height: 1),
+                // Workout list
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: MediaQuery.of(ctx).size.height * 0.4),
+                  child: ListView.builder(
+                    shrinkWrap: true,
+                    itemCount: filtered.length,
+                    itemBuilder: (_, i) {
+                      final w = filtered[i];
+                      final id = w['id']?.toString() ?? '';
+                      final title = w['title'] as String? ?? '';
+                      final exCount = (w['exercises'] as List?)?.length ?? 0;
+                      final isSelected = id == currentId;
+                      return ListTile(
+                        dense: true,
+                        leading: Icon(Icons.fitness_center_rounded, size: 18, color: isSelected ? AppColors.primary : Colors.grey[500]),
+                        title: Text(title, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: isSelected ? AppColors.primary : AppColors.textPrimary)),
+                        subtitle: Text('$exCount esercizi', style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+                        selected: isSelected,
+                        selectedTileColor: AppColors.primary.withValues(alpha: 0.08),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        onTap: () => Navigator.pop(ctx, id),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   void _showCreateSplitForm(BuildContext context, List<Map<String, dynamic>> workouts) {
     final nameCtrl = TextEditingController();
     final descCtrl = TextEditingController();
@@ -620,6 +742,10 @@ class _TrainerWorkoutsScreenState extends ConsumerState<TrainerWorkoutsScreen> w
               // Day rows
               ...List.generate(daysPerWeek, (i) {
                 final day = i + 1;
+                final selectedId = schedule[day];
+                final selectedName = selectedId != null
+                    ? (workouts.firstWhere((w) => w['id']?.toString() == selectedId, orElse: () => {})['title'] as String? ?? selectedId)
+                    : null;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Row(
@@ -630,28 +756,35 @@ class _TrainerWorkoutsScreenState extends ConsumerState<TrainerWorkoutsScreen> w
                       ),
                       const SizedBox(width: 8),
                       Expanded(
-                        child: Container(
-                          height: 36,
-                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.06),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: DropdownButton<String>(
-                            value: schedule[day],
-                            isExpanded: true,
-                            dropdownColor: AppColors.surface,
-                            underline: const SizedBox(),
-                            hint: Text('— Riposo —', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                            style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
-                            items: [
-                              DropdownMenuItem<String>(value: null, child: Text('— Riposo —', style: TextStyle(fontSize: 12, color: Colors.grey[600]))),
-                              ...workouts.map((w) => DropdownMenuItem<String>(
-                                value: w['id']?.toString() ?? '',
-                                child: Text(w['title'] as String? ?? '', style: const TextStyle(fontSize: 12)),
-                              )),
-                            ],
-                            onChanged: (v) => setModalState(() => schedule[day] = v),
+                        child: GestureDetector(
+                          onTap: () async {
+                            final result = await _showWorkoutPicker(ctx, workouts, selectedId);
+                            if (result != null) {
+                              setModalState(() => schedule[day] = result == '__rest__' ? null : result);
+                            }
+                          },
+                          child: Container(
+                            height: 36,
+                            padding: const EdgeInsets.symmetric(horizontal: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.06),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    selectedName ?? '— Riposo —',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: selectedName != null ? AppColors.textPrimary : Colors.grey[600],
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Icon(Icons.arrow_drop_down_rounded, size: 20, color: Colors.grey[500]),
+                              ],
+                            ),
                           ),
                         ),
                       ),
@@ -796,75 +929,159 @@ class _TrainerWorkoutsScreenState extends ConsumerState<TrainerWorkoutsScreen> w
   void _showCreateExerciseModal(BuildContext context) {
     final nameCtrl = TextEditingController();
     final muscleCtrl = TextEditingController();
+    final videoUrlCtrl = TextEditingController();
     String type = 'weight_reps';
+    XFile? pickedVideo;
+    bool creating = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => Padding(
-        padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Crea Esercizio', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-            const SizedBox(height: 16),
-            _InputField(controller: nameCtrl, label: 'Nome Esercizio', hint: 'es. Panca Piana'),
-            const SizedBox(height: 12),
-            _InputField(controller: muscleCtrl, label: 'Gruppo Muscolare', hint: 'es. Petto'),
-            const SizedBox(height: 12),
-            DropdownButtonFormField<String>(
-              initialValue: type,
-              dropdownColor: AppColors.surface,
-              style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
-              decoration: InputDecoration(
-                labelText: 'Tipo',
-                labelStyle: TextStyle(color: Colors.grey[500]),
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.06),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              ),
-              items: const [
-                DropdownMenuItem(value: 'weight_reps', child: Text('Peso & Ripetizioni')),
-                DropdownMenuItem(value: 'cardio', child: Text('Cardio')),
-                DropdownMenuItem(value: 'bodyweight', child: Text('Corpo Libero')),
-              ],
-              onChanged: (v) => type = v ?? type,
-            ),
-            const SizedBox(height: 20),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  padding: const EdgeInsets.symmetric(vertical: 14),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setModalState) => Padding(
+          padding: EdgeInsets.fromLTRB(20, 20, 20, MediaQuery.of(ctx).viewInsets.bottom + 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Crea Esercizio', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              const SizedBox(height: 16),
+              _InputField(controller: nameCtrl, label: 'Nome Esercizio', hint: 'es. Panca Piana'),
+              const SizedBox(height: 12),
+              _InputField(controller: muscleCtrl, label: 'Gruppo Muscolare', hint: 'es. Petto'),
+              const SizedBox(height: 12),
+              DropdownButtonFormField<String>(
+                initialValue: type,
+                dropdownColor: AppColors.surface,
+                style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                decoration: InputDecoration(
+                  labelText: 'Tipo',
+                  labelStyle: TextStyle(color: Colors.grey[500]),
+                  filled: true,
+                  fillColor: Colors.white.withValues(alpha: 0.06),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: const BorderSide(color: AppColors.primary)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
                 ),
-                onPressed: () async {
-                  if (nameCtrl.text.isEmpty) return;
-                  try {
-                    await ref.read(trainerServiceProvider).createExercise({
-                      'name': nameCtrl.text,
-                      'muscle_group': muscleCtrl.text,
-                      'type': type,
-                    });
-                    ref.invalidate(trainerExercisesProvider);
-                    if (ctx.mounted) Navigator.pop(ctx);
-                  } catch (e) {
-                    if (ctx.mounted) {
-                      ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Errore: $e')));
-                    }
-                  }
-                },
-                child: const Text('CREA ESERCIZIO', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+                items: const [
+                  DropdownMenuItem(value: 'weight_reps', child: Text('Peso & Ripetizioni')),
+                  DropdownMenuItem(value: 'cardio', child: Text('Cardio')),
+                  DropdownMenuItem(value: 'bodyweight', child: Text('Corpo Libero')),
+                ],
+                onChanged: (v) => type = v ?? type,
               ),
-            ),
-          ],
+              const SizedBox(height: 12),
+              // Video section: URL or file pick
+              Text('Video (opzionale)', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+              const SizedBox(height: 6),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: videoUrlCtrl,
+                      style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
+                      decoration: InputDecoration(
+                        hintText: 'URL YouTube o link diretto',
+                        hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.06),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  GestureDetector(
+                    onTap: () async {
+                      final picker = ImagePicker();
+                      final video = await picker.pickVideo(source: ImageSource.gallery);
+                      if (video != null) {
+                        setModalState(() {
+                          pickedVideo = video;
+                          videoUrlCtrl.text = video.name;
+                        });
+                      }
+                    },
+                    child: Container(
+                      width: 48, height: 48,
+                      decoration: BoxDecoration(
+                        color: pickedVideo != null
+                            ? AppColors.primary.withValues(alpha: 0.25)
+                            : Colors.white.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(12),
+                        border: pickedVideo != null
+                            ? Border.all(color: AppColors.primary.withValues(alpha: 0.5))
+                            : null,
+                      ),
+                      child: Icon(
+                        pickedVideo != null ? Icons.check_circle_rounded : Icons.video_library_rounded,
+                        size: 22,
+                        color: pickedVideo != null ? AppColors.primary : Colors.grey[500],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  onPressed: creating ? null : () async {
+                    if (nameCtrl.text.isEmpty) return;
+                    setModalState(() => creating = true);
+                    try {
+                      final service = ref.read(trainerServiceProvider);
+                      final data = <String, dynamic>{
+                        'name': nameCtrl.text,
+                        'muscle_group': muscleCtrl.text,
+                        'type': type,
+                      };
+                      // If URL provided (and no file picked), include it
+                      if (pickedVideo == null && videoUrlCtrl.text.trim().isNotEmpty) {
+                        data['video_url'] = videoUrlCtrl.text.trim();
+                      }
+                      final created = await service.createExercise(data);
+                      // If a video file was picked, upload it now
+                      if (pickedVideo != null && created['id'] != null) {
+                        try {
+                          await service.uploadExerciseVideo(
+                            created['id'].toString(),
+                            pickedVideo!.path,
+                            pickedVideo!.name,
+                          );
+                        } catch (_) {
+                          // Exercise created but video upload failed — still close
+                          if (ctx.mounted) {
+                            ScaffoldMessenger.of(ctx).showSnackBar(
+                              const SnackBar(content: Text('Esercizio creato, ma errore upload video'), backgroundColor: Colors.orange),
+                            );
+                          }
+                        }
+                      }
+                      ref.invalidate(trainerExercisesProvider);
+                      if (ctx.mounted) Navigator.pop(ctx);
+                    } catch (e) {
+                      if (ctx.mounted) {
+                        ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Errore: $e')));
+                      }
+                    }
+                    if (ctx.mounted) setModalState(() => creating = false);
+                  },
+                  child: creating
+                      ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('CREA ESERCIZIO', style: TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -953,107 +1170,291 @@ class _BuilderExercise {
   final String id;
   final String name;
   final String muscle;
-  int sets;
-  int reps;
+  List<int> setReps; // reps per set, length = number of sets
   int rest;
 
   _BuilderExercise({
     required this.id,
     required this.name,
     required this.muscle,
-    this.sets = 3,
-    this.reps = 10,
+    int sets = 3,
+    int reps = 10,
     this.rest = 60,
-  });
+    List<int>? setReps,
+  }) : setReps = setReps ?? List.filled(sets, reps, growable: true);
+
+  int get sets => setReps.length;
+  int get reps => setReps.isNotEmpty ? setReps[0] : 10;
 }
 
 // ═══════════════════════════════════════════════════════════
 //  BUILDER EXERCISE CARD (with sets/reps inline edit)
 // ═══════════════════════════════════════════════════════════
-class _BuilderExerciseCard extends StatelessWidget {
+class _BuilderExerciseCard extends StatefulWidget {
   final _BuilderExercise exercise;
   final int index;
   final VoidCallback onRemove;
-  final ValueChanged<String> onSetsChanged;
-  final ValueChanged<String> onRepsChanged;
-  final ValueChanged<String> onRestChanged;
+  final VoidCallback onChanged;
 
   const _BuilderExerciseCard({
+    super.key,
     required this.exercise,
     required this.index,
     required this.onRemove,
-    required this.onSetsChanged,
-    required this.onRepsChanged,
-    required this.onRestChanged,
+    required this.onChanged,
   });
 
   @override
+  State<_BuilderExerciseCard> createState() => _BuilderExerciseCardState();
+}
+
+class _BuilderExerciseCardState extends State<_BuilderExerciseCard> {
+  bool _expanded = false;
+  int _repsVersion = 0; // bump to force _MiniInput rebuild after "Tutti"
+
+  @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(10),
-      decoration: BoxDecoration(
-        color: AppColors.primary.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.primary.withValues(alpha: 0.12)),
-      ),
-      child: Row(
-        children: [
-          // Index badge
-          Container(
-            width: 24, height: 24,
-            decoration: BoxDecoration(
-              color: AppColors.primary.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(6),
-            ),
-            child: Center(
-              child: Text(
-                '${index + 1}',
-                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary),
+    final ex = widget.exercise;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Container(
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: AppColors.primary.withValues(alpha: _expanded ? 0.25 : 0.12)),
+        ),
+        child: Column(
+          children: [
+            // Header row — tap to expand, drag handle on the right
+            GestureDetector(
+              onTap: () => setState(() => _expanded = !_expanded),
+              behavior: HitTestBehavior.opaque,
+              child: Padding(
+                padding: const EdgeInsets.all(10),
+                child: Row(
+                  children: [
+                    // Index badge
+                    Container(
+                      width: 24, height: 24,
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Center(
+                        child: Text(
+                          '${widget.index + 1}',
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    // Name + muscle
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(ex.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                          if (ex.muscle.isNotEmpty)
+                            Text(ex.muscle, style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+                        ],
+                      ),
+                    ),
+                    // Summary: sets x reps · rest
+                    Text(
+                      '${ex.sets}x${ex.reps}',
+                      style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[400]),
+                    ),
+                    const SizedBox(width: 4),
+                    Icon(Icons.timer_outlined, size: 11, color: Colors.grey[600]),
+                    Text(
+                      '${ex.rest}s',
+                      style: TextStyle(fontSize: 11, color: Colors.grey[500]),
+                    ),
+                    const SizedBox(width: 4),
+                    // Expand indicator
+                    Icon(
+                      _expanded ? Icons.expand_less_rounded : Icons.expand_more_rounded,
+                      size: 18, color: Colors.grey[500],
+                    ),
+                    const SizedBox(width: 6),
+                    // Remove button
+                    GestureDetector(
+                      onTap: widget.onRemove,
+                      child: Container(
+                        width: 26, height: 26,
+                        decoration: BoxDecoration(
+                          color: AppColors.danger.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(7),
+                        ),
+                        child: const Icon(Icons.close_rounded, size: 15, color: AppColors.danger),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    // Drag handle
+                    ReorderableDragStartListener(
+                      index: widget.index,
+                      child: Icon(Icons.drag_indicator_rounded, size: 20, color: Colors.grey[500]),
+                    ),
+                  ],
+                ),
               ),
             ),
-          ),
-          const SizedBox(width: 10),
-          // Name + muscle
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(exercise.name, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                if (exercise.muscle.isNotEmpty)
-                  Text(exercise.muscle, style: TextStyle(fontSize: 10, color: Colors.grey[500])),
-              ],
-            ),
-          ),
-          // Sets
-          _MiniInput(initialValue: '${exercise.sets}', label: 'Set', onChanged: onSetsChanged),
-          const SizedBox(width: 4),
-          Text('x', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-          const SizedBox(width: 4),
-          // Reps
-          _MiniInput(initialValue: '${exercise.reps}', label: 'Rep', onChanged: onRepsChanged),
-          const SizedBox(width: 6),
-          // Rest
-          Icon(Icons.timer_outlined, size: 12, color: Colors.grey[600]),
-          const SizedBox(width: 2),
-          _MiniInput(initialValue: '${exercise.rest}', label: 's', onChanged: onRestChanged),
-          const SizedBox(width: 8),
-          // Remove
-          GestureDetector(
-            onTap: onRemove,
-            child: Icon(Icons.close_rounded, size: 16, color: Colors.grey[500]),
-          ),
-        ],
+
+            // Expanded: per-set reps + rest + add set
+            if (_expanded) ...[
+              Divider(height: 1, color: Colors.white.withValues(alpha: 0.06)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 4),
+                child: Row(
+                  children: [
+                    Text('Recupero', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                    const SizedBox(width: 8),
+                    _MiniInput(
+                      initialValue: '${ex.rest}',
+                      label: 's',
+                      onChanged: (v) {
+                        final n = int.tryParse(v);
+                        if (n != null) setState(() => ex.rest = n);
+                      },
+                    ),
+                    Text(' sec', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                  ],
+                ),
+              ),
+              // Per-set rows
+              ...ex.setReps.asMap().entries.map((entry) {
+                final si = entry.key;
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(10, 4, 10, 4),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 22, height: 22,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Center(
+                          child: Text(
+                            '${si + 1}',
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey[500]),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text('Rep', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                      const SizedBox(width: 6),
+                      _MiniInput(
+                        key: ValueKey('rep_${si}_$_repsVersion'),
+                        initialValue: '${entry.value}',
+                        label: '',
+                        onChanged: (v) {
+                          final n = int.tryParse(v);
+                          if (n != null) ex.setReps[si] = n;
+                        },
+                      ),
+                      // Copy first set reps to all — only show on first row when multiple sets
+                      if (si == 0 && ex.setReps.length > 1) ...[
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: () {
+                            setState(() {
+                              final val = ex.setReps[0];
+                              for (int i = 1; i < ex.setReps.length; i++) {
+                                ex.setReps[i] = val;
+                              }
+                              _repsVersion++;
+                            });
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.copy_rounded, size: 12, color: AppColors.primary),
+                                const SizedBox(width: 3),
+                                Text('Tutti', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                      const Spacer(),
+                      if (ex.setReps.length > 1)
+                        GestureDetector(
+                          onTap: () {
+                            setState(() => ex.setReps.removeAt(si));
+                          },
+                          child: Icon(Icons.remove_circle_outline_rounded, size: 16, color: Colors.grey[600]),
+                        ),
+                    ],
+                  ),
+                );
+              }),
+              // Add set button
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 4, 10, 8),
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      ex.setReps.add(ex.setReps.isNotEmpty ? ex.setReps.last : 10);
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.add_rounded, size: 16, color: AppColors.primary),
+                        SizedBox(width: 4),
+                        Text('Aggiungi Set', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
       ),
     );
   }
 }
 
-class _MiniInput extends StatelessWidget {
+class _MiniInput extends StatefulWidget {
   final String initialValue;
   final String label;
   final ValueChanged<String> onChanged;
 
-  const _MiniInput({required this.initialValue, required this.label, required this.onChanged});
+  const _MiniInput({super.key, required this.initialValue, required this.label, required this.onChanged});
+
+  @override
+  State<_MiniInput> createState() => _MiniInputState();
+}
+
+class _MiniInputState extends State<_MiniInput> {
+  late final TextEditingController _ctrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _ctrl = TextEditingController(text: widget.initialValue);
+  }
+
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1061,7 +1462,7 @@ class _MiniInput extends StatelessWidget {
       width: 42,
       height: 32,
       child: TextField(
-        controller: TextEditingController(text: initialValue),
+        controller: _ctrl,
         textAlign: TextAlign.center,
         keyboardType: TextInputType.number,
         style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
@@ -1071,7 +1472,7 @@ class _MiniInput extends StatelessWidget {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(6), borderSide: BorderSide.none),
           contentPadding: EdgeInsets.zero,
         ),
-        onChanged: onChanged,
+        onChanged: widget.onChanged,
       ),
     );
   }
@@ -1172,7 +1573,7 @@ class _DesktopColumn extends StatelessWidget {
 // ═══════════════════════════════════════════════════════════
 //  DRAGGABLE EXERCISE LIST (desktop — items are draggable)
 // ═══════════════════════════════════════════════════════════
-class _DraggableExerciseList extends StatelessWidget {
+class _DraggableExerciseList extends StatefulWidget {
   final List<Map<String, dynamic>> exercises;
   final String search;
   final ValueChanged<String> onSearchChanged;
@@ -1186,15 +1587,72 @@ class _DraggableExerciseList extends StatelessWidget {
   });
 
   @override
+  State<_DraggableExerciseList> createState() => _DraggableExerciseListState();
+}
+
+class _DraggableExerciseListState extends State<_DraggableExerciseList> {
+  String _muscleFilter = '';
+
+  Widget _filterChip(String label, String value) {
+    final selected = _muscleFilter == value;
+    return Padding(
+      padding: const EdgeInsets.only(right: 6),
+      child: GestureDetector(
+        onTap: () => setState(() => _muscleFilter = value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: selected ? AppColors.primary.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: selected ? AppColors.primary.withValues(alpha: 0.5) : Colors.white.withValues(alpha: 0.08),
+            ),
+          ),
+          child: Text(
+            label,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              color: selected ? AppColors.primary : Colors.grey[400],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final filtered = exercises.where((e) {
-      if (search.isEmpty) return true;
-      return (e['name'] as String? ?? '').toLowerCase().contains(search.toLowerCase());
+    // Collect unique muscle groups
+    final muscles = <String>{};
+    for (final e in widget.exercises) {
+      final m = (e['muscle'] ?? e['muscle_group'] ?? '').toString();
+      if (m.isNotEmpty) muscles.add(m);
+    }
+    final sortedMuscles = muscles.toList()..sort();
+
+    final filtered = widget.exercises.where((e) {
+      final name = (e['name'] as String? ?? '').toLowerCase();
+      final muscle = (e['muscle'] ?? e['muscle_group'] ?? '').toString();
+      if (widget.search.isNotEmpty && !name.contains(widget.search.toLowerCase())) return false;
+      if (_muscleFilter.isNotEmpty && muscle != _muscleFilter) return false;
+      return true;
     }).toList();
 
     return Column(
       children: [
-        _SearchBar(hint: 'Cerca esercizi...', onChanged: onSearchChanged),
+        _SearchBar(hint: 'Cerca esercizi...', onChanged: widget.onSearchChanged),
+        const SizedBox(height: 6),
+        SizedBox(
+          height: 30,
+          child: ListView(
+            scrollDirection: Axis.horizontal,
+            children: [
+              _filterChip('Tutti', ''),
+              ...sortedMuscles.map((m) => _filterChip(m, m)),
+            ],
+          ),
+        ),
         const SizedBox(height: 8),
         Expanded(
           child: filtered.isEmpty
@@ -1231,13 +1689,15 @@ class _DraggableExerciseList extends StatelessWidget {
                               ],
                             ),
                           ),
-                          if (isDraggable)
-                            Icon(Icons.drag_indicator_rounded, size: 18, color: Colors.grey[600]),
+                          if (widget.isDraggable)
+                            Icon(Icons.drag_indicator_rounded, size: 18, color: Colors.grey[600])
+                          else
+                            Icon(Icons.edit_rounded, size: 16, color: Colors.grey[600]),
                         ],
                       ),
                     );
 
-                    if (!isDraggable) {
+                    if (!widget.isDraggable) {
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 6),
                         child: GestureDetector(
@@ -2494,7 +2954,7 @@ class _ExerciseTab extends StatelessWidget {
                                   ],
                                 ),
                               ),
-                              Icon(Icons.chevron_right_rounded, size: 20, color: Colors.grey[600]),
+                              Icon(Icons.edit_rounded, size: 18, color: Colors.grey[600]),
                             ],
                           ),
                         ),
@@ -2550,8 +3010,8 @@ class _ExerciseDetailSheetState extends ConsumerState<_ExerciseDetailSheet> {
 
   void _initVideo() {
     final ex = _exercise;
-    final videoUrl = ex['video_url'] as String?;
-    final videoId = ex['video_id'] as String?;
+    final videoUrl = ex['video_url']?.toString();
+    final videoId = ex['video_id']?.toString();
 
     String? url;
     if (videoUrl != null && videoUrl.isNotEmpty) {
@@ -2565,8 +3025,27 @@ class _ExerciseDetailSheetState extends ConsumerState<_ExerciseDetailSheet> {
       _player = Player();
       _videoCtrl = VideoController(_player!);
       _player!.setPlaylistMode(PlaylistMode.loop);
-      _player!.open(Media(url));
+      _player!.open(Media(url)).catchError((_) {
+        if (mounted) setState(() => _hasVideo = false);
+      });
+      // Listen for errors and stop showing spinner if video fails
+      _player!.stream.error.listen((error) {
+        if (mounted && error.isNotEmpty) {
+          setState(() => _hasVideo = false);
+          _player?.dispose();
+          _player = null;
+          _videoCtrl = null;
+        }
+      });
     }
+  }
+
+  void _reloadVideo() {
+    _player?.dispose();
+    _player = null;
+    _videoCtrl = null;
+    _hasVideo = false;
+    _initVideo();
   }
 
   @override
@@ -2633,6 +3112,44 @@ class _ExerciseDetailSheetState extends ConsumerState<_ExerciseDetailSheet> {
                   border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
                 ),
                 child: const Icon(Icons.edit_rounded, size: 20, color: AppColors.primary),
+              ),
+            ),
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () async {
+                final confirm = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    backgroundColor: AppColors.surface,
+                    title: const Text('Elimina Esercizio', style: TextStyle(color: AppColors.textPrimary)),
+                    content: Text('Vuoi eliminare "${_exercise['name']}"?', style: TextStyle(color: Colors.grey[400])),
+                    actions: [
+                      TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Annulla', style: TextStyle(color: Colors.grey[500]))),
+                      TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Elimina', style: TextStyle(color: AppColors.danger))),
+                    ],
+                  ),
+                );
+                if (confirm == true && context.mounted) {
+                  try {
+                    final id = _exercise['id']?.toString() ?? '';
+                    await ref.read(trainerServiceProvider).deleteExercise(id);
+                    ref.invalidate(trainerExercisesProvider);
+                    if (context.mounted) Navigator.pop(context);
+                  } catch (e) {
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+                    }
+                  }
+                }
+              },
+              child: Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: AppColors.danger.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.danger.withValues(alpha: 0.3)),
+                ),
+                child: const Icon(Icons.delete_rounded, size: 20, color: AppColors.danger),
               ),
             ),
           ],
@@ -2752,12 +3269,12 @@ class _ExerciseDetailSheetState extends ConsumerState<_ExerciseDetailSheet> {
                     Expanded(child: _EditField(controller: videoUrlCtrl, label: 'Video URL (opzionale)')),
                     const SizedBox(width: 8),
                     _VideoUploadButton(
-                      exerciseId: _exercise['id'] as String,
+                      exerciseId: _exercise['id'].toString(),
                       onUploaded: (updatedEx) {
                         setModalState(() => videoUrlCtrl.text = '');
-                        setState(() {
-                          _exercise = {..._exercise, 'video_id': updatedEx['video_id']};
-                        });
+                        _exercise = {..._exercise, 'video_id': updatedEx['video_id']};
+                        setState(() {});
+                        _reloadVideo();
                       },
                     ),
                   ],
@@ -2825,12 +3342,12 @@ class _ExerciseDetailSheetState extends ConsumerState<_ExerciseDetailSheet> {
                       };
                       try {
                         final service = ref.read(trainerServiceProvider);
-                        await service.updateExercise(_exercise['id'] as String, data);
+                        await service.updateExercise(_exercise['id'].toString(), data);
                         if (ctx.mounted) Navigator.pop(ctx);
                         // Update local state
-                        setState(() {
-                          _exercise = {..._exercise, ...data, 'muscle': muscleCtrl.text.trim()};
-                        });
+                        _exercise = {..._exercise, ...data, 'muscle': muscleCtrl.text.trim()};
+                        setState(() {});
+                        _reloadVideo();
                         ref.invalidate(trainerExercisesProvider);
                       } catch (e) {
                         if (ctx.mounted) {
@@ -4211,14 +4728,33 @@ class _VideoUploadButtonState extends ConsumerState<_VideoUploadButton> {
   bool _uploading = false;
 
   Future<void> _pickAndUpload() async {
-    final picker = ImagePicker();
-    final video = await picker.pickVideo(source: ImageSource.gallery);
-    if (video == null) return;
+    String? filePath;
+    String? fileName;
+
+    // Use file_picker on desktop, image_picker on mobile/web
+    final isDesktop = !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
+    if (isDesktop) {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.custom,
+        allowedExtensions: ['mp4', 'mov', 'avi', 'webm', 'mkv'],
+      );
+      if (result == null || result.files.isEmpty) return;
+      filePath = result.files.single.path;
+      fileName = result.files.single.name;
+    } else {
+      final picker = ImagePicker();
+      final video = await picker.pickVideo(source: ImageSource.gallery);
+      if (video == null) return;
+      filePath = video.path;
+      fileName = video.name;
+    }
+
+    if (filePath == null) return;
 
     setState(() => _uploading = true);
     try {
       final service = ref.read(trainerServiceProvider);
-      final result = await service.uploadExerciseVideo(widget.exerciseId, video.path, video.name);
+      final result = await service.uploadExerciseVideo(widget.exerciseId, filePath, fileName ?? 'video.mp4');
       ref.invalidate(trainerExercisesProvider);
       widget.onUploaded(result);
       if (mounted) {

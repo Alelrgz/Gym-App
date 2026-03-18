@@ -1,9 +1,12 @@
 import 'dart:async';
+import 'dart:convert';
+import 'package:dio/dio.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 import 'package:record/record.dart';
 import '../config/api_config.dart';
@@ -86,31 +89,28 @@ String _timeAgo(String? dateStr) {
 // ─── 1. NOTIFICATIONS SHEET ────────────────────────────────────
 
 Future<void> showNotificationsSheet(BuildContext context, WidgetRef ref) {
-  return showModalBottomSheet(
+  return showDialog(
     context: context,
-    backgroundColor: AppColors.surface,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (ctx) => DraggableScrollableSheet(
-      initialChildSize: 0.7,
-      minChildSize: 0.4,
-      maxChildSize: 0.9,
-      expand: false,
-      builder: (_, scrollController) => _NotificationsContent(
-        scrollController: scrollController,
-        ref: ref,
+    barrierColor: Colors.black54,
+    builder: (ctx) => Dialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 60),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: SizedBox(
+          height: MediaQuery.of(context).size.height * 0.55,
+          child: _NotificationsContent(ref: ref),
+        ),
       ),
     ),
   );
 }
 
 class _NotificationsContent extends StatefulWidget {
-  final ScrollController scrollController;
   final WidgetRef ref;
 
-  const _NotificationsContent({required this.scrollController, required this.ref});
+  const _NotificationsContent({required this.ref});
 
   @override
   State<_NotificationsContent> createState() => _NotificationsContentState();
@@ -170,12 +170,13 @@ class _NotificationsContentState extends State<_NotificationsContent> {
                 : _notifications.isEmpty
                     ? _emptyState('Nessuna notifica', Icons.notifications_off_rounded)
                     : ListView.builder(
-                        controller: widget.scrollController,
                         itemCount: _notifications.length,
                         itemBuilder: (_, i) {
                           final n = _notifications[i] as Map<String, dynamic>;
                           final isRead = n['read'] == true;
-                          return Container(
+                          return GestureDetector(
+                            onTap: () => _handleNotificationTap(n, context),
+                            child: Container(
                             margin: const EdgeInsets.only(bottom: 8),
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
@@ -226,6 +227,7 @@ class _NotificationsContentState extends State<_NotificationsContent> {
                                   ),
                               ],
                             ),
+                          ),
                           );
                         },
                       ),
@@ -233,6 +235,28 @@ class _NotificationsContentState extends State<_NotificationsContent> {
         ],
       ),
     );
+  }
+
+  void _handleNotificationTap(Map<String, dynamic> n, BuildContext context) {
+    final type = n['type']?.toString() ?? '';
+    if (type == 'send_credentials_link') {
+      final rawData = n['data'];
+      if (rawData != null) {
+        try {
+          final Map<String, dynamic> data;
+          if (rawData is Map) {
+            data = Map<String, dynamic>.from(rawData);
+          } else {
+            data = jsonDecode(rawData.toString()) as Map<String, dynamic>;
+          }
+          final link = data['link']?.toString();
+          if (link != null && link.isNotEmpty) {
+            final uri = Uri.parse(link);
+            launchUrl(uri, mode: LaunchMode.externalApplication);
+          }
+        } catch (_) {}
+      }
+    }
   }
 }
 
@@ -243,6 +267,7 @@ IconData _notifIcon(String type) {
     case 'workout': return Icons.fitness_center_rounded;
     case 'appointment': return Icons.calendar_today_rounded;
     case 'achievement': return Icons.emoji_events_rounded;
+    case 'send_credentials_link': return Icons.send_rounded;
     default: return Icons.notifications_none_rounded;
   }
 }
@@ -250,43 +275,23 @@ IconData _notifIcon(String type) {
 // ─── 2. CONVERSATIONS SHEET ────────────────────────────────────
 
 Future<void> showConversationsSheet(BuildContext context, WidgetRef ref) {
-  return showModalBottomSheet(
-    context: context,
-    backgroundColor: AppColors.surface,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (ctx) => DraggableScrollableSheet(
-      initialChildSize: 0.85,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (_, scrollController) => _ConversationsContent(
-        scrollController: scrollController,
-        ref: ref,
-        parentContext: context,
-      ),
+  return Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => _ConversationsPage(ref: ref),
     ),
   );
 }
 
-class _ConversationsContent extends StatefulWidget {
-  final ScrollController scrollController;
+class _ConversationsPage extends StatefulWidget {
   final WidgetRef ref;
-  final BuildContext parentContext;
 
-  const _ConversationsContent({
-    required this.scrollController,
-    required this.ref,
-    required this.parentContext,
-  });
+  const _ConversationsPage({required this.ref});
 
   @override
-  State<_ConversationsContent> createState() => _ConversationsContentState();
+  State<_ConversationsPage> createState() => _ConversationsPageState();
 }
 
-class _ConversationsContentState extends State<_ConversationsContent> {
+class _ConversationsPageState extends State<_ConversationsPage> {
   List<dynamic> _conversations = [];
   bool _loading = true;
 
@@ -314,133 +319,136 @@ class _ConversationsContentState extends State<_ConversationsContent> {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          _sheetHandle(),
-          _sheetTitle('Messaggi'),
-          Expanded(
-            child: _loading
-                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-                : _conversations.isEmpty
-                    ? _emptyState('Nessuna conversazione', Icons.chat_bubble_outline_rounded)
-                    : ListView.builder(
-                        controller: widget.scrollController,
-                        itemCount: _conversations.length,
-                        itemBuilder: (_, i) {
-                          final c = _conversations[i] as Map<String, dynamic>;
-                          final unread = (c['unread_count'] as int?) ?? 0;
-                          final name = c['other_user_name']?.toString() ?? 'Utente';
-                          final picUrl = _profilePictureUrl(c['other_user_profile_picture']?.toString());
-                          final lastMsg = c['last_message_preview']?.toString() ?? '';
-                          final lastTime = _timeAgo(c['last_message_at']?.toString());
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Messaggi',
+          style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 18),
+        ),
+        centerTitle: true,
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+          : _conversations.isEmpty
+              ? _emptyState('Nessuna conversazione', Icons.chat_bubble_outline_rounded)
+              : ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  itemCount: _conversations.length,
+                  itemBuilder: (_, i) {
+                    final c = _conversations[i] as Map<String, dynamic>;
+                    final unread = (c['unread_count'] as int?) ?? 0;
+                    final name = c['other_user_name']?.toString() ?? 'Utente';
+                    final picUrl = _profilePictureUrl(c['other_user_profile_picture']?.toString());
+                    final lastMsg = c['last_message_preview']?.toString() ?? '';
+                    final lastTime = _timeAgo(c['last_message_at']?.toString());
 
-                          return GestureDetector(
-                            onTap: () {
-                              Navigator.pop(context);
-                              showChatSheet(widget.parentContext, widget.ref, c);
-                            },
-                            child: Container(
-                              margin: const EdgeInsets.only(bottom: 4),
-                              padding: const EdgeInsets.all(12),
+                    return GestureDetector(
+                      onTap: () {
+                        showChatSheet(context, widget.ref, c);
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 4),
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: unread > 0
+                              ? Colors.white.withValues(alpha: 0.04)
+                              : Colors.transparent,
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Row(
+                          children: [
+                            // Avatar
+                            Container(
+                              width: 48,
+                              height: 48,
                               decoration: BoxDecoration(
-                                color: unread > 0
-                                    ? Colors.white.withValues(alpha: 0.04)
-                                    : Colors.transparent,
-                                borderRadius: BorderRadius.circular(12),
+                                shape: BoxShape.circle,
+                                gradient: picUrl.isEmpty
+                                    ? const LinearGradient(
+                                        colors: [AppColors.primary, Color(0xFFE04E1A)],
+                                        begin: Alignment.topLeft,
+                                        end: Alignment.bottomRight,
+                                      )
+                                    : null,
                               ),
-                              child: Row(
+                              clipBehavior: Clip.antiAlias,
+                              child: picUrl.isNotEmpty
+                                  ? Image.network(picUrl, fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => const Icon(Icons.person, color: Colors.white70, size: 22))
+                                  : const Icon(Icons.person, color: Colors.white70, size: 22),
+                            ),
+                            const SizedBox(width: 12),
+                            // Name + last message
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Avatar
-                                  Container(
-                                    width: 48,
-                                    height: 48,
-                                    decoration: BoxDecoration(
-                                      shape: BoxShape.circle,
-                                      gradient: picUrl.isEmpty
-                                          ? const LinearGradient(
-                                              colors: [AppColors.primary, Color(0xFFE04E1A)],
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                            )
-                                          : null,
-                                    ),
-                                    clipBehavior: Clip.antiAlias,
-                                    child: picUrl.isNotEmpty
-                                        ? Image.network(picUrl, fit: BoxFit.cover,
-                                            errorBuilder: (_, _, _) => const Icon(Icons.person, color: Colors.white70, size: 22))
-                                        : const Icon(Icons.person, color: Colors.white70, size: 22),
-                                  ),
-                                  const SizedBox(width: 12),
-                                  // Name + last message
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          name,
-                                          style: TextStyle(
-                                            color: AppColors.textPrimary,
-                                            fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w500,
-                                            fontSize: 15,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 3),
-                                        Text(
-                                          lastMsg,
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                          style: TextStyle(
-                                            color: unread > 0 ? AppColors.textSecondary : AppColors.textTertiary,
-                                            fontSize: 13,
-                                          ),
-                                        ),
-                                      ],
+                                  Text(
+                                    name,
+                                    style: TextStyle(
+                                      color: AppColors.textPrimary,
+                                      fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w500,
+                                      fontSize: 15,
                                     ),
                                   ),
-                                  const SizedBox(width: 8),
-                                  // Time + badge
-                                  Column(
-                                    crossAxisAlignment: CrossAxisAlignment.end,
-                                    children: [
-                                      Text(lastTime,
-                                          style: TextStyle(
-                                            color: unread > 0 ? AppColors.primary : AppColors.textTertiary,
-                                            fontSize: 11,
-                                          )),
-                                      if (unread > 0) ...[
-                                        const SizedBox(height: 6),
-                                        Container(
-                                          width: 22,
-                                          height: 22,
-                                          decoration: const BoxDecoration(
-                                            color: AppColors.primary,
-                                            shape: BoxShape.circle,
-                                          ),
-                                          alignment: Alignment.center,
-                                          child: Text(
-                                            '$unread',
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 11,
-                                              fontWeight: FontWeight.w700,
-                                            ),
-                                          ),
-                                        ),
-                                      ],
-                                    ],
+                                  const SizedBox(height: 3),
+                                  Text(
+                                    lastMsg,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      color: unread > 0 ? AppColors.textSecondary : AppColors.textTertiary,
+                                      fontSize: 13,
+                                    ),
                                   ),
                                 ],
                               ),
                             ),
-                          );
-                        },
+                            const SizedBox(width: 8),
+                            // Time + badge
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(lastTime,
+                                    style: TextStyle(
+                                      color: unread > 0 ? AppColors.primary : AppColors.textTertiary,
+                                      fontSize: 11,
+                                    )),
+                                if (unread > 0) ...[
+                                  const SizedBox(height: 6),
+                                  Container(
+                                    width: 22,
+                                    height: 22,
+                                    decoration: const BoxDecoration(
+                                      color: AppColors.primary,
+                                      shape: BoxShape.circle,
+                                    ),
+                                    alignment: Alignment.center,
+                                    child: Text(
+                                      '$unread',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-          ),
-        ],
-      ),
+                    );
+                  },
+                ),
     );
   }
 }
@@ -448,25 +456,32 @@ class _ConversationsContentState extends State<_ConversationsContent> {
 // ─── 2b. CHAT SHEET (single conversation) ──────────────────────
 
 Future<void> showChatSheet(BuildContext context, WidgetRef ref, Map<String, dynamic> conversation) {
-  return showModalBottomSheet(
-    context: context,
-    backgroundColor: AppColors.surface,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (ctx) => DraggableScrollableSheet(
-      initialChildSize: 0.95,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (_, scrollController) => _ChatContent(
-        scrollController: scrollController,
-        ref: ref,
-        conversation: conversation,
-      ),
+  return Navigator.of(context).push(
+    MaterialPageRoute(
+      builder: (_) => _ChatPage(ref: ref, conversation: conversation),
     ),
   );
+}
+
+class _ChatPage extends StatelessWidget {
+  final WidgetRef ref;
+  final Map<String, dynamic> conversation;
+
+  const _ChatPage({required this.ref, required this.conversation});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: _ChatContent(
+          scrollController: ScrollController(),
+          ref: ref,
+          conversation: conversation,
+        ),
+      ),
+    );
+  }
 }
 
 class _ChatContent extends StatefulWidget {
@@ -758,15 +773,10 @@ class _ChatContentState extends State<_ChatContent> {
         Container(
           padding: const EdgeInsets.fromLTRB(12, 12, 16, 10),
           decoration: const BoxDecoration(
-            color: AppColors.elevated,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            color: AppColors.background,
             border: Border(bottom: BorderSide(color: AppColors.border)),
           ),
-          child: Column(
-            children: [
-              _sheetHandle(),
-              const SizedBox(height: 4),
-              Row(
+          child: Row(
                 children: [
                   GestureDetector(
                     onTap: () => Navigator.pop(context),
@@ -818,8 +828,6 @@ class _ChatContentState extends State<_ChatContent> {
                   ),
                 ],
               ),
-            ],
-          ),
         ),
         // ── Messages ──
         Expanded(
@@ -847,7 +855,7 @@ class _ChatContentState extends State<_ChatContent> {
                             margin: const EdgeInsets.only(bottom: 6),
                             constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.78),
                             decoration: BoxDecoration(
-                              color: isMe ? AppColors.primary : Colors.white.withValues(alpha: 0.1),
+                              color: isMe ? Colors.white.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.06),
                               borderRadius: BorderRadius.only(
                                 topLeft: const Radius.circular(18),
                                 topRight: const Radius.circular(18),
@@ -995,8 +1003,8 @@ class _ChatContentState extends State<_ChatContent> {
     required bool isRead,
     required dynamic duration,
   }) {
-    final textColor = isMe ? Colors.black : AppColors.textPrimary;
-    final metaColor = isMe ? Colors.black.withValues(alpha: 0.5) : AppColors.textTertiary;
+    final textColor = isMe ? Colors.white : AppColors.textPrimary;
+    final metaColor = isMe ? Colors.white.withValues(alpha: 0.5) : AppColors.textTertiary;
 
     // Image message
     if (mediaType == 'image' && fileUrl.isNotEmpty) {
@@ -2489,36 +2497,22 @@ class _AppointmentsContentState extends State<_AppointmentsContent> {
         children: [
           _sheetHandle(),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                'Appuntamenti',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-              ),
-              GestureDetector(
-                onTap: () {
-                  Navigator.pop(context);
-                  showBookAppointmentSheet(context, widget.ref);
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [Color(0xFFF97316), Color(0xFFEA580C)]),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.add_rounded, size: 16, color: Colors.white),
-                      SizedBox(width: 4),
-                      Text('Prenota', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12)),
-                    ],
-                  ),
+              Expanded(child: _sheetTitle('Appuntamenti')),
+              Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: TextButton.icon(
+                  onPressed: () {
+                    Navigator.pop(context);
+                    showBookAppointmentSheet(context, widget.ref);
+                  },
+                  icon: const Icon(Icons.add_rounded, size: 18),
+                  label: const Text('Prenota'),
+                  style: TextButton.styleFrom(foregroundColor: AppColors.primary),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
           Expanded(
             child: _loading
                 ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
@@ -2603,14 +2597,21 @@ class _AppointmentsContentState extends State<_AppointmentsContent> {
         label = 'Confermato';
         break;
       case 'pending':
+      case 'pending_trainer':
         bg = const Color(0xFFEAB308).withValues(alpha: 0.2);
         text = const Color(0xFFEAB308);
-        label = 'In attesa';
+        label = status == 'pending_trainer' ? 'In attesa del trainer' : 'In attesa';
         break;
       case 'cancelled':
+      case 'canceled':
         bg = AppColors.danger.withValues(alpha: 0.2);
         text = AppColors.danger;
         label = 'Annullato';
+        break;
+      case 'completed':
+        bg = const Color(0xFF60A5FA).withValues(alpha: 0.2);
+        text = const Color(0xFF60A5FA);
+        label = 'Completato';
         break;
       default:
         bg = Colors.white.withValues(alpha: 0.1);
@@ -2884,7 +2885,11 @@ class _JoinGymDialogState extends State<_JoinGymDialog> {
     } catch (e) {
       if (mounted) {
         setState(() => _loading = false);
-        showSnack(context, 'Codice non valido', isError: true);
+        String msg = 'Codice non valido';
+        if (e is DioException && e.response?.data is Map) {
+          msg = (e.response!.data as Map)['detail']?.toString() ?? msg;
+        }
+        showSnack(context, msg, isError: true);
       }
     }
   }
@@ -3615,6 +3620,7 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
   // Strength progress
   Map<String, dynamic>? _strengthData;
   bool _loadingStrength = true;
+  String _strengthPeriod = 'month';
 
   @override
   void initState() {
@@ -3652,7 +3658,7 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
   Future<void> _loadStrength() async {
     try {
       final service = ref.read(clientServiceProvider);
-      final result = await service.getStrengthProgress();
+      final result = await service.getStrengthProgress(period: _strengthPeriod);
       if (mounted) setState(() { _strengthData = result; _loadingStrength = false; });
     } catch (_) {
       if (mounted) setState(() => _loadingStrength = false);
@@ -3661,8 +3667,39 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
 
   Future<void> _pickAndUploadPhoto() async {
     try {
+      final source = await showModalBottomSheet<ImageSource>(
+        context: context,
+        backgroundColor: AppColors.surface,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        builder: (ctx) => SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text('Foto Fisico', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+                const SizedBox(height: 16),
+                ListTile(
+                  leading: const Icon(Icons.camera_alt_rounded, color: AppColors.primary),
+                  title: const Text('Scatta Foto', style: TextStyle(color: AppColors.textPrimary)),
+                  onTap: () => Navigator.pop(ctx, ImageSource.camera),
+                ),
+                ListTile(
+                  leading: const Icon(Icons.photo_library_rounded, color: AppColors.primary),
+                  title: const Text('Galleria', style: TextStyle(color: AppColors.textPrimary)),
+                  onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+      if (source == null || !mounted) return;
+
       final picker = ImagePicker();
-      final image = await picker.pickImage(source: ImageSource.camera, maxWidth: 1200, maxHeight: 1600);
+      final image = await picker.pickImage(source: source, maxWidth: 1200, maxHeight: 1600);
       if (image == null) return;
 
       if (!mounted) return;
@@ -3765,12 +3802,6 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
         children: [
-          // ── Physique Photos ──
-          _sectionHeader('FOTO FISICO', action: 'Aggiungi', onAction: _pickAndUploadPhoto),
-          const SizedBox(height: 12),
-          _buildPhotoGallery(),
-          const SizedBox(height: 24),
-
           // ── Weight History ──
           _sectionHeader('PESO', action: '+ Registra', onAction: _showAddWeightDialog),
           const SizedBox(height: 4),
@@ -3787,8 +3818,24 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
           _buildWeightChart(),
           const SizedBox(height: 24),
 
+          // ── Physique Photos ──
+          _sectionHeader('FOTO FISICO', action: 'Aggiungi', onAction: _pickAndUploadPhoto),
+          const SizedBox(height: 12),
+          _buildPhotoGallery(),
+          const SizedBox(height: 24),
+
           // ── Strength Progress ──
           _sectionHeader('FORZA'),
+          const SizedBox(height: 4),
+          Row(
+            children: [
+              _strengthPeriodChip('Sett', 'week'),
+              const SizedBox(width: 6),
+              _strengthPeriodChip('Mese', 'month'),
+              const SizedBox(width: 6),
+              _strengthPeriodChip('Anno', 'year'),
+            ],
+          ),
           const SizedBox(height: 12),
           _buildStrengthSection(),
         ],
@@ -3802,6 +3849,28 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
       onTap: () {
         setState(() { _weightPeriod = value; _loadingWeight = true; });
         _loadWeight();
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.primary.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.05),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: isActive ? AppColors.primary.withValues(alpha: 0.3) : Colors.transparent),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isActive ? AppColors.primary : Colors.grey[500]),
+        ),
+      ),
+    );
+  }
+
+  Widget _strengthPeriodChip(String label, String value) {
+    final isActive = _strengthPeriod == value;
+    return GestureDetector(
+      onTap: () {
+        setState(() { _strengthPeriod = value; _loadingStrength = true; });
+        _loadStrength();
       },
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
@@ -3888,60 +3957,86 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
             ),
           ),
           // Photos
-          ..._photos.map((photo) {
+          ..._photos.asMap().entries.map((entry) {
+            final photo = entry.value;
+            final photoIndex = entry.key;
             final url = _resolvePhotoUrl(photo['photo_url'] as String?);
             final date = photo['photo_date'] as String? ?? '';
-            return Container(
-              width: 96,
-              height: 128,
-              margin: const EdgeInsets.only(right: 12),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    url.isNotEmpty
-                        ? Image.network(
-                            url,
-                            fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => Container(
-                              color: Colors.white.withValues(alpha: 0.06),
-                              child: const Icon(Icons.broken_image_rounded, color: AppColors.textTertiary),
+            final heroTag = 'progress_photo_$photoIndex';
+            return GestureDetector(
+              onTap: url.isNotEmpty ? () => _openPhotoViewer(context, photoIndex) : null,
+              child: Container(
+                width: 96,
+                height: 128,
+                margin: const EdgeInsets.only(right: 12),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                ),
+                child: Hero(
+                  tag: heroTag,
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        url.isNotEmpty
+                            ? Image.network(
+                                url,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) => Container(
+                                  color: Colors.white.withValues(alpha: 0.06),
+                                  child: const Icon(Icons.broken_image_rounded, color: AppColors.textTertiary),
+                                ),
+                              )
+                            : Container(
+                                color: Colors.white.withValues(alpha: 0.06),
+                                child: const Icon(Icons.image_rounded, color: AppColors.textTertiary),
+                              ),
+                        if (date.isNotEmpty)
+                          Positioned(
+                            bottom: 0, left: 0, right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(vertical: 4),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topCenter,
+                                  end: Alignment.bottomCenter,
+                                  colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
+                                ),
+                              ),
+                              child: Text(
+                                date,
+                                textAlign: TextAlign.center,
+                                style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w600),
+                              ),
                             ),
-                          )
-                        : Container(
-                            color: Colors.white.withValues(alpha: 0.06),
-                            child: const Icon(Icons.image_rounded, color: AppColors.textTertiary),
                           ),
-                    if (date.isNotEmpty)
-                      Positioned(
-                        bottom: 0, left: 0, right: 0,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              begin: Alignment.topCenter,
-                              end: Alignment.bottomCenter,
-                              colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
-                            ),
-                          ),
-                          child: Text(
-                            date,
-                            textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ),
-                  ],
+                      ],
+                    ),
+                  ),
                 ),
               ),
             );
           }),
         ],
+      ),
+    );
+  }
+
+  void _openPhotoViewer(BuildContext context, int initialIndex) {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        transitionDuration: const Duration(milliseconds: 350),
+        reverseTransitionDuration: const Duration(milliseconds: 300),
+        pageBuilder: (_, animation, _) => _PhotoViewerPage(
+          photos: _photos,
+          initialIndex: initialIndex,
+          resolveUrl: _resolvePhotoUrl,
+          animation: animation,
+        ),
+        transitionsBuilder: (_, animation, _, child) => child,
       ),
     );
   }
@@ -4173,7 +4268,7 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
     }
 
     final categories = _strengthData!['categories'] as Map<String, dynamic>? ?? {};
-    final overall = (_strengthData!['overall_progress'] as num?)?.toDouble() ?? 0;
+    final overall = (_strengthData!['progress'] as num?)?.toDouble() ?? 0;
     final trend = _strengthData!['trend'] as String? ?? 'stable';
 
     return Column(
@@ -5201,6 +5296,134 @@ class _CoopModalContentState extends State<_CoopModalContent> {
   }
 }
 
+// ─── FULL-SCREEN PHOTO VIEWER ────────────────────────────────────
+
+class _PhotoViewerPage extends StatefulWidget {
+  final List<Map<String, dynamic>> photos;
+  final int initialIndex;
+  final String Function(String?) resolveUrl;
+  final Animation<double> animation;
+
+  const _PhotoViewerPage({
+    required this.photos,
+    required this.initialIndex,
+    required this.resolveUrl,
+    required this.animation,
+  });
+
+  @override
+  State<_PhotoViewerPage> createState() => _PhotoViewerPageState();
+}
+
+class _PhotoViewerPageState extends State<_PhotoViewerPage> {
+  late PageController _controller;
+  late int _current;
+
+  @override
+  void initState() {
+    super.initState();
+    _current = widget.initialIndex;
+    _controller = PageController(initialPage: _current);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: widget.animation,
+      builder: (context, child) {
+        return Scaffold(
+          backgroundColor: Colors.black.withValues(alpha: widget.animation.value),
+          body: child,
+        );
+      },
+      child: Stack(
+        children: [
+          PageView.builder(
+            controller: _controller,
+            itemCount: widget.photos.length,
+            onPageChanged: (i) => setState(() => _current = i),
+            itemBuilder: (_, i) {
+              final url = widget.resolveUrl(widget.photos[i]['photo_url'] as String?);
+              final heroTag = 'progress_photo_$i';
+              return InteractiveViewer(
+                minScale: 0.5,
+                maxScale: 4.0,
+                child: Center(
+                  child: Hero(
+                    tag: heroTag,
+                    child: url.isNotEmpty
+                        ? Image.network(
+                            url,
+                            fit: BoxFit.contain,
+                            errorBuilder: (_, _, _) => const Icon(Icons.broken_image_rounded, color: Colors.white38, size: 48),
+                          )
+                        : const Icon(Icons.image_rounded, color: Colors.white38, size: 48),
+                  ),
+                ),
+              );
+            },
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 8,
+            left: 16,
+            right: 16,
+            child: FadeTransition(
+              opacity: widget.animation,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  GestureDetector(
+                    onTap: () => Navigator.of(context).pop(),
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.close_rounded, color: Colors.white, size: 22),
+                    ),
+                  ),
+                  Text(
+                    widget.photos[_current]['photo_date'] as String? ?? '',
+                    style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                  ),
+                  const SizedBox(width: 38),
+                ],
+              ),
+            ),
+          ),
+          if (widget.photos.length > 1)
+            Positioned(
+              bottom: MediaQuery.of(context).padding.bottom + 24,
+              left: 0,
+              right: 0,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(widget.photos.length, (i) {
+                  return Container(
+                    width: i == _current ? 20 : 6,
+                    height: 6,
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    decoration: BoxDecoration(
+                      color: i == _current ? AppColors.primary : Colors.white.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  );
+                }),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
 // ═══════════════════════════════════════════════════════════════════════
 // ─── BOOKING APPOINTMENT SHEET ──────────────────────────────────────
 // ═══════════════════════════════════════════════════════════════════════
@@ -5242,7 +5465,7 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
   bool _trainerListExpanded = false;
 
   // Selected trainer
-  int? _selectedTrainerId;
+  String? _selectedTrainerId;
   String? _selectedTrainerName;
   String? _selectedTrainerPicture;
   double? _trainerSessionRate;
@@ -5258,7 +5481,7 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
   bool _loadingSlots = false;
 
   // Payment
-  String? _paymentMethod; // 'cash' or 'pos'
+  String? _paymentMethod; // 'cash' or 'card'
 
   bool _submitting = false;
 
@@ -5290,8 +5513,7 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
   }
 
   Future<void> _selectTrainer(Map<String, dynamic> trainer) async {
-    final id = trainer['id'];
-    final trainerId = id is int ? id : int.tryParse(id.toString()) ?? 0;
+    final trainerId = trainer['id']?.toString() ?? '';
     final name = trainer['name']?.toString() ?? trainer['username']?.toString() ?? '';
     final pic = trainer['profile_picture']?.toString();
 
@@ -5372,20 +5594,43 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
       final service = widget.ref.read(clientServiceProvider);
       final dateStr = '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
 
-      await service.bookAppointment({
-        'trainer_id': _selectedTrainerId,
-        'date': dateStr,
-        'start_time': _selectedTime,
-        'duration': _duration,
-        'notes': _notesController.text.isEmpty ? null : _notesController.text,
-        'payment_method': _isFreeSession ? null : _paymentMethod,
-      });
+      if (_paymentMethod == 'card') {
+        // Stripe Checkout flow
+        final result = await service.createAppointmentCheckoutSession({
+          'trainer_id': _selectedTrainerId,
+          'date': dateStr,
+          'start_time': _selectedTime,
+          'duration': _duration,
+          'notes': _notesController.text.isEmpty ? null : _notesController.text,
+        });
+        final checkoutUrl = result['checkout_url']?.toString();
+        if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
+          final uri = Uri.parse(checkoutUrl);
+          await launchUrl(uri, mode: LaunchMode.externalApplication);
+          if (mounted) {
+            Navigator.pop(context);
+            showSnack(context, 'Completa il pagamento nel browser');
+            widget.ref.invalidate(appointmentsProvider);
+          }
+        } else {
+          if (mounted) showSnack(context, 'Errore: URL pagamento non disponibile', isError: true);
+        }
+      } else {
+        // Cash or free — book directly
+        await service.bookAppointment({
+          'trainer_id': _selectedTrainerId,
+          'date': dateStr,
+          'start_time': _selectedTime,
+          'duration': _duration,
+          'notes': _notesController.text.isEmpty ? null : _notesController.text,
+          'payment_method': _isFreeSession ? null : _paymentMethod,
+        });
 
-      if (mounted) {
-        Navigator.pop(context);
-        showSnack(context, 'Appuntamento prenotato con $_selectedTrainerName!');
-        // Refresh appointments list
-        widget.ref.invalidate(appointmentsProvider);
+        if (mounted) {
+          Navigator.pop(context);
+          showSnack(context, 'Appuntamento prenotato con $_selectedTrainerName!');
+          widget.ref.invalidate(appointmentsProvider);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -5497,7 +5742,7 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
                                 ? _selectedTrainerPicture!
                                 : '${ApiConfig.baseUrl}$_selectedTrainerPicture',
                             width: 36, height: 36, fit: BoxFit.cover,
-                            errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 18, color: AppColors.primary),
+                            errorBuilder: (_, _, _) => const Icon(Icons.person, size: 18, color: AppColors.primary),
                           ),
                         )
                       : const Icon(Icons.person, size: 18, color: AppColors.primary),
@@ -5546,7 +5791,7 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
             child: ListView.separated(
               shrinkWrap: true,
               itemCount: _trainers.length,
-              separatorBuilder: (_, __) => const SizedBox(height: 4),
+              separatorBuilder: (_, _) => const SizedBox(height: 4),
               itemBuilder: (_, i) => _buildTrainerItem(_trainers[i]),
             ),
           ),
@@ -5556,8 +5801,7 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
   }
 
   Widget _buildTrainerItem(Map<String, dynamic> trainer) {
-    final id = trainer['id'];
-    final trainerId = id is int ? id : int.tryParse(id.toString()) ?? 0;
+    final trainerId = trainer['id']?.toString() ?? '';
     final isSelected = _selectedTrainerId == trainerId;
     final name = trainer['name']?.toString() ?? trainer['username']?.toString() ?? '';
     final pic = trainer['profile_picture']?.toString();
@@ -5593,7 +5837,7 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
                       child: Image.network(
                         pic.startsWith('http') ? pic : '${ApiConfig.baseUrl}$pic',
                         width: 44, height: 44, fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 22, color: AppColors.primary),
+                        errorBuilder: (_, _, _) => const Icon(Icons.person, size: 22, color: AppColors.primary),
                       ),
                     )
                   : const Icon(Icons.person, size: 22, color: AppColors.primary),
@@ -5607,7 +5851,7 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
                   Text(name, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
                   Text(
                     rate != null && (rate as num) > 0
-                        ? '${(rate as num).toStringAsFixed(0)}\u20AC/ora'
+                        ? '${(rate).toStringAsFixed(0)}\u20AC/ora'
                         : 'Disponibile per prenotazioni',
                     style: TextStyle(fontSize: 11, color: Colors.grey[400]),
                   ),
@@ -5931,19 +6175,19 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
               ),
             ),
             const SizedBox(width: 8),
-            // POS
+            // Card (Stripe Checkout)
             Expanded(
               child: GestureDetector(
-                onTap: () => setState(() => _paymentMethod = 'pos'),
+                onTap: () => setState(() => _paymentMethod = 'card'),
                 child: Container(
                   padding: const EdgeInsets.symmetric(vertical: 12),
                   decoration: BoxDecoration(
-                    color: _paymentMethod == 'pos'
+                    color: _paymentMethod == 'card'
                         ? AppColors.primary.withValues(alpha: 0.2)
                         : const Color(0xFF252525),
                     borderRadius: BorderRadius.circular(10),
                     border: Border.all(
-                      color: _paymentMethod == 'pos'
+                      color: _paymentMethod == 'card'
                           ? AppColors.primary
                           : Colors.white.withValues(alpha: 0.1),
                       width: 2,
@@ -5952,17 +6196,17 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
                   child: Column(
                     children: [
                       Icon(
-                        Icons.contactless_rounded,
+                        Icons.credit_card_rounded,
                         size: 22,
-                        color: _paymentMethod == 'pos' ? AppColors.primary : Colors.white,
+                        color: _paymentMethod == 'card' ? AppColors.primary : Colors.white,
                       ),
                       const SizedBox(height: 4),
                       Text(
-                        'POS',
+                        'Carta',
                         style: TextStyle(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: _paymentMethod == 'pos' ? AppColors.primary : Colors.white,
+                          color: _paymentMethod == 'card' ? AppColors.primary : Colors.white,
                         ),
                       ),
                     ],
@@ -5991,7 +6235,7 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
               ),
             ),
           ),
-        if (_paymentMethod == 'pos')
+        if (_paymentMethod == 'card')
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             decoration: BoxDecoration(
@@ -6000,10 +6244,19 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
               border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
             ),
             child: Center(
-              child: Text(
-                'Paga con carta al POS in palestra',
-                style: TextStyle(color: AppColors.primary.withValues(alpha: 0.9), fontSize: 11, fontWeight: FontWeight.w600),
-                textAlign: TextAlign.center,
+              child: Column(
+                children: [
+                  Text(
+                    'Pagamento sicuro con Fit Pay',
+                    style: TextStyle(color: AppColors.primary.withValues(alpha: 0.9), fontSize: 11, fontWeight: FontWeight.w600),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'powered by Stripe',
+                    style: TextStyle(color: Colors.grey[500], fontSize: 9),
+                  ),
+                ],
               ),
             ),
           ),

@@ -105,11 +105,16 @@ class ClientData(BaseModel):
     id: str
     username: str
     name: str
-    email: Optional[str] = None # Added
+    email: Optional[str] = None
     streak: int
     gems: int
     health_score: int
-    weight: Optional[float] = None  # Weight in kg
+    weight: Optional[float] = None
+    gym_id: Optional[str] = None
+    gym_name: Optional[str] = None
+    trainer_id: Optional[str] = None
+    trainer_name: Optional[str] = None
+    profile_picture: Optional[str] = None
     todays_workout: Optional[Workout] = None
     daily_quests: List[DailyQuest]
     progress: Optional[Progress] = None
@@ -238,6 +243,14 @@ class AssignDietRequest(BaseModel):
     hydration_target: int
     consistency_target: int
 
+class SelfAssignDietRequest(BaseModel):
+    calories: int
+    protein: int
+    carbs: int
+    fat: int
+    hydration_target: int = 2500
+    consistency_target: int = 80
+
 # --- WEEKLY MEAL PLAN ---
 
 class MealPlanEntry(BaseModel):
@@ -249,6 +262,16 @@ class MealPlanEntry(BaseModel):
     carbs: int = 0
     fat: int = 0
     alternative_index: int = 0  # 0=primary, 1+=alternatives
+
+class ClientAddMealRequest(BaseModel):
+    day_of_week: int  # 0=Monday ... 6=Sunday
+    meal_type: str
+    meal_name: str
+    description: Optional[str] = None
+    calories: int = 0
+    protein: int = 0
+    carbs: int = 0
+    fat: int = 0
 
 class SetWeeklyMealPlanRequest(BaseModel):
     client_id: str
@@ -607,3 +630,20 @@ class Notification(BaseModel):
     acted_on: bool = False
     created_at: Optional[str] = None
     expires_at: Optional[str] = None
+
+
+# ── Community / Social Feed ──────────────────────────────────────
+
+class CommunityPostCreate(BaseModel):
+    post_type: str = "text"  # text, image, event, quest
+    content: Optional[str] = None
+    event_title: Optional[str] = None
+    event_date: Optional[str] = None
+    event_time: Optional[str] = None
+    event_location: Optional[str] = None
+    quest_xp_reward: Optional[int] = None
+    quest_deadline: Optional[str] = None
+
+class CommunityCommentCreate(BaseModel):
+    content: str
+    parent_comment_id: Optional[int] = None

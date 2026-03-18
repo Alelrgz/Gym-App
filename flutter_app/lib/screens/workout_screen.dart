@@ -8,7 +8,6 @@ import '../config/api_config.dart';
 import '../providers/client_provider.dart';
 import '../providers/trainer_provider.dart';
 import '../providers/websocket_provider.dart';
-import '../services/client_service.dart';
 import '../widgets/exercise_video.dart';
 
 // ─── Cardio Detection ────────────────────────────────────────────
@@ -95,42 +94,91 @@ class WorkoutScreen extends ConsumerWidget {
 
 // ─── No Workout Assigned ──────────────────────────────────────────
 
-class _NoWorkoutView extends StatelessWidget {
+class _NoWorkoutView extends ConsumerWidget {
   const _NoWorkoutView();
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 80, height: 80,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(20),
+        child: Column(
+          children: [
+            // Top bar with back button
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+                    onPressed: () => context.go('/home'),
                   ),
-                  child: const Icon(Icons.fitness_center_rounded, size: 40, color: AppColors.primary),
-                ),
-                const SizedBox(height: 24),
-                const Text(
-                  'Nessun Allenamento',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Il tuo trainer non ha ancora assegnato\nun allenamento per oggi.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 14, color: Colors.grey[500]),
-                ),
-              ],
+                  const Spacer(),
+                ],
+              ),
             ),
-          ),
+            // Content
+            Expanded(
+              child: Center(
+                child: Padding(
+                  padding: const EdgeInsets.all(32),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 80, height: 80,
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        child: const Icon(Icons.fitness_center_rounded, size: 40, color: AppColors.primary),
+                      ),
+                      const SizedBox(height: 24),
+                      const Text(
+                        'Nessun Allenamento',
+                        style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Il tuo trainer non ha ancora assegnato\nun allenamento per oggi.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+                      ),
+                      const SizedBox(height: 32),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          onPressed: () => _showWorkoutBuilder(context, ref),
+                          icon: const Icon(Icons.add_rounded),
+                          label: const Text('Crea Allenamento', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700)),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            elevation: 0,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showWorkoutBuilder(BuildContext context, WidgetRef ref) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => WorkoutBuilderPage(
+          onSaved: () {
+            ref.invalidate(clientDataProvider);
+            Navigator.of(context).pop();
+          },
         ),
       ),
     );
@@ -667,37 +715,45 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
                   ),
                 ),
               ],
-              // ─── Hero Section (Exercise Video — expandable) ─────
-              GestureDetector(
-                onTap: () => setState(() => videoExpanded = !videoExpanded),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 300),
-                  curve: Curves.easeInOut,
-                  height: videoExpanded ? 400 : 220,
+              // ─── Hero Section ─────
+              if (isCompleted)
+                // Completed: show workout title instead of video
+                SizedBox(
+                  height: 160,
                   child: Stack(
-                    fit: StackFit.expand,
                     children: [
-                      // Exercise video from backend
-                      ExerciseVideoView(
-                        videoUrl: _exerciseVideoUrl(currentEx['video_id']?.toString()),
-                        key: ValueKey('video_${currentEx['video_id']}'),
-                      ),
-                      // Gradient overlay
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                            colors: [
-                              Colors.black.withValues(alpha: 0.3),
-                              Colors.black.withValues(alpha: 0.2),
-                              AppColors.background,
+                      // Workout title centered
+                      Center(
+                        child: Padding(
+                          padding: EdgeInsets.only(top: MediaQuery.of(context).padding.top),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 36),
+                              const SizedBox(height: 12),
+                              Text(
+                                widget.workout['title'] ?? 'Workout',
+                                style: const TextStyle(
+                                  fontSize: 22,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppColors.textPrimary,
+                                ),
+                                textAlign: TextAlign.center,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                'Completato',
+                                style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.primary,
+                                ),
+                              ),
                             ],
-                            stops: const [0.0, 0.7, 1.0],
                           ),
                         ),
                       ),
-                      // Top controls
+                      // Close button
                       Positioned(
                         top: MediaQuery.of(context).padding.top + 8,
                         left: 12,
@@ -713,60 +769,110 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
                           ),
                         ),
                       ),
-                      // IN DIRETTA badge
-                      Positioned(
-                        top: MediaQuery.of(context).padding.top + 12,
-                        right: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.6),
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 8, height: 8,
-                                decoration: const BoxDecoration(
-                                  color: AppColors.primary,
-                                  shape: BoxShape.circle,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              const Text(
-                                'IN DIRETTA',
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w700,
-                                  color: Colors.white,
-                                  letterSpacing: 0.5,
-                                ),
-                              ),
-                            ],
-                          ),
+                    ],
+                  ),
+                )
+              else
+                // Active: show exercise video
+                GestureDetector(
+                  onTap: () => setState(() => videoExpanded = !videoExpanded),
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    curve: Curves.easeInOut,
+                    height: videoExpanded ? 400 : 220,
+                    child: Stack(
+                      fit: StackFit.expand,
+                      children: [
+                        // Exercise video from backend
+                        ExerciseVideoView(
+                          videoUrl: _exerciseVideoUrl(currentEx['video_id']?.toString()),
+                          key: ValueKey('video_${currentEx['video_id']}'),
                         ),
-                      ),
-                      // Expand/collapse hint
-                      Positioned(
-                        bottom: 8,
-                        left: 0, right: 0,
-                        child: Center(
-                          child: AnimatedRotation(
-                            turns: videoExpanded ? 0.5 : 0,
-                            duration: const Duration(milliseconds: 300),
-                            child: Icon(
-                              Icons.keyboard_arrow_down_rounded,
-                              color: Colors.white.withValues(alpha: 0.5),
-                              size: 28,
+                        // Gradient overlay
+                        Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Colors.black.withValues(alpha: 0.3),
+                                Colors.black.withValues(alpha: 0.2),
+                                AppColors.background,
+                              ],
+                              stops: const [0.0, 0.7, 1.0],
                             ),
                           ),
                         ),
-                      ),
-                    ],
+                        // Top controls
+                        Positioned(
+                          top: MediaQuery.of(context).padding.top + 8,
+                          left: 12,
+                          child: GestureDetector(
+                            onTap: () => context.go(widget.isTrainer ? '/trainer/schedule' : '/home'),
+                            child: Container(
+                              width: 40, height: 40,
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.5),
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(Icons.close_rounded, color: Colors.white, size: 22),
+                            ),
+                          ),
+                        ),
+                        // IN DIRETTA badge
+                        Positioned(
+                          top: MediaQuery.of(context).padding.top + 12,
+                          right: 12,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: Colors.black.withValues(alpha: 0.6),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Container(
+                                  width: 8, height: 8,
+                                  decoration: const BoxDecoration(
+                                    color: AppColors.primary,
+                                    shape: BoxShape.circle,
+                                  ),
+                                ),
+                                const SizedBox(width: 6),
+                                const Text(
+                                  'IN DIRETTA',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        // Expand/collapse hint
+                        Positioned(
+                          bottom: 8,
+                          left: 0, right: 0,
+                          child: Center(
+                            child: AnimatedRotation(
+                              turns: videoExpanded ? 0.5 : 0,
+                              duration: const Duration(milliseconds: 300),
+                              child: Icon(
+                                Icons.keyboard_arrow_down_rounded,
+                                color: Colors.white.withValues(alpha: 0.5),
+                                size: 28,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
 
               // ─── Active Exercise Card ──────────────────────
               Padding(
@@ -1444,5 +1550,730 @@ class _SetInputState extends State<_SetInput> {
       ),
     );
   }
+}
+
+// ═══════════════════════════════════════════════════════════════
+// WORKOUT BUILDER PAGE — 3-Step Wizard (matches HTML version)
+// ═══════════════════════════════════════════════════════════════
+
+class WorkoutBuilderPage extends ConsumerStatefulWidget {
+  final VoidCallback onSaved;
+  final Map<String, dynamic>? existingWorkout;
+
+  const WorkoutBuilderPage({super.key, required this.onSaved, this.existingWorkout});
+
+  @override
+  ConsumerState<WorkoutBuilderPage> createState() => _WorkoutBuilderPageState();
+}
+
+class _WorkoutBuilderPageState extends ConsumerState<WorkoutBuilderPage>
+    with SingleTickerProviderStateMixin {
+  int _step = 0; // 0=details, 1=select exercises, 2=configure
+  bool _saving = false;
+
+  // Validation
+  bool _titleError = false;
+  bool _exercisesError = false;
+  late AnimationController _wiggleController;
+  late Animation<double> _wiggleAnimation;
+
+  // Step 1: Details
+  late TextEditingController _titleCtrl;
+  late TextEditingController _durationCtrl;
+  String _difficulty = 'Intermedio';
+  static const _difficulties = ['Principiante', 'Intermedio', 'Avanzato', 'Elite'];
+
+  // Step 2: Exercise library
+  List<Map<String, dynamic>> _library = [];
+  bool _libraryLoading = true;
+  String _searchQuery = '';
+  String _filterMuscle = 'Tutti';
+  String _filterType = 'Tutti';
+
+  // Selected exercises (shared across step 2 & 3)
+  final List<_ExerciseEntry> _selected = [];
+
+  bool get _isEditing => widget.existingWorkout != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final w = widget.existingWorkout;
+    _wiggleController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 500),
+    );
+    _wiggleAnimation = TweenSequence<double>([
+      TweenSequenceItem(tween: Tween(begin: 0, end: -10), weight: 1),
+      TweenSequenceItem(tween: Tween(begin: -10, end: 10), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 10, end: -8), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: -8, end: 6), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: 6, end: -3), weight: 2),
+      TweenSequenceItem(tween: Tween(begin: -3, end: 0), weight: 1),
+    ]).animate(CurvedAnimation(parent: _wiggleController, curve: Curves.easeOut));
+    _titleCtrl = TextEditingController(text: w?['title'] ?? '');
+    _durationCtrl = TextEditingController(text: w?['duration']?.toString().replaceAll(' min', '') ?? '45');
+    if (w != null) {
+      _difficulty = w['difficulty'] ?? 'Intermedio';
+      for (final e in (w['exercises'] as List<dynamic>? ?? [])) {
+        if (e is Map<String, dynamic>) {
+          _selected.add(_ExerciseEntry(
+            name: e['name'] ?? '',
+            muscle: e['muscle'] ?? '',
+            type: e['type'] ?? '',
+            videoId: e['video_id']?.toString(),
+            sets: (e['sets'] as num?)?.toInt() ?? 3,
+            reps: e['reps']?.toString() ?? '10',
+            rest: (e['rest'] as num?)?.toInt() ?? 60,
+          ));
+        }
+      }
+    }
+    _loadLibrary();
+  }
+
+  @override
+  void dispose() {
+    _wiggleController.dispose();
+    _titleCtrl.dispose();
+    _durationCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadLibrary() async {
+    try {
+      final exercises = await ref.read(clientServiceProvider).getExerciseLibrary();
+      if (mounted) setState(() { _library = exercises; _libraryLoading = false; });
+    } catch (_) {
+      if (mounted) setState(() => _libraryLoading = false);
+    }
+  }
+
+  void _triggerWiggle() {
+    _wiggleController.reset();
+    _wiggleController.forward();
+  }
+
+  void _nextStep() {
+    if (_step == 0) {
+      if (_titleCtrl.text.trim().isEmpty) {
+        setState(() => _titleError = true);
+        _triggerWiggle();
+        return;
+      }
+      setState(() { _titleError = false; _step = 1; });
+    } else if (_step == 1) {
+      if (_selected.isEmpty) {
+        setState(() => _exercisesError = true);
+        _triggerWiggle();
+        return;
+      }
+      setState(() { _exercisesError = false; _step = 2; });
+    } else {
+      _save();
+    }
+  }
+
+  void _prevStep() {
+    if (_step > 0) setState(() => _step -= 1);
+  }
+
+  void _showSnack(String msg) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(msg), backgroundColor: const Color(0xFF252525)),
+    );
+  }
+
+  void _toggleExercise(Map<String, dynamic> ex) {
+    final idx = _selected.indexWhere((e) => e.name == ex['name']);
+    setState(() {
+      if (idx >= 0) {
+        _selected.removeAt(idx);
+      } else {
+        _selected.add(_ExerciseEntry(
+          name: ex['name'] ?? '',
+          muscle: ex['muscle'] ?? '',
+          type: ex['type'] ?? '',
+          videoId: ex['video_id']?.toString(),
+        ));
+        if (_exercisesError) _exercisesError = false;
+      }
+    });
+  }
+
+  bool _isSelected(String name) => _selected.any((e) => e.name == name);
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      final service = ref.read(clientServiceProvider);
+      final duration = '${_durationCtrl.text.trim()} min';
+      final exercises = _selected.map((e) => {
+        'name': e.name,
+        'muscle': e.muscle,
+        'type': e.type,
+        'video_id': e.videoId ?? '',
+        'sets': e.sets,
+        'reps': e.reps,
+        'rest': e.rest,
+      }).toList();
+
+      if (_isEditing) {
+        await service.updateClientWorkout(widget.existingWorkout!['id'].toString(), {
+          'title': _titleCtrl.text.trim(),
+          'duration': duration,
+          'difficulty': _difficulty,
+          'exercises': exercises,
+        });
+      } else {
+        await service.createWorkout(
+          title: _titleCtrl.text.trim(),
+          duration: duration,
+          difficulty: _difficulty,
+          exercises: exercises,
+        );
+      }
+      widget.onSaved();
+    } catch (e) {
+      if (mounted) _showSnack('Errore: $e');
+    } finally {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  List<String> get _muscleFilters {
+    final muscles = _library.map((e) => e['muscle']?.toString() ?? '').where((m) => m.isNotEmpty).toSet().toList()..sort();
+    return ['Tutti', ...muscles];
+  }
+
+  List<String> get _typeFilters {
+    final types = _library.map((e) => e['type']?.toString() ?? '').where((t) => t.isNotEmpty).toSet().toList()..sort();
+    return ['Tutti', ...types];
+  }
+
+  List<Map<String, dynamic>> get _filteredLibrary {
+    return _library.where((ex) {
+      final name = (ex['name'] ?? '').toString().toLowerCase();
+      final muscle = (ex['muscle'] ?? '').toString();
+      final type = (ex['type'] ?? '').toString();
+      if (_searchQuery.isNotEmpty && !name.contains(_searchQuery.toLowerCase())) return false;
+      if (_filterMuscle != 'Tutti' && muscle != _filterMuscle) return false;
+      if (_filterType != 'Tutti' && type != _filterType) return false;
+      return true;
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Top bar
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, color: AppColors.textPrimary),
+                    onPressed: () => Navigator.pop(context),
+                  ),
+                  const Spacer(),
+                  // Step dots
+                  Row(children: List.generate(3, (i) => _buildStepDot(i))),
+                  const Spacer(),
+                  const SizedBox(width: 48),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+
+            // Step content
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 250),
+                child: _step == 0
+                    ? _buildStep1()
+                    : _step == 1
+                        ? _buildStep2()
+                        : _buildStep3(),
+              ),
+            ),
+
+            // Bottom buttons
+            Container(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.06))),
+              ),
+              child: Row(
+                children: [
+                  if (_step > 0)
+                    Expanded(
+                      flex: 1,
+                      child: GestureDetector(
+                        onTap: _prevStep,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF252525),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Text('Indietro', textAlign: TextAlign.center, style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600, fontSize: 14)),
+                        ),
+                      ),
+                    ),
+                  if (_step > 0) const SizedBox(width: 10),
+                  Expanded(
+                    flex: 2,
+                    child: AnimatedBuilder(
+                      animation: _wiggleAnimation,
+                      builder: (context, child) => Transform.translate(
+                        offset: Offset(_wiggleAnimation.value, 0),
+                        child: child,
+                      ),
+                      child: GestureDetector(
+                        onTap: _saving ? null : _nextStep,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: _saving
+                              ? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2)))
+                              : Text(
+                                  _step < 2 ? 'Avanti' : (_isEditing ? 'Aggiorna Allenamento' : 'Crea Allenamento'),
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 15),
+                                ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepDot(int i) {
+    final isActive = i == _step;
+    final isCompleted = i < _step;
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 300),
+      width: isActive ? 24 : 8,
+      height: 8,
+      margin: const EdgeInsets.symmetric(horizontal: 3),
+      decoration: BoxDecoration(
+        color: isCompleted
+            ? const Color(0xFF22C55E)
+            : isActive
+                ? AppColors.primary
+                : Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+      ),
+    );
+  }
+
+  // ── Step 1: Workout Details ──────────────────────────────────
+
+  Widget _buildStep1() {
+    return ListView(
+      key: const ValueKey('step1'),
+      padding: const EdgeInsets.fromLTRB(20, 8, 20, 20),
+      children: [
+        Text(
+          _isEditing ? 'Modifica Allenamento' : 'Nuovo Allenamento',
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
+        ),
+        const SizedBox(height: 4),
+        Text('Dettagli base', style: TextStyle(fontSize: 14, color: Colors.grey[500])),
+        const SizedBox(height: 24),
+
+        // Title
+        _inputLabel('Titolo Allenamento', error: _titleError),
+        const SizedBox(height: 6),
+        _buildInput(_titleCtrl, 'es. Push Day, Full Body...', error: _titleError, onChanged: (_) {
+          if (_titleError) setState(() => _titleError = false);
+        }),
+        const SizedBox(height: 18),
+
+        // Duration
+        _inputLabel('Durata (minuti)'),
+        const SizedBox(height: 6),
+        _buildInput(_durationCtrl, 'es. 45', keyboard: TextInputType.number),
+        const SizedBox(height: 18),
+
+        // Difficulty
+        _inputLabel('Difficoltà'),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          children: _difficulties.map((d) {
+            final active = _difficulty == d;
+            return GestureDetector(
+              onTap: () => setState(() => _difficulty = d),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: active ? AppColors.primary.withValues(alpha: 0.15) : const Color(0xFF252525),
+                  borderRadius: BorderRadius.circular(10),
+                  border: active ? Border.all(color: AppColors.primary.withValues(alpha: 0.4)) : null,
+                ),
+                child: Text(d, style: TextStyle(fontSize: 13, fontWeight: active ? FontWeight.w700 : FontWeight.w500, color: active ? AppColors.primary : Colors.grey[500])),
+              ),
+            );
+          }).toList(),
+        ),
+      ],
+    );
+  }
+
+  Widget _inputLabel(String text, {bool error = false}) => Text(
+    text,
+    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: error ? AppColors.danger : Colors.grey[400]),
+  );
+
+  Widget _buildInput(TextEditingController ctrl, String hint, {TextInputType keyboard = TextInputType.text, bool error = false, ValueChanged<String>? onChanged}) {
+    return TextField(
+      controller: ctrl,
+      keyboardType: keyboard,
+      onChanged: onChanged,
+      style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+        filled: true,
+        fillColor: error ? AppColors.danger.withValues(alpha: 0.08) : const Color(0xFF252525),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: error ? const BorderSide(color: AppColors.danger, width: 1.5) : BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: error ? AppColors.danger : AppColors.primary, width: 1.5),
+        ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      ),
+    );
+  }
+
+  // ── Step 2: Select Exercises ─────────────────────────────────
+
+  Widget _buildStep2() {
+    return Column(
+      key: const ValueKey('step2'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Seleziona Esercizi', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: _exercisesError ? AppColors.danger : AppColors.textPrimary)),
+              const SizedBox(height: 4),
+              if (_exercisesError)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Text('Seleziona almeno un esercizio', style: TextStyle(fontSize: 12, color: AppColors.danger, fontWeight: FontWeight.w500)),
+                ),
+              if (_selected.isNotEmpty)
+                Container(
+                  margin: const EdgeInsets.only(top: 4),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text('${_selected.length} esercizi selezionati', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                ),
+              const SizedBox(height: 14),
+              // Search
+              TextField(
+                onChanged: (v) => setState(() => _searchQuery = v),
+                style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                decoration: InputDecoration(
+                  hintText: 'Cerca esercizi...',
+                  hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  prefixIcon: Icon(Icons.search_rounded, color: Colors.grey[600], size: 20),
+                  filled: true,
+                  fillColor: const Color(0xFF252525),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                  contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                ),
+              ),
+              const SizedBox(height: 10),
+              // Filters
+              Row(
+                children: [
+                  Expanded(child: _buildDropdown(_filterMuscle, _muscleFilters, (v) => setState(() => _filterMuscle = v))),
+                  const SizedBox(width: 8),
+                  Expanded(child: _buildDropdown(_filterType, _typeFilters, (v) => setState(() => _filterType = v))),
+                ],
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        // Exercise list
+        Expanded(
+          child: _libraryLoading
+              ? const Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2))
+              : ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  itemCount: _filteredLibrary.length,
+                  itemBuilder: (ctx, i) => _buildLibraryItem(_filteredLibrary[i]),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropdown(String value, List<String> items, ValueChanged<String> onChanged) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF252525),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: items.contains(value) ? value : items.first,
+          isExpanded: true,
+          dropdownColor: const Color(0xFF252525),
+          style: const TextStyle(color: AppColors.textPrimary, fontSize: 13),
+          icon: Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey[600], size: 18),
+          items: items.map((v) => DropdownMenuItem(value: v, child: Text(v, overflow: TextOverflow.ellipsis))).toList(),
+          onChanged: (v) { if (v != null) onChanged(v); },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLibraryItem(Map<String, dynamic> ex) {
+    final name = ex['name'] ?? '';
+    final muscle = ex['muscle'] ?? '';
+    final type = ex['type'] ?? '';
+    final selected = _isSelected(name);
+
+    return GestureDetector(
+      onTap: () => _toggleExercise(ex),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF252525),
+          borderRadius: BorderRadius.circular(10),
+          border: selected ? Border.all(color: AppColors.primary, width: 1.5) : null,
+        ),
+        child: Row(
+          children: [
+            // Muscle icon
+            Container(
+              width: 36, height: 36,
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: selected ? 0.2 : 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(Icons.fitness_center_rounded, size: 18, color: selected ? AppColors.primary : Colors.grey[500]),
+            ),
+            const SizedBox(width: 10),
+            // Info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(name, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: selected ? AppColors.textPrimary : Colors.grey[300])),
+                  if (muscle.isNotEmpty || type.isNotEmpty)
+                    Text([muscle, type].where((s) => s.isNotEmpty).join(' • '), style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                ],
+              ),
+            ),
+            // Add indicator
+            Container(
+              width: 26, height: 26,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: selected ? AppColors.primary : Colors.transparent,
+                border: selected ? null : Border.all(color: Colors.grey[700]!),
+              ),
+              child: Icon(
+                selected ? Icons.check_rounded : Icons.add_rounded,
+                size: 16,
+                color: selected ? Colors.white : Colors.grey[600],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Step 3: Configure Exercises ──────────────────────────────
+
+  Widget _buildStep3() {
+    return Column(
+      key: const ValueKey('step3'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text('Configura Esercizi', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: AppColors.textPrimary)),
+              const SizedBox(height: 4),
+              Text('Serie, ripetizioni e riposo', style: TextStyle(fontSize: 14, color: Colors.grey[500])),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        Expanded(
+          child: _selected.isEmpty
+              ? Center(child: Text('Nessun esercizio selezionato.', style: TextStyle(fontSize: 14, fontStyle: FontStyle.italic, color: Colors.grey[600])))
+              : ReorderableListView.builder(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+                  itemCount: _selected.length,
+                  onReorder: (oldIdx, newIdx) {
+                    setState(() {
+                      if (newIdx > oldIdx) newIdx--;
+                      final item = _selected.removeAt(oldIdx);
+                      _selected.insert(newIdx, item);
+                    });
+                  },
+                  proxyDecorator: (child, index, animation) {
+                    return Material(
+                      color: Colors.transparent,
+                      elevation: 4,
+                      shadowColor: AppColors.primary.withValues(alpha: 0.3),
+                      borderRadius: BorderRadius.circular(12),
+                      child: child,
+                    );
+                  },
+                  itemBuilder: (ctx, i) => _buildConfigCard(i),
+                ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildConfigCard(int index) {
+    final ex = _selected[index];
+    return Container(
+      key: ValueKey('ex_${ex.name}_$index'),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.fromLTRB(6, 10, 10, 10),
+      decoration: BoxDecoration(
+        color: const Color(0xFF252525),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
+      ),
+      child: Row(
+        children: [
+          // Drag handle
+          ReorderableDragStartListener(
+            index: index,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6),
+              child: Icon(Icons.drag_indicator_rounded, size: 20, color: Colors.grey[700]),
+            ),
+          ),
+          // Content
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(ex.name, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                          if (ex.muscle.isNotEmpty || ex.type.isNotEmpty)
+                            Text([ex.muscle, ex.type].where((s) => s.isNotEmpty).join(' • '), style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                        ],
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => setState(() => _selected.removeAt(index)),
+                      child: Icon(Icons.close_rounded, size: 16, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                // Sets / Reps / Rest
+                Row(
+                  children: [
+                    _configField('SERIE', ex.sets.toString(), (v) => setState(() => ex.sets = int.tryParse(v) ?? 3)),
+                    const SizedBox(width: 8),
+                    _configField('REPS', ex.reps, (v) => setState(() => ex.reps = v)),
+                    const SizedBox(width: 8),
+                    _configField('RIPOSO', ex.rest.toString(), (v) => setState(() => ex.rest = int.tryParse(v) ?? 60), suffix: 's'),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _configField(String label, String value, ValueChanged<String> onChanged, {String suffix = ''}) {
+    return Expanded(
+      child: Column(
+        children: [
+          Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.grey[600], letterSpacing: 0.5)),
+          const SizedBox(height: 4),
+          TextField(
+            controller: TextEditingController(text: value),
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: AppColors.textPrimary, fontSize: 15, fontWeight: FontWeight.w700),
+            decoration: InputDecoration(
+              isDense: true,
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.04),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.08))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: AppColors.primary, width: 1.5)),
+              contentPadding: const EdgeInsets.symmetric(vertical: 8),
+              suffixText: suffix.isNotEmpty ? suffix : null,
+              suffixStyle: TextStyle(color: Colors.grey[600], fontSize: 12),
+            ),
+            onChanged: onChanged,
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ExerciseEntry {
+  String name;
+  String muscle;
+  String type;
+  String? videoId;
+  int sets;
+  String reps;
+  int rest;
+
+  _ExerciseEntry({
+    this.name = '',
+    this.muscle = '',
+    this.type = '',
+    this.videoId,
+    this.sets = 3,
+    this.reps = '10',
+    this.rest = 60,
+  });
 }
 

@@ -14,10 +14,18 @@ class TrainerHomeScreen extends ConsumerWidget {
   const TrainerHomeScreen({super.key, required this.navigationShell});
 
   static const _navItems = [
+    (icon: Icons.people_rounded, activeIcon: Icons.people_rounded, label: 'Utenti'),
+    (icon: Icons.fitness_center_outlined, activeIcon: Icons.fitness_center_rounded, label: 'Allenamenti'),
+    (icon: Icons.school_outlined, activeIcon: Icons.school_rounded, label: 'Corsi'),
+    (icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: 'Profilo'),
+  ];
+
+  /// Items only shown on desktop sidebar (includes settings).
+  static const _desktopNavItems = [
     (icon: Icons.people_rounded, label: 'Utenti'),
     (icon: Icons.fitness_center_rounded, label: 'Allenamenti'),
     (icon: Icons.school_rounded, label: 'Corsi'),
-    (icon: Icons.calendar_today_rounded, label: 'Profilo'),
+    (icon: Icons.person_rounded, label: 'Profilo'),
     (icon: Icons.settings_rounded, label: 'Impostazioni'),
   ];
 
@@ -106,8 +114,8 @@ class _DesktopSidebar extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 12),
             child: Column(
-              children: List.generate(TrainerHomeScreen._navItems.length, (i) {
-                final item = TrainerHomeScreen._navItems[i];
+              children: List.generate(TrainerHomeScreen._desktopNavItems.length, (i) {
+                final item = TrainerHomeScreen._desktopNavItems[i];
                 final isActive = i == currentIndex;
                 return Padding(
                   padding: const EdgeInsets.only(bottom: 4),
@@ -208,7 +216,7 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
 }
 
 // ═══════════════════════════════════════════════════════════
-//  MOBILE BOTTOM NAV
+//  MOBILE BOTTOM NAV (matches client AppBottomNav style)
 // ═══════════════════════════════════════════════════════════
 class _MobileBottomNav extends StatelessWidget {
   final int currentIndex;
@@ -219,34 +227,41 @@ class _MobileBottomNav extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        border: Border(top: BorderSide(color: Colors.white.withValues(alpha: 0.06))),
-      ),
+      color: Colors.transparent,
       child: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        top: false,
+        child: Container(
+          height: 72,
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A1E2A),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(22)),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+          ),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: List.generate(TrainerHomeScreen._navItems.length, (i) {
               final item = TrainerHomeScreen._navItems[i];
               final isActive = i == currentIndex;
               return GestureDetector(
                 onTap: () => onTap(i),
                 behavior: HitTestBehavior.opaque,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                child: SizedBox(
+                  width: 64,
                   child: Column(
-                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(item.icon, size: 24, color: isActive ? AppColors.primary : Colors.grey[600]),
-                      const SizedBox(height: 2),
+                      Icon(
+                        isActive ? item.activeIcon : item.icon,
+                        size: 28,
+                        color: isActive ? AppColors.primary : Colors.white.withValues(alpha: 0.45),
+                      ),
+                      const SizedBox(height: 4),
                       Text(
                         item.label,
                         style: TextStyle(
-                          fontSize: 10,
+                          fontSize: 11,
                           fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-                          color: isActive ? AppColors.primary : Colors.grey[600],
+                          color: isActive ? AppColors.primary : Colors.white.withValues(alpha: 0.45),
                         ),
                       ),
                     ],

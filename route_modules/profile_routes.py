@@ -3,7 +3,7 @@ Profile Routes - API endpoints for user profile management including profile pic
 """
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from auth import get_current_user
-from models_orm import UserORM, PhysiquePhotoORM, ClientProfileORM, MedicalCertificateORM
+from models_orm import UserORM, PhysiquePhotoORM, ClientProfileORM, MedicalCertificateORM, NotificationORM
 from database import get_db_session
 from service_modules.upload_helper import (
     save_file, delete_file, _optimize_image,
@@ -389,9 +389,35 @@ async def upload_medical_certificate(
             client_id=str(user.id),
             filename=file.filename,
             file_path=url,
-            expiration_date=expiration_date
+            expiration_date=expiration_date,
+            approval_status="pending"
         )
         db.add(cert)
+
+        # Notify staff/owner that a certificate needs review
+        gym_owner_id = user.gym_owner_id
+        if gym_owner_id:
+            # Notify gym owner
+            db.add(NotificationORM(
+                user_id=gym_owner_id,
+                type="certificate_pending",
+                title="Nuovo certificato da verificare",
+                message=f"{user.username} ha caricato un certificato medico in attesa di approvazione.",
+            ))
+            # Notify staff members of same gym
+            staff_members = db.query(UserORM).filter(
+                UserORM.gym_owner_id == gym_owner_id,
+                UserORM.role == "staff",
+                UserORM.is_active == True
+            ).all()
+            for staff in staff_members:
+                db.add(NotificationORM(
+                    user_id=str(staff.id),
+                    type="certificate_pending",
+                    title="Nuovo certificato da verificare",
+                    message=f"{user.username} ha caricato un certificato medico in attesa di approvazione.",
+                ))
+
         db.commit()
         db.refresh(cert)
 
@@ -402,9 +428,10 @@ async def upload_medical_certificate(
                 "filename": cert.filename,
                 "file_url": url + f"?t={int(datetime.now().timestamp())}",
                 "expiration_date": cert.expiration_date,
+                "approval_status": cert.approval_status,
                 "uploaded_at": cert.uploaded_at
             },
-            "message": "Medical certificate uploaded"
+            "message": "Certificato caricato, in attesa di approvazione"
         }
 
     except HTTPException:
@@ -457,7 +484,9 @@ async def get_medical_certificate(
                 "file_url": cert.file_path,
                 "expiration_date": cert.expiration_date,
                 "uploaded_at": cert.uploaded_at,
-                "status": status
+                "status": status,
+                "approval_status": cert.approval_status or "approved",
+                "rejection_reason": cert.rejection_reason,
             }
         }
     finally:
@@ -548,10 +577,12 @@ async def get_certificates_overview(
                     except ValueError:
                         pass
 
+            approval_status = cert.approval_status or "approved" if cert else None
             results.append({
                 "client_id": client.id,
                 "name": name,
                 "status": status,
+                "approval_status": approval_status,
                 "expiration_date": expiration_date,
                 "file_url": file_url
             })

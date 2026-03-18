@@ -303,20 +303,32 @@
 
         <!-- Client Import -->
         <div class="settings-card" style="grid-column:1/-1;">
-            <h3 class="settings-section-title">Importa Clienti</h3>
-            <p class="settings-row-sub" style="margin-bottom:0.75rem;">Importa clienti da file CSV. Ogni cliente ricever&agrave; una password temporanea.</p>
+            <h3 class="settings-section-title">⚡ Importa Clienti — Migrazione 1-Click</h3>
+            <p class="settings-row-sub" style="margin-bottom:0.75rem;">Esporta i clienti dal tuo vecchio gestionale e carica il CSV qui. FitOS riconosce automaticamente la piattaforma e importa tutto.</p>
             <div class="settings-field" style="background:rgba(0,0,0,0.25);border-radius:8px;border:1px solid rgba(255,255,255,0.06);padding:0.65rem;">
-                <p style="font-size:0.65rem;color:rgba(255,255,255,0.45);font-weight:600;margin-bottom:0.2rem;">Colonne richieste (almeno una):</p>
-                <p style="font-size:0.65rem;font-family:monospace;color:rgba(255,255,255,0.3);">name, email</p>
-                <p style="font-size:0.65rem;color:rgba(255,255,255,0.45);font-weight:600;margin-top:0.4rem;margin-bottom:0.2rem;">Opzionali:</p>
-                <p style="font-size:0.65rem;font-family:monospace;color:rgba(255,255,255,0.3);">phone, weight, body_fat, height, gender, date_of_birth, plan</p>
+                <p style="font-size:0.65rem;color:rgba(255,255,255,0.45);font-weight:600;margin-bottom:0.4rem;">Piattaforme supportate:</p>
+                <div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.5rem;">
+                    <span style="font-size:0.6rem;padding:0.15rem 0.45rem;background:rgba(241,90,36,0.12);border:1px solid rgba(241,90,36,0.25);border-radius:6px;color:#f15a24;">Golee</span>
+                    <span style="font-size:0.6rem;padding:0.15rem 0.45rem;background:rgba(241,90,36,0.12);border:1px solid rgba(241,90,36,0.25);border-radius:6px;color:#f15a24;">BookyWay</span>
+                    <span style="font-size:0.6rem;padding:0.15rem 0.45rem;background:rgba(241,90,36,0.12);border:1px solid rgba(241,90,36,0.25);border-radius:6px;color:#f15a24;">Gymdesk</span>
+                    <span style="font-size:0.6rem;padding:0.15rem 0.45rem;background:rgba(241,90,36,0.12);border:1px solid rgba(241,90,36,0.25);border-radius:6px;color:#f15a24;">Virtuagym</span>
+                    <span style="font-size:0.6rem;padding:0.15rem 0.45rem;background:rgba(241,90,36,0.12);border:1px solid rgba(241,90,36,0.25);border-radius:6px;color:#f15a24;">Zen Planner</span>
+                    <span style="font-size:0.6rem;padding:0.15rem 0.45rem;background:rgba(241,90,36,0.12);border:1px solid rgba(241,90,36,0.25);border-radius:6px;color:#f15a24;">SportRick</span>
+                    <span style="font-size:0.6rem;padding:0.15rem 0.45rem;background:rgba(241,90,36,0.12);border:1px solid rgba(241,90,36,0.25);border-radius:6px;color:#f15a24;">Asso360</span>
+                    <span style="font-size:0.6rem;padding:0.15rem 0.45rem;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.1);border-radius:6px;color:rgba(255,255,255,0.4);">CSV generico</span>
+                </div>
+                <p style="font-size:0.6rem;color:rgba(255,255,255,0.35);">Riconosce automaticamente: nome, cognome, email, telefono, codice fiscale, indirizzo, data di nascita, sesso, piano, scadenza abbonamento, certificato medico, e altro.</p>
+            </div>
+            <div id="import-platform-detected" class="hidden" style="margin-bottom:0.5rem;padding:0.5rem;background:rgba(74,222,128,0.08);border:1px solid rgba(74,222,128,0.15);border-radius:8px;">
+                <p style="font-size:0.7rem;color:#4ade80;font-weight:600;margin:0;">✓ Piattaforma rilevata: <span id="import-platform-name"></span></p>
+                <p style="font-size:0.6rem;color:rgba(255,255,255,0.4);margin:0.2rem 0 0 0;" id="import-fields-info"></p>
             </div>
             <label style="display:flex;align-items:flex-start;gap:0.6rem;cursor:pointer;" class="settings-field">
                 <input type="checkbox" id="import-dpa-consent" style="margin-top:2px;accent-color:var(--primary);flex-shrink:0;">
                 <span class="settings-row-sub">Confermo di avere il diritto di caricare questi dati e di aver ottenuto il consenso necessario (GDPR).</span>
             </label>
-            <button type="button" onclick="triggerClientImport()" id="import-clients-btn" class="settings-save-btn" style="width:100%;padding:0.55rem;">Carica File CSV</button>
-            <input type="file" id="client-csv-input" accept=".csv" class="hidden" onchange="handleClientCsvUpload(this)">
+            <button type="button" onclick="triggerClientImport()" id="import-clients-btn" class="settings-save-btn" style="width:100%;padding:0.55rem;">Carica File (CSV o Excel)</button>
+            <input type="file" id="client-csv-input" accept=".csv,.xlsx,.xls" class="hidden" onchange="handleClientCsvUpload(this)">
             <div id="import-results" class="hidden" style="margin-top:0.85rem;padding-top:0.85rem;border-top:1px solid rgba(255,255,255,0.06);">
                 <p class="settings-section-title">Risultati Importazione</p>
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;margin-bottom:0.6rem;">
@@ -3890,7 +3902,8 @@ async function handleClientCsvUpload(input) {
     if (!input.files[0]) return;
 
     const file = input.files[0];
-    if (!file.name.toLowerCase().endsWith('.csv')) {
+    const fn = file.name.toLowerCase();
+    if (!fn.endsWith('.csv') && !fn.endsWith('.xlsx') && !fn.endsWith('.xls')) {
         if (typeof showToast === 'function') showToast('Please select a CSV file', 'error');
         input.value = '';
         return;
@@ -3945,6 +3958,20 @@ async function handleClientCsvUpload(input) {
 function displayImportResults(data) {
     const resultsDiv = document.getElementById('import-results');
     resultsDiv.classList.remove('hidden');
+
+    // Show detected platform
+    const platformDiv = document.getElementById('import-platform-detected');
+    if (data.platform_detected) {
+        platformDiv.classList.remove('hidden');
+        document.getElementById('import-platform-name').textContent = data.platform_detected;
+        const mapped = data.fields_mapped || [];
+        const unmapped = data.fields_unmapped || [];
+        let info = `${mapped.length} campi importati`;
+        if (unmapped.length > 0) info += ` · ${unmapped.length} colonne ignorate`;
+        document.getElementById('import-fields-info').textContent = info;
+    } else {
+        platformDiv.classList.add('hidden');
+    }
 
     document.getElementById('import-created-count').textContent = data.created || 0;
     document.getElementById('import-skipped-count').textContent = data.skipped || 0;

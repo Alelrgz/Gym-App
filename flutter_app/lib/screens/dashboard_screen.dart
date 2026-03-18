@@ -1,4 +1,5 @@
 import 'dart:math' show sin;
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -9,6 +10,7 @@ import '../models/client_profile.dart';
 import '../providers/client_provider.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/dashboard_sheets.dart';
+import 'workout_screen.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -33,6 +35,13 @@ class DashboardScreen extends ConsumerWidget {
               const SizedBox(height: 16),
               const Text('Errore nel caricamento',
                   style: TextStyle(color: AppColors.textSecondary)),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Text('$error',
+                    style: const TextStyle(color: AppColors.textTertiary, fontSize: 11),
+                    textAlign: TextAlign.center),
+              ),
               const SizedBox(height: 12),
               ElevatedButton(
                 onPressed: () => ref.invalidate(clientDataProvider),
@@ -56,30 +65,10 @@ class DashboardScreen extends ConsumerWidget {
                 floating: true,
                 backgroundColor: AppColors.background,
                 surfaceTintColor: Colors.transparent,
-                toolbarHeight: 60,
-                title: Text.rich(
-                  TextSpan(
-                    children: [
-                      const TextSpan(
-                        text: 'Fit',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          color: AppColors.textPrimary,
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                      TextSpan(
-                        text: 'OS',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.w900,
-                          color: const Color(0xFFF15A24),
-                          letterSpacing: -0.5,
-                        ),
-                      ),
-                    ],
-                  ),
+                toolbarHeight: 68,
+                title: Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: SvgPicture.asset('assets/fitos-logo.svg', height: 34),
                 ),
                 centerTitle: false,
                 actions: [
@@ -113,15 +102,17 @@ class DashboardScreen extends ConsumerWidget {
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    // 1. Workout Card
-                    _WorkoutCard(profile: profile),
-                    const SizedBox(height: 16),
-
-                    // 2. Streak + Gems (tap to open calendar)
+                    // 1. Streak + Gems (tap to open streak page)
                     GestureDetector(
-                      onTap: () => showCalendarSheet(context, ref),
+                      onTap: () => Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => _StreakPage(streak: profile.streak, gems: profile.gems)),
+                      ),
                       child: _StreakGemsCard(streak: profile.streak, gems: profile.gems),
                     ),
+                    const SizedBox(height: 16),
+
+                    // 2. Workout Card
+                    _WorkoutCard(profile: profile),
                     const SizedBox(height: 16),
 
                     // 3. Photo + Meals Grid
@@ -138,17 +129,6 @@ class DashboardScreen extends ConsumerWidget {
                       const SizedBox(height: 16),
                     ],
 
-                    // 5. Gym Members
-                    _SectionHeader(label: 'MEMBRI PALESTRA', action: 'Vedi tutti →', onAction: () => showGymMembersSheet(context, ref)),
-                    const SizedBox(height: 8),
-                    _MembersCard(onTap: () => showGymMembersSheet(context, ref)),
-                    const SizedBox(height: 16),
-
-                    // 6. Friends
-                    _SectionHeader(label: 'AMICI', action: 'Gestisci →', onAction: () => showFriendsSheet(context, ref)),
-                    const SizedBox(height: 8),
-                    _FriendsCard(onTap: () => showFriendsSheet(context, ref)),
-                    const SizedBox(height: 16),
 
                     // 7. Leaderboard Link
                     _LeaderboardLinkCard(),
@@ -257,6 +237,7 @@ class _WorkoutCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final workout = profile.todayWorkout;
     final hasWorkout = workout != null;
+    final isCompleted = workout?['completed'] == true;
     final title = hasWorkout ? (workout['title'] ?? 'Workout') : 'Nessun allenamento';
 
     return Container(
@@ -286,7 +267,17 @@ class _WorkoutCard extends ConsumerWidget {
                 ),
               ),
               GestureDetector(
-                onTap: () => showSnack(context, 'Modifica allenamento — Prossimamente'),
+                onTap: () {
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (_) => WorkoutBuilderPage(
+                      existingWorkout: workout,
+                      onSaved: () {
+                        ref.invalidate(clientDataProvider);
+                        Navigator.of(context).pop();
+                      },
+                    ),
+                  ));
+                },
                 child: Container(
                   width: 36,
                   height: 36,
@@ -333,18 +324,29 @@ class _WorkoutCard extends ConsumerWidget {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
+                      color: isCompleted
+                          ? Colors.white.withValues(alpha: 0.25)
+                          : Colors.white.withValues(alpha: 0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: const Text(
-                      'AVVIA ALLENAMENTO',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                        fontSize: 14,
-                        letterSpacing: 0.5,
-                      ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        if (isCompleted) ...[
+                          Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                          const SizedBox(width: 8),
+                        ],
+                        Text(
+                          isCompleted ? 'COMPLETATO' : 'AVVIA ALLENAMENTO',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w700,
+                            fontSize: 14,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
@@ -407,26 +409,21 @@ class _StreakGemsCardState extends State<_StreakGemsCard>
     super.dispose();
   }
 
-  String _streakDisplay() {
-    if (widget.streak >= 7) {
-      return '${widget.streak ~/ 7}';
-    }
-    return '${widget.streak}';
-  }
+  int get _weeks => widget.streak ~/ 7;
+
+  String _streakDisplay() => '$_weeks';
 
   String _streakLabel() {
-    if (widget.streak >= 7) {
-      return widget.streak ~/ 7 == 1 ? 'SETTIMANA DI\nSERIE' : 'SETTIMANE DI\nSERIE';
-    }
-    return widget.streak == 1 ? 'GIORNO DI\nSERIE' : 'GIORNI DI\nSERIE';
+    return _weeks == 1 ? 'SETTIMANA DI\nSERIE' : 'SETTIMANE DI\nSERIE';
   }
 
   String _nextGoal() {
-    const milestones = [3, 7, 14, 21, 30, 60, 90, 180, 365];
-    final next = milestones.cast<int?>().firstWhere((m) => m! > widget.streak, orElse: () => null);
-    final target = next ?? (widget.streak + 30);
-    final remaining = target - widget.streak;
-    return '$remaining GIORNI';
+    const milestones = [2, 4, 8, 12, 16, 24, 36, 52];
+    final weeks = _weeks;
+    final next = milestones.cast<int?>().firstWhere((m) => m! > weeks, orElse: () => null);
+    final target = next ?? (weeks + 4);
+    final remaining = target - weeks;
+    return '$remaining SETTIMANE';
   }
 
   static const _lucideFlame = '''
@@ -560,6 +557,274 @@ class _StreakGemsCardState extends State<_StreakGemsCard>
   }
 }
 
+// ─── STREAK PAGE (Duolingo-style) ──────────────────────────────
+
+class _StreakPage extends StatefulWidget {
+  final int streak;
+  final int gems;
+
+  const _StreakPage({required this.streak, required this.gems});
+
+  @override
+  State<_StreakPage> createState() => _StreakPageState();
+}
+
+class _StreakPageState extends State<_StreakPage> with SingleTickerProviderStateMixin {
+  late final AnimationController _flameController;
+
+  @override
+  void initState() {
+    super.initState();
+    _flameController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1500),
+    )..repeat();
+  }
+
+  @override
+  void dispose() {
+    _flameController.dispose();
+    super.dispose();
+  }
+
+  static const _lucideFlame = '''
+<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M12 3q1 4 4 6.5t3 5.5a1 1 0 0 1-14 0 5 5 0 0 1 1-3 1 1 0 0 0 5 0c0-2-1.5-3-1.5-5q0-2 2.5-4"/>
+</svg>
+''';
+
+  int get _weeks => widget.streak ~/ 7;
+
+  int get _nextMilestone {
+    const milestones = [2, 4, 8, 12, 16, 24, 36, 52];
+    return milestones.cast<int?>().firstWhere((m) => m! > _weeks, orElse: () => null) ?? (_weeks + 4);
+  }
+
+  /// Simulates which days this week had workouts.
+  /// In a real app this would come from workout log data.
+  List<bool> get _weekActivity {
+    final today = DateTime.now().weekday; // 1=Mon, 7=Sun
+    final daysIntoStreak = widget.streak % 7;
+    return List.generate(7, (i) {
+      final dayIndex = i + 1;
+      if (dayIndex > today) return false;
+      // Show recent activity days within current week
+      return (today - dayIndex) < daysIntoStreak;
+    });
+  }
+
+  int get _workoutDaysThisWeek => _weekActivity.where((a) => a).length;
+
+  static const _dayLabels = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = _weeks / _nextMilestone;
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        surfaceTintColor: Colors.transparent,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text('La Tua Serie', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 18)),
+        centerTitle: true,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.fromLTRB(24, 16, 24, 40),
+        child: Column(
+          children: [
+            // ── Big flame + streak number ──
+            const SizedBox(height: 20),
+            AnimatedBuilder(
+              animation: _flameController,
+              builder: (context, child) {
+                final t = _flameController.value;
+                final scaleY = 1.0 + 0.06 * sin(t * 2 * 3.14159 * 2);
+                final scaleX = 1.0 - 0.02 * sin(t * 2 * 3.14159 * 3);
+                return Transform(
+                  alignment: Alignment.bottomCenter,
+                  transform: Matrix4.identity()..scale(scaleX, scaleY),
+                  child: child,
+                );
+              },
+              child: SvgPicture.string(
+                _lucideFlame.replaceAll('currentColor', '#F97316'),
+                width: 80,
+                height: 80,
+              ),
+            ),
+            const SizedBox(height: 16),
+            ShaderMask(
+              shaderCallback: (bounds) => const LinearGradient(
+                colors: [Color(0xFFFB923C), Color(0xFFF87171), Color(0xFFFB923C)],
+              ).createShader(bounds),
+              child: Text(
+                '$_weeks',
+                style: const TextStyle(
+                  fontSize: 72,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  height: 1.0,
+                ),
+              ),
+            ),
+            Text(
+              _weeks == 1 ? 'settimana di serie' : 'settimane di serie',
+              style: TextStyle(fontSize: 16, color: Colors.grey[400], fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 36),
+
+            // ── Weekly activity dots ──
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Questa settimana', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                      Text(
+                        '$_workoutDaysThisWeek/2 allenamenti',
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                          color: _workoutDaysThisWeek >= 2 ? AppColors.primary : Colors.grey[500],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: List.generate(7, (i) {
+                      final active = _weekActivity[i];
+                      final isToday = i + 1 == DateTime.now().weekday;
+                      return Column(
+                        children: [
+                          Text(
+                            _dayLabels[i],
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isToday ? AppColors.primary : Colors.grey[600],
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            width: 36,
+                            height: 36,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: active
+                                  ? AppColors.primary.withValues(alpha: 0.15)
+                                  : Colors.white.withValues(alpha: 0.04),
+                              border: isToday
+                                  ? Border.all(color: AppColors.primary, width: 2)
+                                  : Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                            ),
+                            child: active
+                                ? SvgPicture.string(
+                                    _lucideFlame.replaceAll('currentColor', '#F97316'),
+                                    width: 18,
+                                    height: 18,
+                                    fit: BoxFit.scaleDown,
+                                  )
+                                : null,
+                          ),
+                        ],
+                      );
+                    }),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Next milestone progress ──
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text('Prossimo obiettivo', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                      Text('$_nextMilestone settimane', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFFFB923C))),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: progress.clamp(0.0, 1.0),
+                      minHeight: 10,
+                      backgroundColor: Colors.white.withValues(alpha: 0.06),
+                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFB923C)),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    '${_nextMilestone - _weeks} settimane rimanenti',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            // ── Gems ──
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.04),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 44,
+                    height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFEAB308).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Center(child: Text('🔶', style: TextStyle(fontSize: 22))),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${widget.gems}', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                        Text('Gemme totali', style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ─── 3. PHOTO + MEALS GRID ──────────────────────────────────────
 
 String? _resolveUrl(String? url) {
@@ -576,10 +841,6 @@ class _PhotoMealsGrid extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final diet = profile.dietProgress;
-    final mealCount = diet?.totalMealsToday ?? 0;
-    final totalCals = diet?.totalCaloriesToday ?? 0;
-
     return Row(
       children: [
         // Left: Physique Photo / Progress
@@ -613,17 +874,23 @@ class _PhotoMealsGrid extends ConsumerWidget {
                           const Center(child: Icon(Icons.camera_alt_rounded, size: 32, color: AppColors.textTertiary)),
                         Positioned(
                           left: 12, right: 12, bottom: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 10),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.3),
-                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
-                              borderRadius: BorderRadius.circular(12),
-                            ),
-                            child: const Text(
-                              'PROGRESSI',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary, letterSpacing: 1.0),
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(12),
+                            child: BackdropFilter(
+                              filter: ui.ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: Colors.black.withValues(alpha: 0.55),
+                                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: const Text(
+                                  'PROGRESSI',
+                                  textAlign: TextAlign.center,
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary, letterSpacing: 1.0),
+                                ),
+                              ),
                             ),
                           ),
                         ),
@@ -636,76 +903,164 @@ class _PhotoMealsGrid extends ConsumerWidget {
           ),
         ),
         const SizedBox(width: 12),
-        // Right: Today's Meals
+        // Right: Today's Meals from weekly plan
         Expanded(
           child: AspectRatio(
             aspectRatio: 3 / 4,
             child: GlassCard(
               borderRadius: 24,
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'PASTI DEL GIORNO',
-                    style: TextStyle(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.grey[500],
-                      letterSpacing: 1.0,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: Center(
-                      child: mealCount > 0
-                          ? Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Text(
-                                  '$mealCount',
-                                  style: const TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: AppColors.textPrimary),
-                                ),
-                                Text(
-                                  mealCount == 1 ? 'pasto' : 'pasti',
-                                  style: TextStyle(fontSize: 12, color: Colors.grey[500]),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  '$totalCals kcal',
-                                  style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primary),
-                                ),
-                              ],
-                            )
-                          : const Text(
-                              'Nessun pasto registrato',
-                              style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
-                            ),
-                    ),
-                  ),
-                  GestureDetector(
-                    onTap: () => context.go('/diet'),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.05),
-                        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                        borderRadius: BorderRadius.circular(12),
+              padding: const EdgeInsets.all(12),
+              child: _TodayMealsCard(ref: ref),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── 3b. TODAY'S MEALS (from weekly plan) ────────────────────────
+
+class _TodayMealsCard extends StatefulWidget {
+  final WidgetRef ref;
+  const _TodayMealsCard({required this.ref});
+
+  @override
+  State<_TodayMealsCard> createState() => _TodayMealsCardState();
+}
+
+class _TodayMealsCardState extends State<_TodayMealsCard> {
+  List<Map<String, dynamic>> _todayMeals = [];
+  bool _loading = true;
+
+  static const _mealIcons = {
+    'colazione': Icons.free_breakfast_rounded,
+    'spuntino_mattina': Icons.apple_rounded,
+    'pranzo': Icons.restaurant_rounded,
+    'spuntino_pomeriggio': Icons.cookie_rounded,
+    'cena': Icons.dinner_dining_rounded,
+  };
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final service = widget.ref.read(clientServiceProvider);
+      final data = await service.getWeeklyMealPlan();
+      final plan = data['plan'] as Map<String, dynamic>? ?? {};
+      final todayIndex = DateTime.now().weekday - 1; // 0=Mon, 6=Sun
+      final dayKey = todayIndex.toString();
+      final dayMeals = plan[dayKey];
+      if (dayMeals is List) {
+        setState(() {
+          _todayMeals = dayMeals.cast<Map<String, dynamic>>();
+          _loading = false;
+        });
+      } else {
+        setState(() => _loading = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'PASTI DI OGGI',
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w700,
+            color: Colors.grey[500],
+            letterSpacing: 1.0,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Expanded(
+          child: _loading
+              ? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)))
+              : _todayMeals.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.restaurant_menu_rounded, color: Colors.grey[700], size: 28),
+                          const SizedBox(height: 8),
+                          Text('Nessun pasto', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                        ],
                       ),
-                      child: const Text(
-                        'DIETA',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: AppColors.primary,
-                          letterSpacing: 1.0,
-                        ),
-                      ),
+                    )
+                  : ListView.separated(
+                      padding: EdgeInsets.zero,
+                      itemCount: _todayMeals.length,
+                      separatorBuilder: (_, _) => Divider(color: Colors.white.withValues(alpha: 0.06), height: 1),
+                      itemBuilder: (_, i) {
+                        final m = _todayMeals[i];
+                        final type = m['meal_type']?.toString() ?? '';
+                        final name = m['meal_name']?.toString() ?? '';
+                        final cals = (m['calories'] as num?)?.toInt() ?? 0;
+                        final icon = _mealIcons[type] ?? Icons.restaurant_rounded;
+                        final typeLabel = type.replaceAll('_', ' ').toUpperCase();
+                        return Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 6),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(icon, size: 16, color: AppColors.primary),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    typeLabel,
+                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary, letterSpacing: 0.5),
+                                  ),
+                                  const Spacer(),
+                                  if (cals > 0)
+                                    Text(
+                                      '$cals kcal',
+                                      style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w600),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                name,
+                                style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, fontWeight: FontWeight.w500),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        );
+                      },
                     ),
-                  ),
-                ],
+        ),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () => context.go('/diet'),
+          child: Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.05),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Text(
+              'DIETA',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+                color: AppColors.primary,
+                letterSpacing: 1.0,
               ),
             ),
           ),
@@ -713,6 +1068,7 @@ class _PhotoMealsGrid extends ConsumerWidget {
       ],
     );
   }
+
 }
 
 // ─── 4. TRAINER CARD ─────────────────────────────────────────────
@@ -806,111 +1162,13 @@ class _CircleButton extends StatelessWidget {
   }
 }
 
-// ─── SECTION HEADER ──────────────────────────────────────────────
-
-class _SectionHeader extends StatelessWidget {
-  final String label;
-  final String action;
-  final VoidCallback onAction;
-
-  const _SectionHeader({required this.label, required this.action, required this.onAction});
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Padding(
-          padding: const EdgeInsets.only(left: 4),
-          child: Text(
-            label,
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: Colors.grey[500],
-              letterSpacing: 1.0,
-            ),
-          ),
-        ),
-        GestureDetector(
-          onTap: onAction,
-          child: Text(
-            action,
-            style: const TextStyle(fontSize: 12, color: AppColors.primary),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-// ─── 5. GYM MEMBERS ─────────────────────────────────────────────
-
-class _MembersCard extends StatelessWidget {
-  final VoidCallback? onTap;
-  const _MembersCard({this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      onTap: onTap,
-      child: Row(
-        children: [
-          ...List.generate(4, (i) => Align(
-            widthFactor: i == 0 ? 1 : 0.7,
-            child: CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.white.withValues(alpha: 0.1),
-              child: const Icon(Icons.person, size: 16, color: AppColors.textTertiary),
-            ),
-          )),
-          const SizedBox(width: 8),
-          Text('Vedi membri', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
-          const Spacer(),
-          Icon(Icons.chevron_right_rounded, size: 16, color: Colors.grey[600]),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── 6. FRIENDS ──────────────────────────────────────────────────
-
-class _FriendsCard extends StatelessWidget {
-  final VoidCallback? onTap;
-  const _FriendsCard({this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GlassCard(
-      onTap: onTap,
-      child: Row(
-        children: [
-          ...List.generate(3, (i) => Align(
-            widthFactor: i == 0 ? 1 : 0.7,
-            child: CircleAvatar(
-              radius: 16,
-              backgroundColor: Colors.white.withValues(alpha: 0.1),
-              child: const Icon(Icons.person, size: 16, color: AppColors.textTertiary),
-            ),
-          )),
-          const SizedBox(width: 8),
-          Text('Vedi amici', style: TextStyle(fontSize: 13, color: Colors.grey[500])),
-          const Spacer(),
-          Icon(Icons.chevron_right_rounded, size: 16, color: Colors.grey[600]),
-        ],
-      ),
-    );
-  }
-}
-
 // ─── 7. LEADERBOARD LINK ─────────────────────────────────────────
 
 class _LeaderboardLinkCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return GlassCard(
-      onTap: () => context.go('/leaderboard'),
+      onTap: () => context.push('/leaderboard'),
       child: Row(
         children: [
           Container(

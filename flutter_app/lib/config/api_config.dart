@@ -13,14 +13,21 @@ class ApiConfig {
     return base.replaceFirst('http', 'ws');
   }
 
+  /// Production backend URL (Render deployment)
+  static const String productionUrl = 'https://gym-app-prototype-mm5g.onrender.com';
+
+  /// Set to true to use local dev server instead of production
+  static bool useLocalServer = true;
+
   static String get baseUrl {
     if (kIsWeb) {
-      // Use the same host the app was loaded from, so it works
-      // from both localhost and LAN IP on phones
       final host = Uri.base.host;
       return 'http://$host:$port';
     }
-    return 'http://$nativeHost:$port';
+    if (useLocalServer) {
+      return 'http://$nativeHost:$port';
+    }
+    return productionUrl;
   }
 
   // Auth
@@ -48,7 +55,10 @@ class ApiConfig {
   // Diet
   static const dietScan = '/api/client/diet/scan';
   static const dietLog = '/api/client/diet/log';
+  static const dietSelfAssign = '/api/client/diet/self-assign';
   static const weeklyMealPlan = '/api/client/weekly-meal-plan';
+  static const weeklyMealPlanAdd = '/api/client/weekly-meal-plan/add';
+  static String weeklyMealPlanDelete(int id) => '/api/client/weekly-meal-plan/$id';
   static String dietLogForDate(String date) => '/api/client/diet-log/$date';
   static String dietBarcode(String code) => '/api/client/diet/barcode/$code';
 
@@ -96,6 +106,8 @@ class ApiConfig {
   static const completeWorkout = '/api/client/schedule/complete';
   static const completeCoopWorkout = '/api/client/schedule/complete-coop';
   static const updateWorkoutSet = '/api/client/schedule/update_set';
+  static const clientCreateWorkout = '/api/client/workout/create';
+  static String clientUpdateWorkout(String id) => '/api/client/workout/$id';
 
   // Leaderboard
   static const leaderboardData = '/api/leaderboard/data';
@@ -104,10 +116,10 @@ class ApiConfig {
   static String friendProgress(String id) => '/api/friends/$id/progress';
 
   // Appointments
-  static String trainerAvailability(int id) => '/api/client/trainers/$id/availability';
-  static String trainerAvailableSlots(int id) => '/api/client/trainers/$id/available-slots';
-  static String trainerSessionTypes(int id) => '/api/client/trainers/$id/session-types';
-  static String trainerSessionRate(int id) => '/api/client/trainers/$id/session-rate';
+  static String trainerAvailability(String id) => '/api/client/trainers/$id/availability';
+  static String trainerAvailableSlots(String id) => '/api/client/trainers/$id/available-slots';
+  static String trainerSessionTypes(String id) => '/api/client/trainers/$id/session-types';
+  static String trainerSessionRate(String id) => '/api/client/trainers/$id/session-rate';
   static const appointmentCheckoutSession = '/api/client/appointment-checkout-session';
 
   // ── Trainer ─────────────────────────────────────────────
@@ -139,6 +151,11 @@ class ApiConfig {
   static const exercises = '/api/exercises';
   static String exercise(String id) => '/api/exercises/$id';
   static String exerciseVideo(String id) => '/api/exercises/$id/video';
+
+  // ── Trainer Appointments ────────────────────────────────
+  static const trainerPendingAppointments = '/api/trainer/appointments/pending';
+  static String trainerAcceptAppointment(String id) => '/api/trainer/appointments/$id/accept';
+  static String trainerDeclineAppointment(String id) => '/api/trainer/appointments/$id/decline';
 
   // ── Trainer Client Metrics ────────────────────────────────
   static String trainerClientWeightHistory(String id) => '/api/trainer/client/$id/weight-history';
@@ -231,6 +248,79 @@ class ApiConfig {
   static const terminalRegisterReader = '/api/terminal/register-reader';
   static const terminalImportReader = '/api/terminal/import-reader';
   static const terminalReaders = '/api/terminal/readers';
+
+  // ── Community ────────────────────────────────────────────
+  static const communityFeed = '/api/community/feed';
+  static const communityPosts = '/api/community/posts';
+  static String communityPostDelete(String id) => '/api/community/posts/$id';
+  static String communityPostLike(String id) => '/api/community/posts/$id/like';
+  static String communityPostComments(String id) => '/api/community/posts/$id/comments';
+  static String communityCommentDelete(int id) => '/api/community/comments/$id';
+  static String communityCommentLike(int id) => '/api/community/comments/$id/like';
+  static String communityPostParticipate(String id) => '/api/community/posts/$id/participate';
+  static String communityPostPin(String id) => '/api/community/posts/$id/pin';
+
+  // ── Staff ───────────────────────────────────────────────
+  static const staffGymInfo = '/api/staff/gym-info';
+  static const staffMembers = '/api/staff/members';
+  static String staffMember(String id) => '/api/staff/member/$id';
+  static const staffCheckin = '/api/staff/checkin';
+  static const staffCheckinsToday = '/api/staff/checkins/today';
+  static const staffAppointmentsToday = '/api/staff/appointments/today';
+  static const staffTrainers = '/api/staff/trainers';
+  static String staffTrainerSchedule(String id) => '/api/staff/trainer/$id/schedule';
+  static const staffSubscriptionPlans = '/api/staff/subscription-plans';
+  static const staffSubscribeClient = '/api/staff/subscribe-client';
+  static const staffCancelSubscription = '/api/staff/cancel-subscription';
+  static const staffChangeSubscription = '/api/staff/change-subscription';
+  static const staffChangeSubscriptionPreview = '/api/staff/change-subscription/preview';
+  static const staffWaiverTemplate = '/api/staff/waiver-template';
+  static const staffOnboardClient = '/api/staff/onboard-client';
+  static const staffResetMemberPassword = '/api/staff/reset-member-password';
+  static const staffChangeMemberUsername = '/api/staff/change-member-username';
+  static const staffCreatePaymentIntent = '/api/staff/create-payment-intent';
+  static const staffOnboardingCheckoutSession = '/api/staff/onboarding-checkout-session';
+  static const staffSendCredentials = '/api/staff/send-credentials';
+  static const staffSigningSession = '/api/staff/signing-session';
+  static String staffSigningSessionStatus(String token) => '/api/staff/signing-session/$token/status';
+  static String staffCheckoutSessionStatus(String id) => '/api/staff/checkout-session-status/$id';
+  static const staffNfcTags = '/api/staff/nfc-tags';
+  static const staffRegisterNfc = '/api/staff/register-nfc';
+  static String staffUnregisterNfc(String id) => '/api/staff/unregister-nfc/$id';
+  static const staffShowerUsage = '/api/staff/shower-usage';
+  static const staffVerifyAccess = '/api/staff/verify-access';
+  static String staffUploadCertificate(String id) => '/api/staff/upload-certificate/$id';
+  static String staffUpdateCertificate(String id) => '/api/staff/update-certificate/$id';
+  static String staffDeleteCertificate(String id) => '/api/staff/delete-certificate/$id';
+  static String staffApproveCertificate(int id) => '/api/staff/approve-certificate/$id';
+  static String staffRejectCertificate(int id) => '/api/staff/reject-certificate/$id';
+  static const staffPendingCertificates = '/api/staff/pending-certificates';
+  static const medicalCertificateUpload = '/api/medical/certificate';
+  static const medicalCertificateGet = '/api/medical/certificate';
+  static String medicalCertificate(String clientId) => '/api/medical/certificate?client_id=$clientId';
+
+  // ── Terminal/POS ────────────────────────────────────────
+  static const terminalProcessCustomPayment = '/api/terminal/process-custom-payment';
+  static String terminalPaymentStatus(String id) => '/api/terminal/payment-status/$id';
+  static const terminalCancelPayment = '/api/terminal/cancel-payment';
+  static const terminalSimulatePayment = '/api/terminal/simulate-payment';
+
+  // ── Nutritionist ────────────────────────────────────────
+  static const nutritionistData = '/api/nutritionist/data';
+  static String nutritionistClientDetail(String id) => '/api/nutritionist/client/$id';
+  static const nutritionistBodyComposition = '/api/nutritionist/client/body-composition';
+  static const nutritionistWeightGoal = '/api/nutritionist/client/weight-goal';
+  static const nutritionistHealthData = '/api/nutritionist/client/health-data';
+  static const nutritionistAssignDiet = '/api/nutritionist/assign_diet';
+  static String nutritionistClientWeightHistory(String id) => '/api/nutritionist/client/$id/weight-history';
+  static String nutritionistClientDietConsistency(String id) => '/api/nutritionist/client/$id/diet-consistency';
+  static String nutritionistClientWeeklyMealPlan(String id) => '/api/nutritionist/client/$id/weekly-meal-plan';
+  static const nutritionistAvailability = '/api/nutritionist/availability';
+  static const nutritionistSessionRate = '/api/nutritionist/session-rate';
+  static const nutritionistAppointments = '/api/nutritionist/appointments';
+  static String nutritionistAppointmentComplete(String id) => '/api/nutritionist/appointments/$id/complete';
+  static const nutritionistNotes = '/api/trainer/notes'; // shared notes API
+  static const nutritionistProfileUpdate = '/api/profile/update';
 
   // ── Spotify ──────────────────────────────────────────────
   static const String spotifyStatus = '/api/spotify/status';

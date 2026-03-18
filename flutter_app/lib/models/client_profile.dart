@@ -12,14 +12,14 @@ class ClientProfile {
   final double? weight;
   final double? bodyFatPct;
   final String? fitnessGoal;
-  final int? gymId;
+  final String? gymId;
   final String? gymName;
-  final int? trainerId;
+  final String? trainerId;
   final String? trainerName;
   final String? trainerBio;
   final String? trainerSpecialties;
   final String? trainerPicture;
-  final int? nutritionistId;
+  final String? nutritionistId;
   final String? nutritionistName;
   final double? caloriesTarget;
   final double? proteinTarget;
@@ -90,14 +90,14 @@ class ClientProfile {
       weight: _toDouble(profile['weight'] ?? json['weight']),
       bodyFatPct: _toDouble(profile['body_fat_pct'] ?? json['body_fat_pct']),
       fitnessGoal: profile['fitness_goal'] as String? ?? json['fitness_goal'] as String?,
-      gymId: gym?['id'] as int? ?? profile['gym_id'] as int?,
+      gymId: (gym?['id'] ?? profile['gym_id'])?.toString(),
       gymName: gym?['name'] as String? ?? json['gym_name'] as String?,
-      trainerId: trainer?['id'] as int? ?? profile['trainer_id'] as int?,
+      trainerId: (trainer?['id'] ?? profile['trainer_id'])?.toString(),
       trainerName: trainer?['name'] as String? ?? json['trainer_name'] as String?,
       trainerBio: trainer?['bio'] as String?,
       trainerSpecialties: trainer?['specialties'] as String?,
       trainerPicture: trainer?['profile_picture'] as String?,
-      nutritionistId: nutritionist?['id'] as int?,
+      nutritionistId: nutritionist?['id']?.toString(),
       nutritionistName: nutritionist?['name'] as String?,
       caloriesTarget: _toDouble(profile['calories_target'] ?? json['calories_target']),
       proteinTarget: _toDouble(profile['protein_target'] ?? json['protein_target']),

@@ -422,6 +422,72 @@ async def simulate_terminal_payment(
         raise HTTPException(status_code=400, detail=str(e))
 
 
+@router.post("/process-custom-payment")
+async def process_custom_terminal_payment(
+    data: dict,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a PaymentIntent for a custom amount and hand it off to the reader."""
+    if user.role != "staff":
+        raise HTTPException(status_code=403, detail="Staff access required")
+
+    owner = _get_owner(user, db)
+    _require_connect(owner)
+
+    if not owner.stripe_terminal_reader_id:
+        raise HTTPException(status_code=400, detail="No POS terminal registered. Ask the gym owner to set one up.")
+
+    amount = data.get("amount")  # float in EUR
+    description = data.get("description", "Pagamento palestra")
+    currency = data.get("currency", "eur")
+    metadata = data.get("metadata", {})
+
+    if not amount or amount <= 0:
+        raise HTTPException(status_code=400, detail="Valid amount is required")
+
+    amount_cents = int(round(amount * 100))
+    if amount_cents < 50:
+        raise HTTPException(status_code=400, detail="Amount too small for card payment")
+
+    sk = _stripe_kwargs(owner)
+
+    try:
+        intent = stripe.PaymentIntent.create(
+            amount=amount_cents,
+            currency=currency.lower(),
+            payment_method_types=["card_present"],
+            capture_method="automatic",
+            description=description,
+            metadata={
+                "gym_id": owner.id,
+                "payment_source": "terminal_custom",
+                **metadata,
+            },
+            **sk
+        )
+
+        stripe.terminal.Reader.process_payment_intent(
+            owner.stripe_terminal_reader_id,
+            payment_intent=intent.id,
+            **sk
+        )
+
+        logger.info(f"Custom terminal payment started: {intent.id} (€{amount})")
+        return {
+            "payment_intent_id": intent.id,
+            "amount": amount,
+            "amount_cents": amount_cents,
+            "currency": currency,
+            "status": "processing",
+            "is_test_mode": _is_test_mode(),
+        }
+
+    except stripe.error.StripeError as e:
+        logger.error(f"Custom terminal payment error: {e}")
+        raise HTTPException(status_code=400, detail=str(e))
+
+
 @router.post("/cancel-payment")
 async def cancel_terminal_payment(
     data: dict,

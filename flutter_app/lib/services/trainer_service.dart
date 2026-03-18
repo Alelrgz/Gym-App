@@ -275,4 +275,27 @@ class TrainerService {
     final response = await _api.get(ApiConfig.notificationsUnreadCount);
     return response.data['count'] as int? ?? 0;
   }
+
+  // ── Pending Appointments ─────────────────────────────────
+  Future<List<Map<String, dynamic>>> getPendingAppointments() async {
+    final response = await _api.get(ApiConfig.trainerPendingAppointments);
+    return (response.data as List)
+        .map((e) => Map<String, dynamic>.from(e as Map))
+        .toList();
+  }
+
+  Future<Map<String, dynamic>> acceptAppointment(String appointmentId) async {
+    final response = await _api.post(
+        ApiConfig.trainerAcceptAppointment(appointmentId));
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> declineAppointment(
+      String appointmentId, {String? reason}) async {
+    final response = await _api.post(
+      ApiConfig.trainerDeclineAppointment(appointmentId),
+      data: reason != null ? {'reason': reason} : null,
+    );
+    return response.data as Map<String, dynamic>;
+  }
 }
