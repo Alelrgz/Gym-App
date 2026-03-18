@@ -15,12 +15,16 @@ IS_POSTGRES = DATABASE_URL.startswith("postgresql")
 # --- ENGINE & SESSION ---
 if IS_POSTGRES:
     # Production: PostgreSQL with connection pooling
+    connect_args = {}
+    if "sslmode" not in DATABASE_URL:
+        connect_args["sslmode"] = "require"
     engine = create_engine(
         DATABASE_URL,
         pool_size=20,
         max_overflow=10,
         pool_timeout=30,
-        pool_recycle=1800
+        pool_recycle=1800,
+        connect_args=connect_args,
     )
 else:
     # Development: SQLite (no connection pooling)
