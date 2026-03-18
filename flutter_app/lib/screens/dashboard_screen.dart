@@ -1017,16 +1017,20 @@ class _TodayMealsCardState extends State<_TodayMealsCard> {
                                 children: [
                                   Icon(icon, size: 16, color: AppColors.primary),
                                   const SizedBox(width: 6),
-                                  Text(
-                                    typeLabel,
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary, letterSpacing: 0.5),
+                                  Flexible(
+                                    child: Text(
+                                      typeLabel,
+                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary, letterSpacing: 0.5),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
                                   ),
-                                  const Spacer(),
-                                  if (cals > 0)
+                                  if (cals > 0) ...[
+                                    const SizedBox(width: 8),
                                     Text(
                                       '$cals kcal',
                                       style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w600),
                                     ),
+                                  ],
                                 ],
                               ),
                               const SizedBox(height: 2),

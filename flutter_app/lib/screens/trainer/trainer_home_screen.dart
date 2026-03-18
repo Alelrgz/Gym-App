@@ -17,7 +17,8 @@ class TrainerHomeScreen extends ConsumerWidget {
     (icon: Icons.people_rounded, activeIcon: Icons.people_rounded, label: 'Utenti'),
     (icon: Icons.fitness_center_outlined, activeIcon: Icons.fitness_center_rounded, label: 'Allenamenti'),
     (icon: Icons.school_outlined, activeIcon: Icons.school_rounded, label: 'Corsi'),
-    (icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: 'Profilo'),
+    (icon: Icons.calendar_month_outlined, activeIcon: Icons.calendar_month_rounded, label: 'Agenda'),
+    (icon: Icons.forum_outlined, activeIcon: Icons.forum_rounded, label: 'Community'),
   ];
 
   /// Items only shown on desktop sidebar (includes settings).
@@ -25,7 +26,8 @@ class TrainerHomeScreen extends ConsumerWidget {
     (icon: Icons.people_rounded, label: 'Utenti'),
     (icon: Icons.fitness_center_rounded, label: 'Allenamenti'),
     (icon: Icons.school_rounded, label: 'Corsi'),
-    (icon: Icons.person_rounded, label: 'Profilo'),
+    (icon: Icons.calendar_month_rounded, label: 'Agenda'),
+    (icon: Icons.forum_rounded, label: 'Community'),
     (icon: Icons.settings_rounded, label: 'Impostazioni'),
   ];
 

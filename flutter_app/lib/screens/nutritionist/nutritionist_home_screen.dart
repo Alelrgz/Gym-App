@@ -16,6 +16,7 @@ class NutritionistHomeScreen extends ConsumerWidget {
   static const _navItems = [
     (icon: Icons.dashboard_rounded, label: 'Dashboard'),
     (icon: Icons.calendar_month_rounded, label: 'Schedule'),
+    (icon: Icons.forum_rounded, label: 'Community'),
     (icon: Icons.settings_rounded, label: 'Impostazioni'),
   ];
 

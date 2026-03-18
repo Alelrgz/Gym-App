@@ -3,13 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../config/theme.dart';
 import '../../providers/nutritionist_provider.dart';
 import '../../services/nutritionist_service.dart';
-import '../../widgets/glass_card.dart';
-
 const double _kDesktopBreakpoint = 1024;
 const Color _kCyan = Color(0xFF06B6D4);
 const Color _kAmber = Color(0xFFF59E0B);
-const Color _kTeal = Color(0xFF14B8A6);
-const Color _kPurple = Color(0xFFA855F7);
 
 class NutritionistDashboardScreen extends ConsumerStatefulWidget {
   const NutritionistDashboardScreen({super.key});
@@ -42,6 +38,9 @@ class _NutritionistDashboardScreenState
   final _noteContentCtrl = TextEditingController();
   String? _editingNoteId;
 
+  // Expandable sections
+  final Set<String> _expandedSections = {'overview', 'meal_plan'};
+
   NutritionistService get _service =>
       ref.read(nutritionistServiceProvider);
 
@@ -50,6 +49,16 @@ class _NutritionistDashboardScreenState
     _noteTitleCtrl.dispose();
     _noteContentCtrl.dispose();
     super.dispose();
+  }
+
+  void _toggleSection(String section) {
+    setState(() {
+      if (_expandedSections.contains(section)) {
+        _expandedSections.remove(section);
+      } else {
+        _expandedSections.add(section);
+      }
+    });
   }
 
   // ═══════════════════════════════════════════════════════
@@ -99,13 +108,13 @@ class _NutritionistDashboardScreenState
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // LEFT: Client list + Notes (1/3)
+                  // LEFT: Client list only
                   SizedBox(
-                    width: 320,
+                    width: 380,
                     child: _buildLeftPanel(clients),
                   ),
-                  const SizedBox(width: 16),
-                  // RIGHT: Client detail (2/3)
+                  const SizedBox(width: 20),
+                  // RIGHT: Client detail
                   Expanded(
                     child: _selectedClientId != null && _clientDetail != null
                         ? _buildClientDetailPanel()
@@ -255,7 +264,7 @@ class _NutritionistDashboardScreenState
 
     return Row(
       children: [
-        _StatCard(value: '$active', label: 'Clienti Attivi', color: AppColors.success,
+        _StatCard(value: '$active', label: 'Attivi', color: AppColors.success,
             isActive: _statFilter == 'active',
             onTap: () => setState(() => _statFilter = _statFilter == 'active' ? null : 'active')),
         const SizedBox(width: 8),
@@ -275,36 +284,31 @@ class _NutritionistDashboardScreenState
   }
 
   // ═══════════════════════════════════════════════════════
-  //  LEFT PANEL (desktop) — clients + notes
+  //  LEFT PANEL (desktop) — clients only
   // ═══════════════════════════════════════════════════════
   Widget _buildLeftPanel(List<Map<String, dynamic>> clients) {
     return Column(
       children: [
         _buildSearchBar(),
-        const SizedBox(height: 8),
+        const SizedBox(height: 10),
         Expanded(
-          flex: 3,
-          child: Container(
-            decoration: BoxDecoration(
-              color: AppColors.surface,
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: clients.isEmpty
-                ? const Center(
-                    child: Text('Nessun cliente',
-                        style: TextStyle(
-                            color: AppColors.textTertiary, fontSize: 13)))
-                : ListView.builder(
-                    itemCount: clients.length,
-                    itemBuilder: (_, i) => _buildClientTile(clients[i]),
+          child: clients.isEmpty
+              ? Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.people_outline_rounded, size: 32, color: Colors.grey[800]),
+                      const SizedBox(height: 8),
+                      Text('Nessun cliente',
+                          style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                    ],
                   ),
-          ),
-        ),
-        const SizedBox(height: 12),
-        // Quick Notes
-        Expanded(
-          flex: 2,
-          child: _buildNotesPanel(),
+                )
+              : ListView.builder(
+                  padding: EdgeInsets.zero,
+                  itemCount: clients.length,
+                  itemBuilder: (_, i) => _buildClientTile(clients[i]),
+                ),
         ),
       ],
     );
@@ -315,21 +319,20 @@ class _NutritionistDashboardScreenState
   // ═══════════════════════════════════════════════════════
   Widget _buildSearchBar() {
     return Container(
-      height: 40,
+      height: 44,
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        color: Colors.white.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(14),
       ),
       child: TextField(
         onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
-        style: const TextStyle(fontSize: 13, color: Colors.white),
-        decoration: const InputDecoration(
+        style: const TextStyle(fontSize: 14, color: Colors.white),
+        decoration: InputDecoration(
           hintText: 'Cerca clienti...',
-          hintStyle: TextStyle(color: AppColors.textTertiary, fontSize: 13),
-          prefixIcon: Icon(Icons.search, size: 18, color: AppColors.textTertiary),
+          hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+          prefixIcon: Icon(Icons.search_rounded, size: 20, color: Colors.grey[600]),
           border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(vertical: 10),
+          contentPadding: const EdgeInsets.symmetric(vertical: 12),
         ),
       ),
     );
@@ -344,51 +347,57 @@ class _NutritionistDashboardScreenState
     final status = client['status'] as String? ?? '';
     final weight = client['weight'];
     final isSelected = id == _selectedClientId;
+    final isActive = status == 'Active';
+    final statusColor = isActive ? AppColors.success : AppColors.danger;
+    final statusLabel = isActive ? 'Attivo' : status == 'At Risk' ? 'A Rischio' : status;
 
     return GestureDetector(
       onTap: () => _selectClient(id),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
           color: isSelected
-              ? AppColors.success.withValues(alpha: 0.08)
-              : Colors.transparent,
-          border: Border(
-            left: BorderSide(
-              color: isSelected ? AppColors.success : Colors.transparent,
-              width: 2,
-            ),
-            bottom: BorderSide(color: Colors.white.withValues(alpha: 0.04)),
-          ),
+              ? Colors.white.withValues(alpha: 0.06)
+              : Colors.white.withValues(alpha: 0.03),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           children: [
-            _avatar(name, client['profile_picture'], 36),
-            const SizedBox(width: 10),
+            _avatar(name, client['profile_picture'], 42),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(name,
                       style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: 15,
                           fontWeight: FontWeight.w600,
                           color: Colors.white),
                       overflow: TextOverflow.ellipsis),
-                  const SizedBox(height: 2),
-                  Text(
-                    '${status == 'Active' ? 'Attivo' : status == 'At Risk' ? 'A Rischio' : status} · ${weight != null ? '${weight}kg' : 'Nessun dato'}',
-                    style: TextStyle(
-                        fontSize: 10,
-                        color: status == 'Active'
-                            ? AppColors.success
-                            : AppColors.danger),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: statusColor.withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(statusLabel,
+                            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: statusColor)),
+                      ),
+                      if (weight != null) ...[
+                        const SizedBox(width: 8),
+                        Text('${weight}kg',
+                            style: TextStyle(fontSize: 12, color: Colors.grey[500], fontWeight: FontWeight.w500)),
+                      ],
+                    ],
                   ),
                 ],
               ),
             ),
-            const Icon(Icons.chevron_right_rounded,
-                size: 16, color: AppColors.textTertiary),
           ],
         ),
       ),
@@ -416,69 +425,170 @@ class _NutritionistDashboardScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Client header
+        // Client header — always visible
         _buildClientHeader(d),
         const SizedBox(height: 16),
 
-        // Current stats
-        _buildCurrentStats(d),
-        const SizedBox(height: 12),
-
-        // Computed metrics (BMI/BMR/TDEE)
-        if (d['bmi'] != null || d['bmr'] != null || d['tdee'] != null)
-          _buildComputedMetrics(d),
+        // Overview card — always visible (merged stats + computed metrics)
+        _buildOverviewCard(d),
+        const SizedBox(height: 8),
 
         // Health profile button
         _buildHealthProfileButton(d),
-        const SizedBox(height: 16),
-
-        // Body composition form
-        _buildSectionHeader('Composizione Corporea', AppColors.primary),
         const SizedBox(height: 8),
-        _buildBodyCompositionForm(d),
-        const SizedBox(height: 16),
 
-        // Weight Goal + Diet Assignment
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(child: _buildWeightGoalCard(d)),
-            const SizedBox(width: 12),
-            Expanded(child: _buildDietAssignmentCard(diet)),
-          ],
+        // Body Composition — expandable
+        _buildSection(
+          title: 'Composizione Corporea',
+          summary: 'Last: ${d['weight'] ?? '—'}kg, ${d['body_fat_pct'] ?? '—'}% BF',
+          sectionKey: 'body_composition',
+          child: _buildBodyCompositionForm(d),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 4),
 
-        // Weekly Meal Plan
-        _buildSectionHeader('Piano Alimentare Settimanale', _kAmber),
-        const SizedBox(height: 8),
-        _buildMealPlanEditor(),
-        const SizedBox(height: 16),
+        // Goals & Diet — expandable
+        _buildSection(
+          title: 'Obiettivi & Dieta',
+          summary: 'Goal: ${d['weight_goal'] ?? '—'}kg | ${diet['calories_target'] ?? '—'} kcal',
+          sectionKey: 'goals_diet',
+          child: _buildGoalsDietContent(d, diet),
+        ),
+        const SizedBox(height: 4),
 
-        // Charts
-        _buildChartsSection(),
+        // Meal Plan — expandable, default open
+        _buildSection(
+          title: 'Piano Alimentare Settimanale',
+          summary: '${_dayLabels[_mealPlanDay]} - ${(_mealPlan[_mealPlanDay] ?? []).length} pasti',
+          sectionKey: 'meal_plan',
+          child: _buildMealPlanEditor(),
+        ),
+        const SizedBox(height: 4),
+
+        // Charts — expandable
+        _buildSection(
+          title: 'Grafici Progressi',
+          summary: 'Peso, composizione, costanza dieta',
+          sectionKey: 'charts',
+          child: _buildChartsContent(),
+        ),
+        const SizedBox(height: 4),
+
+        // Notes — expandable
+        _buildSection(
+          title: 'Note',
+          summary: 'Appunti e promemoria',
+          sectionKey: 'notes',
+          child: _buildNotesContent(),
+        ),
+      ],
+    );
+  }
+
+  // ═══════════════════════════════════════════════════════
+  //  EXPANDABLE SECTION PATTERN
+  // ═══════════════════════════════════════════════════════
+  Widget _buildSection({
+    required String title,
+    required String summary,
+    required String sectionKey,
+    required Widget child,
+  }) {
+    final isExpanded = _expandedSections.contains(sectionKey);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        GestureDetector(
+          onTap: () => _toggleSection(sectionKey),
+          child: Container(
+            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
+            child: Row(
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[400],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                if (!isExpanded)
+                  Expanded(
+                    child: Text(
+                      summary,
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                if (isExpanded) const Spacer(),
+                Icon(
+                  isExpanded
+                      ? Icons.keyboard_arrow_up_rounded
+                      : Icons.keyboard_arrow_down_rounded,
+                  size: 18,
+                  color: Colors.grey[600],
+                ),
+              ],
+            ),
+          ),
+        ),
+        AnimatedSize(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+          alignment: Alignment.topCenter,
+          child: isExpanded
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: child,
+                )
+              : const SizedBox.shrink(),
+        ),
       ],
     );
   }
 
   // ── Client Header ──────────────────────────────────────
   Widget _buildClientHeader(Map<String, dynamic> d) {
+    final status = d['status'] as String? ?? '';
+    final isActive = status == 'Active';
+    final statusColor = isActive ? AppColors.success : AppColors.danger;
+    final statusLabel = isActive ? 'Attivo' : status == 'At Risk' ? 'A Rischio' : status;
+
     return Row(
       children: [
-        _avatar(d['name'] ?? '?', d['profile_picture'], 48),
-        const SizedBox(width: 12),
+        _avatar(d['name'] ?? '?', d['profile_picture'], 56),
+        const SizedBox(width: 16),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(d['name'] ?? '',
                   style: const TextStyle(
-                      fontSize: 20,
+                      fontSize: 24,
                       fontWeight: FontWeight.w800,
                       color: Colors.white)),
-              Text(
-                'Peso: ${d['weight'] ?? '—'}kg · Massa Grassa: ${d['body_fat_pct'] ?? '—'}%',
-                style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+              const SizedBox(height: 4),
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(
+                      color: statusColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(statusLabel,
+                        style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: statusColor)),
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    '${d['weight'] ?? '—'}kg  ·  ${d['body_fat_pct'] ?? '—'}% BF',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  ),
+                ],
               ),
             ],
           ),
@@ -487,41 +597,56 @@ class _NutritionistDashboardScreenState
     );
   }
 
-  // ── Current Stats ──────────────────────────────────────
-  Widget _buildCurrentStats(Map<String, dynamic> d) {
-    return Row(
-      children: [
-        _MetricTile(
-            label: 'Peso (kg)', value: d['weight']?.toString() ?? '—'),
-        const SizedBox(width: 8),
-        _MetricTile(
-            label: 'Massa Grassa %',
-            value: d['body_fat_pct']?.toString() ?? '—'),
-        const SizedBox(width: 8),
-        _MetricTile(
-            label: 'Massa Magra',
-            value: d['lean_mass'] != null ? '${d['lean_mass']}kg' : '—'),
-        const SizedBox(width: 8),
-        _MetricTile(
-            label: 'Massa Grassa',
-            value: d['fat_mass'] != null ? '${d['fat_mass']}kg' : '—'),
-      ],
-    );
-  }
-
-  // ── Computed Metrics ───────────────────────────────────
-  Widget _buildComputedMetrics(Map<String, dynamic> d) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 12),
-      child: Row(
+  // ── Overview Card (merged stats + computed) ─────────────
+  Widget _buildOverviewCard(Map<String, dynamic> d) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
         children: [
-          _CyanMetric(label: 'BMI', value: d['bmi']?.toString() ?? '—'),
-          const SizedBox(width: 8),
-          _CyanMetric(
-              label: 'BMR (kcal)', value: d['bmr']?.toString() ?? '—'),
-          const SizedBox(width: 8),
-          _CyanMetric(
-              label: 'TDEE (kcal)', value: d['tdee']?.toString() ?? '—'),
+          // Top row: weight, BF%, lean, fat
+          Row(
+            children: [
+              _MetricTile(
+                  label: 'Peso (kg)', value: d['weight']?.toString() ?? '—'),
+              const SizedBox(width: 8),
+              _MetricTile(
+                  label: 'Massa Grassa %',
+                  value: d['body_fat_pct']?.toString() ?? '—'),
+              const SizedBox(width: 8),
+              _MetricTile(
+                  label: 'Massa Magra',
+                  value: d['lean_mass'] != null ? '${d['lean_mass']}kg' : '—'),
+              const SizedBox(width: 8),
+              _MetricTile(
+                  label: 'Massa Grassa',
+                  value: d['fat_mass'] != null ? '${d['fat_mass']}kg' : '—'),
+            ],
+          ),
+          if (d['bmi'] != null || d['bmr'] != null || d['tdee'] != null) ...[
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Divider(
+                color: Colors.white.withValues(alpha: 0.06),
+                height: 1,
+              ),
+            ),
+            // Bottom row: BMI, BMR, TDEE
+            Row(
+              children: [
+                _MetricTile(label: 'BMI', value: d['bmi']?.toString() ?? '—'),
+                const SizedBox(width: 8),
+                _MetricTile(
+                    label: 'BMR (kcal)', value: d['bmr']?.toString() ?? '—'),
+                const SizedBox(width: 8),
+                _MetricTile(
+                    label: 'TDEE (kcal)', value: d['tdee']?.toString() ?? '—'),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -534,7 +659,8 @@ class _NutritionistDashboardScreenState
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
         decoration: BoxDecoration(
-          border: Border(left: BorderSide(color: _kCyan, width: 3)),
+          color: Colors.white.withValues(alpha: 0.03),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
@@ -542,18 +668,18 @@ class _NutritionistDashboardScreenState
               width: 28,
               height: 28,
               decoration: BoxDecoration(
-                color: _kCyan.withValues(alpha: 0.15),
+                color: Colors.white.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Icon(Icons.assignment_rounded,
-                  size: 16, color: _kCyan),
+              child: Icon(Icons.assignment_rounded,
+                  size: 16, color: Colors.grey[400]),
             ),
             const SizedBox(width: 8),
-            const Text('Health Profile',
+            Text('Health Profile',
                 style: TextStyle(
                     fontSize: 13,
-                    fontWeight: FontWeight.w700,
-                    color: _kCyan,
+                    fontWeight: FontWeight.w600,
+                    color: Colors.grey[400],
                     letterSpacing: 0.5)),
             const Spacer(),
             Icon(Icons.open_in_new_rounded,
@@ -561,22 +687,6 @@ class _NutritionistDashboardScreenState
           ],
         ),
       ),
-    );
-  }
-
-  // ── Section Header ─────────────────────────────────────
-  Widget _buildSectionHeader(String title, Color borderColor) {
-    return Container(
-      padding: const EdgeInsets.only(left: 12),
-      decoration: BoxDecoration(
-        border: Border(left: BorderSide(color: borderColor, width: 3)),
-      ),
-      child: Text(title,
-          style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: Colors.grey[500],
-              letterSpacing: 0.8)),
     );
   }
 
@@ -591,142 +701,68 @@ class _NutritionistDashboardScreenState
     final lmCtrl =
         TextEditingController(text: d['lean_mass']?.toString() ?? '');
 
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        children: [
-          Row(
-            children: [
-              Expanded(
-                  child: _field('Peso (kg) *', weightCtrl, 'bc-weight')),
-              const SizedBox(width: 8),
-              Expanded(
-                  child: _field('Massa Grassa %', bfCtrl, 'bc-bodyfat')),
-              const SizedBox(width: 8),
-              Expanded(
-                  child:
-                      _field('Massa Grassa (kg)', fmCtrl, 'bc-fatmass')),
-              const SizedBox(width: 8),
-              Expanded(
-                  child:
-                      _field('Massa Magra (kg)', lmCtrl, 'bc-leanmass')),
-            ],
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton.icon(
-              onPressed: () async {
-                final w = double.tryParse(weightCtrl.text);
-                if (w == null || w <= 0) {
-                  _toast('Il peso è obbligatorio');
-                  return;
-                }
-                try {
-                  await _service.addBodyComposition(
-                    clientId: _selectedClientId!,
-                    weight: w,
-                    bodyFatPct: double.tryParse(bfCtrl.text),
-                    fatMass: double.tryParse(fmCtrl.text),
-                    leanMass: double.tryParse(lmCtrl.text),
-                  );
-                  _toast('Composizione corporea registrata!');
-                  _selectClient(_selectedClientId!);
-                } catch (e) {
-                  _toast('Errore: $e');
-                }
-              },
-              icon: const Icon(Icons.add, size: 16),
-              label: const Text('Registra Misurazione',
-                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppColors.primary,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ── Weight Goal Card ───────────────────────────────────
-  Widget _buildWeightGoalCard(Map<String, dynamic> d) {
-    final goalCtrl = TextEditingController(
-        text: d['weight_goal']?.toString() ?? '');
-
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Obiettivo Peso', _kPurple),
-        const SizedBox(height: 8),
-        GlassCard(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text.rich(TextSpan(children: [
-                TextSpan(
-                    text: 'Obiettivo attuale: ',
-                    style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-                TextSpan(
-                    text: d['weight_goal'] != null
-                        ? '${d['weight_goal']} kg'
-                        : 'Non impostato',
-                    style: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white)),
-              ])),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                      child: _field(
-                          'Peso obiettivo kg', goalCtrl, 'weight-goal')),
-                  const SizedBox(width: 8),
-                  ElevatedButton(
-                    onPressed: () async {
-                      final g = double.tryParse(goalCtrl.text);
-                      if (g == null || g <= 0) {
-                        _toast('Obiettivo non valido');
-                        return;
-                      }
-                      try {
-                        await _service.setWeightGoal(
-                            _selectedClientId!, g);
-                        _toast('Obiettivo impostato!');
-                        _selectClient(_selectedClientId!);
-                      } catch (e) {
-                        _toast('Errore: $e');
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: _kPurple,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Imposta',
-                        style: TextStyle(
-                            fontSize: 12, fontWeight: FontWeight.w700)),
-                  ),
-                ],
-              ),
-            ],
+        Row(
+          children: [
+            Expanded(
+                child: _field('Peso (kg) *', weightCtrl, 'bc-weight')),
+            const SizedBox(width: 8),
+            Expanded(
+                child: _field('Massa Grassa %', bfCtrl, 'bc-bodyfat')),
+            const SizedBox(width: 8),
+            Expanded(
+                child:
+                    _field('Massa Grassa (kg)', fmCtrl, 'bc-fatmass')),
+            const SizedBox(width: 8),
+            Expanded(
+                child:
+                    _field('Massa Magra (kg)', lmCtrl, 'bc-leanmass')),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerRight,
+          child: ElevatedButton(
+            onPressed: () async {
+              final w = double.tryParse(weightCtrl.text);
+              if (w == null || w <= 0) {
+                _toast('Il peso è obbligatorio');
+                return;
+              }
+              try {
+                await _service.addBodyComposition(
+                  clientId: _selectedClientId!,
+                  weight: w,
+                  bodyFatPct: double.tryParse(bfCtrl.text),
+                  fatMass: double.tryParse(fmCtrl.text),
+                  leanMass: double.tryParse(lmCtrl.text),
+                );
+                _toast('Composizione corporea registrata!');
+                _selectClient(_selectedClientId!);
+              } catch (e) {
+                _toast('Errore: $e');
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Registra Misurazione',
+                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
           ),
         ),
       ],
     );
   }
 
-  // ── Diet Assignment Card ───────────────────────────────
-  Widget _buildDietAssignmentCard(Map<String, dynamic> diet) {
+  // ── Goals & Diet Content ────────────────────────────────
+  Widget _buildGoalsDietContent(Map<String, dynamic> d, Map<String, dynamic> diet) {
+    final goalCtrl = TextEditingController(
+        text: d['weight_goal']?.toString() ?? '');
     final calCtrl = TextEditingController(
         text: diet['calories_target']?.toString() ?? '');
     final proCtrl = TextEditingController(
@@ -739,67 +775,120 @@ class _NutritionistDashboardScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildSectionHeader('Piano Dieta', _kTeal),
+        // Weight goal
+        Text('Obiettivo Peso',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                color: Colors.grey[500], letterSpacing: 0.5)),
+        const SizedBox(height: 4),
+        Text.rich(TextSpan(children: [
+          TextSpan(
+              text: 'Obiettivo attuale: ',
+              style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+          TextSpan(
+              text: d['weight_goal'] != null
+                  ? '${d['weight_goal']} kg'
+                  : 'Non impostato',
+              style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white)),
+        ])),
         const SizedBox(height: 8),
-        GlassCard(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            children: [
-              Row(
-                children: [
-                  Expanded(child: _field('Calorie', calCtrl, 'diet-cal')),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: _field('Proteine (g)', proCtrl, 'diet-pro')),
-                ],
+        Row(
+          children: [
+            Expanded(
+                child: _field(
+                    'Peso obiettivo kg', goalCtrl, 'weight-goal')),
+            const SizedBox(width: 8),
+            ElevatedButton(
+              onPressed: () async {
+                final g = double.tryParse(goalCtrl.text);
+                if (g == null || g <= 0) {
+                  _toast('Obiettivo non valido');
+                  return;
+                }
+                try {
+                  await _service.setWeightGoal(
+                      _selectedClientId!, g);
+                  _toast('Obiettivo impostato!');
+                  _selectClient(_selectedClientId!);
+                } catch (e) {
+                  _toast('Errore: $e');
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primary,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 10),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12)),
               ),
-              const SizedBox(height: 8),
-              Row(
-                children: [
-                  Expanded(
-                      child:
-                          _field('Carboidrati (g)', carbCtrl, 'diet-carb')),
-                  const SizedBox(width: 8),
-                  Expanded(
-                      child: _field('Grassi (g)', fatCtrl, 'diet-fat')),
-                ],
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () async {
-                    final cal = int.tryParse(calCtrl.text);
-                    if (cal == null) {
-                      _toast('Le calorie sono obbligatorie');
-                      return;
-                    }
-                    try {
-                      await _service.assignDiet(
-                        clientId: _selectedClientId!,
-                        calories: cal,
-                        protein: int.tryParse(proCtrl.text) ?? 0,
-                        carbs: int.tryParse(carbCtrl.text) ?? 0,
-                        fat: int.tryParse(fatCtrl.text) ?? 0,
-                      );
-                      _toast('Piano dieta assegnato!');
-                    } catch (e) {
-                      _toast('Errore: $e');
-                    }
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: _kTeal,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12)),
-                  ),
-                  child: const Text('Assegna Dieta',
-                      style: TextStyle(
-                          fontSize: 13, fontWeight: FontWeight.w700)),
-                ),
-              ),
-            ],
+              child: const Text('Imposta',
+                  style: TextStyle(
+                      fontSize: 12, fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+
+        // Diet assignment
+        Text('Piano Dieta',
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
+                color: Colors.grey[500], letterSpacing: 0.5)),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(child: _field('Calorie', calCtrl, 'diet-cal')),
+            const SizedBox(width: 8),
+            Expanded(
+                child: _field('Proteine (g)', proCtrl, 'diet-pro')),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+                child:
+                    _field('Carboidrati (g)', carbCtrl, 'diet-carb')),
+            const SizedBox(width: 8),
+            Expanded(
+                child: _field('Grassi (g)', fatCtrl, 'diet-fat')),
+          ],
+        ),
+        const SizedBox(height: 12),
+        Align(
+          alignment: Alignment.centerRight,
+          child: ElevatedButton(
+            onPressed: () async {
+              final cal = int.tryParse(calCtrl.text);
+              if (cal == null) {
+                _toast('Le calorie sono obbligatorie');
+                return;
+              }
+              try {
+                await _service.assignDiet(
+                  clientId: _selectedClientId!,
+                  calories: cal,
+                  protein: int.tryParse(proCtrl.text) ?? 0,
+                  carbs: int.tryParse(carbCtrl.text) ?? 0,
+                  fat: int.tryParse(fatCtrl.text) ?? 0,
+                );
+                _toast('Piano dieta assegnato!');
+              } catch (e) {
+                _toast('Errore: $e');
+              }
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+            ),
+            child: const Text('Assegna Dieta',
+                style: TextStyle(
+                    fontSize: 13, fontWeight: FontWeight.w700)),
           ),
         ),
       ],
@@ -821,100 +910,97 @@ class _NutritionistDashboardScreenState
   Widget _buildMealPlanEditor() {
     final meals = _mealPlan[_mealPlanDay] ?? [];
 
-    return GlassCard(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Day tabs
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Row(
-              children: List.generate(7, (i) {
-                final isActive = i == _mealPlanDay;
-                return Padding(
-                  padding: const EdgeInsets.only(right: 4),
-                  child: GestureDetector(
-                    onTap: () => setState(() => _mealPlanDay = i),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 12, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isActive
-                            ? _kAmber.withValues(alpha: 0.2)
-                            : Colors.white.withValues(alpha: 0.04),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                        _dayLabels[i],
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          color: isActive ? _kAmber : Colors.grey[500],
-                        ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Day tabs as subtle pills
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: List.generate(7, (i) {
+              final isActive = i == _mealPlanDay;
+              return Padding(
+                padding: const EdgeInsets.only(right: 4),
+                child: GestureDetector(
+                  onTap: () => setState(() => _mealPlanDay = i),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: isActive
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : Colors.white.withValues(alpha: 0.03),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      _dayLabels[i],
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        color: isActive ? Colors.white : Colors.grey[500],
                       ),
                     ),
                   ),
-                );
-              }),
+                ),
+              );
+            }),
+          ),
+        ),
+        const SizedBox(height: 12),
+
+        // Meal entries
+        if (meals.isEmpty)
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 16),
+            child: Center(
+              child: Text('Nessun pasto configurato per questo giorno',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[600])),
+            ),
+          )
+        else
+          ..._buildMealEntries(meals),
+
+        const SizedBox(height: 8),
+
+        // Add meal button
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _addMealEntry,
+            icon: const Icon(Icons.add, size: 14),
+            label: const Text('Aggiungi Pasto',
+                style: TextStyle(fontSize: 12)),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.grey[500],
+              side: BorderSide(
+                  color: Colors.white.withValues(alpha: 0.1),
+                  style: BorderStyle.solid),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
+              padding: const EdgeInsets.symmetric(vertical: 10),
             ),
           ),
-          const SizedBox(height: 12),
+        ),
+        const SizedBox(height: 8),
 
-          // Meal entries
-          if (meals.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              child: Center(
-                child: Text('Nessun pasto configurato per questo giorno',
-                    style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-              ),
-            )
-          else
-            ..._buildMealEntries(meals),
-
-          const SizedBox(height: 8),
-
-          // Add meal button
-          SizedBox(
-            width: double.infinity,
-            child: OutlinedButton.icon(
-              onPressed: _addMealEntry,
-              icon: const Icon(Icons.add, size: 14),
-              label: const Text('Aggiungi Pasto',
-                  style: TextStyle(fontSize: 12)),
-              style: OutlinedButton.styleFrom(
-                foregroundColor: Colors.grey[500],
-                side: BorderSide(
-                    color: Colors.white.withValues(alpha: 0.1),
-                    style: BorderStyle.solid),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-                padding: const EdgeInsets.symmetric(vertical: 10),
-              ),
+        // Save button — compact, right-aligned
+        Align(
+          alignment: Alignment.centerRight,
+          child: ElevatedButton(
+            onPressed: _saveMealPlan,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12)),
             ),
+            child: const Text('Salva Piano Giornaliero',
+                style:
+                    TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
           ),
-          const SizedBox(height: 8),
-
-          // Save button
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _saveMealPlan,
-              style: ElevatedButton.styleFrom(
-                backgroundColor: _kAmber,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12)),
-              ),
-              child: const Text('Salva Piano Giornaliero',
-                  style:
-                      TextStyle(fontSize: 13, fontWeight: FontWeight.w700)),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
@@ -998,8 +1084,6 @@ class _NutritionistDashboardScreenState
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
-        // left border for alternatives
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1183,24 +1267,26 @@ class _NutritionistDashboardScreenState
   }
 
   // ═══════════════════════════════════════════════════════
-  //  CHARTS SECTION
+  //  CHARTS CONTENT
   // ═══════════════════════════════════════════════════════
-  Widget _buildChartsSection() {
+  Widget _buildChartsContent() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           children: [
-            Expanded(
-                child:
-                    _buildSectionHeader('Grafici Progressi', const Color(0xFF60A5FA))),
+            const Spacer(),
             _periodToggle(),
           ],
         ),
         const SizedBox(height: 12),
         // Weight chart
-        GlassCard(
+        Container(
           padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.03),
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1223,8 +1309,12 @@ class _NutritionistDashboardScreenState
         ),
         const SizedBox(height: 12),
         // Diet consistency chart
-        GlassCard(
+        Container(
           padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.03),
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -1287,7 +1377,6 @@ class _NutritionistDashboardScreenState
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -1304,7 +1393,7 @@ class _NutritionistDashboardScreenState
                   const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color: isActive
-                    ? const Color(0xFF60A5FA).withValues(alpha: 0.2)
+                    ? Colors.white.withValues(alpha: 0.08)
                     : Colors.transparent,
                 borderRadius: BorderRadius.circular(6),
               ),
@@ -1313,7 +1402,7 @@ class _NutritionistDashboardScreenState
                       fontSize: 9,
                       fontWeight: FontWeight.w700,
                       color: isActive
-                          ? const Color(0xFF60A5FA)
+                          ? Colors.white
                           : Colors.grey[600])),
             ),
           );
@@ -1345,25 +1434,23 @@ class _NutritionistDashboardScreenState
     List<double> values;
     Color lineColor;
 
+    String key;
     if (_weightTab == 'weight') {
-      values = dataPoints
-          .map<double>((d) => (d['weight'] as num?)?.toDouble() ?? 0)
-          .toList();
+      key = 'weight';
       lineColor = AppColors.primary;
     } else if (_weightTab == 'bodyfat') {
-      values = dataPoints
-          .map<double>(
-              (d) => (d['body_fat_pct'] as num?)?.toDouble() ?? 0)
-          .toList();
+      key = 'body_fat_pct';
       lineColor = _kAmber;
     } else {
-      // Show lean mass
-      values = dataPoints
-          .map<double>(
-              (d) => (d['lean_mass'] as num?)?.toDouble() ?? 0)
-          .toList();
+      key = 'lean_mass';
       lineColor = AppColors.success;
     }
+
+    // Filter out null/zero values to avoid chart spikes
+    values = dataPoints
+        .map<double>((d) => (d[key] as num?)?.toDouble() ?? 0)
+        .where((v) => v > 0)
+        .toList();
 
     return SizedBox(
       height: 160,
@@ -1394,6 +1481,7 @@ class _NutritionistDashboardScreenState
     final scores = dataPoints
         .map<double>(
             (d) => ((d['health_score'] ?? d['score'] ?? 0) as num).toDouble())
+        .where((v) => v > 0)
         .toList();
 
     return SizedBox(
@@ -1403,130 +1491,89 @@ class _NutritionistDashboardScreenState
   }
 
   // ═══════════════════════════════════════════════════════
-  //  NOTES PANEL
+  //  NOTES CONTENT (moved to right panel)
   // ═══════════════════════════════════════════════════════
-  Widget _buildNotesPanel() {
+  Widget _buildNotesContent() {
     final notesAsync = ref.watch(nutritionistNotesProvider);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.only(left: 8),
-                  decoration: const BoxDecoration(
-                    border: Border(
-                        left: BorderSide(
-                            color: AppColors.textTertiary, width: 3)),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Note Rapide',
-                          style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              color: Colors.grey[500],
-                              letterSpacing: 0.5)),
-                      Text('Promemoria & to-dos',
-                          style: TextStyle(
-                              fontSize: 10, color: Colors.grey[700])),
-                    ],
-                  ),
-                ),
-              ],
-            ),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // Input row
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
           ),
-          // Title + add
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 0),
-            child: Row(
-              children: [
-                Expanded(
-                  child: TextField(
-                    controller: _noteTitleCtrl,
-                    style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
-                        color: Colors.white),
-                    decoration: const InputDecoration(
-                      hintText: 'Titolo nota...',
-                      hintStyle: TextStyle(
-                          color: AppColors.textTertiary, fontSize: 13),
-                      border: InputBorder.none,
-                      isDense: true,
-                      contentPadding: EdgeInsets.zero,
-                    ),
-                  ),
+          child: Column(
+            children: [
+              TextField(
+                controller: _noteTitleCtrl,
+                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white),
+                decoration: InputDecoration(
+                  hintText: 'Titolo...',
+                  hintStyle: TextStyle(color: Colors.grey[700], fontSize: 13),
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
                 ),
-                GestureDetector(
-                  onTap: _saveNote,
-                  child: Text('+ Aggiungi',
-                      style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.success)),
-                ),
-              ],
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.fromLTRB(12, 4, 12, 8),
-            child: TextField(
-              controller: _noteContentCtrl,
-              maxLines: 2,
-              style: const TextStyle(fontSize: 13, color: Colors.white),
-              decoration: InputDecoration(
-                hintText: 'Scrivi una nota...',
-                hintStyle: const TextStyle(
-                    color: AppColors.textTertiary, fontSize: 13),
-                filled: true,
-                fillColor: Colors.white.withValues(alpha: 0.04),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide.none,
-                ),
-                contentPadding: const EdgeInsets.all(8),
               ),
+              TextField(
+                controller: _noteContentCtrl,
+                maxLines: 1,
+                style: TextStyle(fontSize: 12, color: Colors.grey[400]),
+                decoration: InputDecoration(
+                  hintText: 'Contenuto...',
+                  hintStyle: TextStyle(color: Colors.grey[800], fontSize: 12),
+                  border: InputBorder.none,
+                  isDense: true,
+                  contentPadding: EdgeInsets.zero,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Align(
+          alignment: Alignment.centerRight,
+          child: GestureDetector(
+            onTap: _saveNote,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+              decoration: BoxDecoration(
+                color: AppColors.primary.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text('+ Aggiungi',
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary)),
             ),
           ),
-          Divider(
-              height: 1, color: Colors.white.withValues(alpha: 0.04)),
-          // Notes list
-          Expanded(
-            child: notesAsync.when(
-              loading: () => const Center(
-                  child: CircularProgressIndicator(
-                      color: _kCyan, strokeWidth: 2)),
-              error: (_, __) => Center(
-                  child: Text('Errore',
-                      style:
-                          TextStyle(fontSize: 12, color: Colors.grey[600]))),
-              data: (notes) {
-                if (notes.isEmpty) {
-                  return Center(
-                      child: Text('Nessuna nota',
-                          style: TextStyle(
-                              fontSize: 12, color: Colors.grey[700])));
-                }
-                return ListView.builder(
-                  itemCount: notes.length,
-                  itemBuilder: (_, i) => _buildNoteTile(notes[i]),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 8),
+        // Notes list
+        notesAsync.when(
+          loading: () => const Center(
+              child: Padding(
+            padding: EdgeInsets.all(16),
+            child: CircularProgressIndicator(color: _kCyan, strokeWidth: 2),
+          )),
+          error: (_, _) => Center(
+              child: Text('Errore', style: TextStyle(fontSize: 12, color: Colors.grey[600]))),
+          data: (notes) {
+            if (notes.isEmpty) {
+              return Center(
+                  child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Text('Nessuna nota', style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+              ));
+            }
+            return Column(
+              children: notes.map((note) => _buildNoteTile(note)).toList(),
+            );
+          },
+        ),
+      ],
     );
   }
 
@@ -1537,38 +1584,19 @@ class _NutritionistDashboardScreenState
         _noteContentCtrl.text = note['content'] ?? '';
         _editingNoteId = note['id']?.toString();
       },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-        decoration: BoxDecoration(
-          border: Border(
-              bottom:
-                  BorderSide(color: Colors.white.withValues(alpha: 0.04))),
-        ),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 4),
         child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Container(width: 3, height: 24, decoration: BoxDecoration(
+              color: Colors.grey[600],
+              borderRadius: BorderRadius.circular(2),
+            )),
+            const SizedBox(width: 8),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(note['title'] ?? 'Untitled',
-                      style: const TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          color: Colors.white),
-                      overflow: TextOverflow.ellipsis),
-                  if (note['content'] != null &&
-                      (note['content'] as String).isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 2),
-                      child: Text(note['content'],
-                          style: TextStyle(
-                              fontSize: 11, color: Colors.grey[500]),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis),
-                    ),
-                ],
-              ),
+              child: Text(note['title'] ?? 'Untitled',
+                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.white),
+                  overflow: TextOverflow.ellipsis),
             ),
             GestureDetector(
               onTap: () async {
@@ -1577,8 +1605,8 @@ class _NutritionistDashboardScreenState
                   ref.invalidate(nutritionistNotesProvider);
                 } catch (_) {}
               },
-              child: Icon(Icons.delete_outline,
-                  size: 14, color: AppColors.danger.withValues(alpha: 0.6)),
+              child: Icon(Icons.close_rounded,
+                  size: 14, color: Colors.grey[700]),
             ),
           ],
         ),
@@ -1610,23 +1638,25 @@ class _NutritionistDashboardScreenState
   // ═══════════════════════════════════════════════════════
   Widget _buildNoClientSelected() {
     return Center(
-      child: Container(
-        padding: const EdgeInsets.all(48),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(16),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.person_search_rounded,
-                size: 48, color: Colors.grey[700]),
-            const SizedBox(height: 12),
-            Text('Seleziona un cliente dalla lista per visualizzare i suoi dati',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 13, color: Colors.grey[600])),
-          ],
-        ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 64, height: 64,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Icon(Icons.person_search_rounded,
+                size: 30, color: Colors.grey[700]),
+          ),
+          const SizedBox(height: 16),
+          Text('Seleziona un cliente',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey[500])),
+          const SizedBox(height: 4),
+          Text('Scegli dalla lista per visualizzare i dati',
+              style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+        ],
       ),
     );
   }
@@ -1694,13 +1724,13 @@ class _NutritionistDashboardScreenState
                             width: 32,
                             height: 32,
                             decoration: BoxDecoration(
-                              color: _kCyan.withValues(alpha: 0.15),
+                              color: Colors.white.withValues(alpha: 0.06),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(
+                            child: Icon(
                                 Icons.assignment_rounded,
                                 size: 18,
-                                color: _kCyan),
+                                color: Colors.grey[400]),
                           ),
                           const SizedBox(width: 8),
                           const Text('Health Profile',
@@ -1860,8 +1890,8 @@ class _NutritionistDashboardScreenState
                       ),
                       const SizedBox(height: 20),
 
-                      SizedBox(
-                        width: double.infinity,
+                      Align(
+                        alignment: Alignment.centerRight,
                         child: ElevatedButton(
                           onPressed: () async {
                             try {
@@ -1910,10 +1940,10 @@ class _NutritionistDashboardScreenState
                             }
                           },
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _kCyan,
+                            backgroundColor: AppColors.primary,
                             foregroundColor: Colors.white,
                             padding:
-                                const EdgeInsets.symmetric(vertical: 14),
+                                const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                             shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12)),
                           ),
@@ -2020,7 +2050,7 @@ class _NutritionistDashboardScreenState
             width: size,
             height: size,
             fit: BoxFit.cover,
-            errorBuilder: (_, __, ___) => _initialsCircle(name, size)),
+            errorBuilder: (_, _, _) => _initialsCircle(name, size)),
       );
     }
     return _initialsCircle(name, size);
@@ -2031,7 +2061,7 @@ class _NutritionistDashboardScreenState
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: AppColors.success.withValues(alpha: 0.15),
+        color: Colors.white.withValues(alpha: 0.08),
         borderRadius: BorderRadius.circular(size / 2),
       ),
       child: Center(
@@ -2040,7 +2070,7 @@ class _NutritionistDashboardScreenState
           style: TextStyle(
               fontSize: size * 0.4,
               fontWeight: FontWeight.w700,
-              color: AppColors.success),
+              color: Colors.white70),
         ),
       ),
     );
@@ -2063,16 +2093,18 @@ class _NutritionistDashboardScreenState
           style: const TextStyle(fontSize: 13, color: Colors.white),
           decoration: InputDecoration(
             filled: true,
-            fillColor: Colors.white.withValues(alpha: 0.04),
+            fillColor: Colors.white.withValues(alpha: 0.05),
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide:
-                  BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
             ),
             enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide:
-                  BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
             ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
@@ -2098,10 +2130,8 @@ class _NutritionistDashboardScreenState
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(
-                color: Colors.white.withValues(alpha: 0.08)),
+            color: Colors.white.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(12),
           ),
           child: DropdownButtonHideUnderline(
             child: DropdownButton<String>(
@@ -2132,16 +2162,18 @@ class _NutritionistDashboardScreenState
         hintText: hint,
         hintStyle: TextStyle(color: Colors.grey[700], fontSize: fontSize),
         filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.04),
+        fillColor: Colors.white.withValues(alpha: 0.05),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide:
-              BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
         enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide:
-              BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
         contentPadding:
             const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -2170,16 +2202,18 @@ class _NutritionistDashboardScreenState
             style: const TextStyle(fontSize: 12, color: Colors.white),
             decoration: InputDecoration(
               filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.04),
+              fillColor: Colors.white.withValues(alpha: 0.05),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide:
-                    BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide:
-                    BorderSide(color: Colors.white.withValues(alpha: 0.06)),
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
               ),
               contentPadding:
                   const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
@@ -2196,7 +2230,7 @@ class _NutritionistDashboardScreenState
         style: TextStyle(
             fontSize: 10,
             fontWeight: FontWeight.w700,
-            color: _kCyan,
+            color: Colors.grey[400],
             letterSpacing: 1.0));
   }
 
@@ -2230,31 +2264,60 @@ class _StatCard extends StatelessWidget {
         onTap: onTap,
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 12),
+          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
           decoration: BoxDecoration(
-            color: isActive ? color.withValues(alpha: 0.15) : AppColors.surface,
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isActive ? color.withValues(alpha: 0.5) : Colors.transparent,
-              width: 1.5,
-            ),
+            color: isActive
+                ? color.withValues(alpha: 0.05)
+                : Colors.white.withValues(alpha: 0.03),
+            borderRadius: BorderRadius.circular(16),
+            border: isActive
+                ? const Border(
+                    bottom: BorderSide(color: Colors.transparent, width: 0),
+                  )
+                : null,
           ),
           child: Column(
             children: [
-              Text(value,
-                  style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: color)),
-              const SizedBox(height: 2),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Text(value,
+                      style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.white)),
+                ],
+              ),
+              const SizedBox(height: 4),
               Text(label,
                   style: TextStyle(
                       fontSize: 10,
-                      color: isActive ? color.withValues(alpha: 0.8) : Colors.grey[600],
-                      fontWeight: FontWeight.w500)),
-          ],
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 0.3)),
+              if (isActive)
+                Container(
+                  margin: const EdgeInsets.only(top: 8),
+                  height: 2,
+                  width: 24,
+                  decoration: BoxDecoration(
+                    color: color,
+                    borderRadius: BorderRadius.circular(1),
+                  ),
+                ),
+            ],
+          ),
         ),
-      ),
       ),
     );
   }
@@ -2271,10 +2334,6 @@ class _MetricTile extends StatelessWidget {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(12),
-        ),
         child: Column(
           children: [
             Text(value,
@@ -2282,43 +2341,6 @@ class _MetricTile extends StatelessWidget {
                     fontSize: 16,
                     fontWeight: FontWeight.w800,
                     color: Colors.white)),
-            const SizedBox(height: 2),
-            Text(label,
-                style: TextStyle(
-                    fontSize: 9,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 0.3)),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _CyanMetric extends StatelessWidget {
-  final String label;
-  final String value;
-
-  const _CyanMetric({required this.label, required this.value});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
-        decoration: BoxDecoration(
-          color: _kCyan.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: _kCyan.withValues(alpha: 0.15)),
-        ),
-        child: Column(
-          children: [
-            Text(value,
-                style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: _kCyan)),
             const SizedBox(height: 2),
             Text(label,
                 style: TextStyle(

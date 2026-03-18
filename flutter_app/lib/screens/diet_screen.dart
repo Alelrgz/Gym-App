@@ -1118,7 +1118,7 @@ class _CalendarMealPlanCardState extends ConsumerState<_CalendarMealPlanCard> {
               Container(
                 width: 40, height: 40,
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
+                  borderRadius: BorderRadius.circular(12),
                   color: isToday ? AppColors.primary : Colors.transparent,
                   boxShadow: isToday ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.35), blurRadius: 12, offset: const Offset(0, 4))] : null,
                 ),
@@ -1210,87 +1210,112 @@ class _CalendarMealPlanCardState extends ConsumerState<_CalendarMealPlanCard> {
     final color = _mealColor(type);
     final label = _mealLabel(type);
 
+    final cals = (m['calories'] as num?)?.toInt() ?? 0;
+    final protein = (m['protein'] as num?)?.toInt() ?? 0;
+    final carbs = (m['carbs'] as num?)?.toInt() ?? 0;
+    final fat = (m['fat'] as num?)?.toInt() ?? 0;
+
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Opacity(
-        opacity: isChecked ? 0.6 : 1.0,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: isChecked ? const Color(0xFF4ADE80).withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.06)),
-          ),
-          child: Row(
-            children: [
-              // Checkoff circle (like web: w-5 h-5 border-2)
-              GestureDetector(
-                onTap: () => _toggleMealCheck(mealId, m),
-                child: Container(
-                  width: 20, height: 20,
+      padding: const EdgeInsets.only(bottom: 10),
+      child: GestureDetector(
+        onTap: () => _toggleMealCheck(mealId, m),
+        child: AnimatedOpacity(
+          duration: const Duration(milliseconds: 200),
+          opacity: isChecked ? 0.5 : 1.0,
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: isChecked
+                  ? const Color(0xFF4ADE80).withValues(alpha: 0.06)
+                  : Colors.white.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Emoji icon
+                Container(
+                  width: 44, height: 44,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: isChecked ? const Color(0xFF4ADE80) : Colors.transparent,
-                    border: Border.all(color: isChecked ? const Color(0xFF4ADE80) : Colors.white.withValues(alpha: 0.15), width: 2),
+                    color: color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(12),
                   ),
-                  child: isChecked ? const Icon(Icons.check_rounded, size: 12, color: Colors.white) : null,
+                  child: Center(child: Text(emoji, style: const TextStyle(fontSize: 20))),
                 ),
-              ),
-              const SizedBox(width: 10),
-              // Emoji box (like web: w-8 h-8 rounded-lg bg-white/5)
-              Container(
-                width: 32, height: 32,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(child: Text(emoji, style: const TextStyle(fontSize: 16))),
-              ),
-              const SizedBox(width: 10),
-              // Meal details
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Text(label.toUpperCase(), style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color, letterSpacing: 0.3)),
-                        Text('${m['calories'] ?? 0} kcal', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                      ],
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      m['meal_name'] as String? ?? '',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                        color: AppColors.textPrimary,
-                        decoration: isChecked ? TextDecoration.lineThrough : null,
-                        decorationColor: AppColors.textSecondary,
+                const SizedBox(width: 14),
+                // Meal info
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        label,
+                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color, letterSpacing: 0.3),
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                      const SizedBox(height: 3),
+                      Text(
+                        m['meal_name'] as String? ?? '',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600,
+                          color: AppColors.textPrimary,
+                          decoration: isChecked ? TextDecoration.lineThrough : null,
+                          decorationColor: AppColors.textSecondary,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 6),
+                      // Macro pills
+                      Row(
+                        children: [
+                          _macroPill('P', '${protein}g', const Color(0xFFFF9500)),
+                          const SizedBox(width: 6),
+                          _macroPill('C', '${carbs}g', const Color(0xFF34C759)),
+                          const SizedBox(width: 6),
+                          _macroPill('G', '${fat}g', const Color(0xFFFF3B30)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 10),
+                // Calories + check
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '$cals',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                     ),
-                    const SizedBox(height: 3),
-                    Row(
-                      children: [
-                        Text('P ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFFF9500))),
-                        Text('${m['protein'] ?? 0}g', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-                        const SizedBox(width: 8),
-                        Text('C ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFF34C759))),
-                        Text('${m['carbs'] ?? 0}g', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-                        const SizedBox(width: 8),
-                        Text('G ', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: const Color(0xFFFF3B30))),
-                        Text('${m['fat'] ?? 0}g', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
-                      ],
+                    Text(
+                      'kcal',
+                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.grey[600]),
                     ),
                   ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
+      ),
+    );
+  }
+
+  Widget _macroPill(String label, String value, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(label, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: color)),
+          const SizedBox(width: 2),
+          Text(value, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w500, color: color.withValues(alpha: 0.8))),
+        ],
       ),
     );
   }

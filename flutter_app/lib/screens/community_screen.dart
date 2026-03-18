@@ -39,6 +39,8 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
     final unreadMessages = ref.watch(unreadMessagesProvider);
     final unreadNotifications = ref.watch(unreadNotificationsProvider);
 
+    final isDesktop = MediaQuery.of(context).size.width > 1024;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       floatingActionButton: Hero(
@@ -72,36 +74,41 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
             pinned: true,
             backgroundColor: AppColors.background,
             surfaceTintColor: Colors.transparent,
-            toolbarHeight: 68,
-            title: Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: SvgPicture.asset('assets/fitos-logo.svg', height: 34),
-            ),
+            // On desktop (inside sidebar shell), hide the logo/icons toolbar
+            toolbarHeight: isDesktop ? 0 : 68,
+            title: isDesktop
+                ? null
+                : Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: SvgPicture.asset('assets/fitos-logo.svg', height: 34),
+                  ),
             centerTitle: false,
-            actions: [
-              _TopBarIcon(
-                icon: Icons.qr_code_rounded,
-                onTap: () => showQrAccessDialog(context, ref),
-              ),
-              const SizedBox(width: 8),
-              _TopBarIcon(
-                icon: Icons.calendar_today_rounded,
-                onTap: () => showCalendarSheet(context, ref),
-              ),
-              const SizedBox(width: 8),
-              _TopBarIconBadge(
-                icon: Icons.notifications_none_rounded,
-                count: unreadNotifications.valueOrNull ?? 0,
-                onTap: () => showNotificationsSheet(context, ref),
-              ),
-              const SizedBox(width: 8),
-              _TopBarIconBadge(
-                icon: Icons.send_rounded,
-                count: unreadMessages.valueOrNull ?? 0,
-                onTap: () => showConversationsSheet(context, ref),
-              ),
-              const SizedBox(width: 16),
-            ],
+            actions: isDesktop
+                ? null
+                : [
+                    _TopBarIcon(
+                      icon: Icons.qr_code_rounded,
+                      onTap: () => showQrAccessDialog(context, ref),
+                    ),
+                    const SizedBox(width: 8),
+                    _TopBarIcon(
+                      icon: Icons.calendar_today_rounded,
+                      onTap: () => showCalendarSheet(context, ref),
+                    ),
+                    const SizedBox(width: 8),
+                    _TopBarIconBadge(
+                      icon: Icons.notifications_none_rounded,
+                      count: unreadNotifications.valueOrNull ?? 0,
+                      onTap: () => showNotificationsSheet(context, ref),
+                    ),
+                    const SizedBox(width: 8),
+                    _TopBarIconBadge(
+                      icon: Icons.send_rounded,
+                      count: unreadMessages.valueOrNull ?? 0,
+                      onTap: () => showConversationsSheet(context, ref),
+                    ),
+                    const SizedBox(width: 16),
+                  ],
             bottom: TabBar(
               controller: _tabController,
               indicatorColor: AppColors.primary,
@@ -257,10 +264,15 @@ class _FeedTabState extends ConsumerState<_FeedTab> with AutomaticKeepAliveClien
       );
     }
 
+    final isDesktop = MediaQuery.of(context).size.width > 1024;
+
     return RefreshIndicator(
       color: AppColors.primary,
       onRefresh: () => ref.read(communityFeedProvider(widget.scope).notifier).loadFeed(),
-      child: ListView.builder(
+      child: Center(
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxWidth: isDesktop ? 600 : double.infinity),
+          child: ListView.builder(
         controller: _scrollController,
         padding: EdgeInsets.zero,
         itemCount: feedState.posts.length + (feedState.hasMore ? 1 : 0),
@@ -306,6 +318,8 @@ class _FeedTabState extends ConsumerState<_FeedTab> with AutomaticKeepAliveClien
           );
         },
       ),
+    ),
+    ),
     );
   }
 }
@@ -873,8 +887,15 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
         widget.onPostCreated(result);
       }
       if (mounted) Navigator.pop(context);
-    } catch (_) {
-      setState(() => _posting = false);
+    } catch (e) {
+      debugPrint('[Community] Post failed: $e');
+      try { debugPrint('[Community] Response: ${(e as dynamic).response?.data}'); } catch (_) {}
+      if (mounted) {
+        setState(() => _posting = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore: $e'), duration: const Duration(seconds: 3)),
+        );
+      }
     }
   }
 
@@ -926,7 +947,7 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
           borderRadius: BorderRadius.circular(16),
           clipBehavior: Clip.antiAlias,
           child: Container(
-            width: MediaQuery.of(context).size.width - 32,
+            width: (MediaQuery.of(context).size.width - 32).clamp(0, 600),
             constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height - 120),
             child: SingleChildScrollView(
               child: Column(
@@ -1241,7 +1262,10 @@ class _PostDetailPageState extends State<_PostDetailPage> with SingleTickerProvi
         title: const Text('Post', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 18)),
         centerTitle: true,
       ),
-      body: Column(
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 600),
+          child: Column(
         children: [
           Expanded(
             child: ListView(
@@ -1439,6 +1463,8 @@ class _PostDetailPageState extends State<_PostDetailPage> with SingleTickerProvi
           ),
         ],
       ),
+    ),
+    ),
     );
   }
 }

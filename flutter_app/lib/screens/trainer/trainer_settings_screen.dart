@@ -8,7 +8,6 @@ import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/trainer_profile.dart';
 import '../../providers/trainer_provider.dart';
-import '../../widgets/glass_card.dart';
 
 class TrainerSettingsScreen extends ConsumerStatefulWidget {
   const TrainerSettingsScreen({super.key});
@@ -216,366 +215,222 @@ class _TrainerSettingsScreenState extends ConsumerState<TrainerSettingsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (MediaQuery.of(context).size.width <= 1024) ...[
-            const Text('Impostazioni', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+            const Text('Impostazioni', style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
             const SizedBox(height: 20),
           ],
 
-          // ── Profile Preview (as clients see it) ──────────
+          // ── Avatar + Name ────────────────────────────
+          Center(
+            child: Column(
+              children: [
+                GestureDetector(
+                  onTap: _uploadingPic ? null : _changeProfilePicture,
+                  onLongPress: profilePicUrl != null ? _showPictureOptions : null,
+                  child: Container(
+                    width: 80, height: 80,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(24),
+                    ),
+                    child: _uploadingPic
+                        ? const Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)))
+                        : profilePicUrl != null
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(24),
+                                child: Image.network(profilePicUrl, width: 80, height: 80, fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) => _buildInitial(username)),
+                              )
+                            : _buildInitial(username),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Text(username, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                const SizedBox(height: 4),
+                Text('Trainer', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey[500])),
+              ],
+            ),
+          ),
+          const SizedBox(height: 28),
+
+          // ── Bio ──────────────────────────────────────
+          _sectionHeader('Bio'),
+          const SizedBox(height: 8),
+          GestureDetector(
+            onTap: _openEditProfile,
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Text(
+                bio != null && bio.isNotEmpty ? bio : 'Aggiungi una bio...',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: bio != null && bio.isNotEmpty ? Colors.grey[300] : Colors.grey[700],
+                  height: 1.4,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 20),
+
+          // ── Specialties ──────────────────────────────
           Row(
             children: [
-              Icon(Icons.visibility_rounded, size: 14, color: Colors.grey[600]),
-              const SizedBox(width: 6),
-              Text('ANTEPRIMA PROFILO', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.grey[500], letterSpacing: 1.0)),
+              _sectionHeader('Specializzazioni'),
               const Spacer(),
               GestureDetector(
                 onTap: _openEditProfile,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.edit_rounded, size: 13, color: AppColors.primary),
-                      const SizedBox(width: 5),
-                      Text('Modifica', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
-                    ],
-                  ),
-                ),
+                child: Text('Modifica', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: AppColors.primary)),
               ),
             ],
           ),
           const SizedBox(height: 10),
-
-          // Client-view profile card
-          GlassCard(
-            variant: GlassVariant.primary,
-            padding: EdgeInsets.zero,
-            child: Column(
-              children: [
-                // Header with gradient
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                      colors: [
-                        AppColors.primary.withValues(alpha: 0.12),
-                        Colors.purple.withValues(alpha: 0.06),
-                        Colors.transparent,
-                      ],
-                    ),
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                  ),
-                  child: Column(
-                    children: [
-                      // Avatar
-                      GestureDetector(
-                        onTap: _uploadingPic ? null : _changeProfilePicture,
-                        onLongPress: profilePicUrl != null ? _showPictureOptions : null,
-                        child: Stack(
-                          children: [
-                            Container(
-                              width: 88, height: 88,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: Colors.white.withValues(alpha: 0.1),
-                                border: Border.all(color: AppColors.primary.withValues(alpha: 0.4), width: 3),
-                              ),
-                              child: _uploadingPic
-                                  ? const Center(child: SizedBox(width: 28, height: 28, child: CircularProgressIndicator(strokeWidth: 2.5, color: AppColors.primary)))
-                                  : profilePicUrl != null
-                                      ? ClipOval(
-                                          child: Image.network(profilePicUrl, width: 88, height: 88, fit: BoxFit.cover,
-                                            errorBuilder: (_, __, ___) => _buildInitial(username)),
-                                        )
-                                      : _buildInitial(username),
-                            ),
-                            Positioned(
-                              bottom: 0, right: 0,
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(color: AppColors.background, width: 2),
-                                ),
-                                child: const Icon(Icons.camera_alt_rounded, size: 12, color: Colors.white),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Text(username, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: const Text('Trainer', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: AppColors.primary)),
-                      ),
-                    ],
-                  ),
+          if (specialtyList.isNotEmpty)
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: specialtyList.map((s) => Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(12),
                 ),
-
-                // Bio section
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (bio != null && bio.isNotEmpty) ...[
-                        const SizedBox(height: 4),
-                        Text(bio, style: TextStyle(fontSize: 13, color: Colors.grey[400], height: 1.4)),
-                        const SizedBox(height: 12),
-                      ] else ...[
-                        const SizedBox(height: 4),
-                        GestureDetector(
-                          onTap: _openEditProfile,
-                          child: Row(
-                            children: [
-                              Icon(Icons.add_rounded, size: 14, color: Colors.grey[600]),
-                              const SizedBox(width: 4),
-                              Text('Aggiungi una bio...', style: TextStyle(fontSize: 13, color: Colors.grey[600], fontStyle: FontStyle.italic)),
-                            ],
-                          ),
-                        ),
-                        const SizedBox(height: 12),
-                      ],
-
-                      // Specialties
-                      if (specialtyList.isNotEmpty)
-                        Wrap(
-                          spacing: 6,
-                          runSpacing: 6,
-                          children: specialtyList.map((s) => Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.1),
-                              borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
-                            ),
-                            child: Text(s, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary)),
-                          )).toList(),
-                        )
-                      else
-                        GestureDetector(
-                          onTap: _openEditProfile,
-                          child: Row(
-                            children: [
-                              Icon(Icons.add_rounded, size: 14, color: Colors.grey[600]),
-                              const SizedBox(width: 4),
-                              Text('Aggiungi specializzazioni...', style: TextStyle(fontSize: 13, color: Colors.grey[600], fontStyle: FontStyle.italic)),
-                            ],
-                          ),
-                        ),
-
-                      // Mock client action buttons (preview only)
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.06),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.chat_bubble_outline_rounded, size: 16, color: Colors.grey[500]),
-                                  const SizedBox(width: 6),
-                                  Text('Messaggio', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[500])),
-                                ],
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(vertical: 10),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.06),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(Icons.calendar_today_rounded, size: 16, color: Colors.grey[500]),
-                                  const SizedBox(width: 6),
-                                  Text('Prenota', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[500])),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+                child: Text(s, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.primary)),
+              )).toList(),
+            )
+          else
+            GestureDetector(
+              onTap: _openEditProfile,
+              child: Text('Aggiungi specializzazioni...', style: TextStyle(fontSize: 13, color: Colors.grey[700])),
             ),
-          ),
-          Padding(
-            padding: const EdgeInsets.only(top: 6, left: 4),
-            child: Text('Cosi ti vedono i tuoi clienti', style: TextStyle(fontSize: 10, color: Colors.grey[600], fontStyle: FontStyle.italic)),
-          ),
           const SizedBox(height: 28),
 
           // ── Disponibilita ────────────────────────────
-          _sectionLabel('DISPONIBILITA'),
+          _sectionHeader('Disponibilità'),
           const SizedBox(height: 8),
-          GlassCard(
+          GestureDetector(
             onTap: _showAvailabilityModal,
-            child: Row(
-              children: [
-                Container(
-                  width: 40, height: 40,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF3B82F6).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(
+                children: [
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Disponibilità 1-on-1', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                        SizedBox(height: 2),
+                        Text('Orari settimanali per le prenotazioni', style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+                      ],
+                    ),
                   ),
-                  child: const Icon(Icons.calendar_month_rounded, size: 20, color: Color(0xFF3B82F6)),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Disponibilita 1-on-1', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                      Text('Orari settimanali per le prenotazioni', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ),
-                Icon(Icons.chevron_right_rounded, size: 20, color: Colors.grey[600]),
-              ],
+                  Icon(Icons.chevron_right_rounded, size: 20, color: Colors.grey[700]),
+                ],
+              ),
             ),
           ),
           const SizedBox(height: 20),
 
           // ── Spotify ──────────────────────────────────
-          _sectionLabel('INTEGRAZIONI'),
+          _sectionHeader('Integrazioni'),
           const SizedBox(height: 8),
-          GlassCard(
+          Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.03),
+              borderRadius: BorderRadius.circular(14),
+            ),
             child: Column(
               children: [
                 Row(
                   children: [
                     Container(
-                      width: 40, height: 40,
+                      width: 36, height: 36,
                       decoration: BoxDecoration(
                         color: const Color(0xFF1DB954).withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(10),
                       ),
-                      child: const Icon(Icons.music_note_rounded, size: 20, color: Color(0xFF1DB954)),
+                      child: const Icon(Icons.music_note_rounded, size: 18, color: Color(0xFF1DB954)),
                     ),
                     const SizedBox(width: 12),
-                    const Expanded(
+                    Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text('Spotify', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                          Text('Musica durante i corsi', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
+                          const Text('Spotify', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                          Text('Musica durante i corsi', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
                         ],
                       ),
                     ),
                     if (_spotifyLoading)
-                      const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1DB954)))
+                      const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF1DB954)))
                     else
                       Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                         decoration: BoxDecoration(
-                          color: _spotifyConnected ? const Color(0xFF1DB954).withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.06),
-                          borderRadius: BorderRadius.circular(20),
+                          color: _spotifyConnected ? const Color(0xFF1DB954).withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 6, height: 6,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                color: _spotifyConnected ? const Color(0xFF1DB954) : Colors.grey[600],
-                              ),
-                            ),
-                            const SizedBox(width: 5),
-                            Text(
-                              _spotifyConnected ? 'Connesso' : 'Non connesso',
-                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _spotifyConnected ? const Color(0xFF1DB954) : Colors.grey[500]),
-                            ),
-                          ],
+                        child: Text(
+                          _spotifyConnected ? 'Connesso' : 'Non connesso',
+                          style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: _spotifyConnected ? const Color(0xFF1DB954) : Colors.grey[600]),
                         ),
                       ),
                   ],
                 ),
-                const SizedBox(height: 14),
-                SizedBox(
-                  width: double.infinity,
-                  child: _spotifyConnected
-                      ? OutlinedButton(
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: AppColors.danger.withValues(alpha: 0.3)),
-                            padding: const EdgeInsets.symmetric(vertical: 11),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          onPressed: _disconnectSpotify,
-                          child: const Text('Disconnetti Spotify', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.danger)),
-                        )
-                      : ElevatedButton.icon(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF1DB954),
-                            padding: const EdgeInsets.symmetric(vertical: 11),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          ),
-                          onPressed: _connectSpotify,
-                          icon: const Icon(Icons.link_rounded, size: 18, color: Colors.white),
-                          label: const Text('Connetti Spotify Premium', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
-                        ),
-                ),
-                if (!_spotifyConnected && !_spotifyLoading)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text('Spotify Premium richiesto', style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+                const SizedBox(height: 12),
+                GestureDetector(
+                  onTap: _spotifyConnected ? _disconnectSpotify : _connectSpotify,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      color: _spotifyConnected
+                          ? AppColors.danger.withValues(alpha: 0.08)
+                          : const Color(0xFF1DB954).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      _spotifyConnected ? 'Disconnetti' : 'Connetti Spotify Premium',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _spotifyConnected ? AppColors.danger : const Color(0xFF1DB954),
+                      ),
+                    ),
                   ),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 32),
 
           // ── Logout ───────────────────────────────────
-          GlassCard(
+          GestureDetector(
             onTap: () => ref.read(authProvider.notifier).logout(),
-            child: Row(
-              children: [
-                Container(
-                  width: 40, height: 40,
-                  decoration: BoxDecoration(
-                    color: AppColors.danger.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(Icons.logout_rounded, size: 20, color: AppColors.danger),
-                ),
-                const SizedBox(width: 12),
-                const Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('Esci', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.danger)),
-                      Text('Disconnetti il tuo account', style: TextStyle(fontSize: 11, color: AppColors.textSecondary)),
-                    ],
-                  ),
-                ),
-                Icon(Icons.chevron_right_rounded, size: 20, color: Colors.grey[600]),
-              ],
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.logout_rounded, size: 16, color: AppColors.danger.withValues(alpha: 0.7)),
+                  const SizedBox(width: 8),
+                  Text('Esci', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500, color: AppColors.danger.withValues(alpha: 0.7))),
+                ],
+              ),
             ),
           ),
         ],
@@ -592,8 +447,8 @@ class _TrainerSettingsScreenState extends ConsumerState<TrainerSettingsScreen> {
     );
   }
 
-  Widget _sectionLabel(String text) {
-    return Text(text, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.grey[500], letterSpacing: 1.0));
+  Widget _sectionHeader(String text) {
+    return Text(text, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.grey[400]));
   }
 
   // ── Availability Modal ──────────────────────────

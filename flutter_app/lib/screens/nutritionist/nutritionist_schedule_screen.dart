@@ -3,9 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../config/theme.dart';
 import '../../providers/nutritionist_provider.dart';
 import '../../services/nutritionist_service.dart';
-import '../../widgets/glass_card.dart';
-
-const Color _kCyan = Color(0xFF06B6D4);
 
 class NutritionistScheduleScreen extends ConsumerStatefulWidget {
   const NutritionistScheduleScreen({super.key});
@@ -18,16 +15,15 @@ class NutritionistScheduleScreen extends ConsumerStatefulWidget {
 class _NutritionistScheduleScreenState
     extends ConsumerState<NutritionistScheduleScreen> {
   static const _dayNames = [
-    'Monday',
-    'Tuesday',
-    'Wednesday',
-    'Thursday',
-    'Friday',
-    'Saturday',
-    'Sunday',
+    'Lunedì',
+    'Martedì',
+    'Mercoledì',
+    'Giovedì',
+    'Venerdì',
+    'Sabato',
+    'Domenica',
   ];
 
-  // Availability state: day -> {enabled, start, end}
   final Map<int, _DaySlot> _days = {};
   double? _sessionRate;
   bool _saving = false;
@@ -38,7 +34,6 @@ class _NutritionistScheduleScreenState
   @override
   void initState() {
     super.initState();
-    // Initialize all days as disabled with defaults
     for (var i = 0; i < 7; i++) {
       _days[i] = _DaySlot(
         enabled: false,
@@ -96,11 +91,12 @@ class _NutritionistScheduleScreenState
     final appointmentsAsync = ref.watch(nutritionistAppointmentsProvider);
     final rateCtrl = TextEditingController(
         text: _sessionRate?.toStringAsFixed(2) ?? '');
+    final isWide = MediaQuery.of(context).size.width > 800;
 
     return Scaffold(
       backgroundColor: AppColors.background,
       body: RefreshIndicator(
-        color: _kCyan,
+        color: AppColors.primary,
         backgroundColor: AppColors.surface,
         onRefresh: () async {
           ref.invalidate(nutritionistAppointmentsProvider);
@@ -108,255 +104,88 @@ class _NutritionistScheduleScreenState
         },
         child: CustomScrollView(
           slivers: [
-            const SliverAppBar(
+            // Header with save button
+            SliverAppBar(
               floating: true,
               backgroundColor: AppColors.background,
-              title: Text(
-                'Schedule & Availability',
+              title: const Text(
+                'Disponibilità',
                 style: TextStyle(
                   fontSize: 24,
-                  fontWeight: FontWeight.w800,
+                  fontWeight: FontWeight.w700,
                   color: AppColors.textPrimary,
                 ),
               ),
+              actions: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 16),
+                  child: GestureDetector(
+                    onTap: _saving ? null : _save,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 20, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: _saving
+                            ? AppColors.primary.withValues(alpha: 0.5)
+                            : AppColors.primary,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: _saving
+                          ? const SizedBox(
+                              width: 16,
+                              height: 16,
+                              child: CircularProgressIndicator(
+                                  color: Colors.white, strokeWidth: 2))
+                          : const Text('Salva',
+                              style: TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.white)),
+                    ),
+                  ),
+                ),
+              ],
             ),
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Column(
-                  children: [
-                    const SizedBox(height: 8),
+              child: Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 800),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 8),
 
-                    // ── Weekly Availability ──────────────────
-                    GlassCard(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
+                        // Availability + Rate: side-by-side on wide, stacked on narrow
+                        if (isWide)
                           Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  color: _kCyan.withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(Icons.schedule_rounded,
-                                    size: 16, color: _kCyan),
-                              ),
-                              const SizedBox(width: 8),
-                              const Text('Weekly Availability',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: _kCyan,
-                                      letterSpacing: 0.5)),
+                              Expanded(
+                                  flex: 3,
+                                  child: _buildAvailabilitySection()),
+                              const SizedBox(width: 16),
+                              Expanded(
+                                  flex: 1,
+                                  child: _buildRateSection(rateCtrl)),
                             ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                              "Set the hours you're available for client consultations",
-                              style: TextStyle(
-                                  fontSize: 12, color: Colors.grey[600])),
-                          const SizedBox(height: 12),
-                          ...List.generate(7, (i) => _buildDayRow(i)),
+                          )
+                        else ...[
+                          _buildAvailabilitySection(),
+                          const SizedBox(height: 16),
+                          _buildRateSection(rateCtrl),
                         ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
 
-                    // ── Session Rate ─────────────────────────
-                    GlassCard(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  color: AppColors.success
-                                      .withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(
-                                    Icons.attach_money_rounded,
-                                    size: 16,
-                                    color: AppColors.success),
-                              ),
-                              const SizedBox(width: 8),
-                              const Text('Consultation Rate',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.success,
-                                      letterSpacing: 0.5)),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                              'Clients will see this price when booking. Leave empty for free sessions.',
-                              style: TextStyle(
-                                  fontSize: 12, color: Colors.grey[600])),
-                          const SizedBox(height: 12),
-                          Row(
-                            children: [
-                              SizedBox(
-                                width: 160,
-                                child: TextField(
-                                  controller: rateCtrl,
-                                  keyboardType: TextInputType.number,
-                                  onChanged: (v) =>
-                                      _sessionRate = double.tryParse(v),
-                                  style: const TextStyle(
-                                      fontSize: 14, color: Colors.white),
-                                  decoration: InputDecoration(
-                                    hintText: 'e.g. 40.00',
-                                    hintStyle: TextStyle(
-                                        color: Colors.grey[700],
-                                        fontSize: 14),
-                                    filled: true,
-                                    fillColor:
-                                        Colors.white.withValues(alpha: 0.04),
-                                    border: OutlineInputBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(10),
-                                      borderSide: BorderSide(
-                                          color: Colors.white
-                                              .withValues(alpha: 0.08)),
-                                    ),
-                                    enabledBorder: OutlineInputBorder(
-                                      borderRadius:
-                                          BorderRadius.circular(10),
-                                      borderSide: BorderSide(
-                                          color: Colors.white
-                                              .withValues(alpha: 0.08)),
-                                    ),
-                                    contentPadding:
-                                        const EdgeInsets.symmetric(
-                                            horizontal: 12, vertical: 10),
-                                    isDense: true,
-                                  ),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              Text('€ / hour',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.grey[500])),
-                            ],
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+                        const SizedBox(height: 16),
 
-                    // ── Upcoming Appointments ────────────────
-                    GlassCard(
-                      padding: const EdgeInsets.all(20),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Container(
-                                width: 28,
-                                height: 28,
-                                decoration: BoxDecoration(
-                                  color: AppColors.primary
-                                      .withValues(alpha: 0.15),
-                                  borderRadius: BorderRadius.circular(8),
-                                ),
-                                child: const Icon(
-                                    Icons.event_available_rounded,
-                                    size: 16,
-                                    color: AppColors.primary),
-                              ),
-                              const SizedBox(width: 8),
-                              const Text('Upcoming Appointments',
-                                  style: TextStyle(
-                                      fontSize: 13,
-                                      fontWeight: FontWeight.w700,
-                                      color: AppColors.primary,
-                                      letterSpacing: 0.5)),
-                            ],
-                          ),
-                          const SizedBox(height: 12),
-                          appointmentsAsync.when(
-                            loading: () => const Padding(
-                              padding: EdgeInsets.all(16),
-                              child: Center(
-                                  child: CircularProgressIndicator(
-                                      color: _kCyan, strokeWidth: 2)),
-                            ),
-                            error: (_, __) => Padding(
-                              padding: const EdgeInsets.all(16),
-                              child: Text('Could not load appointments',
-                                  style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey[600])),
-                            ),
-                            data: (appointments) {
-                              final upcoming = appointments
-                                  .where(
-                                      (a) => a['status'] == 'scheduled')
-                                  .take(10)
-                                  .toList();
-                              if (upcoming.isEmpty) {
-                                return Padding(
-                                  padding: const EdgeInsets.all(16),
-                                  child: Center(
-                                    child: Text(
-                                        'No upcoming appointments',
-                                        style: TextStyle(
-                                            fontSize: 12,
-                                            color: Colors.grey[600])),
-                                  ),
-                                );
-                              }
-                              return Column(
-                                children: upcoming
-                                    .map((a) =>
-                                        _buildAppointmentTile(a))
-                                    .toList(),
-                              );
-                            },
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+                        // Appointments
+                        _buildAppointmentsSection(appointmentsAsync),
 
-                    // ── Save Button ──────────────────────────
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed: _saving ? null : _save,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _kCyan,
-                          foregroundColor: Colors.white,
-                          padding:
-                              const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12)),
-                        ),
-                        child: _saving
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                    color: Colors.white, strokeWidth: 2))
-                            : const Text('Save Availability & Rate',
-                                style: TextStyle(
-                                    fontSize: 14,
-                                    fontWeight: FontWeight.w700)),
-                      ),
+                        const SizedBox(height: 40),
+                      ],
                     ),
-                    const SizedBox(height: 40),
-                  ],
+                  ),
                 ),
               ),
             ),
@@ -366,46 +195,207 @@ class _NutritionistScheduleScreenState
     );
   }
 
+  // ── Weekly Availability ──────────────────────────────────
+  Widget _buildAvailabilitySection() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Orari settimanali',
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[400])),
+          const SizedBox(height: 4),
+          Text('Imposta le ore disponibili per le consulenze',
+              style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+          const SizedBox(height: 16),
+          ...List.generate(7, (i) => _buildDayRow(i)),
+        ],
+      ),
+    );
+  }
+
+  // ── Session Rate ─────────────────────────────────────────
+  Widget _buildRateSection(TextEditingController rateCtrl) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Tariffa',
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[400])),
+          const SizedBox(height: 4),
+          Text('Prezzo visibile ai clienti',
+              style: TextStyle(fontSize: 12, color: Colors.grey[700])),
+          const SizedBox(height: 16),
+          TextField(
+            controller: rateCtrl,
+            keyboardType: TextInputType.number,
+            onChanged: (v) => _sessionRate = double.tryParse(v),
+            style: const TextStyle(fontSize: 15, color: Colors.white),
+            textAlign: TextAlign.center,
+            decoration: InputDecoration(
+              hintText: '0.00',
+              hintStyle: TextStyle(color: Colors.grey[700], fontSize: 15),
+              suffixText: '€/ora',
+              suffixStyle: TextStyle(fontSize: 13, color: Colors.grey[500]),
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.05),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(12),
+                borderSide: BorderSide.none,
+              ),
+              contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12, vertical: 12),
+              isDense: true,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Upcoming Appointments ────────────────────────────────
+  Widget _buildAppointmentsSection(AsyncValue<List<Map<String, dynamic>>> appointmentsAsync) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text('Prossimi appuntamenti',
+              style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey[400])),
+          const SizedBox(height: 12),
+          appointmentsAsync.when(
+            loading: () => const Padding(
+              padding: EdgeInsets.all(20),
+              child: Center(
+                  child: CircularProgressIndicator(
+                      color: AppColors.primary, strokeWidth: 2)),
+            ),
+            error: (_, __) => Padding(
+              padding: const EdgeInsets.all(20),
+              child: Text('Errore nel caricamento',
+                  style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            ),
+            data: (appointments) {
+              final upcoming = appointments
+                  .where((a) => a['status'] == 'scheduled')
+                  .take(10)
+                  .toList();
+              if (upcoming.isEmpty) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 24),
+                  child: Center(
+                    child: Column(
+                      children: [
+                        Icon(Icons.event_outlined,
+                            size: 28, color: Colors.grey[800]),
+                        const SizedBox(height: 8),
+                        Text('Nessun appuntamento',
+                            style: TextStyle(
+                                fontSize: 13, color: Colors.grey[700])),
+                      ],
+                    ),
+                  ),
+                );
+              }
+              return Column(
+                children:
+                    upcoming.map((a) => _buildAppointmentTile(a)).toList(),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Day Row ──────────────────────────────────────────────
   Widget _buildDayRow(int dayIndex) {
     final slot = _days[dayIndex]!;
 
     return Padding(
-      padding: const EdgeInsets.only(bottom: 6),
-      child: GestureDetector(
-        onTap: () {
-          setState(() {
-            _days[dayIndex] = slot.copyWith(enabled: !slot.enabled);
-          });
-        },
+      padding: const EdgeInsets.only(bottom: 4),
+      child: AnimatedOpacity(
+        duration: const Duration(milliseconds: 150),
+        opacity: slot.enabled ? 1.0 : 0.45,
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          height: 48,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.04),
+            color: slot.enabled
+                ? Colors.white.withValues(alpha: 0.04)
+                : Colors.transparent,
             borderRadius: BorderRadius.circular(12),
           ),
           child: Row(
             children: [
-              SizedBox(
-                width: 20,
-                height: 20,
-                child: Checkbox(
-                  value: slot.enabled,
-                  activeColor: _kCyan,
-                  onChanged: (v) {
-                    setState(() {
-                      _days[dayIndex] =
-                          slot.copyWith(enabled: v ?? false);
-                    });
-                  },
+              // iOS-style toggle
+              GestureDetector(
+                onTap: () {
+                  setState(() {
+                    _days[dayIndex] =
+                        slot.copyWith(enabled: !slot.enabled);
+                  });
+                },
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 200),
+                  width: 44,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(12),
+                    color: slot.enabled
+                        ? AppColors.success
+                        : Colors.white.withValues(alpha: 0.1),
+                  ),
+                  child: AnimatedAlign(
+                    duration: const Duration(milliseconds: 200),
+                    alignment: slot.enabled
+                        ? Alignment.centerRight
+                        : Alignment.centerLeft,
+                    child: Container(
+                      width: 20,
+                      height: 20,
+                      margin: const EdgeInsets.symmetric(horizontal: 2),
+                      decoration: const BoxDecoration(
+                        shape: BoxShape.circle,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
                 ),
               ),
-              const SizedBox(width: 8),
+              const SizedBox(width: 12),
               SizedBox(
                 width: 90,
                 child: Text(_dayNames[dayIndex],
                     style: const TextStyle(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
                         color: Colors.white)),
               ),
               if (slot.enabled) ...[
@@ -416,10 +406,10 @@ class _NutritionistScheduleScreenState
                   });
                 }),
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6),
-                  child: Text('to',
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text('–',
                       style:
-                          TextStyle(fontSize: 12, color: Colors.grey[600])),
+                          TextStyle(fontSize: 14, color: Colors.grey[600])),
                 ),
                 _timeInput(slot.end, (v) {
                   setState(() {
@@ -434,85 +424,110 @@ class _NutritionistScheduleScreenState
     );
   }
 
+  // ── Time Input ───────────────────────────────────────────
   Widget _timeInput(String value, ValueChanged<String> onChanged) {
     final ctrl = TextEditingController(text: value);
     return SizedBox(
-      width: 80,
+      width: 72,
       child: TextField(
         controller: ctrl,
         onChanged: onChanged,
-        style: const TextStyle(fontSize: 12, color: Colors.white),
+        textAlign: TextAlign.center,
+        style: const TextStyle(fontSize: 13, color: Colors.white),
         decoration: InputDecoration(
           filled: true,
-          fillColor: Colors.black.withValues(alpha: 0.3),
+          fillColor: Colors.white.withValues(alpha: 0.05),
           border: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide:
-                BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none,
           ),
           enabledBorder: OutlineInputBorder(
-            borderRadius: BorderRadius.circular(8),
-            borderSide:
-                BorderSide(color: Colors.white.withValues(alpha: 0.08)),
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide.none,
           ),
           contentPadding:
-              const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
           isDense: true,
         ),
       ),
     );
   }
 
+  // ── Appointment Tile ─────────────────────────────────────
   Widget _buildAppointmentTile(Map<String, dynamic> appt) {
-    final statusColor = appt['status'] == 'completed'
+    final status = appt['status'] as String? ?? '';
+    final statusColor = status == 'completed'
         ? AppColors.success
-        : appt['status'] == 'canceled'
+        : status == 'canceled'
             ? AppColors.danger
-            : _kCyan;
+            : AppColors.primary;
+    final statusLabel = status == 'completed'
+        ? 'Completato'
+        : status == 'canceled'
+            ? 'Annullato'
+            : 'Prenotato';
+    final clientName = appt['client_name'] as String? ?? 'Consulenza';
+    final initial =
+        clientName.isNotEmpty ? clientName[0].toUpperCase() : '?';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(12),
+          color: Colors.white.withValues(alpha: 0.03),
+          borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           children: [
+            // Initial avatar
             Container(
-              width: 40,
-              height: 40,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
-                color: _kCyan.withValues(alpha: 0.15),
+                color: Colors.white.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child:
-                  const Icon(Icons.person, size: 20, color: _kCyan),
+              child: Center(
+                child: Text(initial,
+                    style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white70)),
+              ),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(appt['client_name'] ?? 'Consultation',
+                  Text(clientName,
                       style: const TextStyle(
-                          fontSize: 13,
+                          fontSize: 14,
                           fontWeight: FontWeight.w600,
                           color: Colors.white),
                       overflow: TextOverflow.ellipsis),
+                  const SizedBox(height: 2),
                   Text(
-                      '${appt['date']} at ${appt['start_time']}${appt['duration'] != null ? ' (${appt['duration']} min)' : ''}',
-                      style: TextStyle(
-                          fontSize: 11, color: Colors.grey[500])),
+                      '${appt['date']} alle ${appt['start_time']}${appt['duration'] != null ? ' (${appt['duration']} min)' : ''}',
+                      style:
+                          TextStyle(fontSize: 12, color: Colors.grey[600])),
                 ],
               ),
             ),
-            Text((appt['status'] as String? ?? '').toUpperCase(),
-                style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: statusColor)),
+            Container(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color: statusColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(statusLabel,
+                  style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w600,
+                      color: statusColor)),
+            ),
           ],
         ),
       ),

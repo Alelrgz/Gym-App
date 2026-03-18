@@ -1,3 +1,4 @@
+import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
@@ -48,8 +49,8 @@ void main() async {
   try {
     await LocalNotificationService().init();
   } catch (_) {}
-  // Initialize Firebase on native platforms
-  if (!kIsWeb) {
+  // Initialize Firebase on mobile platforms only (not supported on Windows/Linux/macOS desktop)
+  if (!kIsWeb && (Platform.isAndroid || Platform.isIOS)) {
     try {
       await Firebase.initializeApp();
     } catch (_) {}
@@ -72,8 +73,8 @@ class GymApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final authState = ref.watch(authProvider);
 
-    // Initialize FCM when user authenticates (native only)
-    if (!kIsWeb && authState.status == AuthStatus.authenticated) {
+    // Initialize FCM when user authenticates (mobile only)
+    if (!kIsWeb && (Platform.isAndroid || Platform.isIOS) && authState.status == AuthStatus.authenticated) {
       FcmService().init(ref.read(apiClientProvider));
     }
 
@@ -287,6 +288,14 @@ class GymApp extends ConsumerWidget {
             StatefulShellBranch(
               routes: [
                 GoRoute(
+                  path: '/nutritionist/community',
+                  builder: (context, state) => const CommunityScreen(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
                   path: '/nutritionist/settings',
                   builder: (context, state) => const NutritionistSettingsScreen(),
                 ),
@@ -330,6 +339,14 @@ class GymApp extends ConsumerWidget {
                 GoRoute(
                   path: '/trainer/schedule',
                   builder: (context, state) => const TrainerScheduleScreen(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/trainer/community',
+                  builder: (context, state) => const CommunityScreen(),
                 ),
               ],
             ),

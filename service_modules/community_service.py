@@ -21,7 +21,7 @@ class CommunityService:
             return None
         if user.role == "owner":
             return user.id
-        if user.role == "trainer":
+        if user.role in ("trainer", "nutritionist"):
             return user.gym_owner_id
         # client
         profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == user_id).first()
