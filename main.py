@@ -125,11 +125,13 @@ async def migrate_to_supabase():
 
     SUPABASE_URL = "postgresql://postgres.fgkorgluygqdoyxbxfat:FitOS2026supabase@aws-0-eu-west-1.pooler.supabase.com:6543/postgres"
 
-    # 1. Connect to Supabase
+    # 1. Test Supabase connection
     try:
         sb_conn = psycopg2.connect(SUPABASE_URL, sslmode="require")
         sb_conn.autocommit = False
         sb_cur = sb_conn.cursor()
+        sb_cur.execute("SELECT version()")
+        sb_version = sb_cur.fetchone()[0]
     except Exception as e:
         return {"error": f"Supabase connection failed: {str(e)}"}
 
@@ -138,7 +140,7 @@ async def migrate_to_supabase():
     db = get_db_session()
     try:
         tables_result = db.execute(text(
-            "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename"
+            "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name"
         ))
         tables = [r[0] for r in tables_result]
     except Exception as e:
@@ -220,7 +222,7 @@ async def migrate_to_supabase():
     db.close()
     sb_conn.close()
 
-    return {"migrated": migrated, "errors": errors, "tables_found": len(tables)}
+    return {"migrated": migrated, "errors": errors, "tables_found": len(tables), "supabase_version": sb_version}
 
 @app.get("/api/version")
 async def get_version():
