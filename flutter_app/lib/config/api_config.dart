@@ -322,6 +322,15 @@ class ApiConfig {
   static const nutritionistNotes = '/api/trainer/notes'; // shared notes API
   static const nutritionistProfileUpdate = '/api/profile/update';
 
+  // ── Consent ────────────────────────────────────────────
+  static const clientConsent = '/api/client/consent';
+  static const clientConsents = '/api/client/consents';
+  static const clientConsentRevoke = '/api/client/consent/revoke';
+  static String clientConsentCheck(String profId) => '/api/client/consent/check/$profId';
+  static String professionalConsentStatus(String clientId) => '/api/professional/client/$clientId/consent-status';
+  static const ownerAuditLog = '/api/owner/audit-log';
+  static const ownerConsentOverview = '/api/owner/consent-overview';
+
   // ── Spotify ──────────────────────────────────────────────
   static const String spotifyStatus = '/api/spotify/status';
   static const String spotifyAuthorize = '/api/spotify/authorize';

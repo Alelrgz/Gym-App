@@ -17,6 +17,7 @@ import '../providers/websocket_provider.dart';
 import 'chat_camera_stub.dart'
     if (dart.library.html) 'chat_camera_web.dart'
     if (dart.library.io) 'chat_camera_native.dart';
+import 'consent_dialog.dart';
 import 'glass_card.dart';
 
 // ─── HELPERS ────────────────────────────────────────────────────
@@ -5624,6 +5625,30 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
 
     try {
       final service = widget.ref.read(clientServiceProvider);
+
+      // Check consent before booking — show dialog if not yet granted
+      try {
+        final consentStatus = await service.checkConsent(_selectedTrainerId!);
+        if (consentStatus['has_consent'] != true) {
+          if (!mounted) return;
+          final scopes = await showConsentDialog(
+            context,
+            professionalName: _selectedTrainerName ?? 'Trainer',
+            professionalRole: 'trainer',
+          );
+          if (scopes == null || scopes.isEmpty) {
+            setState(() => _submitting = false);
+            return; // User cancelled consent
+          }
+          await service.grantConsent(
+            professionalId: _selectedTrainerId!,
+            scopes: scopes,
+          );
+        }
+      } catch (_) {
+        // Consent check failed — continue with booking (non-blocking)
+      }
+
       final dateStr = '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
 
       if (_paymentMethod == 'card') {

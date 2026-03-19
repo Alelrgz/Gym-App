@@ -7,6 +7,7 @@ import '../config/api_config.dart';
 import '../config/theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/client_provider.dart';
+import '../widgets/consent_management_sheet.dart';
 import '../widgets/dashboard_sheets.dart';
 
 class ProfileScreen extends ConsumerWidget {
@@ -140,6 +141,13 @@ class ProfileScreen extends ConsumerWidget {
                 label: 'Certificato Medico',
                 subtitle: 'Carica o visualizza il certificato',
                 onTap: () => _showCertificateSheet(context, ref),
+              ),
+              _TileData(
+                icon: Icons.shield_rounded,
+                iconColor: const Color(0xFF3B82F6),
+                label: 'Gestione Consensi',
+                subtitle: 'Controlla chi accede ai tuoi dati',
+                onTap: () => _showConsentManagement(context, ref),
               ),
             ]),
             const SizedBox(height: 24),
@@ -318,6 +326,16 @@ class ProfileScreen extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => _PrivacySheet(ref: ref),
+    );
+  }
+
+  void _showConsentManagement(BuildContext context, WidgetRef ref) {
+    final clientService = ref.read(clientServiceProvider);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => ConsentManagementSheet(clientService: clientService),
     );
   }
 

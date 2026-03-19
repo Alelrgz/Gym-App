@@ -567,4 +567,61 @@ class ClientService {
     final response = await _api.upload(ApiConfig.medicalCertificateUpload, formData);
     return response.data as Map<String, dynamic>;
   }
+
+  // ── Consent Management ──────────────────────────────────
+
+  /// Grant consent to a professional for specific data scopes.
+  Future<Map<String, dynamic>> grantConsent({
+    required String professionalId,
+    required List<String> scopes,
+    String? subscriptionId,
+    String? appointmentId,
+  }) async {
+    final response = await _api.post(
+      ApiConfig.clientConsent,
+      data: {
+        'professional_id': professionalId,
+        'scopes': scopes,
+        if (subscriptionId != null) 'subscription_id': subscriptionId,
+        if (appointmentId != null) 'appointment_id': appointmentId,
+      },
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Get all active and revoked consents.
+  Future<List<Map<String, dynamic>>> getConsents() async {
+    final response = await _api.get(ApiConfig.clientConsents);
+    final data = response.data as Map<String, dynamic>;
+    return (data['consents'] as List).cast<Map<String, dynamic>>();
+  }
+
+  /// Revoke a consent by ID or by professional ID.
+  Future<Map<String, dynamic>> revokeConsent({
+    int? consentId,
+    String? professionalId,
+    String? reason,
+  }) async {
+    final response = await _api.post(
+      ApiConfig.clientConsentRevoke,
+      data: {
+        if (consentId != null) 'consent_id': consentId,
+        if (professionalId != null) 'professional_id': professionalId,
+        if (reason != null) 'reason': reason,
+      },
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Check consent status for a specific professional.
+  Future<Map<String, dynamic>> checkConsent(String professionalId) async {
+    final response = await _api.get(ApiConfig.clientConsentCheck(professionalId));
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// (For trainer/nutritionist) Check consent status for a client.
+  Future<Map<String, dynamic>> getClientConsentStatus(String clientId) async {
+    final response = await _api.get(ApiConfig.professionalConsentStatus(clientId));
+    return response.data as Map<String, dynamic>;
+  }
 }
