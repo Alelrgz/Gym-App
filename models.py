@@ -91,7 +91,7 @@ class Progress(BaseModel):
 # --- CALENDAR ---
 class CalendarEvent(BaseModel):
     id: Optional[int] = None
-    date: str  # YYYY-MM-DD
+    date: Optional[str] = ""  # YYYY-MM-DD
     title: str
     type: str  # 'workout', 'rest', 'milestone'
     completed: bool
