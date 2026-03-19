@@ -3,7 +3,10 @@ Nutritionist Routes - API endpoints for nutritionist dashboard, client body mana
 """
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
+from sqlalchemy.orm import Session
 from auth import get_current_user
+from database import get_db, get_db_session
+from authorization import authorize_client_access
 from models import (
     AddBodyCompositionRequest, SetWeightGoalRequest, AssignDietRequest,
     UpdateClientHealthDataRequest,
@@ -12,7 +15,6 @@ from models import (
     SetWeeklyMealPlanRequest
 )
 from models_orm import UserORM, NutritionistAppointmentORM, WeeklyMealPlanORM
-from database import get_db_session
 from service_modules.nutritionist_service import NutritionistService, get_nutritionist_service
 from service_modules.diet_service import DietService, get_diet_service
 from service_modules.client_service import ClientService, get_client_service
@@ -42,10 +44,14 @@ async def get_nutritionist_data(
 @router.get("/api/nutritionist/client/{client_id}")
 async def get_client_detail(
     client_id: str,
+    request: Request,
     service: NutritionistService = Depends(get_nutritionist_service),
-    current_user: UserORM = Depends(get_current_user)
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     _require_nutritionist(current_user)
+    authorize_client_access(current_user, client_id, "weight", "view",
+                            "/api/nutritionist/client/{client_id}", db, request)
     return service.get_client_detail(client_id)
 
 
@@ -54,10 +60,14 @@ async def get_client_detail(
 @router.post("/api/nutritionist/client/body-composition")
 async def add_body_composition(
     request: AddBodyCompositionRequest,
+    http_request: Request,
     service: NutritionistService = Depends(get_nutritionist_service),
-    current_user: UserORM = Depends(get_current_user)
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     _require_nutritionist(current_user)
+    authorize_client_access(current_user, request.client_id, "body_composition", "update",
+                            "/api/nutritionist/client/body-composition", db, http_request)
     return service.add_body_composition(
         current_user.id, request.client_id,
         request.weight, request.body_fat_pct,
@@ -68,10 +78,14 @@ async def add_body_composition(
 @router.post("/api/nutritionist/client/weight-goal")
 async def set_weight_goal(
     request: SetWeightGoalRequest,
+    http_request: Request,
     service: NutritionistService = Depends(get_nutritionist_service),
-    current_user: UserORM = Depends(get_current_user)
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     _require_nutritionist(current_user)
+    authorize_client_access(current_user, request.client_id, "weight", "update",
+                            "/api/nutritionist/client/weight-goal", db, http_request)
     return service.set_weight_goal(current_user.id, request.client_id, request.weight_goal)
 
 
@@ -80,10 +94,14 @@ async def set_weight_goal(
 @router.post("/api/nutritionist/client/health-data")
 async def update_client_health_data(
     request: UpdateClientHealthDataRequest,
+    http_request: Request,
     service: NutritionistService = Depends(get_nutritionist_service),
-    current_user: UserORM = Depends(get_current_user)
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     _require_nutritionist(current_user)
+    authorize_client_access(current_user, request.client_id, "health_data", "update",
+                            "/api/nutritionist/client/health-data", db, http_request)
     return service.update_client_health_data(current_user.id, request)
 
 
@@ -92,23 +110,31 @@ async def update_client_health_data(
 @router.post("/api/nutritionist/assign_diet")
 async def nutritionist_assign_diet(
     diet_req: AssignDietRequest,
+    http_request: Request,
     service: DietService = Depends(get_diet_service),
-    current_user: UserORM = Depends(get_current_user)
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     _require_nutritionist(current_user)
+    authorize_client_access(current_user, diet_req.client_id, "diet", "update",
+                            "/api/nutritionist/assign_diet", db, http_request)
     return service.assign_diet(diet_req)
 
 
 @router.post("/api/nutritionist/diet")
 async def nutritionist_update_diet(
     diet_data: dict,
+    http_request: Request,
     service: DietService = Depends(get_diet_service),
-    current_user: UserORM = Depends(get_current_user)
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     _require_nutritionist(current_user)
     client_id = diet_data.get("client_id")
     if not client_id:
         raise HTTPException(status_code=400, detail="Missing client_id")
+    authorize_client_access(current_user, client_id, "diet", "update",
+                            "/api/nutritionist/diet", db, http_request)
     return service.update_client_diet(client_id, diet_data)
 
 
@@ -118,10 +144,14 @@ async def nutritionist_update_diet(
 async def set_client_weekly_meal_plan(
     client_id: str,
     data: SetWeeklyMealPlanRequest,
-    current_user: UserORM = Depends(get_current_user)
+    request: Request,
+    current_user: UserORM = Depends(get_current_user),
+    auth_db: Session = Depends(get_db)
 ):
     """Set/replace the meal plan for a specific day of the week."""
     _require_nutritionist(current_user)
+    authorize_client_access(current_user, client_id, "diet", "update",
+                            "/api/nutritionist/client/{client_id}/weekly-meal-plan", auth_db, request)
     from datetime import datetime
     db = get_db_session()
     try:
@@ -161,10 +191,14 @@ async def set_client_weekly_meal_plan(
 @router.get("/api/nutritionist/client/{client_id}/weekly-meal-plan")
 async def get_client_weekly_meal_plan(
     client_id: str,
-    current_user: UserORM = Depends(get_current_user)
+    request: Request,
+    current_user: UserORM = Depends(get_current_user),
+    auth_db: Session = Depends(get_db)
 ):
     """Get a client's full weekly meal plan."""
     _require_nutritionist(current_user)
+    authorize_client_access(current_user, client_id, "diet", "view",
+                            "/api/nutritionist/client/{client_id}/weekly-meal-plan", auth_db, request)
     db = get_db_session()
     try:
         entries = db.query(WeeklyMealPlanORM).filter(
@@ -205,22 +239,30 @@ async def get_client_weekly_meal_plan(
 @router.get("/api/nutritionist/client/{client_id}/weight-history")
 async def get_client_weight_history(
     client_id: str,
+    request: Request,
     period: str = "month",
     service: ClientService = Depends(get_client_service),
-    current_user: UserORM = Depends(get_current_user)
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     _require_nutritionist(current_user)
+    authorize_client_access(current_user, client_id, "weight", "view",
+                            "/api/nutritionist/client/{client_id}/weight-history", db, request)
     return service.get_weight_history(client_id, period)
 
 
 @router.get("/api/nutritionist/client/{client_id}/diet-consistency")
 async def get_client_diet_consistency(
     client_id: str,
+    request: Request,
     period: str = "month",
     service: ClientService = Depends(get_client_service),
-    current_user: UserORM = Depends(get_current_user)
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     _require_nutritionist(current_user)
+    authorize_client_access(current_user, client_id, "diet", "view",
+                            "/api/nutritionist/client/{client_id}/diet-consistency", db, request)
     return service.get_diet_consistency(client_id, period)
 
 

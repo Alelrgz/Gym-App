@@ -1,12 +1,14 @@
 """
 Diet Routes - API endpoints for diet management, meal scanning, and logging.
 """
-from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Query
+from fastapi import APIRouter, Depends, File, UploadFile, HTTPException, Query, Request
+from sqlalchemy.orm import Session
 from auth import get_current_user
+from database import get_db, get_db_session
+from authorization import authorize_client_access
 from models import AssignDietRequest, SelfAssignDietRequest, SetWeeklyMealPlanRequest, ClientAddMealRequest
 from models_orm import UserORM, WeeklyMealPlanORM, ClientDietLogORM, ClientDietSettingsORM, WeightHistoryORM, ClientProfileORM
 from service_modules.diet_service import DietService, get_diet_service
-from database import get_db_session
 from datetime import datetime, date
 
 router = APIRouter()
@@ -47,25 +49,31 @@ async def log_meal(
 @router.post("/api/trainer/diet")
 async def update_diet(
     diet_data: dict,
+    request: Request,
     service: DietService = Depends(get_diet_service),
-    current_user: UserORM = Depends(get_current_user)
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Update a client's diet settings (macros, hydration, consistency)."""
-    # Expects { "client_id": "...", "macros": {...}, "hydration_target": 2500, "consistency_target": 80 }
     client_id = diet_data.get("client_id")
     if not client_id:
-        from fastapi import HTTPException
         raise HTTPException(status_code=400, detail="Missing client_id")
+    authorize_client_access(current_user, client_id, "diet", "update",
+                            "/api/trainer/diet", db, request)
     return service.update_client_diet(client_id, diet_data)
 
 
 @router.post("/api/trainer/assign_diet")
 async def assign_diet(
     diet_req: AssignDietRequest,
+    request: Request,
     service: DietService = Depends(get_diet_service),
-    current_user: UserORM = Depends(get_current_user)
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Assign a complete diet plan to a client."""
+    authorize_client_access(current_user, diet_req.client_id, "diet", "update",
+                            "/api/trainer/assign_diet", db, request)
     return service.assign_diet(diet_req)
 
 

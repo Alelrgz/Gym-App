@@ -1,10 +1,12 @@
 """
 Profile Routes - API endpoints for user profile management including profile pictures.
 """
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Request
+from sqlalchemy.orm import Session
 from auth import get_current_user
+from database import get_db, get_db_session
+from authorization import authorize_client_access
 from models_orm import UserORM, PhysiquePhotoORM, ClientProfileORM, MedicalCertificateORM, NotificationORM
-from database import get_db_session
 from service_modules.upload_helper import (
     save_file, delete_file, _optimize_image,
     ALLOWED_IMAGE_EXTENSIONS, ALLOWED_DOC_EXTENSIONS,
@@ -281,16 +283,20 @@ async def delete_physique_photo(
 
 @router.get("/api/physique/photos")
 async def get_physique_photos(
+    request: Request,
     client_id: Optional[str] = None,
-    user: UserORM = Depends(get_current_user)
+    user: UserORM = Depends(get_current_user),
+    auth_db: Session = Depends(get_db)
 ):
     """Get physique photos. Client sees their own, trainer sees their clients'."""
     db = get_db_session()
     try:
         target_client_id = client_id or str(user.id)
 
-        if not can_view_physique_photos(user, target_client_id, db):
-            raise HTTPException(status_code=403, detail="Not authorized to view these photos")
+        # Use consent-based authorization for cross-user access
+        if str(user.id) != str(target_client_id):
+            authorize_client_access(user, target_client_id, "physique_photos", "view",
+                                    "/api/physique/photos", auth_db, request)
 
         photos = db.query(PhysiquePhotoORM).filter(
             PhysiquePhotoORM.client_id == target_client_id
@@ -447,16 +453,26 @@ async def upload_medical_certificate(
 
 @router.get("/api/medical/certificate")
 async def get_medical_certificate(
+    request: Request,
     client_id: Optional[str] = None,
-    user: UserORM = Depends(get_current_user)
+    user: UserORM = Depends(get_current_user),
+    auth_db: Session = Depends(get_db)
 ):
     """Get medical certificate. Client sees own, owner/trainer sees by client_id."""
     db = get_db_session()
     try:
         target_id = client_id or str(user.id)
 
-        if not can_view_certificate(user, target_id, db):
-            raise HTTPException(status_code=403, detail="Not authorized to view this certificate")
+        # Use consent-based authorization for cross-user access
+        if str(user.id) != str(target_id):
+            # Staff/owner can see certificate status (non-sensitive scope=None for gym isolation only)
+            effective_role = user.sub_role or user.role
+            if effective_role in ("staff", "owner"):
+                authorize_client_access(user, target_id, None, "view",
+                                        "/api/medical/certificate", auth_db, request)
+            else:
+                authorize_client_access(user, target_id, "medical_cert", "view",
+                                        "/api/medical/certificate", auth_db, request)
 
         cert = db.query(MedicalCertificateORM).filter(
             MedicalCertificateORM.client_id == target_id

@@ -1203,3 +1203,52 @@ class CommunityCommentLikeORM(Base):
     comment_id = Column(Integer, ForeignKey("community_comments.id"), index=True)
     user_id = Column(String, ForeignKey("users.id"), index=True)
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
+# --- DATA CONSENT & AUDIT ---
+
+class DataConsentORM(Base):
+    """Tracks client consent for professionals to access their sensitive data."""
+    __tablename__ = "data_consents"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    client_id = Column(String, ForeignKey("users.id"), index=True)
+    professional_id = Column(String, ForeignKey("users.id"), index=True)
+    professional_role = Column(String)  # "trainer" or "nutritionist"
+
+    # What data the client consented to share (JSON array)
+    # Possible scopes: weight, body_composition, diet, health_data, medical_cert, physique_photos, training_data
+    consent_scope = Column(String)  # JSON: ["weight","diet","training_data"]
+
+    # Link to what triggered the consent
+    subscription_id = Column(String, nullable=True)
+    appointment_id = Column(String, nullable=True)
+
+    # Status
+    status = Column(String, default="active", index=True)  # active, revoked
+
+    # Timestamps
+    granted_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    revoked_at = Column(String, nullable=True)
+    revoked_reason = Column(String, nullable=True)
+
+
+class SensitiveDataAccessLogORM(Base):
+    """Audit trail for all access to sensitive client data."""
+    __tablename__ = "sensitive_data_access_log"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    accessor_id = Column(String, ForeignKey("users.id"), index=True)
+    accessor_role = Column(String)  # trainer, nutritionist, owner, staff
+    client_id = Column(String, ForeignKey("users.id"), index=True)
+
+    resource_type = Column(String, index=True)  # weight, body_composition, diet, health_data, medical_cert, physique_photos, training_data
+    action = Column(String)  # view, update, delete
+    endpoint = Column(String)  # API path
+
+    consent_id = Column(Integer, nullable=True)  # Which consent authorized this access
+
+    ip_address = Column(String, nullable=True)
+    user_agent = Column(String, nullable=True)
+
+    accessed_at = Column(String, default=lambda: datetime.utcnow().isoformat(), index=True)

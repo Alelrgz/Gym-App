@@ -385,6 +385,9 @@ app.include_router(smtp_oauth_router)
 from route_modules.community_routes import router as community_router
 app.include_router(community_router)
 
+from route_modules.consent_routes import consent_router
+app.include_router(consent_router)
+
 
 def _safe_add_columns(engine, table_name, columns_list):
     """Add columns to a table using IF NOT EXISTS (PostgreSQL 9.6+) or fallback."""
@@ -895,6 +898,13 @@ async def startup_event():
         run_migrations(engine)
     except Exception as e:
         logger.error(f"run_migrations error: {e}")
+
+    # Run consent table migration and backfill
+    try:
+        from migrate_consent_tables import run_consent_migration
+        run_consent_migration()
+    except Exception as e:
+        logger.error(f"Consent migration error: {e}")
 
     # Log DB info
     db_url = str(engine.url)

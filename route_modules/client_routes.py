@@ -1,19 +1,21 @@
 """
 Client Routes - API endpoints for client profile management and data retrieval.
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel
 from typing import Optional, List
 from datetime import datetime
+from sqlalchemy.orm import Session
 import hashlib, time, logging, traceback
 from auth import get_current_user
+from database import get_db, get_db_session
+from authorization import authorize_client_access
 
 logger = logging.getLogger("gym_app")
 from models import ClientData, ClientProfileUpdate
 from models_orm import UserORM, ClientProfileORM, ChatRequestORM, ClientDietSettingsORM
 from service_modules.client_service import ClientService, get_client_service
 from service_modules.workout_service import get_workout_service
-from database import get_db_session
 
 router = APIRouter()
 
@@ -68,10 +70,14 @@ async def get_client_data(
 @router.get("/api/trainer/client/{client_id}", response_model=ClientData)
 async def get_client_for_trainer(
     client_id: str,
+    request: Request,
     service: ClientService = Depends(get_client_service),
-    current_user: UserORM = Depends(get_current_user)
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Get a specific client's data (trainer access)."""
+    authorize_client_access(current_user, client_id, "training_data", "view",
+                            "/api/trainer/client/{client_id}", db, request)
     workout_service = get_workout_service()
     return service.get_client(
         client_id,
@@ -123,111 +129,128 @@ async def get_exercise_details(
 @router.get("/api/trainer/client/{client_id}/weight-history")
 async def get_client_weight_history_for_trainer(
     client_id: str,
+    request: Request,
     period: str = "month",
     service: ClientService = Depends(get_client_service),
-    current_user: UserORM = Depends(get_current_user)
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Get a client's weight history (trainer access)."""
+    authorize_client_access(current_user, client_id, "weight", "view",
+                            "/api/trainer/client/{client_id}/weight-history", db, request)
     return service.get_weight_history(client_id, period)
 
 
 @router.get("/api/trainer/client/{client_id}/strength-progress")
 async def get_client_strength_progress_for_trainer(
     client_id: str,
+    request: Request,
     period: str = "month",
     service: ClientService = Depends(get_client_service),
-    current_user: UserORM = Depends(get_current_user)
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Get a client's strength progress (trainer access)."""
+    authorize_client_access(current_user, client_id, "training_data", "view",
+                            "/api/trainer/client/{client_id}/strength-progress", db, request)
     return service.get_strength_progress(client_id, period)
 
 
 @router.get("/api/trainer/client/{client_id}/diet-consistency")
 async def get_client_diet_consistency_for_trainer(
     client_id: str,
+    request: Request,
     period: str = "month",
     service: ClientService = Depends(get_client_service),
-    current_user: UserORM = Depends(get_current_user)
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Get a client's diet consistency data (trainer access)."""
+    authorize_client_access(current_user, client_id, "diet", "view",
+                            "/api/trainer/client/{client_id}/diet-consistency", db, request)
     return service.get_diet_consistency(client_id, period)
 
 
 @router.get("/api/trainer/client/{client_id}/week-streak")
 async def get_client_week_streak_for_trainer(
     client_id: str,
+    request: Request,
     service: ClientService = Depends(get_client_service),
-    current_user: UserORM = Depends(get_current_user)
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Get a client's week streak data (trainer access)."""
+    authorize_client_access(current_user, client_id, "training_data", "view",
+                            "/api/trainer/client/{client_id}/week-streak", db, request)
     return service.get_week_streak_data(client_id)
 
 
 @router.post("/api/trainer/client/{client_id}/toggle_premium")
 async def toggle_client_premium(
     client_id: str,
+    request: Request,
     service: ClientService = Depends(get_client_service),
-    current_user: UserORM = Depends(get_current_user)
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Toggle premium status for a client (trainer access)."""
+    # No sensitive scope — just gym isolation check
+    authorize_client_access(current_user, client_id, None, "update",
+                            "/api/trainer/client/{client_id}/toggle_premium", db, request)
     return service.toggle_premium_status(client_id)
 
 
 @router.get("/api/trainer/client/{client_id}/strength-goals")
 async def get_client_strength_goals(
     client_id: str,
-    current_user: UserORM = Depends(get_current_user)
+    request: Request,
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Get a client's strength goals (trainer access)."""
-    if current_user.role != "trainer":
-        raise HTTPException(status_code=403, detail="Only trainers can access client goals")
+    authorize_client_access(current_user, client_id, "training_data", "view",
+                            "/api/trainer/client/{client_id}/strength-goals", db, request)
 
-    db = get_db_session()
-    try:
-        profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
-        if not profile:
-            raise HTTPException(status_code=404, detail="Client not found")
-        return {
-            "upper": profile.strength_goal_upper,
-            "lower": profile.strength_goal_lower,
-            "cardio": profile.strength_goal_cardio
-        }
-    finally:
-        db.close()
+    profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Client not found")
+    return {
+        "upper": profile.strength_goal_upper,
+        "lower": profile.strength_goal_lower,
+        "cardio": profile.strength_goal_cardio
+    }
 
 
 @router.post("/api/trainer/client/{client_id}/strength-goals")
 async def set_client_strength_goals(
     client_id: str,
-    request: StrengthGoalsRequest,
-    current_user: UserORM = Depends(get_current_user)
+    goals_request: StrengthGoalsRequest,
+    request: Request,
+    current_user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Set strength goals for a client (trainer access)."""
-    if current_user.role != "trainer":
-        raise HTTPException(status_code=403, detail="Only trainers can set client goals")
+    authorize_client_access(current_user, client_id, "training_data", "update",
+                            "/api/trainer/client/{client_id}/strength-goals", db, request)
 
-    db = get_db_session()
-    try:
-        profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
-        if not profile:
-            raise HTTPException(status_code=404, detail="Client not found")
+    profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == client_id).first()
+    if not profile:
+        raise HTTPException(status_code=404, detail="Client not found")
 
-        if request.upper is not None:
-            profile.strength_goal_upper = request.upper
-        if request.lower is not None:
-            profile.strength_goal_lower = request.lower
-        if request.cardio is not None:
-            profile.strength_goal_cardio = request.cardio
+    if goals_request.upper is not None:
+        profile.strength_goal_upper = goals_request.upper
+    if goals_request.lower is not None:
+        profile.strength_goal_lower = goals_request.lower
+    if goals_request.cardio is not None:
+        profile.strength_goal_cardio = goals_request.cardio
 
-        db.commit()
-        return {
-            "message": "Strength goals updated",
-            "upper": profile.strength_goal_upper,
-            "lower": profile.strength_goal_lower,
-            "cardio": profile.strength_goal_cardio
-        }
-    finally:
-        db.close()
+    db.commit()
+    return {
+        "message": "Strength goals updated",
+        "upper": profile.strength_goal_upper,
+        "lower": profile.strength_goal_lower,
+        "cardio": profile.strength_goal_cardio
+    }
 
 
 @router.post("/api/client/quest/toggle")
