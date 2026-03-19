@@ -234,6 +234,8 @@ class ClientService:
             events_orm = db.query(ClientScheduleORM).filter(ClientScheduleORM.client_id == client_id).all()
             events = []
             for e in events_orm:
+                if not e.date:
+                    continue  # Skip events with no date
                 events.append({
                     "id": e.id,
                     "date": e.date,
