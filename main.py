@@ -117,6 +117,111 @@ async def health_check():
     """Health check endpoint for load balancers and monitoring."""
     return {"status": "ok"}
 
+@app.get("/api/migrate-to-supabase")
+async def migrate_to_supabase():
+    """TEMP: Migrate all data from current Render DB to Supabase. Remove after use."""
+    import psycopg2
+    from sqlalchemy import text
+
+    SUPABASE_URL = "postgresql://postgres.fgkorgluygqdoyxbxfat:FitOS2026supabase@aws-0-eu-west-1.pooler.supabase.com:6543/postgres"
+
+    # 1. Connect to Supabase
+    try:
+        sb_conn = psycopg2.connect(SUPABASE_URL, sslmode="require")
+        sb_conn.autocommit = False
+        sb_cur = sb_conn.cursor()
+    except Exception as e:
+        return {"error": f"Supabase connection failed: {str(e)}"}
+
+    # 2. Get all tables from current (Render) DB
+    from database import get_db_session
+    db = get_db_session()
+    try:
+        tables_result = db.execute(text(
+            "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename"
+        ))
+        tables = [r[0] for r in tables_result]
+    except Exception as e:
+        db.close()
+        sb_conn.close()
+        return {"error": f"Failed to list tables: {str(e)}"}
+
+    # 3. For each table: create it on Supabase if not exists, then copy data
+    migrated = {}
+    errors = {}
+
+    for table in tables:
+        try:
+            # Get CREATE TABLE DDL
+            ddl_result = db.execute(text(f"""
+                SELECT 'CREATE TABLE IF NOT EXISTS "{table}" (' ||
+                string_agg(
+                    '"' || column_name || '" ' ||
+                    CASE
+                        WHEN data_type = 'character varying' THEN 'TEXT'
+                        WHEN data_type = 'integer' THEN 'INTEGER'
+                        WHEN data_type = 'bigint' THEN 'BIGINT'
+                        WHEN data_type = 'boolean' THEN 'BOOLEAN'
+                        WHEN data_type = 'double precision' THEN 'DOUBLE PRECISION'
+                        WHEN data_type = 'numeric' THEN 'NUMERIC'
+                        WHEN data_type = 'text' THEN 'TEXT'
+                        WHEN data_type = 'timestamp without time zone' THEN 'TIMESTAMP'
+                        WHEN data_type = 'timestamp with time zone' THEN 'TIMESTAMPTZ'
+                        WHEN data_type = 'date' THEN 'DATE'
+                        WHEN data_type = 'json' THEN 'TEXT'
+                        WHEN data_type = 'jsonb' THEN 'TEXT'
+                        ELSE 'TEXT'
+                    END ||
+                    CASE WHEN is_nullable = 'NO' AND column_default IS NOT NULL THEN '' ELSE '' END,
+                    ', '
+                    ORDER BY ordinal_position
+                ) || ')'
+                FROM information_schema.columns
+                WHERE table_name = :tbl AND table_schema = 'public'
+            """), {"tbl": table})
+            ddl = ddl_result.scalar()
+
+            if not ddl:
+                continue
+
+            # Create table on Supabase
+            sb_cur.execute(ddl)
+            sb_conn.commit()
+
+            # Get data from Render
+            rows_result = db.execute(text(f'SELECT * FROM "{table}"'))
+            rows = rows_result.fetchall()
+            if not rows:
+                migrated[table] = "0/0 (empty)"
+                continue
+
+            cols = rows_result.keys()
+            col_names = ', '.join([f'"{c}"' for c in cols])
+            placeholders = ', '.join(['%s'] * len(cols))
+            insert_sql = f'INSERT INTO "{table}" ({col_names}) VALUES ({placeholders}) ON CONFLICT DO NOTHING'
+
+            count = 0
+            for row in rows:
+                try:
+                    sb_cur.execute(insert_sql, tuple(row))
+                    count += 1
+                except Exception as row_err:
+                    sb_conn.rollback()
+                    # Skip problematic rows
+                    continue
+
+            sb_conn.commit()
+            migrated[table] = f"{count}/{len(rows)}"
+
+        except Exception as e:
+            sb_conn.rollback()
+            errors[table] = str(e)[:100]
+
+    db.close()
+    sb_conn.close()
+
+    return {"migrated": migrated, "errors": errors, "tables_found": len(tables)}
+
 @app.get("/api/version")
 async def get_version():
     """Get app version info for debugging deployed instances."""
