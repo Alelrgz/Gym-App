@@ -123,7 +123,7 @@ async def migrate_to_supabase():
     import psycopg2
     from sqlalchemy import text
 
-    SUPABASE_URL = "postgresql://postgres:FitOS2026supabase@db.fgkorgluygqdoyxbxfat.supabase.co:5432/postgres"
+    SUPABASE_URL = "postgresql://postgres.fgkorgluygqdoyxbxfat:FitOS2026supabase@aws-0-eu-west-1.pooler.supabase.com:5432/postgres"
 
     # 1. Test Supabase connection
     try:
