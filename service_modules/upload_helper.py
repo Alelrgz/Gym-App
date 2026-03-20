@@ -111,7 +111,7 @@ async def save_file(
 
 def _upload_supabase(content: bytes, folder: str, filename: str) -> str:
     """Upload to Supabase Storage and return the public/signed URL."""
-    import requests
+    import httpx
 
     # Determine bucket from folder
     base_folder = folder.split("/")[0]
@@ -139,7 +139,7 @@ def _upload_supabase(content: bytes, folder: str, filename: str) -> str:
     }
 
     url = f"{_get_supabase_url()}/storage/v1/object/{bucket}/{storage_path}"
-    r = requests.post(url, headers=headers, data=content)
+    r = httpx.post(url, headers=headers, content=content, timeout=60)
 
     if r.status_code not in (200, 201):
         logger.error(f"Supabase upload failed: {r.status_code} {r.text[:200]}")
@@ -194,9 +194,7 @@ async def delete_file(url: str) -> bool:
 
     if "supabase.co/storage" in url:
         try:
-            import requests
-            # Extract bucket and path from URL
-            # URL format: https://xxx.supabase.co/storage/v1/object/public/{bucket}/{path}
+            import httpx
             parts = url.split("/storage/v1/object/public/")
             if len(parts) < 2:
                 parts = url.split("/storage/v1/object/")
@@ -210,10 +208,12 @@ async def delete_file(url: str) -> bool:
                     'apikey': _get_supabase_key(),
                     'Content-Type': 'application/json',
                 }
-                r = requests.delete(
+                r = httpx.request(
+                    "DELETE",
                     f"{_get_supabase_url()}/storage/v1/object/{bucket}",
                     headers=headers,
-                    json={"prefixes": [file_path]}
+                    json={"prefixes": [file_path]},
+                    timeout=30,
                 )
                 if r.status_code in (200, 204):
                     return True
