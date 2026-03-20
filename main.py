@@ -117,13 +117,18 @@ async def health_check():
     """Health check endpoint for load balancers and monitoring."""
     return {"status": "ok"}
 
-@app.get("/api/migrate-to-supabase")
-async def migrate_to_supabase():
-    """TEMP: Migrate all data from current Render DB to Supabase. Remove after use."""
+@app.post("/api/migrate-to-supabase")
+async def migrate_to_supabase(current_user: UserORM = Depends(get_current_user)):
+    """Migrate all data from current DB to Supabase. Requires owner role and SUPABASE_MIGRATION_URL env var."""
+    if current_user.role != "owner":
+        raise HTTPException(status_code=403, detail="Only owners can trigger migrations")
+
     import psycopg2
     from sqlalchemy import text
 
-    SUPABASE_URL = "postgresql://postgres.fgkorgluygqdoyxbxfat:FitOS2026supabase@aws-0-eu-west-1.pooler.supabase.com:5432/postgres"
+    SUPABASE_URL = os.getenv("SUPABASE_MIGRATION_URL")
+    if not SUPABASE_URL:
+        raise HTTPException(status_code=400, detail="SUPABASE_MIGRATION_URL environment variable not set")
 
     # 1. Test Supabase connection
     try:
@@ -133,9 +138,10 @@ async def migrate_to_supabase():
         sb_cur.execute("SELECT version()")
         sb_version = sb_cur.fetchone()[0]
     except Exception as e:
-        return {"error": f"Supabase connection failed: {str(e)}"}
+        logger.error(f"Supabase connection failed: {e}")
+        raise HTTPException(status_code=500, detail="Supabase connection failed")
 
-    # 2. Get all tables from current (Render) DB
+    # 2. Get all tables from current DB
     from database import get_db_session
     db = get_db_session()
     try:
@@ -146,7 +152,8 @@ async def migrate_to_supabase():
     except Exception as e:
         db.close()
         sb_conn.close()
-        return {"error": f"Failed to list tables: {str(e)}"}
+        logger.error(f"Failed to list tables: {e}")
+        raise HTTPException(status_code=500, detail="Failed to list tables")
 
     # 3. For each table: create it on Supabase if not exists, then copy data
     migrated = {}
@@ -154,43 +161,35 @@ async def migrate_to_supabase():
 
     for table in tables:
         try:
-            # Get CREATE TABLE DDL
-            ddl_result = db.execute(text(f"""
-                SELECT 'CREATE TABLE IF NOT EXISTS "{table}" (' ||
-                string_agg(
-                    '"' || column_name || '" ' ||
-                    CASE
-                        WHEN data_type = 'character varying' THEN 'TEXT'
-                        WHEN data_type = 'integer' THEN 'INTEGER'
-                        WHEN data_type = 'bigint' THEN 'BIGINT'
-                        WHEN data_type = 'boolean' THEN 'BOOLEAN'
-                        WHEN data_type = 'double precision' THEN 'DOUBLE PRECISION'
-                        WHEN data_type = 'numeric' THEN 'NUMERIC'
-                        WHEN data_type = 'text' THEN 'TEXT'
-                        WHEN data_type = 'timestamp without time zone' THEN 'TIMESTAMP'
-                        WHEN data_type = 'timestamp with time zone' THEN 'TIMESTAMPTZ'
-                        WHEN data_type = 'date' THEN 'DATE'
-                        WHEN data_type = 'json' THEN 'TEXT'
-                        WHEN data_type = 'jsonb' THEN 'TEXT'
-                        ELSE 'TEXT'
-                    END ||
-                    CASE WHEN is_nullable = 'NO' AND column_default IS NOT NULL THEN '' ELSE '' END,
-                    ', '
-                    ORDER BY ordinal_position
-                ) || ')'
-                FROM information_schema.columns
-                WHERE table_name = :tbl AND table_schema = 'public'
-            """), {"tbl": table})
+            ddl_result = db.execute(text(
+                "SELECT 'CREATE TABLE IF NOT EXISTS \"' || :tbl || '\" (' || "
+                "string_agg("
+                "'\"' || column_name || '\" ' || "
+                "CASE "
+                "WHEN data_type = 'character varying' THEN 'TEXT' "
+                "WHEN data_type = 'integer' THEN 'INTEGER' "
+                "WHEN data_type = 'bigint' THEN 'BIGINT' "
+                "WHEN data_type = 'boolean' THEN 'BOOLEAN' "
+                "WHEN data_type = 'double precision' THEN 'DOUBLE PRECISION' "
+                "WHEN data_type = 'numeric' THEN 'NUMERIC' "
+                "WHEN data_type = 'text' THEN 'TEXT' "
+                "WHEN data_type = 'timestamp without time zone' THEN 'TIMESTAMP' "
+                "WHEN data_type = 'timestamp with time zone' THEN 'TIMESTAMPTZ' "
+                "WHEN data_type = 'date' THEN 'DATE' "
+                "ELSE 'TEXT' END, "
+                "', ' ORDER BY ordinal_position"
+                ") || ')' "
+                "FROM information_schema.columns "
+                "WHERE table_name = :tbl AND table_schema = 'public'"
+            ), {"tbl": table})
             ddl = ddl_result.scalar()
 
             if not ddl:
                 continue
 
-            # Create table on Supabase
             sb_cur.execute(ddl)
             sb_conn.commit()
 
-            # Get data from Render
             rows_result = db.execute(text(f'SELECT * FROM "{table}"'))
             rows = rows_result.fetchall()
             if not rows:
@@ -209,7 +208,7 @@ async def migrate_to_supabase():
                     count += 1
                 except Exception as row_err:
                     sb_conn.rollback()
-                    # Skip problematic rows
+                    logger.warning(f"Row insert failed in {table}: {row_err}")
                     continue
 
             sb_conn.commit()
@@ -218,10 +217,12 @@ async def migrate_to_supabase():
         except Exception as e:
             sb_conn.rollback()
             errors[table] = str(e)[:100]
+            logger.error(f"Migration failed for table {table}: {e}")
 
     db.close()
     sb_conn.close()
 
+    logger.info(f"Migration complete: {len(migrated)} tables migrated, {len(errors)} errors")
     return {"migrated": migrated, "errors": errors, "tables_found": len(tables), "supabase_version": sb_version}
 
 @app.get("/api/version")
@@ -523,176 +524,41 @@ def _safe_add_columns(engine, table_name, columns_list):
 
 
 def run_migrations(engine):
-    """Run database migrations to add new columns."""
+    """Run database migrations to add new columns. Uses _safe_add_columns for all operations."""
     from sqlalchemy import text, inspect
 
-    inspector = inspect(engine)
+    # exercises
+    _safe_add_columns(engine, 'exercises', [
+        ('description', 'TEXT'),
+        ('default_duration', 'INTEGER'),
+        ('difficulty', 'TEXT'),
+        ('thumbnail_url', 'TEXT'),
+        ('video_url', 'TEXT'),
+        ('steps_json', 'TEXT'),
+    ])
 
-    # Check if exercises table exists and add new columns if needed
-    if 'exercises' in inspector.get_table_names():
-        columns = [col['name'] for col in inspector.get_columns('exercises')]
+    # courses
+    _safe_add_columns(engine, 'courses', [
+        ('days_of_week_json', 'TEXT'),
+        ('course_type', 'TEXT'),
+        ('cover_image_url', 'TEXT'),
+        ('trailer_url', 'TEXT'),
+        ('max_capacity', 'INTEGER'),
+        ('waitlist_enabled', 'BOOLEAN DEFAULT 1'),
+    ])
 
-        new_columns = [
-            ('description', 'TEXT'),
-            ('default_duration', 'INTEGER'),
-            ('difficulty', 'TEXT'),
-            ('thumbnail_url', 'TEXT'),
-            ('video_url', 'TEXT'),
-            ('steps_json', 'TEXT')
-        ]
+    # course_lessons
+    _safe_add_columns(engine, 'course_lessons', [
+        ('max_capacity', 'INTEGER'),
+    ])
 
-        with engine.connect() as conn:
-            for col_name, col_type in new_columns:
-                if col_name not in columns:
-                    try:
-                        conn.execute(text(f'ALTER TABLE exercises ADD COLUMN {col_name} {col_type}'))
-                        conn.commit()
-                        logger.info(f"Added column {col_name} to exercises table")
-                    except Exception as e:
-                        logger.debug(f"Column {col_name} may already exist: {e}")
+    # trainer_schedule / client_schedule
+    _safe_add_columns(engine, 'trainer_schedule', [('course_id', 'TEXT')])
+    _safe_add_columns(engine, 'client_schedule', [('course_id', 'TEXT')])
 
-    # Check if courses table exists and add new columns if needed
-    if 'courses' in inspector.get_table_names():
-        columns = [col['name'] for col in inspector.get_columns('courses')]
-
-        course_columns = [
-            ('days_of_week_json', 'TEXT'),
-            ('course_type', 'TEXT'),
-            ('cover_image_url', 'TEXT'),
-            ('trailer_url', 'TEXT'),
-        ]
-
-        with engine.connect() as conn:
-            for col_name, col_type in course_columns:
-                if col_name not in columns:
-                    try:
-                        conn.execute(text(f'ALTER TABLE courses ADD COLUMN {col_name} {col_type}'))
-                        conn.commit()
-                        logger.info(f"Added column {col_name} to courses table")
-                    except Exception as e:
-                        logger.debug(f"Column {col_name} may already exist: {e}")
-
-    # Check if trainer_schedule table exists and add course_id column if needed
-    if 'trainer_schedule' in inspector.get_table_names():
-        columns = [col['name'] for col in inspector.get_columns('trainer_schedule')]
-
-        if 'course_id' not in columns:
-            with engine.connect() as conn:
-                try:
-                    conn.execute(text('ALTER TABLE trainer_schedule ADD COLUMN course_id TEXT'))
-                    conn.commit()
-                    logger.info("Added column course_id to trainer_schedule table")
-                except Exception as e:
-                    logger.debug(f"Column course_id may already exist: {e}")
-
-    # Check if client_schedule table exists and add course_id column if needed
-    if 'client_schedule' in inspector.get_table_names():
-        columns = [col['name'] for col in inspector.get_columns('client_schedule')]
-
-        if 'course_id' not in columns:
-            with engine.connect() as conn:
-                try:
-                    conn.execute(text('ALTER TABLE client_schedule ADD COLUMN course_id TEXT'))
-                    conn.commit()
-                    logger.info("Added column course_id to client_schedule table")
-                except Exception as e:
-                    logger.debug(f"Column course_id may already exist: {e}")
-
-    # Check if users table exists and add sub_role column if needed
-    if 'users' in inspector.get_table_names():
-        columns = [col['name'] for col in inspector.get_columns('users')]
-
-        if 'sub_role' not in columns:
-            with engine.connect() as conn:
-                try:
-                    conn.execute(text('ALTER TABLE users ADD COLUMN sub_role TEXT'))
-                    conn.commit()
-                    logger.info("Added column sub_role to users table")
-                except Exception as e:
-                    logger.debug(f"Column sub_role may already exist: {e}")
-
-    # Add fitness_goal and base_calories to client_diet_settings
-    if 'client_diet_settings' in inspector.get_table_names():
-        columns = [col['name'] for col in inspector.get_columns('client_diet_settings')]
-
-        if 'fitness_goal' not in columns:
-            with engine.connect() as conn:
-                try:
-                    conn.execute(text("ALTER TABLE client_diet_settings ADD COLUMN fitness_goal TEXT DEFAULT 'maintain'"))
-                    conn.commit()
-                    logger.info("Added column fitness_goal to client_diet_settings table")
-                except Exception as e:
-                    logger.debug(f"Column fitness_goal may already exist: {e}")
-
-        if 'base_calories' not in columns:
-            with engine.connect() as conn:
-                try:
-                    conn.execute(text("ALTER TABLE client_diet_settings ADD COLUMN base_calories INTEGER DEFAULT 2000"))
-                    conn.commit()
-                    logger.info("Added column base_calories to client_diet_settings table")
-                except Exception as e:
-                    logger.debug(f"Column base_calories may already exist: {e}")
-
-    # Add session_type to appointments
-    if 'appointments' in inspector.get_table_names():
-        columns = [col['name'] for col in inspector.get_columns('appointments')]
-        if 'session_type' not in columns:
-            with engine.connect() as conn:
-                try:
-                    conn.execute(text("ALTER TABLE appointments ADD COLUMN session_type TEXT"))
-                    conn.commit()
-                    logger.info("Added column session_type to appointments table")
-                except Exception as e:
-                    logger.debug(f"Column session_type may already exist: {e}")
-
-    # Add commission_rate to users (PostgreSQL-safe)
+    # users — all columns
     _safe_add_columns(engine, 'users', [
-        ("commission_rate", "DOUBLE PRECISION"),
-    ])
-
-    # Add media fields to messages
-    _safe_add_columns(engine, 'messages', [
-        ("media_type", "TEXT"),
-        ("file_url", "TEXT"),
-        ("file_size", "INTEGER"),
-        ("mime_type", "TEXT"),
-        ("duration", "DOUBLE PRECISION"),
-    ])
-
-    # Add new columns to client_profile (PostgreSQL-safe)
-    _safe_add_columns(engine, 'client_profile', [
-        ("date_of_birth", "TEXT"),
-        ("emergency_contact_name", "TEXT"),
-        ("emergency_contact_phone", "TEXT"),
-        ("is_premium", "BOOLEAN DEFAULT FALSE"),
-        ("privacy_mode", "TEXT DEFAULT 'public'"),
-        ("weight", "DOUBLE PRECISION"),
-        ("body_fat_pct", "DOUBLE PRECISION"),
-        ("fat_mass", "DOUBLE PRECISION"),
-        ("lean_mass", "DOUBLE PRECISION"),
-        ("strength_goal_upper", "INTEGER"),
-        ("strength_goal_lower", "INTEGER"),
-        ("strength_goal_cardio", "INTEGER"),
-        ("health_score", "INTEGER DEFAULT 0"),
-        ("gems", "INTEGER DEFAULT 0"),
-        ("nutritionist_id", "TEXT"),
-        ("weight_goal", "DOUBLE PRECISION"),
-        ("height_cm", "DOUBLE PRECISION"),
-        ("gender", "TEXT"),
-        ("activity_level", "TEXT"),
-        ("allergies", "TEXT"),
-        ("medical_conditions", "TEXT"),
-        ("supplements", "TEXT"),
-        ("sleep_hours", "DOUBLE PRECISION"),
-        ("meal_frequency", "TEXT"),
-        ("food_preferences", "TEXT"),
-        ("occupation_type", "TEXT"),
-        ("current_split_id", "TEXT"),
-        ("split_expiry_date", "TEXT"),
-    ])
-
-    # Add all potentially missing columns to users table (PostgreSQL-safe with IF NOT EXISTS)
-    _safe_add_columns(engine, 'users', [
+        ('sub_role', 'TEXT'),
         ('phone', 'TEXT'),
         ('must_change_password', 'BOOLEAN DEFAULT FALSE'),
         ('profile_picture', 'TEXT'),
@@ -702,6 +568,7 @@ def run_migrations(engine):
         ('gym_name', 'TEXT'),
         ('gym_logo', 'TEXT'),
         ('session_rate', 'DOUBLE PRECISION'),
+        ('commission_rate', 'DOUBLE PRECISION'),
         ('stripe_account_id', 'TEXT'),
         ('stripe_account_status', 'TEXT'),
         ('stripe_terminal_location_id', 'TEXT'),
@@ -727,192 +594,114 @@ def run_migrations(engine):
         ('smtp_oauth_token_expiry', 'TEXT'),
     ])
 
+    # client_diet_settings
+    _safe_add_columns(engine, 'client_diet_settings', [
+        ('fitness_goal', "TEXT DEFAULT 'maintain'"),
+        ('base_calories', 'INTEGER DEFAULT 2000'),
+    ])
+
+    # appointments
+    _safe_add_columns(engine, 'appointments', [
+        ('session_type', 'TEXT'),
+        ('price', 'REAL'),
+        ('payment_method', 'TEXT'),
+        ('payment_status', "TEXT DEFAULT 'free'"),
+        ('stripe_payment_intent_id', 'TEXT'),
+    ])
+
+    # messages
+    _safe_add_columns(engine, 'messages', [
+        ('media_type', 'TEXT'),
+        ('file_url', 'TEXT'),
+        ('file_size', 'INTEGER'),
+        ('mime_type', 'TEXT'),
+        ('duration', 'DOUBLE PRECISION'),
+    ])
+
+    # client_profile
+    _safe_add_columns(engine, 'client_profile', [
+        ('date_of_birth', 'TEXT'),
+        ('emergency_contact_name', 'TEXT'),
+        ('emergency_contact_phone', 'TEXT'),
+        ('is_premium', 'BOOLEAN DEFAULT FALSE'),
+        ('privacy_mode', "TEXT DEFAULT 'public'"),
+        ('weight', 'DOUBLE PRECISION'),
+        ('body_fat_pct', 'DOUBLE PRECISION'),
+        ('fat_mass', 'DOUBLE PRECISION'),
+        ('lean_mass', 'DOUBLE PRECISION'),
+        ('strength_goal_upper', 'INTEGER'),
+        ('strength_goal_lower', 'INTEGER'),
+        ('strength_goal_cardio', 'INTEGER'),
+        ('health_score', 'INTEGER DEFAULT 0'),
+        ('gems', 'INTEGER DEFAULT 0'),
+        ('nutritionist_id', 'TEXT'),
+        ('weight_goal', 'DOUBLE PRECISION'),
+        ('height_cm', 'DOUBLE PRECISION'),
+        ('gender', 'TEXT'),
+        ('activity_level', 'TEXT'),
+        ('allergies', 'TEXT'),
+        ('medical_conditions', 'TEXT'),
+        ('supplements', 'TEXT'),
+        ('sleep_hours', 'DOUBLE PRECISION'),
+        ('meal_frequency', 'TEXT'),
+        ('food_preferences', 'TEXT'),
+        ('occupation_type', 'TEXT'),
+        ('current_split_id', 'TEXT'),
+        ('split_expiry_date', 'TEXT'),
+    ])
+
+    # automated_message_templates
     _safe_add_columns(engine, 'automated_message_templates', [
         ('linked_offer_id', 'TEXT'),
     ])
 
-    # Add health_score to client_daily_diet_summary
-    if 'client_daily_diet_summary' in inspector.get_table_names():
-        columns = [col['name'] for col in inspector.get_columns('client_daily_diet_summary')]
+    # client_daily_diet_summary
+    _safe_add_columns(engine, 'client_daily_diet_summary', [
+        ('health_score', 'INTEGER DEFAULT 0'),
+    ])
 
-        if 'health_score' not in columns:
-            with engine.connect() as conn:
-                try:
-                    conn.execute(text("ALTER TABLE client_daily_diet_summary ADD COLUMN health_score INTEGER DEFAULT 0"))
-                    conn.commit()
-                    logger.info("Added column health_score to client_daily_diet_summary table")
-                except Exception as e:
-                    logger.debug(f"Column health_score may already exist: {e}")
+    # plan_offers
+    _safe_add_columns(engine, 'plan_offers', [
+        ('stripe_coupon_id', 'TEXT'),
+    ])
 
-    # Add capacity columns to courses table
-    if 'courses' in inspector.get_table_names():
-        columns = [col['name'] for col in inspector.get_columns('courses')]
-        capacity_cols = [
-            ('max_capacity', 'INTEGER'),
-            ('waitlist_enabled', 'BOOLEAN DEFAULT 1'),
-        ]
-        for col_name, col_type in capacity_cols:
-            if col_name not in columns:
-                with engine.connect() as conn:
-                    try:
-                        conn.execute(text(f"ALTER TABLE courses ADD COLUMN {col_name} {col_type}"))
-                        conn.commit()
-                        logger.info(f"Added column {col_name} to courses table")
-                    except Exception as e:
-                        logger.debug(f"Column {col_name} may already exist: {e}")
+    # subscription_plans
+    _safe_add_columns(engine, 'subscription_plans', [
+        ('annual_price', 'REAL'),
+        ('installment_count', 'INTEGER DEFAULT 1'),
+        ('billing_type', "VARCHAR DEFAULT 'annual'"),
+    ])
 
-    # Add max_capacity to course_lessons table
-    if 'course_lessons' in inspector.get_table_names():
-        columns = [col['name'] for col in inspector.get_columns('course_lessons')]
-        if 'max_capacity' not in columns:
-            with engine.connect() as conn:
-                try:
-                    conn.execute(text("ALTER TABLE course_lessons ADD COLUMN max_capacity INTEGER"))
-                    conn.commit()
-                    logger.info("Added column max_capacity to course_lessons table")
-                except Exception as e:
-                    logger.debug(f"Column max_capacity may already exist: {e}")
+    # client_subscriptions
+    _safe_add_columns(engine, 'client_subscriptions', [
+        ('stripe_payment_intent_id', 'TEXT'),
+    ])
 
-    # Add stripe_coupon_id to plan_offers table
-    if 'plan_offers' in inspector.get_table_names():
-        columns = [col['name'] for col in inspector.get_columns('plan_offers')]
-        if 'stripe_coupon_id' not in columns:
-            with engine.connect() as conn:
-                try:
-                    conn.execute(text("ALTER TABLE plan_offers ADD COLUMN stripe_coupon_id TEXT"))
-                    conn.commit()
-                    logger.info("Added column stripe_coupon_id to plan_offers table")
-                except Exception as e:
-                    logger.debug(f"Column stripe_coupon_id may already exist: {e}")
+    # weight_history
+    _safe_add_columns(engine, 'weight_history', [
+        ('body_fat_pct', 'REAL'),
+        ('fat_mass', 'REAL'),
+        ('lean_mass', 'REAL'),
+    ])
 
-    # Add installment billing columns to subscription_plans table
-    if 'subscription_plans' in inspector.get_table_names():
-        columns = [col['name'] for col in inspector.get_columns('subscription_plans')]
-        installment_cols = [
-            ('annual_price', 'REAL'),
-            ('installment_count', 'INTEGER DEFAULT 1'),
-            ('billing_type', "VARCHAR DEFAULT 'annual'"),
-        ]
-        for col_name, col_type in installment_cols:
-            if col_name not in columns:
-                with engine.connect() as conn:
-                    try:
-                        conn.execute(text(f"ALTER TABLE subscription_plans ADD COLUMN {col_name} {col_type}"))
-                        conn.commit()
-                        logger.info(f"Added column {col_name} to subscription_plans table")
-                    except Exception as e:
-                        logger.debug(f"Column {col_name} may already exist: {e}")
+    # client_exercise_log
+    _safe_add_columns(engine, 'client_exercise_log', [
+        ('duration', 'REAL'),
+        ('distance', 'REAL'),
+        ('metric_type', "TEXT DEFAULT 'weight_reps'"),
+    ])
 
-    # Add stripe_payment_intent_id to client_subscriptions table
-    if 'client_subscriptions' in inspector.get_table_names():
-        columns = [col['name'] for col in inspector.get_columns('client_subscriptions')]
-        if 'stripe_payment_intent_id' not in columns:
-            with engine.connect() as conn:
-                try:
-                    conn.execute(text("ALTER TABLE client_subscriptions ADD COLUMN stripe_payment_intent_id TEXT"))
-                    conn.commit()
-                    logger.info("Added column stripe_payment_intent_id to client_subscriptions table")
-                except Exception as e:
-                    logger.debug(f"Column stripe_payment_intent_id may already exist: {e}")
-
-    # Add session_rate to users table
-    if 'users' in inspector.get_table_names():
-        columns = [col['name'] for col in inspector.get_columns('users')]
-        if 'session_rate' not in columns:
-            with engine.connect() as conn:
-                try:
-                    conn.execute(text("ALTER TABLE users ADD COLUMN session_rate REAL"))
-                    conn.commit()
-                    logger.info("Added column session_rate to users table")
-                except Exception as e:
-                    logger.debug(f"Column session_rate may already exist: {e}")
-
-    # Add gym_name and gym_logo columns to users table (for owners)
-    if 'users' in inspector.get_table_names():
-        columns = [col['name'] for col in inspector.get_columns('users')]
-        gym_cols = {'gym_name': 'TEXT', 'gym_logo': 'TEXT'}
-        for col_name, col_type in gym_cols.items():
-            if col_name not in columns:
-                with engine.connect() as conn:
-                    try:
-                        conn.execute(text(f"ALTER TABLE users ADD COLUMN {col_name} {col_type}"))
-                        conn.commit()
-                        logger.info(f"Added column {col_name} to users table")
-                    except Exception as e:
-                        logger.debug(f"Column {col_name} may already exist: {e}")
-
-    # Add payment columns to appointments table
-    if 'appointments' in inspector.get_table_names():
-        columns = [col['name'] for col in inspector.get_columns('appointments')]
-        appt_new_cols = {
-            'price': 'REAL',
-            'payment_method': 'TEXT',
-            'payment_status': "TEXT DEFAULT 'free'",
-            'stripe_payment_intent_id': 'TEXT'
-        }
-        for col_name, col_type in appt_new_cols.items():
-            if col_name not in columns:
-                with engine.connect() as conn:
-                    try:
-                        conn.execute(text(f"ALTER TABLE appointments ADD COLUMN {col_name} {col_type}"))
-                        conn.commit()
-                        logger.info(f"Added column {col_name} to appointments table")
-                    except Exception as e:
-                        logger.debug(f"Column {col_name} may already exist: {e}")
-
-    # Add body_fat_pct/fat_mass/lean_mass columns to weight_history if missing
-    if 'weight_history' in inspector.get_table_names():
-        columns = [c['name'] for c in inspector.get_columns('weight_history')]
-        wh_cols = {
-            'body_fat_pct': 'REAL',
-            'fat_mass': 'REAL',
-            'lean_mass': 'REAL',
-        }
-        for col_name, col_type in wh_cols.items():
-            if col_name not in columns:
-                with engine.connect() as conn:
-                    try:
-                        conn.execute(text(f"ALTER TABLE weight_history ADD COLUMN {col_name} {col_type}"))
-                        conn.commit()
-                        logger.info(f"Added column {col_name} to weight_history table")
-                    except Exception as e:
-                        logger.debug(f"Column {col_name} may already exist: {e}")
-
-    # Add duration/distance/metric_type columns to client_exercise_log if missing
-    inspector = inspect(engine)
-    if 'client_exercise_log' in inspector.get_table_names():
-        columns = [c['name'] for c in inspector.get_columns('client_exercise_log')]
-        exercise_log_cols = {
-            'duration': 'REAL',
-            'distance': 'REAL',
-            'metric_type': "TEXT DEFAULT 'weight_reps'"
-        }
-        for col_name, col_type in exercise_log_cols.items():
-            if col_name not in columns:
-                with engine.connect() as conn:
-                    try:
-                        conn.execute(text(f"ALTER TABLE client_exercise_log ADD COLUMN {col_name} {col_type}"))
-                        conn.commit()
-                        logger.info(f"Added column {col_name} to client_exercise_log table")
-                    except Exception as e:
-                        logger.debug(f"Column {col_name} may already exist: {e}")
-
-    # Add alternative_index to weekly_meal_plan table
-    if 'weekly_meal_plan' in inspector.get_table_names():
-        columns = [col['name'] for col in inspector.get_columns('weekly_meal_plan')]
-        if 'alternative_index' not in columns:
-            with engine.connect() as conn:
-                try:
-                    conn.execute(text("ALTER TABLE weekly_meal_plan ADD COLUMN alternative_index INTEGER DEFAULT 0"))
-                    conn.commit()
-                    logger.info("Added column alternative_index to weekly_meal_plan table")
-                except Exception as e:
-                    logger.debug(f"Column alternative_index may already exist: {e}")
+    # weekly_meal_plan
+    _safe_add_columns(engine, 'weekly_meal_plan', [
+        ('alternative_index', 'INTEGER DEFAULT 0'),
+    ])
 
     # --- Multi-gym migration: create gyms table and populate from existing owners ---
+    from sqlalchemy import text, inspect
     from models_orm import GymORM
     GymORM.__table__.create(engine, checkfirst=True)
 
+    inspector = inspect(engine)
     if 'gyms' in inspector.get_table_names():
         with engine.connect() as conn:
             # Check if migration already ran (any gym rows exist)
@@ -961,7 +750,7 @@ def run_migrations(engine):
                         })
                         logger.info(f"Migrated owner {owner[0]} to gyms table")
                     except Exception as e:
-                        logger.debug(f"Gym migration for owner {owner[0]} may already exist: {e}")
+                        logger.warning(f"Gym migration for owner {owner[0]} failed: {e}")
 
                 conn.commit()
                 logger.info(f"Multi-gym migration complete: {len(owners)} gyms created")

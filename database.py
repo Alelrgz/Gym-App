@@ -85,15 +85,18 @@ def _run_early_migrations():
                                 f"ALTER TABLE users ADD COLUMN IF NOT EXISTS {col_name} {col_type}"
                             ))
                             conn.commit()
-                        except Exception:
+                        except Exception as e:
+                            import logging
+                            logging.getLogger("gym_app").warning(f"Early migration: failed to add {col_name} to users: {e}")
                             try:
                                 conn.rollback()
                             except Exception:
                                 pass
-    except Exception:
-        pass  # Database might not be ready yet — startup_event will retry
+    except Exception as e:
+        import logging
+        logging.getLogger("gym_app").warning(f"Early migrations skipped (DB may not be ready): {e}")
 
-    # SQLite: add new columns to existing tables (ALTER TABLE ADD COLUMN is idempotent-safe via try/except)
+    # SQLite: add new columns to existing tables
     if not IS_POSTGRES:
         try:
             with engine.connect() as conn:
@@ -106,12 +109,14 @@ def _run_early_migrations():
                         conn.execute(text(sql))
                         conn.commit()
                     except Exception:
+                        # Column likely already exists — expected for idempotent migrations
                         try:
                             conn.rollback()
                         except Exception:
                             pass
-        except Exception:
-            pass
+        except Exception as e:
+            import logging
+            logging.getLogger("gym_app").warning(f"SQLite migration error: {e}")
 
 _run_early_migrations()
 

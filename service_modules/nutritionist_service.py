@@ -42,13 +42,35 @@ class NutritionistService:
             today = date.today()
             profile_lookup = {p.id: p for p in client_profiles}
 
+            # Batch fetch last diet logs for all clients (avoid N+1)
+            from sqlalchemy import func
+            if client_ids:
+                latest_dates_subq = db.query(
+                    ClientDailyDietSummaryORM.client_id,
+                    func.max(ClientDailyDietSummaryORM.date).label("max_date")
+                ).filter(
+                    ClientDailyDietSummaryORM.client_id.in_(client_ids)
+                ).group_by(ClientDailyDietSummaryORM.client_id).subquery()
+
+                last_logs = db.query(ClientDailyDietSummaryORM).join(
+                    latest_dates_subq,
+                    (ClientDailyDietSummaryORM.client_id == latest_dates_subq.c.client_id) &
+                    (ClientDailyDietSummaryORM.date == latest_dates_subq.c.max_date)
+                ).all()
+                last_log_lookup = {l.client_id: l for l in last_logs}
+
+                # Batch fetch all diet settings
+                all_diets = db.query(ClientDietSettingsORM).filter(
+                    ClientDietSettingsORM.id.in_(client_ids)
+                ).all()
+                diet_lookup = {d.id: d for d in all_diets}
+            else:
+                last_log_lookup = {}
+                diet_lookup = {}
+
             for c in clients_orm:
                 profile = profile_lookup.get(c.id)
-
-                # Check last diet log for activity status
-                last_log = db.query(ClientDailyDietSummaryORM).filter(
-                    ClientDailyDietSummaryORM.client_id == c.id
-                ).order_by(ClientDailyDietSummaryORM.date.desc()).first()
+                last_log = last_log_lookup.get(c.id)
 
                 days_inactive = 99
                 if last_log and last_log.date:
@@ -64,10 +86,7 @@ class NutritionistService:
                 else:
                     active_count += 1
 
-                # Get current diet settings
-                diet = db.query(ClientDietSettingsORM).filter(
-                    ClientDietSettingsORM.id == c.id
-                ).first()
+                diet = diet_lookup.get(c.id)
 
                 clients.append({
                     "id": c.id,

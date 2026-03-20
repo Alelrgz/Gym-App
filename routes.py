@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Header, HTTPException, status, File, UploadFile
+from fastapi import APIRouter, Depends, Header, HTTPException, status, File, UploadFile, Request
 from typing import Optional
 from fastapi.security import OAuth2PasswordRequestForm
 from models import GymConfig, ClientData, TrainerData, OwnerData, LeaderboardData, WorkoutAssignment, ExerciseTemplate, AssignDietRequest
@@ -7,6 +7,25 @@ from datetime import timedelta
 from auth import create_access_token, get_current_user
 from database import get_db
 from models_orm import UserORM
+import logging
+
+logger = logging.getLogger("gym_app")
+
+# Rate limiting for API auth endpoints
+try:
+    from slowapi import Limiter
+    from slowapi.util import get_remote_address
+    _limiter = Limiter(key_func=get_remote_address)
+except ImportError:
+    _limiter = None
+
+def _rate_limit_auth(limit_str):
+    """Apply rate limiting to auth endpoints."""
+    def decorator(func):
+        if _limiter:
+            return _limiter.limit(limit_str)(func)
+        return func
+    return decorator
 
 # Import modular routes
 from route_modules.workout_routes import router as workout_router
@@ -63,7 +82,8 @@ async def ping():
     return {"pong": True}
 
 @router.post("/api/auth/login")
-async def login(form_data: OAuth2PasswordRequestForm = Depends(), service: UserService = Depends(get_user_service)):
+@_rate_limit_auth("10/minute")
+async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends(), service: UserService = Depends(get_user_service)):
     user = service.authenticate_user(form_data.username, form_data.password)
     if not user:
         raise HTTPException(
@@ -94,8 +114,10 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), service: UserS
     }
 
 @router.post("/api/auth/register")
+@_rate_limit_auth("5/minute")
 async def register(
-    user_data: dict, 
+    request: Request,
+    user_data: dict,
     service: UserService = Depends(get_user_service)
 ):
     return service.register_user(user_data)

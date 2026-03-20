@@ -13,7 +13,7 @@ SECRET_KEY = os.getenv("SECRET_KEY", "dev_secret_key_local_only")
 if os.getenv("DATABASE_URL", "").startswith("postgres") and SECRET_KEY == "dev_secret_key_local_only":
     raise RuntimeError("SECRET_KEY env var is required in production")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 30
+ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 8  # 8 hours — matches API login route
 
 
 import bcrypt

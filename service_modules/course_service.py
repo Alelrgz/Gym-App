@@ -1153,13 +1153,17 @@ class CourseService:
                 LessonEnrollmentORM.status == "confirmed"
             ).all()
 
+            # Batch fetch client names (avoid N+1)
+            client_ids = [e.client_id for e in enrollments]
+            clients = db.query(UserORM).filter(UserORM.id.in_(client_ids)).all() if client_ids else []
+            client_lookup = {c.id: c.username for c in clients}
+
             result = []
             for e in enrollments:
-                client = db.query(UserORM).filter(UserORM.id == e.client_id).first()
                 result.append({
                     "id": e.id,
                     "client_id": e.client_id,
-                    "client_name": client.username if client else "Unknown",
+                    "client_name": client_lookup.get(e.client_id, "Unknown"),
                     "status": e.status,
                     "enrolled_at": e.enrolled_at
                 })
@@ -1184,13 +1188,17 @@ class CourseService:
                 LessonWaitlistORM.status.in_(["waiting", "notified"])
             ).order_by(LessonWaitlistORM.position).all()
 
+            # Batch fetch client names (avoid N+1)
+            client_ids = [w.client_id for w in waitlist]
+            clients = db.query(UserORM).filter(UserORM.id.in_(client_ids)).all() if client_ids else []
+            client_lookup = {c.id: c.username for c in clients}
+
             result = []
             for w in waitlist:
-                client = db.query(UserORM).filter(UserORM.id == w.client_id).first()
                 result.append({
                     "id": w.id,
                     "client_id": w.client_id,
-                    "client_name": client.username if client else "Unknown",
+                    "client_name": client_lookup.get(w.client_id, "Unknown"),
                     "position": w.position,
                     "status": w.status,
                     "added_at": w.added_at,

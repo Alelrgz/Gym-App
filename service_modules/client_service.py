@@ -281,6 +281,23 @@ class ClientService:
                                     logs_by_ex[log.exercise_name] = {}
                                 logs_by_ex[log.exercise_name][log.set_number] = log
 
+                            # Batch fetch historical exercise logs for pre-fill (avoid N+1)
+                            exercise_names = [ex.get("name") for ex in todays_workout["exercises"] if ex.get("name")]
+                            historical_logs = db.query(ClientExerciseLogORM).filter(
+                                ClientExerciseLogORM.client_id == client_id,
+                                ClientExerciseLogORM.exercise_name.in_(exercise_names),
+                                ClientExerciseLogORM.date < today_str
+                            ).order_by(ClientExerciseLogORM.date.desc(), ClientExerciseLogORM.id.desc()).all()
+
+                            # Build lookup: {exercise_name: {set_number: last_log}}
+                            historical_lookup = {}
+                            for hl in historical_logs:
+                                key = hl.exercise_name
+                                if key not in historical_lookup:
+                                    historical_lookup[key] = {}
+                                if hl.set_number not in historical_lookup[key]:
+                                    historical_lookup[key][hl.set_number] = hl  # first = most recent
+
                             for ex in todays_workout["exercises"]:
                                 ex_name = ex.get("name")
                                 if ex_name in logs_by_ex:
@@ -296,14 +313,9 @@ class ClientService:
                                                 "completed": True
                                             })
                                         else:
-                                            # Pre-fill with last known weight for this exercise/set
-                                            last_log = db.query(ClientExerciseLogORM).filter(
-                                                ClientExerciseLogORM.client_id == client_id,
-                                                ClientExerciseLogORM.exercise_name == ex_name,
-                                                ClientExerciseLogORM.set_number == i + 1
-                                            ).order_by(ClientExerciseLogORM.date.desc(), ClientExerciseLogORM.id.desc()).first()
-
-                                            last_weight = last_log.weight if last_log else ""
+                                            # Use pre-fetched historical data
+                                            hist = historical_lookup.get(ex_name, {}).get(i + 1)
+                                            last_weight = hist.weight if hist else ""
 
                                             performance.append({
                                                 "reps": "",

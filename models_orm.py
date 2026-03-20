@@ -22,7 +22,7 @@ class UserORM(Base):
 
     # Gym code system
     gym_code = Column(String(6), unique=True, nullable=True, index=True)  # 6-char code for owners
-    gym_owner_id = Column(String, ForeignKey("users.id"), nullable=True, index=True)  # For trainers: which gym they belong to
+    gym_owner_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)  # For trainers: which gym they belong to
     is_approved = Column(Boolean, default=True, index=True)  # For trainers: needs owner approval (False = pending)
 
     # Stripe Connect (for gym owners to receive payments)
@@ -82,7 +82,7 @@ class GymORM(Base):
     __tablename__ = "gyms"
 
     id = Column(String, primary_key=True, index=True)  # UUID (for migrated owners: same as owner.id)
-    owner_id = Column(String, ForeignKey("users.id"), index=True)
+    owner_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
     name = Column(String, nullable=True)
     logo = Column(String, nullable=True)
     gym_code = Column(String(6), unique=True, nullable=True, index=True)
@@ -168,7 +168,7 @@ class ClientProfileORM(Base):
     __tablename__ = "client_profile"
 
     # One-to-One with User, so PK is the same as User ID
-    id = Column(String, ForeignKey("users.id"), primary_key=True, index=True)
+    id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True, index=True)
     name = Column(String)
     email = Column(String, nullable=True) 
     streak = Column(Integer, default=0)
@@ -179,9 +179,9 @@ class ClientProfileORM(Base):
     last_seen = Column(String, nullable=True)
 
     # Gym and trainer/nutritionist assignment
-    gym_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)  # Owner's ID representing the gym
-    trainer_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)
-    nutritionist_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)
+    gym_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
+    trainer_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
+    nutritionist_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
 
     is_premium = Column(Boolean, default=False)
 
@@ -229,8 +229,8 @@ class ClientDocumentORM(Base):
     __tablename__ = "client_documents"
 
     id = Column(String, primary_key=True, index=True)
-    client_id = Column(String, ForeignKey("users.id"), index=True)
-    gym_id = Column(String, ForeignKey("users.id"), index=True)
+    client_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    gym_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
 
     document_type = Column(String)  # "medical_certificate", "waiver"
     file_path = Column(String, nullable=True)  # For uploaded files
@@ -248,7 +248,7 @@ class WeightHistoryORM(Base):
     __tablename__ = "weight_history"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    client_id = Column(String, ForeignKey("users.id"), index=True)
+    client_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
     weight = Column(Float)
     body_fat_pct = Column(Float, nullable=True)  # Body fat percentage
     fat_mass = Column(Float, nullable=True)  # Fat mass in kg
@@ -260,7 +260,7 @@ class ClientScheduleORM(Base):
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     # Vital for shared DB:
-    client_id = Column(String, ForeignKey("users.id"), index=True)
+    client_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
 
     date = Column(String, index=True) # ISO format YYYY-MM-DD
     title = Column(String)
@@ -274,7 +274,7 @@ class ClientScheduleORM(Base):
 class ClientDietSettingsORM(Base):
     __tablename__ = "client_diet_settings"
 
-    id = Column(String, ForeignKey("users.id"), primary_key=True, index=True) # client_id
+    id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), primary_key=True, index=True) # client_id
 
     # Fitness goal: cut, maintain, bulk
     fitness_goal = Column(String, default="maintain")
@@ -302,7 +302,7 @@ class ClientDietLogORM(Base):
     __tablename__ = "client_diet_log"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    client_id = Column(String, ForeignKey("users.id"), index=True)
+    client_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
 
     date = Column(String, index=True)
     meal_type = Column(String)
@@ -315,7 +315,7 @@ class ClientDailyDietSummaryORM(Base):
     __tablename__ = "client_daily_diet_summary"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    client_id = Column(String, ForeignKey("users.id"), index=True)
+    client_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
 
     date = Column(String, index=True)  # YYYY-MM-DD
 
@@ -342,7 +342,7 @@ class ClientExerciseLogORM(Base):
     __tablename__ = "client_exercise_log"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    client_id = Column(String, ForeignKey("users.id"), index=True)
+    client_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
 
     date = Column(String, index=True)
     workout_id = Column(String, nullable=True)
@@ -358,7 +358,7 @@ class TrainerScheduleORM(Base):
     __tablename__ = "trainer_schedule"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    trainer_id = Column(String, ForeignKey("users.id"), index=True)
+    trainer_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
 
     date = Column(String, index=True) # YYYY-MM-DD
     time = Column(String) # HH:MM AM/PM
@@ -382,7 +382,7 @@ class TrainerNoteORM(Base):
     __tablename__ = "trainer_notes"
 
     id = Column(String, primary_key=True, index=True)
-    trainer_id = Column(String, ForeignKey("users.id"), index=True)
+    trainer_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
     client_id = Column(String, nullable=True, index=True)  # NULL = general note, set = per-client note
     title = Column(String)
     content = Column(String)  # Note body
@@ -397,7 +397,7 @@ class SubscriptionPlanORM(Base):
     __tablename__ = "subscription_plans"
 
     id = Column(String, primary_key=True, index=True)
-    gym_id = Column(String, ForeignKey("users.id"), index=True)  # Owner/trainer who created this plan
+    gym_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)  # Owner/trainer who created this plan
 
     name = Column(String)  # e.g., "Basic", "Premium", "VIP"
     description = Column(String, nullable=True)
@@ -430,9 +430,9 @@ class ClientSubscriptionORM(Base):
     __tablename__ = "client_subscriptions"
 
     id = Column(String, primary_key=True, index=True)
-    client_id = Column(String, ForeignKey("users.id"), index=True)
+    client_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
     plan_id = Column(String, ForeignKey("subscription_plans.id"), index=True)
-    gym_id = Column(String, ForeignKey("users.id"), index=True)  # Which gym they're subscribed to
+    gym_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)  # Which gym they're subscribed to
 
     # Stripe integration
     stripe_subscription_id = Column(String, nullable=True, unique=True)
@@ -460,9 +460,9 @@ class PaymentORM(Base):
     __tablename__ = "payments"
 
     id = Column(String, primary_key=True, index=True)
-    client_id = Column(String, ForeignKey("users.id"), index=True)
+    client_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
     subscription_id = Column(String, ForeignKey("client_subscriptions.id"), index=True, nullable=True)
-    gym_id = Column(String, ForeignKey("users.id"), index=True)
+    gym_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
 
     # Payment details
     amount = Column(Float)
@@ -487,7 +487,7 @@ class PlanOfferORM(Base):
     __tablename__ = "plan_offers"
 
     id = Column(String, primary_key=True, index=True)
-    gym_id = Column(String, ForeignKey("users.id"), index=True)
+    gym_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
     plan_id = Column(String, ForeignKey("subscription_plans.id"), index=True, nullable=True)  # Specific plan or all plans if null
 
     # Offer details
@@ -544,8 +544,8 @@ class AppointmentORM(Base):
     __tablename__ = "appointments"
 
     id = Column(String, primary_key=True, index=True)
-    client_id = Column(String, ForeignKey("users.id"), index=True)
-    trainer_id = Column(String, ForeignKey("users.id"), index=True)
+    client_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
+    trainer_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
 
     # Appointment date and time
     date = Column(String, index=True)  # ISO format YYYY-MM-DD
@@ -644,7 +644,7 @@ class WeeklyMealPlanORM(Base):
     __tablename__ = "weekly_meal_plan"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    client_id = Column(String, ForeignKey("users.id"), index=True)
+    client_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
     assigned_by = Column(String, ForeignKey("users.id"))  # nutritionist or trainer id
 
     day_of_week = Column(Integer, index=True)  # 0=Monday, 1=Tuesday, ..., 6=Sunday
@@ -670,8 +670,8 @@ class ConversationORM(Base):
     id = Column(String, primary_key=True, index=True)
 
     # Legacy fields for trainer <-> client (kept for backwards compatibility)
-    trainer_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)
-    client_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)
+    trainer_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=True)
+    client_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True, nullable=True)
 
     # Generic participant fields for any conversation type
     user1_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)
@@ -698,10 +698,10 @@ class MessageORM(Base):
     __tablename__ = "messages"
 
     id = Column(String, primary_key=True, index=True)
-    conversation_id = Column(String, ForeignKey("conversations.id"), index=True)
+    conversation_id = Column(String, ForeignKey("conversations.id", ondelete="CASCADE"), index=True)
 
     # Sender info
-    sender_id = Column(String, ForeignKey("users.id"), index=True)
+    sender_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
     sender_role = Column(String)  # 'trainer' or 'client'
 
     # Message content
@@ -773,9 +773,9 @@ class CheckInORM(Base):
     __tablename__ = "checkins"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    member_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    member_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
     staff_id = Column(String, ForeignKey("users.id"), nullable=True)  # Staff who checked them in
-    gym_owner_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    gym_owner_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
 
     checked_in_at = Column(String, default=lambda: datetime.utcnow().isoformat())
     notes = Column(String, nullable=True)
@@ -786,7 +786,7 @@ class DailyQuestCompletionORM(Base):
     __tablename__ = "daily_quest_completions"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    client_id = Column(String, ForeignKey("users.id"), index=True)
+    client_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
     date = Column(String, index=True)  # YYYY-MM-DD
     quest_index = Column(Integer)  # Index of the quest (0, 1, 2, 3...)
     completed = Column(Boolean, default=False)
@@ -798,7 +798,7 @@ class NotificationORM(Base):
     __tablename__ = "notifications"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String, ForeignKey("users.id"), index=True)  # Who receives the notification
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)  # Who receives the notification
     type = Column(String, index=True)  # appointment_booked, appointment_canceled, message, etc.
     title = Column(String)
     message = Column(String)
@@ -812,7 +812,7 @@ class FCMDeviceTokenORM(Base):
     __tablename__ = "fcm_device_tokens"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    user_id = Column(String, ForeignKey("users.id"), index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
     token = Column(String, unique=True, index=True)
     platform = Column(String, nullable=True)  # ios, android, web
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
@@ -858,7 +858,7 @@ class AutomatedMessageTemplateORM(Base):
     __tablename__ = "automated_message_templates"
 
     id = Column(String, primary_key=True, index=True)  # UUID
-    gym_id = Column(String, ForeignKey("users.id"), index=True)  # Owner's user ID
+    gym_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)  # Owner's user ID
     name = Column(String)  # e.g., "Inactive Client Reminder"
     trigger_type = Column(String, index=True)  # missed_workout, days_inactive, no_show_appointment
     trigger_config = Column(Text, nullable=True)  # JSON: {"days_threshold": 5}
@@ -877,8 +877,8 @@ class AutomatedMessageLogORM(Base):
     __tablename__ = "automated_message_log"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    template_id = Column(String, ForeignKey("automated_message_templates.id"), index=True)
-    client_id = Column(String, ForeignKey("users.id"), index=True)
+    template_id = Column(String, ForeignKey("automated_message_templates.id", ondelete="CASCADE"), index=True)
+    client_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
     gym_id = Column(String, index=True)
     trigger_type = Column(String)
     trigger_reference = Column(String, nullable=True)  # schedule_id or appointment_id
@@ -913,7 +913,7 @@ class CourseORM(Base):
 
     # Ownership and visibility
     owner_id = Column(String, ForeignKey("users.id"), index=True)  # Trainer who created it
-    gym_id = Column(String, ForeignKey("users.id"), index=True, nullable=True)  # Gym owner ID
+    gym_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)  # Gym owner ID
     is_shared = Column(Boolean, default=False)  # If True, visible to all trainers in gym
 
     # Client preview / visual intro
@@ -934,7 +934,7 @@ class CourseLessonORM(Base):
     __tablename__ = "course_lessons"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    course_id = Column(String, ForeignKey("courses.id"), index=True)
+    course_id = Column(String, ForeignKey("courses.id", ondelete="CASCADE"), index=True)
 
     # Scheduling
     date = Column(String, index=True)  # YYYY-MM-DD
@@ -969,8 +969,8 @@ class LessonEnrollmentORM(Base):
     __tablename__ = "lesson_enrollments"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    lesson_id = Column(Integer, ForeignKey("course_lessons.id"), index=True)
-    client_id = Column(String, ForeignKey("users.id"), index=True)
+    lesson_id = Column(Integer, ForeignKey("course_lessons.id", ondelete="CASCADE"), index=True)
+    client_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
 
     status = Column(String, default="confirmed")  # confirmed, cancelled, attended, no_show
     enrolled_at = Column(String, default=lambda: datetime.utcnow().isoformat())
@@ -986,8 +986,8 @@ class LessonWaitlistORM(Base):
     __tablename__ = "lesson_waitlist"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    lesson_id = Column(Integer, ForeignKey("course_lessons.id"), index=True)
-    client_id = Column(String, ForeignKey("users.id"), index=True)
+    lesson_id = Column(Integer, ForeignKey("course_lessons.id", ondelete="CASCADE"), index=True)
+    client_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
 
     position = Column(Integer)  # 1 = first in line
     added_at = Column(String, default=lambda: datetime.utcnow().isoformat())
@@ -1007,8 +1007,8 @@ class NfcTagORM(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     nfc_uid = Column(String, unique=True, nullable=False, index=True)  # Hardware UID (e.g., "04:A3:2B:1C:5D:80:00")
-    member_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
-    gym_owner_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    member_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    gym_owner_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     registered_by = Column(String, ForeignKey("users.id"), nullable=True)  # Staff who registered
     label = Column(String, nullable=True)  # e.g., "Wristband #42"
     is_active = Column(Boolean, default=True)
@@ -1021,8 +1021,8 @@ class ShowerUsageORM(Base):
 
     id = Column(Integer, primary_key=True, autoincrement=True)
     nfc_tag_id = Column(Integer, ForeignKey("nfc_tags.id"), nullable=True, index=True)
-    member_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
-    gym_owner_id = Column(String, ForeignKey("users.id"), nullable=False, index=True)
+    member_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    gym_owner_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
     shower_id = Column(String, nullable=True)  # Which shower/device (e.g., "shower-1")
     started_at = Column(String, nullable=False)  # ISO datetime
     duration_seconds = Column(Integer, nullable=True)  # Actual duration (from ESP32 report)
@@ -1053,7 +1053,7 @@ class ActivityTypeORM(Base):
     __tablename__ = "activity_types"
 
     id = Column(String, primary_key=True, index=True)
-    gym_id = Column(String, ForeignKey("users.id"), index=True)
+    gym_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
     name = Column(String)
     emoji = Column(String, nullable=True)
     description = Column(String, nullable=True)
@@ -1069,7 +1069,7 @@ class FacilityORM(Base):
 
     id = Column(String, primary_key=True, index=True)
     activity_type_id = Column(String, ForeignKey("activity_types.id"), index=True)
-    gym_id = Column(String, ForeignKey("users.id"), index=True)
+    gym_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
     name = Column(String)
     description = Column(String, nullable=True)
     slot_duration = Column(Integer, default=60)  # Minutes per booking slot
@@ -1085,7 +1085,7 @@ class FacilityAvailabilityORM(Base):
     __tablename__ = "facility_availability"
 
     id = Column(Integer, primary_key=True, index=True, autoincrement=True)
-    facility_id = Column(String, ForeignKey("facilities.id"), index=True)
+    facility_id = Column(String, ForeignKey("facilities.id", ondelete="CASCADE"), index=True)
     day_of_week = Column(Integer, index=True)  # 0=Monday, 6=Sunday
     start_time = Column(String)  # HH:MM (24h)
     end_time = Column(String)    # HH:MM (24h)
@@ -1098,10 +1098,10 @@ class FacilityBookingORM(Base):
     __tablename__ = "facility_bookings"
 
     id = Column(String, primary_key=True, index=True)
-    facility_id = Column(String, ForeignKey("facilities.id"), index=True)
+    facility_id = Column(String, ForeignKey("facilities.id", ondelete="CASCADE"), index=True)
     activity_type_id = Column(String, ForeignKey("activity_types.id"), index=True)
-    gym_id = Column(String, ForeignKey("users.id"), index=True)
-    client_id = Column(String, ForeignKey("users.id"), index=True)
+    gym_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
+    client_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
 
     date = Column(String, index=True)  # YYYY-MM-DD
     start_time = Column(String)        # HH:MM
@@ -1131,7 +1131,7 @@ class CommunityPostORM(Base):
     __tablename__ = "community_posts"
 
     id = Column(String, primary_key=True, index=True)  # UUID
-    author_id = Column(String, ForeignKey("users.id"), index=True)
+    author_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
     gym_id = Column(String, index=True)
     scope = Column(String, default="local", index=True)  # "local" or "global"
 
@@ -1166,7 +1166,7 @@ class CommunityEventParticipantORM(Base):
     __table_args__ = (UniqueConstraint("post_id", "user_id", name="uq_event_participant"),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    post_id = Column(String, ForeignKey("community_posts.id"), index=True)
+    post_id = Column(String, ForeignKey("community_posts.id", ondelete="CASCADE"), index=True)
     user_id = Column(String, ForeignKey("users.id"), index=True)
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
 
@@ -1176,8 +1176,8 @@ class CommunityLikeORM(Base):
     __table_args__ = (UniqueConstraint("post_id", "user_id", name="uq_community_like"),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    post_id = Column(String, ForeignKey("community_posts.id"), index=True)
-    user_id = Column(String, ForeignKey("users.id"), index=True)
+    post_id = Column(String, ForeignKey("community_posts.id", ondelete="CASCADE"), index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
 
 
@@ -1185,8 +1185,8 @@ class CommunityCommentORM(Base):
     __tablename__ = "community_comments"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    post_id = Column(String, ForeignKey("community_posts.id"), index=True)
-    author_id = Column(String, ForeignKey("users.id"), index=True)
+    post_id = Column(String, ForeignKey("community_posts.id", ondelete="CASCADE"), index=True)
+    author_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
     content = Column(Text)
     parent_comment_id = Column(Integer, nullable=True)
     like_count = Column(Integer, default=0)
@@ -1200,8 +1200,8 @@ class CommunityCommentLikeORM(Base):
     __table_args__ = (UniqueConstraint("comment_id", "user_id", name="uq_community_comment_like"),)
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    comment_id = Column(Integer, ForeignKey("community_comments.id"), index=True)
-    user_id = Column(String, ForeignKey("users.id"), index=True)
+    comment_id = Column(Integer, ForeignKey("community_comments.id", ondelete="CASCADE"), index=True)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
 
 
@@ -1212,7 +1212,7 @@ class DataConsentORM(Base):
     __tablename__ = "data_consents"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    client_id = Column(String, ForeignKey("users.id"), index=True)
+    client_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
     professional_id = Column(String, ForeignKey("users.id"), index=True)
     professional_role = Column(String)  # "trainer" or "nutritionist"
 
@@ -1238,9 +1238,9 @@ class SensitiveDataAccessLogORM(Base):
     __tablename__ = "sensitive_data_access_log"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    accessor_id = Column(String, ForeignKey("users.id"), index=True)
+    accessor_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
     accessor_role = Column(String)  # trainer, nutritionist, owner, staff
-    client_id = Column(String, ForeignKey("users.id"), index=True)
+    client_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), index=True)
 
     resource_type = Column(String, index=True)  # weight, body_composition, diet, health_data, medical_cert, physique_photos, training_data
     action = Column(String)  # view, update, delete

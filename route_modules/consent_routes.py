@@ -132,10 +132,13 @@ async def list_my_consents(
         DataConsentORM.client_id == current_user.id
     ).order_by(DataConsentORM.granted_at.desc()).all()
 
+    # Batch fetch all professional names (avoid N+1)
+    prof_ids = list({c.professional_id for c in consents if c.professional_id})
+    profs = db.query(UserORM).filter(UserORM.id.in_(prof_ids)).all() if prof_ids else []
+    prof_lookup = {p.id: p.username for p in profs}
+
     result = []
     for c in consents:
-        # Get professional name
-        prof = db.query(UserORM).filter(UserORM.id == c.professional_id).first()
         try:
             scopes = json.loads(c.consent_scope) if c.consent_scope else []
         except json.JSONDecodeError:
@@ -144,7 +147,7 @@ async def list_my_consents(
         result.append({
             "id": c.id,
             "professional_id": c.professional_id,
-            "professional_name": prof.username if prof else "Unknown",
+            "professional_name": prof_lookup.get(c.professional_id, "Unknown"),
             "professional_role": c.professional_role,
             "scopes": scopes,
             "status": c.status,
@@ -317,22 +320,18 @@ async def get_audit_log(
     total = query.count()
     logs = query.order_by(SensitiveDataAccessLogORM.accessed_at.desc()).offset(offset).limit(limit).all()
 
-    result = []
-    # Cache user names
-    user_cache = {}
-    for log in logs:
-        if log.accessor_id not in user_cache:
-            u = db.query(UserORM.username).filter(UserORM.id == log.accessor_id).first()
-            user_cache[log.accessor_id] = u[0] if u else "Unknown"
-        if log.client_id not in user_cache:
-            u = db.query(UserORM.username).filter(UserORM.id == log.client_id).first()
-            user_cache[log.client_id] = u[0] if u else "Unknown"
+    # Batch fetch all user names (avoid N+1)
+    all_user_ids = list({log.accessor_id for log in logs} | {log.client_id for log in logs})
+    users = db.query(UserORM.id, UserORM.username).filter(UserORM.id.in_(all_user_ids)).all() if all_user_ids else []
+    user_cache = {u.id: u.username for u in users}
 
+    result = []
+    for log in logs:
         result.append({
             "id": log.id,
-            "accessor_name": user_cache[log.accessor_id],
+            "accessor_name": user_cache.get(log.accessor_id, "Unknown"),
             "accessor_role": log.accessor_role,
-            "client_name": user_cache[log.client_id],
+            "client_name": user_cache.get(log.client_id, "Unknown"),
             "resource_type": log.resource_type,
             "action": log.action,
             "endpoint": log.endpoint,
@@ -366,17 +365,16 @@ async def get_consent_overview(
         DataConsentORM.client_id.in_(gym_client_ids)
     ).order_by(DataConsentORM.granted_at.desc()).all()
 
+    # Batch fetch all user names (avoid N+1)
+    all_user_ids = list({c.client_id for c in consents} | {c.professional_id for c in consents})
+    users = db.query(UserORM.id, UserORM.username).filter(UserORM.id.in_(all_user_ids)).all() if all_user_ids else []
+    user_cache = {u.id: u.username for u in users}
+
     active = 0
     revoked = 0
     result = []
 
-    user_cache = {}
     for c in consents:
-        for uid in [c.client_id, c.professional_id]:
-            if uid not in user_cache:
-                u = db.query(UserORM.username).filter(UserORM.id == uid).first()
-                user_cache[uid] = u[0] if u else "Unknown"
-
         try:
             scopes = json.loads(c.consent_scope) if c.consent_scope else []
         except json.JSONDecodeError:
@@ -389,8 +387,8 @@ async def get_consent_overview(
 
         result.append({
             "id": c.id,
-            "client_name": user_cache[c.client_id],
-            "professional_name": user_cache[c.professional_id],
+            "client_name": user_cache.get(c.client_id, "Unknown"),
+            "professional_name": user_cache.get(c.professional_id, "Unknown"),
             "professional_role": c.professional_role,
             "scopes": scopes,
             "status": c.status,
