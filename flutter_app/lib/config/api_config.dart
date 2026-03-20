@@ -14,10 +14,10 @@ class ApiConfig {
   }
 
   /// Production backend URL (Render deployment)
-  static const String productionUrl = 'https://gym-app-prototype-mm5g.onrender.com';
+  static const String productionUrl = 'https://fitos-eu.onrender.com';
 
   /// Set to true to use local dev server instead of production
-  static bool useLocalServer = true;
+  static bool useLocalServer = false;
 
   static String get baseUrl {
     if (kIsWeb) {
