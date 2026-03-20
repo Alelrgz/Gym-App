@@ -428,7 +428,7 @@ async def get_pending_chat_requests(current_user: UserORM = Depends(get_current_
         requests = db.query(ChatRequestORM).filter(
             ChatRequestORM.to_user_id == current_user.id,
             ChatRequestORM.status == "pending"
-        ).all()
+        ).limit(100).all()
 
         result = []
         for req in requests:
@@ -457,7 +457,7 @@ async def get_sent_chat_requests(current_user: UserORM = Depends(get_current_use
     try:
         requests = db.query(ChatRequestORM).filter(
             ChatRequestORM.from_user_id == current_user.id
-        ).all()
+        ).limit(100).all()
 
         result = []
         for req in requests:

@@ -130,7 +130,7 @@ async def list_my_consents(
 
     consents = db.query(DataConsentORM).filter(
         DataConsentORM.client_id == current_user.id
-    ).order_by(DataConsentORM.granted_at.desc()).all()
+    ).order_by(DataConsentORM.granted_at.desc()).limit(200).all()
 
     # Batch fetch all professional names (avoid N+1)
     prof_ids = list({c.professional_id for c in consents if c.professional_id})

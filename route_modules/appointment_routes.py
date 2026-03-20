@@ -148,7 +148,7 @@ async def get_pending_appointments(
         appointments = db.query(AppointmentORM).filter(
             AppointmentORM.trainer_id == user.id,
             AppointmentORM.status == "pending_trainer"
-        ).order_by(AppointmentORM.date, AppointmentORM.start_time).all()
+        ).order_by(AppointmentORM.date, AppointmentORM.start_time).limit(200).all()
 
         result = []
         for appt in appointments:

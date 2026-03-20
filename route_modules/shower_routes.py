@@ -456,7 +456,7 @@ async def list_nfc_tags(
     tags = db.query(NfcTagORM).filter(
         NfcTagORM.gym_owner_id == gym_owner_id,
         NfcTagORM.is_active == True
-    ).order_by(NfcTagORM.registered_at.desc()).all()
+    ).order_by(NfcTagORM.registered_at.desc()).limit(200).all()
 
     result = []
     for tag in tags:
@@ -492,7 +492,7 @@ async def get_shower_usage(
     usages = db.query(ShowerUsageORM).filter(
         ShowerUsageORM.gym_owner_id == gym_owner_id,
         ShowerUsageORM.started_at.like(f"{target_day}%")
-    ).order_by(ShowerUsageORM.started_at.desc()).all()
+    ).order_by(ShowerUsageORM.started_at.desc()).limit(200).all()
 
     result = []
     for u in usages:

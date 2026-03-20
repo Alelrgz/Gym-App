@@ -300,7 +300,7 @@ async def get_physique_photos(
 
         photos = db.query(PhysiquePhotoORM).filter(
             PhysiquePhotoORM.client_id == target_client_id
-        ).order_by(PhysiquePhotoORM.photo_date.desc(), PhysiquePhotoORM.created_at.desc()).all()
+        ).order_by(PhysiquePhotoORM.photo_date.desc(), PhysiquePhotoORM.created_at.desc()).limit(100).all()
 
         return {
             "photos": [

@@ -65,11 +65,11 @@ async def get_gym_members(
     if not user.gym_owner_id:
         return []
 
-    # Get all clients belonging to this gym
+    # Get all clients belonging to this gym (capped at 500)
     members = db.query(UserORM).filter(
         UserORM.gym_owner_id == user.gym_owner_id,
         UserORM.role == "client"
-    ).all()
+    ).limit(500).all()
 
     return [
         {

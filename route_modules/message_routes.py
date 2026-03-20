@@ -121,9 +121,9 @@ async def get_owner_gym_users(
         staff_users = db.query(UserORM).filter(
             UserORM.gym_owner_id == gym_id,
             UserORM.role.in_(["trainer", "staff", "nutritionist"])
-        ).all()
+        ).limit(500).all()
         client_ids = [r[0] for r in db.query(ClientProfileORM.id).filter(ClientProfileORM.gym_id == gym_id).all()]
-        clients = db.query(UserORM).filter(UserORM.id.in_(client_ids)).all() if client_ids else []
+        clients = db.query(UserORM).filter(UserORM.id.in_(client_ids)).limit(500).all() if client_ids else []
         result = []
         for u in staff_users + clients:
             result.append({
