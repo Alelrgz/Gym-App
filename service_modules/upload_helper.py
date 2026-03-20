@@ -1,6 +1,6 @@
 """
 Upload Helper - Unified file upload for all routes.
-Uses Cloudinary in production, local filesystem in development.
+Priority: Supabase Storage > Cloudinary > local filesystem.
 """
 import os
 import io
@@ -17,8 +17,29 @@ ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'mov', 'avi'}
 ALLOWED_AUDIO_EXTENSIONS = {'webm', 'ogg', 'mp3', 'm4a', 'wav', 'opus'}
 MAX_IMAGE_SIZE = 5 * 1024 * 1024    # 5MB
 MAX_DOC_SIZE = 10 * 1024 * 1024     # 10MB
-MAX_VIDEO_SIZE = 100 * 1024 * 1024  # 100MB
+MAX_VIDEO_SIZE = 50 * 1024 * 1024   # 50MB (Supabase free tier limit)
 MAX_AUDIO_SIZE = 20 * 1024 * 1024   # 20MB
+
+# Supabase Storage config
+_SUPABASE_URL = os.environ.get("SUPABASE_URL")
+_SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
+
+# Map folder names to Supabase buckets
+_FOLDER_TO_BUCKET = {
+    "profiles": "profiles",
+    "certificates": "certificates",
+    "physique": "physique",
+    "exercise_videos": "videos",
+    "chat_images": "chat-media",
+    "chat_videos": "chat-media",
+    "chat_audio": "chat-media",
+    "community": "community",
+}
+
+
+def _is_supabase_ready() -> bool:
+    """Check if Supabase Storage is configured."""
+    return bool(_SUPABASE_URL and _SUPABASE_SERVICE_KEY)
 
 
 def _is_cloudinary_ready() -> bool:
@@ -74,13 +95,57 @@ async def save_file(
     upload_type: str = "image"
 ) -> str:
     """
-    Save a file to Cloudinary (production) or local disk (dev).
+    Save a file to Supabase Storage (preferred) > Cloudinary > local disk.
     Returns the URL/path to the saved file.
     """
-    if _is_cloudinary_ready():
+    if _is_supabase_ready():
+        return _upload_supabase(content, folder, filename)
+    elif _is_cloudinary_ready():
         return _upload_cloudinary(content, folder, filename, upload_type)
     else:
         return _save_local(content, folder, filename)
+
+
+def _upload_supabase(content: bytes, folder: str, filename: str) -> str:
+    """Upload to Supabase Storage and return the public/signed URL."""
+    import requests
+
+    # Determine bucket from folder
+    base_folder = folder.split("/")[0]
+    bucket = _FOLDER_TO_BUCKET.get(base_folder, "profiles")
+
+    # Build storage path (e.g., "user123/photo.jpg" within the bucket)
+    storage_path = f"{folder}/{filename}"
+
+    # Detect content type
+    ext = os.path.splitext(filename)[1].lower().lstrip(".")
+    content_types = {
+        'jpg': 'image/jpeg', 'jpeg': 'image/jpeg', 'png': 'image/png',
+        'webp': 'image/webp', 'gif': 'image/gif', 'pdf': 'application/pdf',
+        'mp4': 'video/mp4', 'webm': 'video/webm', 'mov': 'video/quicktime',
+        'mp3': 'audio/mpeg', 'ogg': 'audio/ogg', 'wav': 'audio/wav',
+        'm4a': 'audio/mp4', 'opus': 'audio/opus',
+    }
+    content_type = content_types.get(ext, 'application/octet-stream')
+
+    headers = {
+        'Authorization': f'Bearer {_SUPABASE_SERVICE_KEY}',
+        'apikey': _SUPABASE_SERVICE_KEY,
+        'Content-Type': content_type,
+        'x-upsert': 'true',
+    }
+
+    url = f"{_SUPABASE_URL}/storage/v1/object/{bucket}/{storage_path}"
+    r = requests.post(url, headers=headers, data=content)
+
+    if r.status_code not in (200, 201):
+        logger.error(f"Supabase upload failed: {r.status_code} {r.text[:200]}")
+        raise Exception(f"Supabase upload failed: {r.status_code}")
+
+    # Return public URL for public buckets, signed URL for private
+    public_url = f"{_SUPABASE_URL}/storage/v1/object/public/{bucket}/{storage_path}"
+    logger.info(f"Supabase upload: {bucket}/{storage_path}")
+    return public_url
 
 
 def _upload_cloudinary(content: bytes, folder: str, filename: str, upload_type: str) -> str:
@@ -120,11 +185,41 @@ def _save_local(content: bytes, folder: str, filename: str) -> str:
 
 
 async def delete_file(url: str) -> bool:
-    """Delete a file from Cloudinary or local disk."""
+    """Delete a file from Supabase, Cloudinary, or local disk."""
     if not url:
         return False
 
-    if "cloudinary.com" in url:
+    if "supabase.co/storage" in url:
+        try:
+            import requests
+            # Extract bucket and path from URL
+            # URL format: https://xxx.supabase.co/storage/v1/object/public/{bucket}/{path}
+            parts = url.split("/storage/v1/object/public/")
+            if len(parts) < 2:
+                parts = url.split("/storage/v1/object/")
+            if len(parts) > 1:
+                bucket_and_path = parts[1]
+                bucket = bucket_and_path.split("/")[0]
+                file_path = "/".join(bucket_and_path.split("/")[1:])
+
+                headers = {
+                    'Authorization': f'Bearer {_SUPABASE_SERVICE_KEY}',
+                    'apikey': _SUPABASE_SERVICE_KEY,
+                    'Content-Type': 'application/json',
+                }
+                r = requests.delete(
+                    f"{_SUPABASE_URL}/storage/v1/object/{bucket}",
+                    headers=headers,
+                    json={"prefixes": [file_path]}
+                )
+                if r.status_code in (200, 204):
+                    return True
+                logger.error(f"Supabase delete failed: {r.status_code} {r.text[:200]}")
+        except Exception as e:
+            logger.error(f"Supabase delete failed: {e}")
+        return False
+
+    elif "cloudinary.com" in url:
         try:
             import cloudinary.uploader
             if _is_cloudinary_ready():

@@ -192,9 +192,20 @@ async def delete_file(url_or_public_id: str) -> bool:
 
 def get_storage_info() -> dict:
     """Get information about current storage configuration."""
+    from service_modules.upload_helper import _is_supabase_ready
+    supabase_configured = _is_supabase_ready()
     cloudinary_configured = _is_cloudinary_enabled()
+
+    if supabase_configured:
+        provider = "supabase"
+    elif cloudinary_configured:
+        provider = "cloudinary"
+    else:
+        provider = "local"
+
     return {
-        "provider": "cloudinary" if cloudinary_configured else "local",
+        "provider": provider,
+        "supabase_configured": supabase_configured,
         "cloudinary_available": CLOUDINARY_AVAILABLE,
         "cloudinary_configured": cloudinary_configured,
         "local_path": _get_local_path_for_type("general")
