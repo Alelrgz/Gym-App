@@ -20,9 +20,12 @@ MAX_DOC_SIZE = 10 * 1024 * 1024     # 10MB
 MAX_VIDEO_SIZE = 50 * 1024 * 1024   # 50MB (Supabase free tier limit)
 MAX_AUDIO_SIZE = 20 * 1024 * 1024   # 20MB
 
-# Supabase Storage config
-_SUPABASE_URL = os.environ.get("SUPABASE_URL")
-_SUPABASE_SERVICE_KEY = os.environ.get("SUPABASE_SERVICE_KEY")
+# Supabase Storage config — read at call time, not import time
+def _get_supabase_url():
+    return os.environ.get("SUPABASE_URL")
+
+def _get_supabase_key():
+    return os.environ.get("SUPABASE_SERVICE_KEY")
 
 # Map folder names to Supabase buckets
 _FOLDER_TO_BUCKET = {
@@ -39,7 +42,7 @@ _FOLDER_TO_BUCKET = {
 
 def _is_supabase_ready() -> bool:
     """Check if Supabase Storage is configured."""
-    return bool(_SUPABASE_URL and _SUPABASE_SERVICE_KEY)
+    return bool(_get_supabase_url() and _get_supabase_key())
 
 
 def _is_cloudinary_ready() -> bool:
@@ -129,13 +132,13 @@ def _upload_supabase(content: bytes, folder: str, filename: str) -> str:
     content_type = content_types.get(ext, 'application/octet-stream')
 
     headers = {
-        'Authorization': f'Bearer {_SUPABASE_SERVICE_KEY}',
-        'apikey': _SUPABASE_SERVICE_KEY,
+        'Authorization': f'Bearer {_get_supabase_key()}',
+        'apikey': _get_supabase_key(),
         'Content-Type': content_type,
         'x-upsert': 'true',
     }
 
-    url = f"{_SUPABASE_URL}/storage/v1/object/{bucket}/{storage_path}"
+    url = f"{_get_supabase_url()}/storage/v1/object/{bucket}/{storage_path}"
     r = requests.post(url, headers=headers, data=content)
 
     if r.status_code not in (200, 201):
@@ -143,7 +146,7 @@ def _upload_supabase(content: bytes, folder: str, filename: str) -> str:
         raise Exception(f"Supabase upload failed: {r.status_code}")
 
     # Return public URL for public buckets, signed URL for private
-    public_url = f"{_SUPABASE_URL}/storage/v1/object/public/{bucket}/{storage_path}"
+    public_url = f"{_get_supabase_url()}/storage/v1/object/public/{bucket}/{storage_path}"
     logger.info(f"Supabase upload: {bucket}/{storage_path}")
     return public_url
 
@@ -203,12 +206,12 @@ async def delete_file(url: str) -> bool:
                 file_path = "/".join(bucket_and_path.split("/")[1:])
 
                 headers = {
-                    'Authorization': f'Bearer {_SUPABASE_SERVICE_KEY}',
-                    'apikey': _SUPABASE_SERVICE_KEY,
+                    'Authorization': f'Bearer {_get_supabase_key()}',
+                    'apikey': _get_supabase_key(),
                     'Content-Type': 'application/json',
                 }
                 r = requests.delete(
-                    f"{_SUPABASE_URL}/storage/v1/object/{bucket}",
+                    f"{_get_supabase_url()}/storage/v1/object/{bucket}",
                     headers=headers,
                     json={"prefixes": [file_path]}
                 )
