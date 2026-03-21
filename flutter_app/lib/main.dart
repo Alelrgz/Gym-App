@@ -33,6 +33,10 @@ import 'screens/staff/staff_appointments_screen.dart';
 import 'screens/staff/staff_dashboard_screen.dart';
 import 'screens/staff/staff_documents_screen.dart';
 import 'screens/staff/staff_settings_screen.dart';
+import 'screens/nutritionist/nutritionist_home_screen.dart';
+import 'screens/nutritionist/nutritionist_dashboard_screen.dart';
+import 'screens/nutritionist/nutritionist_schedule_screen.dart';
+import 'screens/nutritionist/nutritionist_settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,6 +59,7 @@ class GymApp extends ConsumerWidget {
     if (role == 'trainer') return '/trainer';
     if (role == 'owner') return '/owner';
     if (role == 'staff') return '/staff';
+    if (role == 'nutritionist') return '/nutritionist';
     return '/home';
   }
 
@@ -301,6 +306,47 @@ class GymApp extends ConsumerWidget {
                 GoRoute(
                   path: '/trainer/settings',
                   builder: (context, state) => const TrainerSettingsScreen(),
+                ),
+              ],
+            ),
+          ],
+        ),
+
+        // ── Nutritionist Shell ───────────────────────────
+        StatefulShellRoute.indexedStack(
+          builder: (context, state, navigationShell) {
+            return NutritionistHomeScreen(navigationShell: navigationShell);
+          },
+          branches: [
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/nutritionist',
+                  builder: (context, state) => const NutritionistDashboardScreen(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/nutritionist/schedule',
+                  builder: (context, state) => const NutritionistScheduleScreen(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/nutritionist/community',
+                  builder: (context, state) => const CommunityScreen(),
+                ),
+              ],
+            ),
+            StatefulShellBranch(
+              routes: [
+                GoRoute(
+                  path: '/nutritionist/settings',
+                  builder: (context, state) => const NutritionistSettingsScreen(),
                 ),
               ],
             ),

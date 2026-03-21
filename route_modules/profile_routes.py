@@ -609,3 +609,65 @@ async def get_certificates_overview(
         return {"clients": results}
     finally:
         db.close()
+
+
+# ── Client Health Profile ─────────────────────────────────
+
+@router.get("/api/client/health-profile")
+async def get_health_profile(user: UserORM = Depends(get_current_user)):
+    """Get the client's own health profile data."""
+    if user.role != "client":
+        raise HTTPException(status_code=403, detail="Only clients can access their health profile")
+    db = get_db_session()
+    try:
+        profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == str(user.id)).first()
+        if not profile:
+            raise HTTPException(status_code=404, detail="Profile not found")
+        return {
+            "height_cm": profile.height_cm,
+            "gender": profile.gender,
+            "date_of_birth": getattr(profile, 'date_of_birth', None),
+            "activity_level": profile.activity_level,
+            "allergies": profile.allergies,
+            "medical_conditions": profile.medical_conditions,
+            "supplements": profile.supplements,
+            "sleep_hours": profile.sleep_hours,
+            "meal_frequency": profile.meal_frequency,
+            "food_preferences": profile.food_preferences,
+            "occupation_type": profile.occupation_type,
+        }
+    finally:
+        db.close()
+
+
+@router.put("/api/client/health-profile")
+async def update_health_profile(request: Request, user: UserORM = Depends(get_current_user)):
+    """Update the client's own health profile data."""
+    if user.role != "client":
+        raise HTTPException(status_code=403, detail="Only clients can update their health profile")
+    body = await request.json()
+    db = get_db_session()
+    try:
+        profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == str(user.id)).first()
+        if not profile:
+            raise HTTPException(status_code=404, detail="Profile not found")
+
+        allowed_fields = [
+            'height_cm', 'gender', 'date_of_birth', 'allergies',
+            'food_preferences', 'activity_level', 'sleep_hours',
+            'meal_frequency', 'occupation_type', 'supplements',
+            'medical_conditions',
+        ]
+        for field in allowed_fields:
+            if field in body:
+                val = body[field]
+                if field in ('height_cm', 'sleep_hours'):
+                    val = float(val) if val not in (None, '', 'null') else None
+                elif val == '':
+                    val = None
+                setattr(profile, field, val)
+
+        db.commit()
+        return {"status": "ok"}
+    finally:
+        db.close()

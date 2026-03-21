@@ -238,6 +238,19 @@ class ClientService {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> getNutritionistSessionRate(String nutritionistId) async {
+    final response = await _api.get(ApiConfig.clientNutritionistSessionRate(nutritionistId));
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<List<dynamic>> getNutritionistAvailableSlots(String nutritionistId, String date) async {
+    final response = await _api.get('${ApiConfig.clientNutritionistAvailableSlots(nutritionistId)}?date=$date');
+    final data = response.data;
+    if (data is List) return data;
+    if (data is Map && data['slots'] is List) return data['slots'] as List;
+    return [];
+  }
+
   Future<Map<String, dynamic>> bookAppointment(Map<String, dynamic> data) async {
     final response = await _api.post(ApiConfig.clientAppointments, data: data);
     return response.data as Map<String, dynamic>;
@@ -245,6 +258,16 @@ class ClientService {
 
   Future<Map<String, dynamic>> createAppointmentCheckoutSession(Map<String, dynamic> data) async {
     final response = await _api.post(ApiConfig.appointmentCheckoutSession, data: data);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> bookNutritionAppointment(Map<String, dynamic> data) async {
+    final response = await _api.post(ApiConfig.clientNutritionAppointments, data: data);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> createNutritionCheckoutSession(Map<String, dynamic> data) async {
+    final response = await _api.post(ApiConfig.clientNutritionCheckoutSession, data: data);
     return response.data as Map<String, dynamic>;
   }
 
@@ -374,6 +397,10 @@ class ClientService {
     });
     final response = await _api.upload(ApiConfig.physiquePhotoUpload, formData);
     return response.data as Map<String, dynamic>;
+  }
+
+  Future<void> deletePhysiquePhoto(int id) async {
+    await _api.delete(ApiConfig.physiquePhotoDelete(id));
   }
 
   // ── Strength Progress ──────────────────────────────────────
@@ -566,6 +593,17 @@ class ClientService {
     final formData = FormData.fromMap(map);
     final response = await _api.upload(ApiConfig.medicalCertificateUpload, formData);
     return response.data as Map<String, dynamic>;
+  }
+
+  // ── Health Profile ──────────────────────────────────────
+
+  Future<Map<String, dynamic>> getHealthProfile() async {
+    final response = await _api.get(ApiConfig.healthProfile);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<void> updateHealthProfile(Map<String, dynamic> data) async {
+    await _api.put(ApiConfig.healthProfile, data: data);
   }
 
   // ── Consent Management ──────────────────────────────────

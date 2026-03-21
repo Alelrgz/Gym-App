@@ -75,8 +75,10 @@ Widget _emptyState(String message, IconData icon) => Center(
 String _timeAgo(String? dateStr) {
   if (dateStr == null) return '';
   try {
-    final date = DateTime.parse(dateStr);
-    final diff = DateTime.now().difference(date);
+    // Server stores UTC times without 'Z' suffix — parse as UTC
+    var date = DateTime.parse(dateStr);
+    if (!date.isUtc) date = DateTime.utc(date.year, date.month, date.day, date.hour, date.minute, date.second, date.millisecond);
+    final diff = DateTime.now().toUtc().difference(date);
     if (diff.inMinutes < 1) return 'ora';
     if (diff.inMinutes < 60) return '${diff.inMinutes}m';
     if (diff.inHours < 24) return '${diff.inHours}h';
@@ -259,6 +261,20 @@ class _NotificationsContentState extends State<_NotificationsContent> {
   }
 
   void _handleNotificationTap(Map<String, dynamic> n, BuildContext context) {
+    // Mark as read on tap
+    final id = n['id']?.toString();
+    if (id != null && n['read'] != true) {
+      final service = widget.ref.read(clientServiceProvider);
+      service.markNotificationRead(id).then((_) {
+        widget.ref.invalidate(unreadNotificationsProvider);
+        if (mounted) {
+          setState(() {
+            n['read'] = true;
+          });
+        }
+      }).catchError((_) {});
+    }
+
     final type = n['type']?.toString() ?? '';
     if (type == 'send_credentials_link') {
       final rawData = n['data'];
@@ -4068,6 +4084,11 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
           initialIndex: initialIndex,
           resolveUrl: _resolvePhotoUrl,
           animation: animation,
+          onDelete: (id) async {
+            final service = ref.read(clientServiceProvider);
+            await service.deletePhysiquePhoto(id);
+            await _loadPhotos();
+          },
         ),
         transitionsBuilder: (_, animation, _, child) => child,
       ),
@@ -5336,12 +5357,14 @@ class _PhotoViewerPage extends StatefulWidget {
   final int initialIndex;
   final String Function(String?) resolveUrl;
   final Animation<double> animation;
+  final Future<void> Function(int photoId)? onDelete;
 
   const _PhotoViewerPage({
     required this.photos,
     required this.initialIndex,
     required this.resolveUrl,
     required this.animation,
+    this.onDelete,
   });
 
   @override
@@ -5357,6 +5380,47 @@ class _PhotoViewerPageState extends State<_PhotoViewerPage> {
     super.initState();
     _current = widget.initialIndex;
     _controller = PageController(initialPage: _current);
+  }
+
+  void _confirmDelete(BuildContext context) {
+    final photo = widget.photos[_current];
+    final id = photo['photo_id'] ?? photo['id'];
+    if (id == null) return;
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Elimina foto', style: TextStyle(color: AppColors.textPrimary)),
+        content: const Text('Sei sicuro di voler eliminare questa foto?', style: TextStyle(color: AppColors.textSecondary)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(),
+            child: const Text('Annulla', style: TextStyle(color: AppColors.textSecondary)),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.of(ctx).pop();
+              await widget.onDelete!(id is int ? id : int.parse(id.toString()));
+              if (mounted) {
+                setState(() {
+                  widget.photos.removeAt(_current);
+                  if (widget.photos.isEmpty) {
+                    Navigator.of(context).pop();
+                    return;
+                  }
+                  if (_current >= widget.photos.length) {
+                    _current = widget.photos.length - 1;
+                  }
+                });
+              }
+            },
+            child: const Text('Elimina', style: TextStyle(color: Colors.red, fontWeight: FontWeight.w700)),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -5426,7 +5490,20 @@ class _PhotoViewerPageState extends State<_PhotoViewerPage> {
                     widget.photos[_current]['photo_date'] as String? ?? '',
                     style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
                   ),
-                  const SizedBox(width: 38),
+                  if (widget.onDelete != null)
+                    GestureDetector(
+                      onTap: () => _confirmDelete(context),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.red.withValues(alpha: 0.2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.delete_outline_rounded, color: Colors.red, size: 22),
+                      ),
+                    )
+                  else
+                    const SizedBox(width: 38),
                 ],
               ),
             ),
@@ -5497,10 +5574,11 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
   bool _loadingTrainers = true;
   bool _trainerListExpanded = false;
 
-  // Selected trainer
+  // Selected trainer/nutritionist
   String? _selectedTrainerId;
   String? _selectedTrainerName;
   String? _selectedTrainerPicture;
+  String _selectedRole = 'trainer'; // 'trainer' or 'nutritionist'
   double? _trainerSessionRate;
 
   // Form
@@ -5550,10 +5628,13 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
     final name = trainer['name']?.toString() ?? trainer['username']?.toString() ?? '';
     final pic = trainer['profile_picture']?.toString();
 
+    final role = trainer['role']?.toString() ?? 'trainer';
+
     setState(() {
       _selectedTrainerId = trainerId;
       _selectedTrainerName = name;
       _selectedTrainerPicture = pic;
+      _selectedRole = role;
       _trainerListExpanded = false;
       _trainerSessionRate = null;
       _paymentMethod = null;
@@ -5564,7 +5645,9 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
     // Fetch session rate
     try {
       final service = widget.ref.read(clientServiceProvider);
-      final rateData = await service.getTrainerSessionRate(trainerId);
+      final rateData = role == 'nutritionist'
+          ? await service.getNutritionistSessionRate(trainerId)
+          : await service.getTrainerSessionRate(trainerId);
       if (mounted) {
         final rate = rateData['session_rate'];
         setState(() {
@@ -5587,7 +5670,9 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
     try {
       final service = widget.ref.read(clientServiceProvider);
       final dateStr = '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
-      final data = await service.getTrainerAvailableSlots(_selectedTrainerId!, dateStr);
+      final data = _selectedRole == 'nutritionist'
+          ? await service.getNutritionistAvailableSlots(_selectedTrainerId!, dateStr)
+          : await service.getTrainerAvailableSlots(_selectedTrainerId!, dateStr);
       if (mounted) {
         setState(() {
           _availableSlots = data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
@@ -5633,8 +5718,8 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
           if (!mounted) return;
           final scopes = await showConsentDialog(
             context,
-            professionalName: _selectedTrainerName ?? 'Trainer',
-            professionalRole: 'trainer',
+            professionalName: _selectedTrainerName ?? 'Professionista',
+            professionalRole: _selectedRole,
           );
           if (scopes == null || scopes.isEmpty) {
             setState(() => _submitting = false);
@@ -5650,16 +5735,22 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
       }
 
       final dateStr = '${_selectedDate!.year}-${_selectedDate!.month.toString().padLeft(2, '0')}-${_selectedDate!.day.toString().padLeft(2, '0')}';
+      final isNutritionist = _selectedRole == 'nutritionist';
 
       if (_paymentMethod == 'card') {
         // Stripe Checkout flow
-        final result = await service.createAppointmentCheckoutSession({
-          'trainer_id': _selectedTrainerId,
+        final bookingData = {
+          isNutritionist ? 'nutritionist_id' : 'trainer_id': _selectedTrainerId,
           'date': dateStr,
           'start_time': _selectedTime,
           'duration': _duration,
           'notes': _notesController.text.isEmpty ? null : _notesController.text,
-        });
+        };
+        debugPrint('>>> BOOKING: role=$_selectedRole isNutritionist=$isNutritionist data=$bookingData');
+        final result = isNutritionist
+            ? await service.createNutritionCheckoutSession(bookingData)
+            : await service.createAppointmentCheckoutSession(bookingData);
+        debugPrint('>>> RESULT: $result');
         final checkoutUrl = result['checkout_url']?.toString();
         if (checkoutUrl != null && checkoutUrl.isNotEmpty) {
           final uri = Uri.parse(checkoutUrl);
@@ -5674,14 +5765,19 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
         }
       } else {
         // Cash or free — book directly
-        await service.bookAppointment({
-          'trainer_id': _selectedTrainerId,
+        final bookingData = {
+          isNutritionist ? 'nutritionist_id' : 'trainer_id': _selectedTrainerId,
           'date': dateStr,
           'start_time': _selectedTime,
           'duration': _duration,
           'notes': _notesController.text.isEmpty ? null : _notesController.text,
           'payment_method': _isFreeSession ? null : _paymentMethod,
-        });
+        };
+        if (isNutritionist) {
+          await service.bookNutritionAppointment(bookingData);
+        } else {
+          await service.bookAppointment(bookingData);
+        }
 
         if (mounted) {
           Navigator.pop(context);
@@ -5863,6 +5959,8 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
     final name = trainer['name']?.toString() ?? trainer['username']?.toString() ?? '';
     final pic = trainer['profile_picture']?.toString();
     final rate = trainer['session_rate'];
+    final role = trainer['role']?.toString() ?? 'trainer';
+    final isNutritionist = role == 'nutritionist';
 
     return GestureDetector(
       onTap: () => _selectTrainer(trainer),
@@ -5905,7 +6003,20 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(name, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+                  Row(children: [
+                    Text(name, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+                    if (isNutritionist) ...[
+                      const SizedBox(width: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF22C55E).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: const Text('Nutrizionista', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Color(0xFF22C55E))),
+                      ),
+                    ],
+                  ]),
                   Text(
                     rate != null && (rate as num) > 0
                         ? '${(rate).toStringAsFixed(0)}\u20AC/ora'

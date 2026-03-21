@@ -17,7 +17,7 @@ class ApiConfig {
   static const String productionUrl = 'https://fitos-eu.onrender.com';
 
   /// Set to true to use local dev server instead of production
-  static bool useLocalServer = false;
+  static bool useLocalServer = true;
 
   static String get baseUrl {
     if (kIsWeb) {
@@ -299,6 +299,9 @@ class ApiConfig {
   static const medicalCertificateGet = '/api/medical/certificate';
   static String medicalCertificate(String clientId) => '/api/medical/certificate?client_id=$clientId';
 
+  // ── Health Profile ────────────────────────────────────────
+  static const healthProfile = '/api/client/health-profile';
+
   // ── Terminal/POS ────────────────────────────────────────
   static const terminalProcessCustomPayment = '/api/terminal/process-custom-payment';
   static String terminalPaymentStatus(String id) => '/api/terminal/payment-status/$id';
@@ -319,6 +322,10 @@ class ApiConfig {
   static const nutritionistSessionRate = '/api/nutritionist/session-rate';
   static const nutritionistAppointments = '/api/nutritionist/appointments';
   static String nutritionistAppointmentComplete(String id) => '/api/nutritionist/appointments/$id/complete';
+  static String clientNutritionistSessionRate(String id) => '/api/client/nutritionists/$id/session-rate';
+  static String clientNutritionistAvailableSlots(String id) => '/api/client/nutritionists/$id/available-slots';
+  static const clientNutritionAppointments = '/api/client/nutrition-appointments';
+  static const clientNutritionCheckoutSession = '/api/client/nutrition-checkout-session';
   static const nutritionistNotes = '/api/trainer/notes'; // shared notes API
   static const nutritionistProfileUpdate = '/api/profile/update';
 

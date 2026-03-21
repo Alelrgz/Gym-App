@@ -7,6 +7,7 @@ import '../config/api_config.dart';
 import '../config/theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/client_provider.dart';
+import '../services/client_service.dart';
 import '../widgets/consent_management_sheet.dart';
 import '../widgets/dashboard_sheets.dart';
 
@@ -141,6 +142,13 @@ class ProfileScreen extends ConsumerWidget {
                 label: 'Certificato Medico',
                 subtitle: 'Carica o visualizza il certificato',
                 onTap: () => _showCertificateSheet(context, ref),
+              ),
+              _TileData(
+                icon: Icons.favorite_rounded,
+                iconColor: const Color(0xFFF59E0B),
+                label: 'Profilo Salute',
+                subtitle: 'Altezza, allergie, preferenze alimentari',
+                onTap: () => _showHealthProfileSheet(context, ref),
               ),
               _TileData(
                 icon: Icons.shield_rounded,
@@ -336,6 +344,19 @@ class ProfileScreen extends ConsumerWidget {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (_) => ConsentManagementSheet(clientService: clientService),
+    );
+  }
+
+  void _showHealthProfileSheet(BuildContext context, WidgetRef ref) {
+    final clientService = ref.read(clientServiceProvider);
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (_) => _HealthProfileSheet(clientService: clientService),
     );
   }
 
@@ -1124,6 +1145,250 @@ class _CertificateSheetState extends State<_CertificateSheet> {
       ),
       child: Text(label,
         style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color)),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  Health Profile Sheet
+// ═══════════════════════════════════════════════════════════
+
+class _HealthProfileSheet extends StatefulWidget {
+  final ClientService clientService;
+  const _HealthProfileSheet({required this.clientService});
+
+  @override
+  State<_HealthProfileSheet> createState() => _HealthProfileSheetState();
+}
+
+class _HealthProfileSheetState extends State<_HealthProfileSheet> {
+  bool _loading = true;
+  bool _saving = false;
+
+  final _heightCtrl = TextEditingController();
+  final _dobCtrl = TextEditingController();
+  final _allergiesCtrl = TextEditingController();
+  final _medicalCtrl = TextEditingController();
+  final _supplementsCtrl = TextEditingController();
+  final _sleepCtrl = TextEditingController();
+
+  String _gender = '';
+  String _activityLevel = '';
+  String _mealFrequency = '';
+  String _foodPreferences = '';
+  String _occupationType = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    try {
+      final data = await widget.clientService.getHealthProfile();
+      _heightCtrl.text = data['height_cm']?.toString() ?? '';
+      _dobCtrl.text = data['date_of_birth']?.toString() ?? '';
+      _allergiesCtrl.text = data['allergies']?.toString() ?? '';
+      _medicalCtrl.text = data['medical_conditions']?.toString() ?? '';
+      _supplementsCtrl.text = data['supplements']?.toString() ?? '';
+      _sleepCtrl.text = data['sleep_hours']?.toString() ?? '';
+      _gender = data['gender']?.toString() ?? '';
+      _activityLevel = data['activity_level']?.toString() ?? '';
+      _mealFrequency = data['meal_frequency']?.toString() ?? '';
+      _foodPreferences = data['food_preferences']?.toString() ?? '';
+      _occupationType = data['occupation_type']?.toString() ?? '';
+    } catch (_) {}
+    if (mounted) setState(() => _loading = false);
+  }
+
+  Future<void> _save() async {
+    setState(() => _saving = true);
+    try {
+      await widget.clientService.updateHealthProfile({
+        'height_cm': _heightCtrl.text,
+        'gender': _gender,
+        'date_of_birth': _dobCtrl.text,
+        'activity_level': _activityLevel,
+        'allergies': _allergiesCtrl.text,
+        'medical_conditions': _medicalCtrl.text,
+        'supplements': _supplementsCtrl.text,
+        'sleep_hours': _sleepCtrl.text,
+        'meal_frequency': _mealFrequency,
+        'food_preferences': _foodPreferences,
+        'occupation_type': _occupationType,
+      });
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Profilo salute aggiornato')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore: $e')),
+        );
+      }
+    }
+    if (mounted) setState(() => _saving = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const SizedBox(
+        height: 200,
+        child: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      );
+    }
+
+    return DraggableScrollableSheet(
+      expand: false,
+      initialChildSize: 0.85,
+      maxChildSize: 0.95,
+      builder: (_, scrollCtrl) {
+        return SingleChildScrollView(
+          controller: scrollCtrl,
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Center(
+                child: Container(
+                  width: 40, height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey[700],
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(children: [
+                Icon(Icons.favorite_rounded, color: const Color(0xFFF59E0B), size: 22),
+                const SizedBox(width: 8),
+                const Text('Profilo Salute',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+              ]),
+              const SizedBox(height: 20),
+
+              // Basic
+              _label('Dati Base'),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(child: _textField('Altezza (cm)', _heightCtrl, TextInputType.number)),
+                const SizedBox(width: 8),
+                Expanded(child: _dropdownField('Sesso', _gender, ['', 'male', 'female', 'other'],
+                    ['—', 'Maschio', 'Femmina', 'Altro'], (v) => setState(() => _gender = v))),
+              ]),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(child: _textField('Data di Nascita', _dobCtrl, TextInputType.datetime)),
+                const SizedBox(width: 8),
+                Expanded(child: _dropdownField('Livello Attività', _activityLevel,
+                    ['', 'sedentary', 'light', 'moderate', 'active', 'very_active'],
+                    ['—', 'Sedentario', 'Leggero', 'Moderato', 'Attivo', 'Molto Attivo'],
+                    (v) => setState(() => _activityLevel = v))),
+              ]),
+              const SizedBox(height: 16),
+
+              // Medical
+              _label('Salute & Alimentazione'),
+              const SizedBox(height: 8),
+              _textField('Allergie / Intolleranze', _allergiesCtrl, TextInputType.text),
+              const SizedBox(height: 8),
+              _textField('Condizioni Mediche', _medicalCtrl, TextInputType.text),
+              const SizedBox(height: 8),
+              _textField('Integratori', _supplementsCtrl, TextInputType.text),
+              const SizedBox(height: 16),
+
+              // Lifestyle
+              _label('Stile di Vita'),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(child: _textField('Ore di Sonno', _sleepCtrl, TextInputType.number)),
+                const SizedBox(width: 8),
+                Expanded(child: _dropdownField('Frequenza Pasti', _mealFrequency,
+                    ['', '3_meals', '5_small', 'intermittent_fasting', 'custom'],
+                    ['—', '3 Pasti', '5 Piccoli Pasti', 'Digiuno Intermittente', 'Personalizzato'],
+                    (v) => setState(() => _mealFrequency = v))),
+              ]),
+              const SizedBox(height: 8),
+              Row(children: [
+                Expanded(child: _dropdownField('Preferenze Alimentari', _foodPreferences,
+                    ['', 'none', 'vegan', 'vegetarian', 'halal', 'kosher', 'other'],
+                    ['—', 'Nessuna', 'Vegano', 'Vegetariano', 'Halal', 'Kosher', 'Altro'],
+                    (v) => setState(() => _foodPreferences = v))),
+                const SizedBox(width: 8),
+                Expanded(child: _dropdownField('Occupazione', _occupationType,
+                    ['', 'sedentary', 'light_physical', 'heavy_physical'],
+                    ['—', 'Sedentaria', 'Attività Leggera', 'Lavoro Fisico'],
+                    (v) => setState(() => _occupationType = v))),
+              ]),
+              const SizedBox(height: 24),
+
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _saving ? null : _save,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppColors.primary,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  ),
+                  child: _saving
+                      ? const SizedBox(width: 20, height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('Salva Profilo Salute',
+                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                ),
+              ),
+              const SizedBox(height: 20),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _label(String text) => Text(text,
+      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.grey[400]));
+
+  Widget _textField(String label, TextEditingController ctrl, TextInputType type) {
+    return TextField(
+      controller: ctrl,
+      keyboardType: type,
+      style: const TextStyle(color: Colors.white, fontSize: 14),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.grey[500], fontSize: 13),
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: 0.06),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      ),
+    );
+  }
+
+  Widget _dropdownField(String label, String value, List<String> values,
+      List<String> labels, ValueChanged<String> onChanged) {
+    return DropdownButtonFormField<String>(
+      initialValue: values.contains(value) ? value : '',
+      dropdownColor: AppColors.surface,
+      style: const TextStyle(color: Colors.white, fontSize: 14),
+      decoration: InputDecoration(
+        labelText: label,
+        labelStyle: TextStyle(color: Colors.grey[500], fontSize: 13),
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: 0.06),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+      ),
+      items: List.generate(values.length, (i) => DropdownMenuItem(
+        value: values[i],
+        child: Text(labels[i], style: const TextStyle(fontSize: 14)),
+      )),
+      onChanged: (v) => onChanged(v ?? ''),
     );
   }
 }
