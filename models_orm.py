@@ -270,6 +270,8 @@ class ClientScheduleORM(Base):
     details = Column(String, nullable=True)
     # For group courses
     course_id = Column(String, ForeignKey("courses.id"), nullable=True, index=True)
+    # Links to AppointmentORM for cancel functionality
+    appointment_id = Column(String, nullable=True, index=True)
 
 class ClientDietSettingsORM(Base):
     __tablename__ = "client_diet_settings"

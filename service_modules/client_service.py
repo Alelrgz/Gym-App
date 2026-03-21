@@ -243,7 +243,8 @@ class ClientService:
                     "type": e.type or "event",
                     "completed": e.completed,
                     "workout_id": e.workout_id,
-                    "details": e.details or ""
+                    "details": e.details or "",
+                    "appointment_id": e.appointment_id
                 })
 
             calendar_data = {

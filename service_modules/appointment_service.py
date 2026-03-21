@@ -917,18 +917,23 @@ class AppointmentService:
 
             # Also remove from client calendar
             from models_orm import ClientScheduleORM
-            client_calendar_entries = db.query(ClientScheduleORM).filter(
-                ClientScheduleORM.client_id == appointment.client_id,
-                ClientScheduleORM.date == appointment.date,
-                ClientScheduleORM.type == "appointment"
-            ).all()
+            client_calendar_entry = db.query(ClientScheduleORM).filter(
+                ClientScheduleORM.appointment_id == appointment_id
+            ).first()
 
-            for entry in client_calendar_entries:
-                # Check if this is the appointment entry by matching the title
-                if "1-on-1 Session" in entry.title:
+            if client_calendar_entry:
+                db.delete(client_calendar_entry)
+                logger.info(f"Removed client calendar entry for canceled appointment: {appointment_id}")
+            else:
+                # Fallback: match by client_id + date + type
+                fallback_entries = db.query(ClientScheduleORM).filter(
+                    ClientScheduleORM.client_id == appointment.client_id,
+                    ClientScheduleORM.date == appointment.date,
+                    ClientScheduleORM.type == "appointment"
+                ).all()
+                for entry in fallback_entries:
                     db.delete(entry)
-                    logger.info(f"Removed client calendar entry for canceled appointment: {appointment_id}")
-                    break
+                    logger.info(f"Removed client calendar entry (fallback) for canceled appointment: {appointment_id}")
 
             db.commit()
 

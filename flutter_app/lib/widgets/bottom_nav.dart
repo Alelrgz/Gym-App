@@ -97,7 +97,7 @@ class AppBottomNav extends StatelessWidget {
         final actions = <_FabActionData>[
           _FabActionData(Icons.camera_alt_rounded, 'Pasto', 'meal_scan'),
           _FabActionData(Icons.photo_camera_front_rounded, 'Fisico', 'physique_photo'),
-          _FabActionData(Icons.qr_code_scanner_rounded, 'QR', 'qr'),
+          _FabActionData(Icons.login_rounded, 'Accesso', 'qr', glow: true),
           _FabActionData(Icons.monitor_weight_rounded, 'Peso', 'log_weight'),
           _FabActionData(Icons.calendar_month_rounded, 'Prenota', 'book_appointment'),
         ];
@@ -169,13 +169,15 @@ class AppBottomNav extends StatelessWidget {
                               decoration: BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: AppColors.primary,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.primary.withValues(alpha: 0.4),
-                                    blurRadius: 12,
-                                    spreadRadius: 0,
-                                  ),
-                                ],
+                                boxShadow: action.glow
+                                    ? [
+                                        BoxShadow(
+                                          color: AppColors.primary.withValues(alpha: 0.5),
+                                          blurRadius: 16,
+                                          spreadRadius: 2,
+                                        ),
+                                      ]
+                                    : [],
                               ),
                               child: Icon(action.icon, color: Colors.white, size: 24),
                             ),
@@ -251,7 +253,8 @@ class _FabActionData {
   final IconData icon;
   final String label;
   final String actionId;
-  const _FabActionData(this.icon, this.label, this.actionId);
+  final bool glow;
+  const _FabActionData(this.icon, this.label, this.actionId, {this.glow = false});
 }
 
 class _NavItem extends StatelessWidget {

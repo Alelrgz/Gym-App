@@ -2525,6 +2525,52 @@ class _AppointmentsContentState extends State<_AppointmentsContent> {
     }
   }
 
+  Future<void> _cancelAppointment(Map<String, dynamic> appointment) async {
+    final id = appointment['id']?.toString() ?? '';
+    final trainerName = appointment['trainer_name']?.toString() ?? '';
+    final date = appointment['date']?.toString() ?? '';
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Annulla appuntamento',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18),
+        ),
+        content: Text(
+          'Sei sicuro di voler annullare l\'appuntamento${trainerName.isNotEmpty ? ' con $trainerName' : ''} del $date?',
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('No', style: TextStyle(color: Colors.white.withValues(alpha: 0.5))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: const Text('Si, annulla', style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final service = widget.ref.read(clientServiceProvider);
+        await service.cancelAppointment(id);
+        if (mounted) {
+          showSnack(context, 'Appuntamento annullato');
+          _load(); // Reload
+        }
+      } catch (e) {
+        if (mounted) showSnack(context, 'Errore: $e', isError: true);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Padding(
@@ -2612,6 +2658,21 @@ class _AppointmentsContentState extends State<_AppointmentsContent> {
                                   ),
                                 ),
                                 _statusBadge(status),
+                                if (status != 'cancelled' && status != 'canceled' && status != 'completed') ...[
+                                  const SizedBox(width: 8),
+                                  GestureDetector(
+                                    onTap: () => _cancelAppointment(a),
+                                    child: Container(
+                                      width: 32,
+                                      height: 32,
+                                      decoration: BoxDecoration(
+                                        color: AppColors.danger.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: const Icon(Icons.close_rounded, color: AppColors.danger, size: 16),
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           );
@@ -3553,11 +3614,56 @@ class _CalendarContentState extends State<_CalendarContent> {
     );
   }
 
+  Future<void> _cancelCalendarAppointment(CalendarEvent event) async {
+    if (event.appointmentId == null) return;
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1E1E1E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text(
+          'Annulla appuntamento',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 18),
+        ),
+        content: Text(
+          'Sei sicuro di voler annullare "${event.title}"?',
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: Text('No', style: TextStyle(color: Colors.white.withValues(alpha: 0.5))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.danger),
+            child: const Text('Si, annulla', style: TextStyle(fontWeight: FontWeight.w600)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        final service = widget.ref.read(clientServiceProvider);
+        await service.cancelAppointment(event.appointmentId!);
+        if (mounted) {
+          showSnack(context, 'Appuntamento annullato');
+          _loadEvents();
+        }
+      } catch (e) {
+        if (mounted) showSnack(context, 'Errore: $e', isError: true);
+      }
+    }
+  }
+
   Widget _buildEventCard(CalendarEvent event) {
     final icon = _eventIcon(event.type);
     final statusText = event.completed ? 'COMPLETATO' : 'PROGRAMMATO';
     final statusColor = event.completed ? const Color(0xFF4ADE80) : AppColors.primary;
     final dotColor = _dotColor(event);
+    final canCancel = event.type == 'appointment' && !event.completed && event.appointmentId != null;
 
     // Don't display raw JSON as subtitle
     String? subtitle;
@@ -3630,6 +3736,21 @@ class _CalendarContentState extends State<_CalendarContent> {
               ),
             ),
           ),
+          if (canCancel) ...[
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () => _cancelCalendarAppointment(event),
+              child: Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: AppColors.danger.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Icon(Icons.close_rounded, color: AppColors.danger, size: 16),
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -5539,24 +5660,39 @@ class _PhotoViewerPageState extends State<_PhotoViewerPage> {
 // ═══════════════════════════════════════════════════════════════════════
 
 Future<void> showBookAppointmentSheet(BuildContext context, WidgetRef ref) {
-  return showModalBottomSheet(
-    context: context,
-    backgroundColor: AppColors.surface,
-    isScrollControlled: true,
-    shape: const RoundedRectangleBorder(
-      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-    ),
-    builder: (ctx) => DraggableScrollableSheet(
-      initialChildSize: 0.85,
-      minChildSize: 0.5,
-      maxChildSize: 0.95,
-      expand: false,
-      builder: (_, scrollController) => _BookAppointmentContent(
-        scrollController: scrollController,
-        ref: ref,
-      ),
+  return Navigator.of(context).push(
+    PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) =>
+          _BookAppointmentPage(ref: ref),
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0.0, 1.0),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+          child: child,
+        );
+      },
     ),
   );
+}
+
+class _BookAppointmentPage extends StatelessWidget {
+  final WidgetRef ref;
+  const _BookAppointmentPage({required this.ref});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: _BookAppointmentContent(
+          scrollController: ScrollController(),
+          ref: ref,
+        ),
+      ),
+    );
+  }
 }
 
 class _BookAppointmentContent extends StatefulWidget {
@@ -5570,6 +5706,9 @@ class _BookAppointmentContent extends StatefulWidget {
 }
 
 class _BookAppointmentContentState extends State<_BookAppointmentContent> {
+  // Appointment type: null = not chosen, 'training', 'nutrition', 'course'
+  String? _appointmentType;
+
   List<Map<String, dynamic>> _trainers = [];
   bool _loadingTrainers = true;
   bool _trainerListExpanded = false;
@@ -5609,12 +5748,26 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
   }
 
   Future<void> _loadTrainers() async {
+    setState(() => _loadingTrainers = true);
     try {
       final service = widget.ref.read(clientServiceProvider);
       final data = await service.getGymTrainers();
       if (mounted) {
+        final all = data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        // Filter based on appointment type
+        final filtered = all.where((t) {
+          final role = t['role']?.toString() ?? '';
+          final subRole = t['sub_role']?.toString() ?? '';
+          if (_appointmentType == 'training') {
+            return role == 'trainer' && subRole != 'nutritionist';
+          } else if (_appointmentType == 'nutrition') {
+            return role == 'nutritionist' || subRole == 'nutritionist';
+          }
+          // 'course' — show all trainers who can run courses
+          return role == 'trainer';
+        }).toList();
         setState(() {
-          _trainers = data.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+          _trainers = filtered;
           _loadingTrainers = false;
         });
       }
@@ -5796,67 +5949,263 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
 
   @override
   Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).padding.bottom;
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _sheetHandle(),
-          _sheetTitle('Prenota Appuntamento'),
+          // Header with back button
+          Row(
+            children: [
+              GestureDetector(
+                onTap: () {
+                  if (_appointmentType != null) {
+                    setState(() {
+                      _appointmentType = null;
+                      _selectedTrainerId = null;
+                      _selectedTrainerName = null;
+                      _selectedTrainerPicture = null;
+                      _trainerSessionRate = null;
+                    });
+                  } else {
+                    Navigator.of(context).pop();
+                  }
+                },
+                child: Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(Icons.arrow_back_rounded, color: Colors.white, size: 20),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Text(
+                _appointmentType == null
+                    ? 'Prenota Appuntamento'
+                    : _appointmentType == 'training'
+                        ? 'Personal Training'
+                        : _appointmentType == 'nutrition'
+                            ? 'Consulenza Nutrizionale'
+                            : 'Corso di Gruppo',
+                style: const TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                  letterSpacing: -0.5,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
           Expanded(
-            child: _loadingTrainers
-                ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-                : _trainers.isEmpty
-                    ? _emptyState('Nessun trainer disponibile', Icons.person_off_rounded)
-                    : ListView(
-                        controller: widget.scrollController,
-                        padding: const EdgeInsets.only(bottom: 24),
-                        children: [
-                          // 1. Trainer Selector
-                          _buildTrainerSelector(),
-                          const SizedBox(height: 16),
+            child: _appointmentType == null
+                ? _buildTypeSelector()
+                : _loadingTrainers
+                    ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
+                    : _trainers.isEmpty
+                        ? _buildNoResults()
+                        : ListView(
+                            controller: widget.scrollController,
+                            padding: EdgeInsets.only(bottom: bottomPadding + 24),
+                            children: [
+                              // 1. Trainer Selector
+                              _buildTrainerSelector(),
+                              const SizedBox(height: 24),
 
-                          // 2. Date Picker
-                          _buildLabel('Data'),
-                          const SizedBox(height: 6),
-                          _buildDatePicker(),
-                          const SizedBox(height: 16),
+                              // 2. Date Picker
+                              _buildLabel('Data'),
+                              const SizedBox(height: 8),
+                              _buildDatePicker(),
+                              const SizedBox(height: 24),
 
-                          // 3. Time Slot Selector
-                          _buildLabel('Orario'),
-                          const SizedBox(height: 6),
-                          _buildTimeSelector(),
-                          const SizedBox(height: 16),
+                              // 3. Time Slot Selector
+                              _buildLabel('Orario'),
+                              const SizedBox(height: 8),
+                              _buildTimeSelector(),
+                              const SizedBox(height: 24),
 
-                          // 4. Duration
-                          _buildLabel('Durata'),
-                          const SizedBox(height: 6),
-                          _buildDurationSelector(),
-                          const SizedBox(height: 16),
+                              // 4. Duration
+                              if (_appointmentType != 'course') ...[
+                                _buildLabel('Durata'),
+                                const SizedBox(height: 8),
+                                _buildDurationSelector(),
+                                const SizedBox(height: 24),
+                              ],
 
-                          // 5. Notes
-                          _buildLabel('Note (Facoltativo)'),
-                          const SizedBox(height: 6),
-                          _buildNotesField(),
-                          const SizedBox(height: 16),
+                              // 5. Notes
+                              _buildLabel('Note (Facoltativo)'),
+                              const SizedBox(height: 8),
+                              _buildNotesField(),
+                              const SizedBox(height: 24),
 
-                          // 6. Payment Section (if trainer has rate)
-                          if (_selectedTrainerId != null && !_isFreeSession) ...[
-                            _buildPaymentSection(),
-                            const SizedBox(height: 16),
-                          ],
+                              // 6. Payment Section (if trainer has rate)
+                              if (_selectedTrainerId != null && !_isFreeSession) ...[
+                                _buildPaymentSection(),
+                                const SizedBox(height: 24),
+                              ],
 
-                          // 6b. Free session indicator
-                          if (_selectedTrainerId != null && _isFreeSession && _trainerSessionRate != null)
-                            _buildFreeSessionBadge(),
-                          if (_selectedTrainerId != null && _isFreeSession && _trainerSessionRate != null)
-                            const SizedBox(height: 16),
+                              // 6b. Free session indicator
+                              if (_selectedTrainerId != null && _isFreeSession && _trainerSessionRate != null)
+                                _buildFreeSessionBadge(),
+                              if (_selectedTrainerId != null && _isFreeSession && _trainerSessionRate != null)
+                                const SizedBox(height: 24),
 
-                          // 7. Submit Button
-                          _buildSubmitButton(),
-                          const SizedBox(height: 16),
-                        ],
-                      ),
+                              // 7. Submit Button
+                              _buildSubmitButton(),
+                              const SizedBox(height: 16),
+                            ],
+                          ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── TYPE SELECTOR ──────────────────────────────────────────────
+
+  Widget _buildTypeSelector() {
+    return ListView(
+      padding: const EdgeInsets.only(bottom: 24),
+      children: [
+        const Text(
+          'Che tipo di appuntamento vuoi prenotare?',
+          style: TextStyle(
+            fontSize: 15,
+            color: Colors.white54,
+          ),
+        ),
+        const SizedBox(height: 20),
+        _buildTypeCard(
+          type: 'training',
+          icon: Icons.fitness_center_rounded,
+          title: 'Personal Training',
+          subtitle: 'Sessione 1-on-1 con un trainer',
+          color: AppColors.primary,
+        ),
+        const SizedBox(height: 10),
+        _buildTypeCard(
+          type: 'nutrition',
+          icon: Icons.restaurant_rounded,
+          title: 'Consulenza Nutrizionale',
+          subtitle: 'Sessione con un nutrizionista',
+          color: const Color(0xFF22C55E),
+        ),
+        const SizedBox(height: 10),
+        _buildTypeCard(
+          type: 'course',
+          icon: Icons.groups_rounded,
+          title: 'Corso di Gruppo',
+          subtitle: 'Yoga, Pilates, Crossfit e altro',
+          color: const Color(0xFF3B82F6),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildTypeCard({
+    required String type,
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required Color color,
+  }) {
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _appointmentType = type;
+          _selectedTrainerId = null;
+          _selectedTrainerName = null;
+          _selectedTrainerPicture = null;
+          _trainerSessionRate = null;
+          _selectedDate = null;
+          _selectedTime = null;
+          _availableSlots = [];
+        });
+        _loadTrainers();
+      },
+      child: Container(
+        padding: const EdgeInsets.all(18),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: color, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: Colors.white.withValues(alpha: 0.4),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.chevron_right_rounded,
+              color: Colors.white.withValues(alpha: 0.3),
+              size: 22,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNoResults() {
+    final typeLabel = _appointmentType == 'training'
+        ? 'trainer'
+        : _appointmentType == 'nutrition'
+            ? 'nutrizionisti'
+            : 'corsi';
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.person_off_rounded, size: 48, color: Colors.white.withValues(alpha: 0.2)),
+          const SizedBox(height: 12),
+          Text(
+            'Nessun $typeLabel disponibile',
+            style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 15),
+          ),
+          const SizedBox(height: 20),
+          GestureDetector(
+            onTap: () => setState(() => _appointmentType = null),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: const Text('Indietro', style: TextStyle(color: Colors.white70)),
+            ),
           ),
         ],
       ),
@@ -5869,86 +6218,79 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Collapsed view
+        _buildLabel('Professionista'),
+        const SizedBox(height: 8),
         GestureDetector(
           onTap: () => setState(() => _trainerListExpanded = !_trainerListExpanded),
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             decoration: BoxDecoration(
-              color: const Color(0xFF252525),
-              borderRadius: BorderRadius.circular(10),
+              color: Colors.white.withValues(alpha: 0.06),
+              borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               children: [
-                // Avatar
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: 40,
+                  height: 40,
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
+                    borderRadius: BorderRadius.circular(10),
                     color: AppColors.primary.withValues(alpha: 0.15),
                   ),
                   child: _selectedTrainerPicture != null
-                      ? ClipOval(
+                      ? ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
                           child: Image.network(
                             _selectedTrainerPicture!.startsWith('http')
                                 ? _selectedTrainerPicture!
                                 : '${ApiConfig.baseUrl}$_selectedTrainerPicture',
-                            width: 36, height: 36, fit: BoxFit.cover,
-                            errorBuilder: (_, _, _) => const Icon(Icons.person, size: 18, color: AppColors.primary),
+                            width: 40, height: 40, fit: BoxFit.cover,
+                            errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 20, color: AppColors.primary),
                           ),
                         )
-                      : const Icon(Icons.person, size: 18, color: AppColors.primary),
+                      : const Icon(Icons.person, size: 20, color: AppColors.primary),
                 ),
-                const SizedBox(width: 10),
-                // Name + status
+                const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _selectedTrainerName ?? 'Scegli un trainer...',
-                        style: TextStyle(
-                          color: _selectedTrainerName != null ? Colors.white : AppColors.textTertiary,
-                          fontWeight: FontWeight.w500,
-                          fontSize: 13,
-                        ),
-                      ),
-                      if (_selectedTrainerName != null)
-                        const Text(
-                          'Selezionato',
-                          style: TextStyle(fontSize: 10, color: AppColors.primary),
-                        ),
-                    ],
+                  child: Text(
+                    _selectedTrainerName ?? 'Scegli un professionista...',
+                    style: TextStyle(
+                      color: _selectedTrainerName != null ? Colors.white : Colors.white38,
+                      fontWeight: FontWeight.w500,
+                      fontSize: 15,
+                    ),
                   ),
                 ),
-                // Chevron
                 AnimatedRotation(
                   turns: _trainerListExpanded ? 0.5 : 0,
                   duration: const Duration(milliseconds: 200),
-                  child: Icon(
+                  child: const Icon(
                     Icons.keyboard_arrow_down_rounded,
-                    color: Colors.white.withValues(alpha: 0.4),
-                    size: 20,
+                    color: Colors.white38,
+                    size: 22,
                   ),
                 ),
               ],
             ),
           ),
         ),
-        // Expanded list
-        if (_trainerListExpanded) ...[
-          const SizedBox(height: 6),
-          Container(
-            constraints: const BoxConstraints(maxHeight: 180),
-            child: ListView.separated(
-              shrinkWrap: true,
-              itemCount: _trainers.length,
-              separatorBuilder: (_, _) => const SizedBox(height: 4),
-              itemBuilder: (_, i) => _buildTrainerItem(_trainers[i]),
-            ),
-          ),
-        ],
+        AnimatedSize(
+          duration: const Duration(milliseconds: 250),
+          curve: Curves.easeInOut,
+          child: _trainerListExpanded
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Container(
+                    constraints: const BoxConstraints(maxHeight: 200),
+                    child: ListView.builder(
+                      shrinkWrap: true,
+                      itemCount: _trainers.length,
+                      itemBuilder: (_, i) => _buildTrainerItem(_trainers[i]),
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
       ],
     );
   }
@@ -5965,52 +6307,47 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
     return GestureDetector(
       onTap: () => _selectTrainer(trainer),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        margin: const EdgeInsets.only(bottom: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           color: isSelected
-              ? const Color(0xFF3B82F6).withValues(alpha: 0.2)
-              : Colors.white.withValues(alpha: 0.05),
+              ? AppColors.primary.withValues(alpha: 0.12)
+              : Colors.white.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: isSelected
-                ? const Color(0xFF3B82F6)
-                : Colors.white.withValues(alpha: 0.1),
-          ),
         ),
         child: Row(
           children: [
-            // Avatar
             Container(
-              width: 44,
-              height: 44,
+              width: 40,
+              height: 40,
               decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppColors.primary.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(10),
+                color: AppColors.primary.withValues(alpha: 0.15),
               ),
               child: pic != null
-                  ? ClipOval(
+                  ? ClipRRect(
+                      borderRadius: BorderRadius.circular(10),
                       child: Image.network(
                         pic.startsWith('http') ? pic : '${ApiConfig.baseUrl}$pic',
-                        width: 44, height: 44, fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) => const Icon(Icons.person, size: 22, color: AppColors.primary),
+                        width: 40, height: 40, fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 20, color: AppColors.primary),
                       ),
                     )
-                  : const Icon(Icons.person, size: 22, color: AppColors.primary),
+                  : const Icon(Icons.person, size: 20, color: AppColors.primary),
             ),
             const SizedBox(width: 12),
-            // Info
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(children: [
-                    Text(name, style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.white)),
+                    Text(name, style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white, fontSize: 14)),
                     if (isNutritionist) ...[
                       const SizedBox(width: 6),
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF22C55E).withValues(alpha: 0.15),
+                          color: const Color(0xFF22C55E).withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Text('Nutrizionista', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Color(0xFF22C55E))),
@@ -6020,18 +6357,14 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
                   Text(
                     rate != null && (rate as num) > 0
                         ? '${(rate).toStringAsFixed(0)}\u20AC/ora'
-                        : 'Disponibile per prenotazioni',
-                    style: TextStyle(fontSize: 11, color: Colors.grey[400]),
+                        : 'Disponibile',
+                    style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.4)),
                   ),
                 ],
               ),
             ),
-            // Arrow
-            Icon(
-              Icons.arrow_forward_rounded,
-              size: 18,
-              color: isSelected ? const Color(0xFF3B82F6) : const Color(0xFF3B82F6).withValues(alpha: 0.6),
-            ),
+            if (isSelected)
+              const Icon(Icons.check_circle_rounded, size: 20, color: AppColors.primary),
           ],
         ),
       ),
@@ -6043,10 +6376,11 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: TextStyle(
-        fontSize: 12,
+      style: const TextStyle(
+        fontSize: 13,
         fontWeight: FontWeight.w600,
-        color: Colors.grey[400],
+        color: Colors.white70,
+        letterSpacing: -0.2,
       ),
     );
   }
@@ -6083,22 +6417,22 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
         }
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
-          color: const Color(0xFF252525),
-          borderRadius: BorderRadius.circular(10),
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Row(
           children: [
-            Icon(Icons.calendar_today_rounded, size: 16, color: Colors.grey[500]),
-            const SizedBox(width: 10),
+            Icon(Icons.calendar_today_rounded, size: 17, color: Colors.white.withValues(alpha: 0.4)),
+            const SizedBox(width: 12),
             Text(
               _selectedDate != null
                   ? '${_selectedDate!.day.toString().padLeft(2, '0')}/${_selectedDate!.month.toString().padLeft(2, '0')}/${_selectedDate!.year}'
                   : 'Seleziona una data...',
               style: TextStyle(
-                color: _selectedDate != null ? Colors.white : AppColors.textTertiary,
-                fontSize: 13,
+                color: _selectedDate != null ? Colors.white : Colors.white38,
+                fontSize: 15,
               ),
             ),
           ],
@@ -6112,14 +6446,14 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
   Widget _buildTimeSelector() {
     if (_selectedTrainerId == null || _selectedDate == null) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
-          color: const Color(0xFF252525),
-          borderRadius: BorderRadius.circular(10),
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: Text(
-          'Seleziona prima trainer e data',
-          style: TextStyle(color: Colors.grey[600], fontSize: 13),
+          'Seleziona prima professionista e data',
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.25), fontSize: 14),
         ),
       );
     }
@@ -6128,8 +6462,8 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
       return Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: const Color(0xFF252525),
-          borderRadius: BorderRadius.circular(10),
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
         ),
         child: const Center(
           child: SizedBox(
@@ -6142,14 +6476,14 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
 
     if (_availableSlots.isEmpty) {
       return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 13),
         decoration: BoxDecoration(
-          color: const Color(0xFF252525),
-          borderRadius: BorderRadius.circular(10),
+          color: Colors.white.withValues(alpha: 0.06),
+          borderRadius: BorderRadius.circular(12),
         ),
-        child: const Text(
+        child: Text(
           'Nessun orario disponibile',
-          style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 14),
         ),
       );
     }
@@ -6168,19 +6502,14 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             decoration: BoxDecoration(
               color: isSelected
-                  ? AppColors.primary.withValues(alpha: 0.2)
-                  : const Color(0xFF252525),
+                  ? AppColors.primary
+                  : Colors.white.withValues(alpha: 0.06),
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isSelected
-                    ? AppColors.primary
-                    : Colors.white.withValues(alpha: 0.1),
-              ),
             ),
             child: Text(
               time,
               style: TextStyle(
-                color: isSelected ? AppColors.primary : Colors.white,
+                color: isSelected ? Colors.white : Colors.white70,
                 fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
                 fontSize: 13,
               ),
@@ -6211,26 +6540,21 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
           child: GestureDetector(
             onTap: () => setState(() => _duration = val),
             child: Container(
-              margin: EdgeInsets.only(right: d != durations.last ? 8 : 0),
-              padding: const EdgeInsets.symmetric(vertical: 10),
+              margin: EdgeInsets.only(right: d != durations.last ? 6 : 0),
+              padding: const EdgeInsets.symmetric(vertical: 11),
               decoration: BoxDecoration(
                 color: isSelected
-                    ? AppColors.primary.withValues(alpha: 0.2)
-                    : const Color(0xFF252525),
+                    ? AppColors.primary
+                    : Colors.white.withValues(alpha: 0.06),
                 borderRadius: BorderRadius.circular(10),
-                border: Border.all(
-                  color: isSelected
-                      ? AppColors.primary
-                      : Colors.white.withValues(alpha: 0.1),
-                ),
               ),
               child: Text(
                 label,
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: isSelected ? AppColors.primary : Colors.white,
+                  color: isSelected ? Colors.white : Colors.white70,
                   fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  fontSize: 12,
+                  fontSize: 13,
                 ),
               ),
             ),
@@ -6243,23 +6567,20 @@ class _BookAppointmentContentState extends State<_BookAppointmentContent> {
   // ── NOTES ───────────────────────────────────────────────────────
 
   Widget _buildNotesField() {
-    return Container(
-      decoration: BoxDecoration(
-        color: const Color(0xFF252525),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: TextField(
-        controller: _notesController,
-        maxLines: 3,
-        style: const TextStyle(color: Colors.white, fontSize: 13),
-        decoration: InputDecoration(
-          hintText: 'Su cosa vorresti concentrarti in questa sessione?',
-          hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
-          filled: true,
-          fillColor: Colors.transparent,
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    return TextField(
+      controller: _notesController,
+      maxLines: 3,
+      style: const TextStyle(color: Colors.white, fontSize: 14),
+      decoration: InputDecoration(
+        hintText: 'Su cosa vorresti concentrarti?',
+        hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.25), fontSize: 14),
+        filled: true,
+        fillColor: Colors.white.withValues(alpha: 0.06),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
         ),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       ),
     );
   }

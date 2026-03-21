@@ -242,136 +242,209 @@ class _WorkoutCard extends ConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFFE8461E), Color(0xFFF15A24), Color(0xFFF97316)],
-        ),
-        borderRadius: BorderRadius.circular(24),
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: AppColors.borderLight),
       ),
-      padding: const EdgeInsets.all(24),
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'ALLENAMENTO DI OGGI',
-                style: TextStyle(
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white.withValues(alpha: 0.7),
-                  letterSpacing: 1.2,
-                ),
-              ),
-              GestureDetector(
-                onTap: () {
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (_) => WorkoutBuilderPage(
-                      existingWorkout: workout,
-                      onSaved: () {
-                        ref.invalidate(clientDataProvider);
-                        Navigator.of(context).pop();
-                      },
-                    ),
-                  ));
-                },
-                child: Container(
-                  width: 36,
-                  height: 36,
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(Icons.edit_rounded, size: 16, color: Colors.white.withValues(alpha: 0.8)),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-
-          // Title
-          Text(
-            title.toUpperCase(),
-            style: const TextStyle(
-              fontSize: 30,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-              height: 1.1,
+          // Accent bar
+          Container(
+            height: 4,
+            decoration: BoxDecoration(
+              gradient: isCompleted
+                  ? const LinearGradient(colors: [Color(0xFF22C55E), Color(0xFF16A34A)])
+                  : const LinearGradient(colors: [Color(0xFFF97316), Color(0xFFEA580C)]),
             ),
           ),
-          const SizedBox(height: 12),
-
-          // Duration & difficulty
-          Text(
-            hasWorkout
-                ? '• ${workout['duration'] ?? '0 min'} • ${workout['difficulty'] ?? 'Relax'}'
-                : 'Il tuo trainer non ha ancora assegnato un allenamento per oggi.',
-            style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: 0.7)),
-          ),
-          const SizedBox(height: 24),
-
-          // Divider + Buttons (always visible)
-          Divider(color: Colors.white.withValues(alpha: 0.2), height: 1),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: GestureDetector(
-                  onTap: () => context.go('/workouts'),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    decoration: BoxDecoration(
-                      color: isCompleted
-                          ? Colors.white.withValues(alpha: 0.25)
-                          : Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(12),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header row
+                Row(
+                  children: [
+                    Container(
+                      width: 40,
+                      height: 40,
+                      decoration: BoxDecoration(
+                        color: isCompleted
+                            ? const Color(0xFF22C55E).withValues(alpha: 0.15)
+                            : AppColors.primary.withValues(alpha: 0.15),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        isCompleted ? Icons.check_rounded : Icons.fitness_center_rounded,
+                        size: 20,
+                        color: isCompleted ? const Color(0xFF22C55E) : AppColors.primary,
+                      ),
                     ),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (isCompleted) ...[
-                          Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
-                          const SizedBox(width: 8),
-                        ],
-                        Text(
-                          isCompleted ? 'COMPLETATO' : 'AVVIA ALLENAMENTO',
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w700,
-                            fontSize: 14,
-                            letterSpacing: 0.5,
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Allenamento di Oggi',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 2),
+                          Text(
+                            title,
+                            style: const TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.textPrimary,
+                              height: 1.2,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
+                    if (hasWorkout)
+                      GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).push(MaterialPageRoute(
+                            builder: (_) => WorkoutBuilderPage(
+                              existingWorkout: workout,
+                              onSaved: () {
+                                ref.invalidate(clientDataProvider);
+                                Navigator.of(context).pop();
+                              },
+                            ),
+                          ));
+                        },
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: AppColors.elevated,
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: AppColors.borderLight),
+                          ),
+                          child: const Icon(Icons.edit_rounded, size: 16, color: AppColors.textSecondary),
+                        ),
+                      ),
+                  ],
                 ),
-              ),
-              const SizedBox(width: 12),
-              GestureDetector(
-                onTap: () => showCoopModal(context, ref),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.1),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.2)),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Row(
+
+                // Metadata chips
+                if (hasWorkout) ...[
+                  const SizedBox(height: 16),
+                  Row(
                     children: [
-                      Icon(Icons.people_rounded, size: 20, color: Colors.white),
-                      SizedBox(width: 8),
-                      Text('CO-OP', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13, letterSpacing: 0.5)),
+                      _MetadataChip(
+                        icon: Icons.timer_outlined,
+                        label: workout['duration']?.toString() ?? '0 min',
+                      ),
+                      const SizedBox(width: 8),
+                      _MetadataChip(
+                        icon: Icons.signal_cellular_alt_rounded,
+                        label: workout['difficulty']?.toString() ?? 'Relax',
+                      ),
                     ],
                   ),
+                ] else ...[
+                  const SizedBox(height: 8),
+                  Text(
+                    'Il tuo trainer non ha ancora assegnato un allenamento per oggi.',
+                    style: TextStyle(fontSize: 14, color: AppColors.textTertiary),
+                  ),
+                ],
+
+                const SizedBox(height: 20),
+
+                // Action buttons
+                Row(
+                  children: [
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => context.go('/workouts'),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          decoration: BoxDecoration(
+                            color: isCompleted
+                                ? const Color(0xFF22C55E)
+                                : AppColors.primary,
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              if (isCompleted) ...[
+                                const Icon(Icons.check_circle_rounded, color: Colors.white, size: 18),
+                                const SizedBox(width: 8),
+                              ],
+                              Text(
+                                isCompleted ? 'Completato' : 'Inizia',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 16,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    GestureDetector(
+                      onTap: () => showCoopModal(context, ref),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                        decoration: BoxDecoration(
+                          color: AppColors.elevated,
+                          border: Border.all(color: AppColors.borderLight),
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.people_rounded, size: 18, color: AppColors.textSecondary),
+                            const SizedBox(width: 8),
+                            Text('Co-op', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w600, fontSize: 15)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _MetadataChip extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  const _MetadataChip({required this.icon, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: AppColors.elevated,
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(color: AppColors.borderLight),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 14, color: AppColors.textTertiary),
+          const SizedBox(width: 6),
+          Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
         ],
       ),
     );

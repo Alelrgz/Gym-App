@@ -508,7 +508,8 @@ class ScheduleService:
                         "type": e.type,
                         "completed": e.completed,
                         "workout_id": e.workout_id,
-                        "details": e.details
+                        "details": e.details,
+                        "appointment_id": getattr(e, 'appointment_id', None)
                     } for e in events
                 ]
             }

@@ -223,6 +223,14 @@ class ClientService {
     return response.data as List<dynamic>;
   }
 
+  Future<Map<String, dynamic>> cancelAppointment(String appointmentId, {String? reason}) async {
+    final response = await _api.post(
+      '/api/appointments/$appointmentId/cancel',
+      data: {'cancellation_reason': reason},
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
   // ── Booking ─────────────────────────────────────────────────────
 
   Future<List<dynamic>> getTrainerAvailableSlots(String trainerId, String date) async {

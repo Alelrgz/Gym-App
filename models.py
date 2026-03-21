@@ -96,6 +96,7 @@ class CalendarEvent(BaseModel):
     type: str  # 'workout', 'rest', 'milestone'
     completed: bool
     details: str
+    appointment_id: Optional[str] = None
 
 class CalendarData(BaseModel):
     events: List[CalendarEvent]
