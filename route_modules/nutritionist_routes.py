@@ -50,8 +50,9 @@ async def get_client_detail(
     db: Session = Depends(get_db)
 ):
     _require_nutritionist(current_user)
-    authorize_client_access(current_user, client_id, "weight", "view",
-                            "/api/nutritionist/client/{client_id}", db, request)
+    # Gym isolation check only — consent is checked for sensitive operations
+    from authorization import enforce_gym_isolation
+    enforce_gym_isolation(current_user, client_id, db)
     return service.get_client_detail(client_id)
 
 

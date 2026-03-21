@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemNavigator;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
@@ -229,13 +230,48 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       }
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: widget.navigationShell,
-      bottomNavigationBar: AppBottomNav(
-        currentIndex: navIndex,
-        onTap: onNavTap,
-        onFabAction: onFabAction,
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        debugPrint('>>> PopScope: didPop=$didPop, navIndex=${widget.navigationShell.currentIndex}');
+        if (didPop) return;
+        // If not on first tab, go to first tab
+        if (widget.navigationShell.currentIndex != 0) {
+          widget.navigationShell.goBranch(0, initialLocation: true);
+          return;
+        }
+        // On first tab: show exit confirmation
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text('Chiudi app?', style: TextStyle(color: AppColors.textPrimary)),
+            content: const Text('Vuoi uscire dall\'app?', style: TextStyle(color: AppColors.textSecondary)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('No', style: TextStyle(color: AppColors.textSecondary)),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  SystemNavigator.pop();
+                },
+                child: const Text('Sì', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        );
+      },
+      child: Scaffold(
+        backgroundColor: AppColors.background,
+        body: widget.navigationShell,
+        bottomNavigationBar: AppBottomNav(
+          currentIndex: navIndex,
+          onTap: onNavTap,
+          onFabAction: onFabAction,
+        ),
       ),
     );
   }

@@ -318,21 +318,21 @@ class _NutritionistDashboardScreenState
   //  SEARCH BAR
   // ═══════════════════════════════════════════════════════
   Widget _buildSearchBar() {
-    return Container(
-      height: 44,
-      decoration: BoxDecoration(
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: Container(
+        height: 44,
         color: Colors.white.withValues(alpha: 0.06),
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: TextField(
-        onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
-        style: const TextStyle(fontSize: 14, color: Colors.white),
-        decoration: InputDecoration(
-          hintText: 'Cerca clienti...',
-          hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
-          prefixIcon: Icon(Icons.search_rounded, size: 20, color: Colors.grey[600]),
-          border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(vertical: 12),
+        child: TextField(
+          onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+          style: const TextStyle(fontSize: 14, color: Colors.white),
+          decoration: InputDecoration(
+            hintText: 'Cerca clienti...',
+            hintStyle: TextStyle(color: Colors.grey[600], fontSize: 14),
+            prefixIcon: Icon(Icons.search_rounded, size: 20, color: Colors.grey[600]),
+            border: InputBorder.none,
+            contentPadding: const EdgeInsets.symmetric(vertical: 12),
+          ),
         ),
       ),
     );
@@ -2026,8 +2026,12 @@ class _NutritionistDashboardScreenState
     } catch (e, st) {
       debugPrint('>>> FAILED: $e');
       debugPrint('>>> Stack: $st');
-      setState(() => _loadingDetail = false);
-      _toast('Errore: $e');
+      setState(() {
+        _loadingDetail = false;
+        _selectedClientId = null;
+        _clientDetail = null;
+      });
+      _toast('Impossibile caricare i dati del cliente');
     }
   }
 
@@ -2262,19 +2266,14 @@ class _StatCard extends StatelessWidget {
     return Expanded(
       child: GestureDetector(
         onTap: onTap,
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+        child: Container(
           padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
           decoration: BoxDecoration(
-            color: isActive
-                ? color.withValues(alpha: 0.05)
-                : Colors.white.withValues(alpha: 0.03),
+            color: Colors.white.withValues(alpha: 0.03),
             borderRadius: BorderRadius.circular(16),
             border: isActive
-                ? const Border(
-                    bottom: BorderSide(color: Colors.transparent, width: 0),
-                  )
-                : null,
+                ? Border.all(color: color.withValues(alpha: 0.4), width: 1.5)
+                : Border.all(color: Colors.transparent, width: 1.5),
           ),
           child: Column(
             children: [
@@ -2292,29 +2291,19 @@ class _StatCard extends StatelessWidget {
                   ),
                   const SizedBox(width: 6),
                   Text(value,
-                      style: const TextStyle(
+                      style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.w700,
-                          color: Colors.white)),
+                          color: isActive ? color : Colors.white)),
                 ],
               ),
               const SizedBox(height: 4),
               Text(label,
                   style: TextStyle(
                       fontSize: 10,
-                      color: Colors.grey[600],
+                      color: isActive ? color.withValues(alpha: 0.7) : Colors.grey[600],
                       fontWeight: FontWeight.w500,
                       letterSpacing: 0.3)),
-              if (isActive)
-                Container(
-                  margin: const EdgeInsets.only(top: 8),
-                  height: 2,
-                  width: 24,
-                  decoration: BoxDecoration(
-                    color: color,
-                    borderRadius: BorderRadius.circular(1),
-                  ),
-                ),
             ],
           ),
         ),

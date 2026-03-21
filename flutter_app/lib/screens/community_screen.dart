@@ -338,7 +338,9 @@ class _PostCard extends StatelessWidget {
   String _relativeTime(String? iso) {
     if (iso == null) return '';
     try {
-      final dt = DateTime.parse(iso);
+      // Server stores UTC times without 'Z' suffix — parse as UTC
+      var dt = DateTime.parse(iso);
+      if (!dt.isUtc) dt = DateTime.utc(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.millisecond);
       final diff = DateTime.now().toUtc().difference(dt);
       if (diff.inMinutes < 1) return 'ora';
       if (diff.inMinutes < 60) return '${diff.inMinutes}m';
@@ -1220,7 +1222,9 @@ class _PostDetailPageState extends State<_PostDetailPage> with SingleTickerProvi
   String _relativeTime(String? iso) {
     if (iso == null) return '';
     try {
-      final dt = DateTime.parse(iso);
+      // Server stores UTC times without 'Z' suffix — parse as UTC
+      var dt = DateTime.parse(iso);
+      if (!dt.isUtc) dt = DateTime.utc(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.millisecond);
       final diff = DateTime.now().toUtc().difference(dt);
       if (diff.inMinutes < 1) return 'ora';
       if (diff.inMinutes < 60) return '${diff.inMinutes}m';
@@ -1543,7 +1547,9 @@ class _CommentsSheetState extends State<_CommentsSheet> {
   String _relativeTime(String? iso) {
     if (iso == null) return '';
     try {
-      final dt = DateTime.parse(iso);
+      // Server stores UTC times without 'Z' suffix — parse as UTC
+      var dt = DateTime.parse(iso);
+      if (!dt.isUtc) dt = DateTime.utc(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.millisecond);
       final diff = DateTime.now().toUtc().difference(dt);
       if (diff.inMinutes < 1) return 'ora';
       if (diff.inMinutes < 60) return '${diff.inMinutes}m';

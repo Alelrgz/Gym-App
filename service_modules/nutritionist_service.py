@@ -21,15 +21,44 @@ class NutritionistService:
             nutritionist = db.query(UserORM).filter(UserORM.id == nutritionist_id).first()
             gym_id = nutritionist.gym_owner_id if nutritionist else None
 
-            # Get all clients from the same gym
-            if gym_id:
+            # Get only clients assigned to or consented to this nutritionist
+            # 1. Clients with nutritionist_id set to this nutritionist
+            assigned_profiles = db.query(ClientProfileORM).filter(
+                ClientProfileORM.nutritionist_id == nutritionist_id
+            ).all()
+            assigned_ids = {p.id for p in assigned_profiles}
+
+            # 2. Clients who have active consent with this nutritionist
+            try:
+                from models_orm import DataConsentORM
+                consented = db.query(DataConsentORM.client_id).filter(
+                    DataConsentORM.professional_id == nutritionist_id,
+                    DataConsentORM.status == "active"
+                ).all()
+                consented_ids = {c.client_id for c in consented}
+            except Exception:
+                consented_ids = set()
+
+            # 3. Clients who have booked a nutritionist appointment
+            try:
+                from models_orm import NutritionistAppointmentORM
+                booked = db.query(NutritionistAppointmentORM.client_id).filter(
+                    NutritionistAppointmentORM.nutritionist_id == nutritionist_id
+                ).distinct().all()
+                booked_ids = {b.client_id for b in booked}
+            except Exception:
+                booked_ids = set()
+
+            # Combine all client IDs
+            all_client_ids = assigned_ids | consented_ids | booked_ids
+            logger.info(f"Nutritionist {nutritionist_id}: assigned={len(assigned_ids)} consented={len(consented_ids)} booked={len(booked_ids)} total_unique={len(all_client_ids)}")
+
+            if all_client_ids:
                 client_profiles = db.query(ClientProfileORM).filter(
-                    ClientProfileORM.gym_id == gym_id
+                    ClientProfileORM.id.in_(all_client_ids)
                 ).all()
             else:
-                client_profiles = db.query(ClientProfileORM).filter(
-                    ClientProfileORM.nutritionist_id == nutritionist_id
-                ).all()
+                client_profiles = list(assigned_profiles)
 
             client_ids = [p.id for p in client_profiles]
             clients_orm = db.query(UserORM).filter(

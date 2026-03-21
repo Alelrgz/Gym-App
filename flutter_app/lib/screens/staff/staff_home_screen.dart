@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart' show SystemNavigator;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
@@ -154,8 +155,9 @@ class _StaffHomeScreenState extends ConsumerState<StaffHomeScreen> {
     void goTo(int i) =>
         widget.navigationShell.goBranch(i, initialLocation: i == navIndex);
 
+    Widget scaffold;
     if (isDesktop) {
-      return Scaffold(
+      scaffold = Scaffold(
         backgroundColor: AppColors.background,
         body: Row(
           children: [
@@ -168,15 +170,49 @@ class _StaffHomeScreenState extends ConsumerState<StaffHomeScreen> {
           ],
         ),
       );
+    } else {
+      scaffold = Scaffold(
+        backgroundColor: AppColors.background,
+        body: widget.navigationShell,
+        bottomNavigationBar: _MobileBottomNav(
+          currentIndex: navIndex,
+          onTap: goTo,
+        ),
+      );
     }
 
-    return Scaffold(
-      backgroundColor: AppColors.background,
-      body: widget.navigationShell,
-      bottomNavigationBar: _MobileBottomNav(
-        currentIndex: navIndex,
-        onTap: goTo,
-      ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (didPop, _) {
+        if (didPop) return;
+        if (navIndex != 0) {
+          widget.navigationShell.goBranch(0, initialLocation: true);
+          return;
+        }
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: const Text('Chiudi app?', style: TextStyle(color: AppColors.textPrimary)),
+            content: const Text('Vuoi uscire dall\'app?', style: TextStyle(color: AppColors.textSecondary)),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: const Text('No', style: TextStyle(color: AppColors.textSecondary)),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(ctx).pop();
+                  SystemNavigator.pop();
+                },
+                child: const Text('Sì', style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        );
+      },
+      child: scaffold,
     );
   }
 }

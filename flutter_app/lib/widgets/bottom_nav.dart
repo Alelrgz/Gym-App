@@ -73,10 +73,18 @@ class AppBottomNav extends StatelessWidget {
     );
   }
 
+  static bool _isDialogOpen = false;
+  static DateTime? _lastOpenTime;
+
   void _showQuickActions(BuildContext context) {
+    if (_isDialogOpen) return;
+    final now = DateTime.now();
+    if (_lastOpenTime != null && now.difference(_lastOpenTime!).inMilliseconds < 500) return;
+    _isDialogOpen = true;
+    _lastOpenTime = now;
     final screenWidth = MediaQuery.of(context).size.width;
     final bottomPadding = MediaQuery.of(context).padding.bottom;
-    showGeneralDialog(
+    showGeneralDialog<void>(
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Quick Actions',
@@ -108,7 +116,7 @@ class AppBottomNav extends StatelessWidget {
             // Blurred dimmed background
             Positioned.fill(
               child: GestureDetector(
-                onTap: () => Navigator.pop(ctx),
+                onTap: () => Navigator.of(ctx, rootNavigator: true).maybePop(),
                 child: AnimatedBuilder(
                   animation: fadeCurved,
                   builder: (_, __) => BackdropFilter(
@@ -149,7 +157,7 @@ class AppBottomNav extends StatelessWidget {
                       scale: itemAnim.value,
                       child: GestureDetector(
                         onTap: () {
-                          Navigator.pop(ctx);
+                          Navigator.of(ctx, rootNavigator: true).maybePop();
                           onFabAction?.call(action.actionId);
                         },
                         child: Column(
@@ -208,17 +216,17 @@ class AppBottomNav extends StatelessWidget {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                       children: [
-                        _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home', isActive: currentIndex == 0, onTap: () { Navigator.pop(ctx); onTap(0); }),
-                        _NavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart_rounded, label: 'Stats', isActive: currentIndex == 1, onTap: () { Navigator.pop(ctx); onTap(1); }),
+                        _NavItem(icon: Icons.home_outlined, activeIcon: Icons.home_rounded, label: 'Home', isActive: currentIndex == 0, onTap: () { Navigator.of(ctx, rootNavigator: true).maybePop(); onTap(0); }),
+                        _NavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart_rounded, label: 'Stats', isActive: currentIndex == 1, onTap: () { Navigator.of(ctx, rootNavigator: true).maybePop(); onTap(1); }),
                         AnimatedBuilder(
                           animation: curved,
                           builder: (_, __) => _FabButton(
-                            onTap: () => Navigator.pop(ctx),
+                            onTap: () => Navigator.of(ctx, rootNavigator: true).maybePop(),
                             rotation: curved.value,
                           ),
                         ),
-                        _NavItem(icon: Icons.forum_outlined, activeIcon: Icons.forum_rounded, label: 'Community', isActive: currentIndex == 2, onTap: () { Navigator.pop(ctx); onTap(2); }),
-                        _NavItem(icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: 'Profilo', isActive: currentIndex == 3, onTap: () { Navigator.pop(ctx); onTap(3); }),
+                        _NavItem(icon: Icons.forum_outlined, activeIcon: Icons.forum_rounded, label: 'Community', isActive: currentIndex == 2, onTap: () { Navigator.of(ctx, rootNavigator: true).maybePop(); onTap(2); }),
+                        _NavItem(icon: Icons.person_outline_rounded, activeIcon: Icons.person_rounded, label: 'Profilo', isActive: currentIndex == 3, onTap: () { Navigator.of(ctx, rootNavigator: true).maybePop(); onTap(3); }),
                       ],
                     ),
                   ),
@@ -229,7 +237,12 @@ class AppBottomNav extends StatelessWidget {
         );
       },
       pageBuilder: (ctx, _, __) => const SizedBox.shrink(),
-    );
+    ).then((_) {
+      // Keep locked for 600ms after close to let the animation fully finish
+      Future.delayed(const Duration(milliseconds: 600), () {
+        _isDialogOpen = false;
+      });
+    });
   }
 
 }
@@ -258,11 +271,16 @@ class _NavItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isSmall = screenWidth < 380;
+    final fontSize = isSmall ? 9.0 : 11.0;
+    final itemWidth = isSmall ? 56.0 : 64.0;
+
     return GestureDetector(
       onTap: onTap,
       behavior: HitTestBehavior.opaque,
       child: SizedBox(
-        width: 64,
+        width: itemWidth,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -275,10 +293,12 @@ class _NavItem extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                fontSize: 11,
+                fontSize: fontSize,
                 fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
                 color: isActive ? AppColors.primary : Colors.white.withValues(alpha: 0.45),
               ),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
             ),
           ],
         ),
@@ -298,8 +318,10 @@ class _FabButton extends StatelessWidget {
     final isOpen = rotation > 0;
     return GestureDetector(
       onTap: onTap,
-      child: Transform.rotate(
-        angle: rotation * 0.785398, // 45 degrees in radians
+      child: AnimatedRotation(
+        turns: isOpen ? 0.5 : 0,
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOut,
         child: Container(
           width: isOpen ? 44 : 52,
           height: isOpen ? 44 : 52,
@@ -314,7 +336,11 @@ class _FabButton extends StatelessWidget {
             color: isOpen ? Colors.white.withValues(alpha: 0.12) : null,
             borderRadius: BorderRadius.circular(isOpen ? 14 : 16),
           ),
-          child: Icon(Icons.add_rounded, color: Colors.white, size: isOpen ? 26 : 30),
+          child: Icon(
+            Icons.keyboard_arrow_up_rounded,
+            color: Colors.white,
+            size: 32,
+          ),
         ),
       ),
     );

@@ -559,18 +559,21 @@ class _StreakGemsCardState extends State<_StreakGemsCard>
 
 // ─── STREAK PAGE (Duolingo-style) ──────────────────────────────
 
-class _StreakPage extends StatefulWidget {
+class _StreakPage extends ConsumerStatefulWidget {
   final int streak;
   final int gems;
 
   const _StreakPage({required this.streak, required this.gems});
 
   @override
-  State<_StreakPage> createState() => _StreakPageState();
+  ConsumerState<_StreakPage> createState() => _StreakPageState();
 }
 
-class _StreakPageState extends State<_StreakPage> with SingleTickerProviderStateMixin {
+class _StreakPageState extends ConsumerState<_StreakPage> with SingleTickerProviderStateMixin {
   late final AnimationController _flameController;
+  int _currentMonth = DateTime.now().month;
+  int _currentYear = DateTime.now().year;
+  DateTime? _selectedDay;
 
   @override
   void initState() {
@@ -600,22 +603,257 @@ class _StreakPageState extends State<_StreakPage> with SingleTickerProviderState
     return milestones.cast<int?>().firstWhere((m) => m! > _weeks, orElse: () => null) ?? (_weeks + 4);
   }
 
-  /// Simulates which days this week had workouts.
-  /// In a real app this would come from workout log data.
-  List<bool> get _weekActivity {
-    final today = DateTime.now().weekday; // 1=Mon, 7=Sun
-    final daysIntoStreak = widget.streak % 7;
-    return List.generate(7, (i) {
-      final dayIndex = i + 1;
-      if (dayIndex > today) return false;
-      // Show recent activity days within current week
-      return (today - dayIndex) < daysIntoStreak;
-    });
+  static const _monthNames = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+    'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+  static const _dayHeaders = ['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'];
+
+  Set<String> get _completedDates {
+    final asyncProfile = ref.read(clientDataProvider);
+    if (!asyncProfile.hasValue) return {};
+    return asyncProfile.value!.calendarEvents
+        .where((e) => e.completed)
+        .map((e) => e.date)
+        .toSet();
   }
 
-  int get _workoutDaysThisWeek => _weekActivity.where((a) => a).length;
+  Set<String> get _workoutDates {
+    final asyncProfile = ref.read(clientDataProvider);
+    if (!asyncProfile.hasValue) return {};
+    return asyncProfile.value!.calendarEvents
+        .where((e) => e.type == 'workout')
+        .map((e) => e.date)
+        .toSet();
+  }
 
-  static const _dayLabels = ['L', 'M', 'M', 'G', 'V', 'S', 'D'];
+  String _fmtDate(DateTime d) =>
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+
+  Widget _buildMonthlyCalendar() {
+    final completed = _completedDates;
+    final workouts = _workoutDates;
+    final now = DateTime.now();
+    // Monday-first: 0=Mon..6=Sun
+    final firstDay = DateTime(_currentYear, _currentMonth, 1);
+    final firstDayOffset = (firstDay.weekday - 1) % 7; // Mon=0
+    final daysInMonth = DateTime(_currentYear, _currentMonth + 1, 0).day;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        children: [
+          // Month header with arrows
+          Row(
+            children: [
+              Text(
+                '${_monthNames[_currentMonth - 1]} $_currentYear',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+              ),
+              const Spacer(),
+              GestureDetector(
+                onTap: () => setState(() {
+                  _currentMonth--;
+                  if (_currentMonth < 1) { _currentMonth = 12; _currentYear--; }
+                }),
+                child: const Padding(
+                  padding: EdgeInsets.all(6),
+                  child: Icon(Icons.chevron_left_rounded, color: AppColors.primary, size: 24),
+                ),
+              ),
+              GestureDetector(
+                onTap: () => setState(() {
+                  _currentMonth++;
+                  if (_currentMonth > 12) { _currentMonth = 1; _currentYear++; }
+                }),
+                child: const Padding(
+                  padding: EdgeInsets.all(6),
+                  child: Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 24),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Day headers
+          Row(
+            children: _dayHeaders.map((d) => Expanded(
+              child: Center(
+                child: Text(d, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey[600])),
+              ),
+            )).toList(),
+          ),
+          const SizedBox(height: 8),
+          // Calendar grid
+          GridView.count(
+            crossAxisCount: 7,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            childAspectRatio: 1.0,
+            mainAxisSpacing: 4,
+            crossAxisSpacing: 0,
+            children: [
+              // Empty cells for offset
+              for (var i = 0; i < firstDayOffset; i++)
+                const SizedBox.shrink(),
+              // Day cells
+              for (var day = 1; day <= daysInMonth; day++)
+                _buildStreakDayCell(day, now, completed, workouts),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStreakDayCell(int day, DateTime now, Set<String> completed, Set<String> workouts) {
+    final date = DateTime(_currentYear, _currentMonth, day);
+    final dateStr = _fmtDate(date);
+    final isToday = date.year == now.year && date.month == now.month && date.day == now.day;
+    final isCompleted = completed.contains(dateStr);
+    final hasWorkout = workouts.contains(dateStr);
+    final isPast = date.isBefore(DateTime(now.year, now.month, now.day));
+    final isSelected = _selectedDay != null &&
+        date.year == _selectedDay!.year && date.month == _selectedDay!.month && date.day == _selectedDay!.day;
+
+    return GestureDetector(
+      onTap: () => setState(() => _selectedDay = date),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isCompleted
+                  ? AppColors.primary.withValues(alpha: 0.15)
+                  : isToday
+                      ? AppColors.primary
+                      : isSelected
+                          ? Colors.white.withValues(alpha: 0.12)
+                          : Colors.transparent,
+              border: (isToday && !isCompleted) || isSelected
+                  ? Border.all(color: AppColors.primary, width: 2)
+                  : null,
+            ),
+            child: isCompleted
+                ? SvgPicture.string(
+                    _lucideFlame.replaceAll('currentColor', '#F97316'),
+                    width: 16, height: 16, fit: BoxFit.scaleDown,
+                  )
+                : Center(
+                    child: Text(
+                      '$day',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: (isToday || isSelected) ? FontWeight.w700 : FontWeight.w400,
+                        color: isToday
+                            ? Colors.white
+                            : (hasWorkout || isSelected)
+                                ? AppColors.textPrimary
+                                : isPast
+                                    ? Colors.grey[700]
+                                    : AppColors.textTertiary,
+                      ),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<dynamic> _eventsForSelectedDay() {
+    if (_selectedDay == null) return [];
+    final asyncProfile = ref.read(clientDataProvider);
+    if (!asyncProfile.hasValue) return [];
+    final dateStr = _fmtDate(_selectedDay!);
+    return asyncProfile.value!.calendarEvents
+        .where((e) => e.date == dateStr)
+        .toList();
+  }
+
+  static const _italianDays = ['Domenica', 'Lunedì', 'Martedì', 'Mercoledì', 'Giovedì', 'Venerdì', 'Sabato'];
+  static const _italianMonths = ['Gennaio', 'Febbraio', 'Marzo', 'Aprile', 'Maggio', 'Giugno',
+    'Luglio', 'Agosto', 'Settembre', 'Ottobre', 'Novembre', 'Dicembre'];
+
+  Widget _buildSelectedDayDetails() {
+    if (_selectedDay == null) return const SizedBox.shrink();
+
+    final events = _eventsForSelectedDay();
+    final dayName = _italianDays[_selectedDay!.weekday % 7];
+    final label = '$dayName ${_selectedDay!.day} ${_italianMonths[_selectedDay!.month - 1]}'.toUpperCase();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey[500], letterSpacing: 1.0)),
+          const SizedBox(height: 8),
+          if (events.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text('Nessun evento programmato.', style: TextStyle(fontSize: 13, color: Colors.grey[500], fontStyle: FontStyle.italic)),
+            )
+          else
+            ...events.map((event) {
+              final statusText = event.completed ? 'COMPLETATO' : 'PROGRAMMATO';
+              final statusColor = event.completed ? const Color(0xFF4ADE80) : AppColors.primary;
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                ),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 40, height: 40,
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Icon(
+                        event.type == 'workout' ? Icons.fitness_center_rounded
+                            : event.type == 'course' ? Icons.school_rounded
+                            : event.type == 'appointment' ? Icons.event_rounded
+                            : Icons.event_note_rounded,
+                        color: statusColor, size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(event.title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                          if (event.details != null && event.details!.isNotEmpty && !event.details!.startsWith('{'))
+                            Text(event.details!, style: TextStyle(fontSize: 12, color: Colors.grey[500]), maxLines: 1, overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: statusColor.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(6),
+                      ),
+                      child: Text(statusText, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: statusColor)),
+                    ),
+                  ],
+                ),
+              );
+            }),
+        ],
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -678,75 +916,9 @@ class _StreakPageState extends State<_StreakPage> with SingleTickerProviderState
             ),
             const SizedBox(height: 36),
 
-            // ── Weekly activity dots ──
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.04),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text('Questa settimana', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                      Text(
-                        '$_workoutDaysThisWeek/2 allenamenti',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                          color: _workoutDaysThisWeek >= 2 ? AppColors.primary : Colors.grey[500],
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: List.generate(7, (i) {
-                      final active = _weekActivity[i];
-                      final isToday = i + 1 == DateTime.now().weekday;
-                      return Column(
-                        children: [
-                          Text(
-                            _dayLabels[i],
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: isToday ? AppColors.primary : Colors.grey[600],
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          Container(
-                            width: 36,
-                            height: 36,
-                            decoration: BoxDecoration(
-                              shape: BoxShape.circle,
-                              color: active
-                                  ? AppColors.primary.withValues(alpha: 0.15)
-                                  : Colors.white.withValues(alpha: 0.04),
-                              border: isToday
-                                  ? Border.all(color: AppColors.primary, width: 2)
-                                  : Border.all(color: Colors.white.withValues(alpha: 0.06)),
-                            ),
-                            child: active
-                                ? SvgPicture.string(
-                                    _lucideFlame.replaceAll('currentColor', '#F97316'),
-                                    width: 18,
-                                    height: 18,
-                                    fit: BoxFit.scaleDown,
-                                  )
-                                : null,
-                          ),
-                        ],
-                      );
-                    }),
-                  ),
-                ],
-              ),
-            ),
+            // ── Monthly Calendar ──
+            _buildMonthlyCalendar(),
+            _buildSelectedDayDetails(),
             const SizedBox(height: 16),
 
             // ── Next milestone progress ──
