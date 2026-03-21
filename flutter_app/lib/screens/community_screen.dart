@@ -74,6 +74,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
             pinned: true,
             backgroundColor: AppColors.background,
             surfaceTintColor: Colors.transparent,
+            elevation: 0,
             // On desktop (inside sidebar shell), hide the logo/icons toolbar
             toolbarHeight: isDesktop ? 0 : 68,
             title: isDesktop
@@ -274,7 +275,7 @@ class _FeedTabState extends ConsumerState<_FeedTab> with AutomaticKeepAliveClien
           constraints: BoxConstraints(maxWidth: isDesktop ? 600 : double.infinity),
           child: ListView.builder(
         controller: _scrollController,
-        padding: EdgeInsets.zero,
+        padding: const EdgeInsets.only(top: 8),
         itemCount: feedState.posts.length + (feedState.hasMore ? 1 : 0),
         itemBuilder: (context, index) {
           if (index == feedState.posts.length) {
