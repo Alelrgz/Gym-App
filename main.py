@@ -496,6 +496,9 @@ app.include_router(community_router)
 from route_modules.consent_routes import consent_router
 app.include_router(consent_router)
 
+from route_modules.stripe_connect_routes import stripe_connect_router
+app.include_router(stripe_connect_router)
+
 
 def _safe_add_columns(engine, table_name, columns_list):
     """Add columns to a table using IF NOT EXISTS (PostgreSQL 9.6+) or fallback."""

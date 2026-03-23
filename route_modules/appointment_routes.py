@@ -10,7 +10,7 @@ from models import (
     CancelAppointmentRequest
 )
 from database import get_db_session
-from models_orm import UserORM, AppointmentORM
+from models_orm import UserORM, AppointmentORM, StripeTransferORM
 
 router = APIRouter()
 
@@ -437,6 +437,16 @@ async def create_appointment_checkout_session(
         success_url = f"{base_url}/api/client/appointment-checkout-success?session_id={{CHECKOUT_SESSION_ID}}"
         cancel_url = f"{base_url}/?role=client&booking_canceled=true"
 
+        # Calculate commission split
+        commission_rate = trainer.commission_rate or 0.0  # percentage trainer keeps (e.g. 70)
+        trainer_share_cents = int(amount_cents * commission_rate / 100) if commission_rate > 0 else 0
+        gym_share_cents = amount_cents - trainer_share_cents
+
+        # Check Stripe Connect accounts
+        trainer_stripe_acct = trainer.stripe_account_id if trainer.stripe_account_status == "active" else ""
+        gym_owner = db.query(UserORM).filter(UserORM.id == trainer.gym_owner_id).first() if trainer.gym_owner_id else None
+        gym_stripe_acct = gym_owner.stripe_account_id if gym_owner and gym_owner.stripe_account_status == "active" else ""
+
         checkout_session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             mode="payment",
@@ -460,6 +470,11 @@ async def create_appointment_checkout_session(
                 "duration": str(duration),
                 "notes": (notes or "")[:500],
                 "trainer_name": trainer.username,
+                "commission_rate": str(commission_rate),
+                "trainer_share_cents": str(trainer_share_cents),
+                "gym_share_cents": str(gym_share_cents),
+                "trainer_stripe_account": trainer_stripe_acct,
+                "gym_stripe_account": gym_stripe_acct,
             },
             payment_intent_data={
                 "description": f"Fit Pay - Sessione con {trainer.username}",
@@ -527,4 +542,105 @@ async def appointment_checkout_success(
     except HTTPException as e:
         return RedirectResponse(url=f"/?role=client&booking_error={e.detail}")
 
+    # --- Stripe Connect: Split payment to professional + gym ---
+    _execute_payment_split(checkout_session, meta)
+
     return RedirectResponse(url="/?role=client&booking_success=true")
+
+
+def _execute_payment_split(checkout_session, meta):
+    """Transfer funds to professional and gym owner via Stripe Connect."""
+    import stripe, os, uuid
+    stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
+
+    trainer_share = int(meta.get("trainer_share_cents", "0"))
+    gym_share = int(meta.get("gym_share_cents", "0"))
+    trainer_acct = meta.get("trainer_stripe_account", "")
+    gym_acct = meta.get("gym_stripe_account", "")
+    payment_intent = checkout_session.payment_intent
+
+    if not payment_intent:
+        return
+
+    db = get_db_session()
+    try:
+        # Check if transfers already exist (idempotency)
+        existing = db.query(StripeTransferORM).filter(
+            StripeTransferORM.stripe_payment_intent_id == payment_intent
+        ).first()
+        if existing:
+            return
+
+        # Transfer to professional
+        if trainer_share > 0 and trainer_acct:
+            try:
+                transfer = stripe.Transfer.create(
+                    amount=trainer_share,
+                    currency="eur",
+                    destination=trainer_acct,
+                    source_transaction=payment_intent,
+                    metadata={
+                        "appointment_id": meta.get("trainer_id", ""),
+                        "type": "professional_commission",
+                    }
+                )
+                db.add(StripeTransferORM(
+                    id=str(uuid.uuid4()),
+                    appointment_id=meta.get("trainer_id"),
+                    stripe_transfer_id=transfer.id,
+                    stripe_payment_intent_id=payment_intent,
+                    destination_account_id=trainer_acct,
+                    destination_user_id=meta.get("trainer_id"),
+                    destination_role="trainer",
+                    amount=trainer_share,
+                    currency="eur",
+                    status="completed",
+                ))
+                logger.info(f"Transferred {trainer_share} cents to professional {trainer_acct}")
+            except stripe.StripeError as e:
+                logger.error(f"Failed to transfer to professional: {e}")
+                db.add(StripeTransferORM(
+                    id=str(uuid.uuid4()),
+                    stripe_payment_intent_id=payment_intent,
+                    destination_account_id=trainer_acct,
+                    destination_user_id=meta.get("trainer_id"),
+                    destination_role="trainer",
+                    amount=trainer_share,
+                    currency="eur",
+                    status="failed",
+                    error_message=str(e),
+                ))
+
+        # Transfer to gym owner
+        if gym_share > 0 and gym_acct:
+            try:
+                transfer = stripe.Transfer.create(
+                    amount=gym_share,
+                    currency="eur",
+                    destination=gym_acct,
+                    source_transaction=payment_intent,
+                    metadata={
+                        "type": "gym_revenue",
+                    }
+                )
+                db.add(StripeTransferORM(
+                    id=str(uuid.uuid4()),
+                    stripe_transfer_id=transfer.id,
+                    stripe_payment_intent_id=payment_intent,
+                    destination_account_id=gym_acct,
+                    destination_user_id=None,
+                    destination_role="gym_owner",
+                    amount=gym_share,
+                    currency="eur",
+                    status="completed",
+                ))
+                logger.info(f"Transferred {gym_share} cents to gym {gym_acct}")
+            except stripe.StripeError as e:
+                logger.error(f"Failed to transfer to gym: {e}")
+
+        db.commit()
+    except Exception as e:
+        logger.error(f"Payment split error: {e}")
+        db.rollback()
+    finally:
+        db.close()

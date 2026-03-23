@@ -484,6 +484,25 @@ class PaymentORM(Base):
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
 
 
+class StripeTransferORM(Base):
+    """Tracks Stripe Connect transfers for payment splitting between platform, gym, and professionals."""
+    __tablename__ = "stripe_transfers"
+
+    id = Column(String, primary_key=True, index=True)
+    appointment_id = Column(String, nullable=True, index=True)
+    payment_id = Column(String, nullable=True, index=True)
+    stripe_transfer_id = Column(String, nullable=True, unique=True)  # tr_xxx
+    stripe_payment_intent_id = Column(String, nullable=True)
+    destination_account_id = Column(String, nullable=False)  # acct_xxx
+    destination_user_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True)
+    destination_role = Column(String)  # "trainer", "nutritionist", "gym_owner"
+    amount = Column(Float, nullable=False)  # Amount in EUR (cents)
+    currency = Column(String, default="eur")
+    status = Column(String, default="pending", index=True)  # pending, completed, failed
+    error_message = Column(String, nullable=True)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
 class PlanOfferORM(Base):
     """Promotional offers for subscription plans"""
     __tablename__ = "plan_offers"
