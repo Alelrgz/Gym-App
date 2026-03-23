@@ -10,6 +10,10 @@ import '../providers/client_provider.dart';
 import '../providers/websocket_provider.dart';
 import '../widgets/bottom_nav.dart';
 import '../widgets/dashboard_sheets.dart';
+import 'dashboard_screen.dart';
+import 'diet_screen.dart';
+import 'community_screen.dart';
+import 'profile_screen.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   final StatefulNavigationShell navigationShell;
@@ -22,10 +26,12 @@ class HomeScreen extends ConsumerStatefulWidget {
 
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   StreamSubscription? _coopInviteSub;
+  late final PageController _pageController;
 
   @override
   void initState() {
     super.initState();
+    _pageController = PageController(initialPage: widget.navigationShell.currentIndex);
     // Ensure WebSocket is connected
     final ws = ref.read(websocketServiceProvider);
     ws.connect();
@@ -40,9 +46,12 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     });
   }
 
-  @override
+  int get _currentPage => _pageController.hasClients ? (_pageController.page?.round() ?? 0) : 0;
+
+@override
   void dispose() {
     _coopInviteSub?.cancel();
+    _pageController.dispose();
     super.dispose();
   }
 
@@ -203,10 +212,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final navIndex = widget.navigationShell.currentIndex;
-
-    void onNavTap(int index) {
-      widget.navigationShell.goBranch(index, initialLocation: index == widget.navigationShell.currentIndex);
+    void onNavTap(int navIdx) {
+      const navToPage = [0, 1, 2, 4];
+      _pageController.animateToPage(navToPage[navIdx], duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
     }
 
     void onFabAction(String action) {
@@ -233,11 +241,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, _) {
-        debugPrint('>>> PopScope: didPop=$didPop, navIndex=${widget.navigationShell.currentIndex}');
         if (didPop) return;
-        // If not on first tab, go to first tab
-        if (widget.navigationShell.currentIndex != 0) {
-          widget.navigationShell.goBranch(0, initialLocation: true);
+        // If not on first page, go to first page
+        if (_currentPage != 0) {
+          _pageController.animateToPage(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
           return;
         }
         // On first tab: show exit confirmation
@@ -266,13 +273,47 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       },
       child: Scaffold(
         backgroundColor: AppColors.background,
-        body: widget.navigationShell,
+        body: PageView(
+          controller: _pageController,
+          allowImplicitScrolling: true, // pre-renders adjacent pages
+          onPageChanged: (index) {
+            widget.navigationShell.goBranch(index, initialLocation: index == widget.navigationShell.currentIndex);
+          },
+          children: [
+            _KeepAlivePage(child: const DashboardScreen()),
+            _KeepAlivePage(child: const DietScreen()),
+            _KeepAlivePage(child: const CommunityScreen()),
+            _KeepAlivePage(child: const ProfileScreen()),
+          ],
+        ),
         bottomNavigationBar: AppBottomNav(
-          currentIndex: navIndex,
-          onTap: onNavTap,
+          currentIndex: _currentPage.clamp(0, 3),
+          onTap: (navIdx) {
+            _pageController.animateToPage(navIdx, duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
+          },
           onFabAction: onFabAction,
         ),
       ),
     );
+  }
+}
+
+/// Keeps a page alive in PageView so it doesn't rebuild when swiped away.
+class _KeepAlivePage extends StatefulWidget {
+  final Widget child;
+  const _KeepAlivePage({required this.child});
+
+  @override
+  State<_KeepAlivePage> createState() => _KeepAlivePageState();
+}
+
+class _KeepAlivePageState extends State<_KeepAlivePage> with AutomaticKeepAliveClientMixin {
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    return widget.child;
   }
 }
