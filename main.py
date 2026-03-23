@@ -117,41 +117,6 @@ async def health_check():
     """Health check endpoint for load balancers and monitoring."""
     return {"status": "ok"}
 
-@app.get("/api/fix-schema-once")
-async def fix_schema():
-    """TEMP: Add missing columns to existing tables."""
-    from sqlalchemy import text
-    from database import get_db_session
-    db = get_db_session()
-    fixes = []
-    try:
-        # Add missing columns safely
-        alters = [
-            ("client_schedule", "appointment_id", "VARCHAR"),
-            ("data_consents", "id", None),  # skip if table doesn't exist
-            ("sensitive_data_access_log", "id", None),
-        ]
-        for table, col, col_type in alters:
-            if col_type is None:
-                continue
-            try:
-                db.execute(text(f"ALTER TABLE {table} ADD COLUMN {col} VARCHAR"))
-                db.commit()
-                fixes.append(f"Added {table}.{col}")
-            except Exception as e:
-                db.rollback()
-                if "already exists" in str(e) or "duplicate" in str(e).lower():
-                    fixes.append(f"{table}.{col} already exists")
-                else:
-                    fixes.append(f"{table}.{col} ERROR: {str(e)[:80]}")
-
-        # Create missing tables from ORM
-        from database import Base, engine
-        Base.metadata.create_all(engine)
-        fixes.append("create_all done")
-    finally:
-        db.close()
-    return {"fixes": fixes}
 
 @app.post("/api/migrate-to-supabase")
 async def migrate_to_supabase(current_user: UserORM = Depends(get_current_user)):
