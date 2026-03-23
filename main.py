@@ -117,6 +117,87 @@ async def health_check():
     """Health check endpoint for load balancers and monitoring."""
     return {"status": "ok"}
 
+@app.get("/api/migrate-from-old-db")
+async def migrate_from_old_db():
+    """TEMP: Migrate data from old Render DB to current (Supabase) DB."""
+    import os
+    from sqlalchemy import create_engine, text, inspect
+    OLD_DB = "postgresql://gym_user:0b0TMaeTvus2CDi5SlrAuOulhG6wjTkS@dpg-d6rubfnafjfc73elfp70-a.oregon-postgres.render.com/gym_db_mfo6"
+    try:
+        old_engine = create_engine(OLD_DB)
+        with old_engine.connect() as old_conn:
+            old_conn.execute(text("SELECT 1"))
+    except Exception as e:
+        return {"error": f"Cannot connect to old DB: {str(e)[:200]}"}
+
+    from database import engine as new_engine, Base
+    # Create all tables on the new DB first
+    Base.metadata.create_all(new_engine)
+
+    migrated = {}
+    errors = {}
+    inspector = inspect(old_engine)
+    tables = inspector.get_table_names()
+
+    for table in tables:
+        try:
+            with old_engine.connect() as old_conn:
+                rows = old_conn.execute(text(f'SELECT * FROM "{table}"')).fetchall()
+                if not rows:
+                    continue
+                cols = old_conn.execute(text(f'SELECT * FROM "{table}" LIMIT 0')).keys()
+                col_names = list(cols)
+
+            with new_engine.begin() as new_conn:
+                # Check which columns exist in the new table
+                try:
+                    new_inspector = inspect(new_engine)
+                    new_cols = [c['name'] for c in new_inspector.get_columns(table)]
+                except:
+                    migrated[table] = f"0/{len(rows)} (table not in new DB)"
+                    continue
+
+                # Only insert columns that exist in both
+                common_cols = [c for c in col_names if c in new_cols]
+                if not common_cols:
+                    continue
+
+                col_str = ', '.join([f'"{c}"' for c in common_cols])
+                placeholders = ', '.join([f':{c}' for c in common_cols])
+
+                count = 0
+                for row in rows:
+                    row_dict = dict(zip(col_names, row))
+                    insert_dict = {c: row_dict[c] for c in common_cols}
+                    try:
+                        new_conn.execute(
+                            text(f'INSERT INTO "{table}" ({col_str}) VALUES ({placeholders}) ON CONFLICT DO NOTHING'),
+                            insert_dict
+                        )
+                        count += 1
+                    except Exception as row_err:
+                        pass
+                migrated[table] = f"{count}/{len(rows)}"
+        except Exception as e:
+            errors[table] = str(e)[:100]
+
+    # Fix passwords to username
+    try:
+        from simple_auth import hash_password
+        from database import get_db_session
+        db = get_db_session()
+        from models_orm import UserORM
+        users = db.query(UserORM).all()
+        for u in users:
+            u.hashed_password = hash_password(u.username)
+        db.commit()
+        migrated["_passwords_reset"] = f"{len(users)} users"
+        db.close()
+    except Exception as e:
+        errors["_passwords_reset"] = str(e)[:100]
+
+    return {"tables_found": len(tables), "migrated": migrated, "errors": errors}
+
 
 @app.post("/api/migrate-to-supabase")
 async def migrate_to_supabase(current_user: UserORM = Depends(get_current_user)):
