@@ -7,8 +7,6 @@ import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/trainer_provider.dart';
 import '../../utils/web_helper.dart' as web_helper;
-import '../../widgets/glass_card.dart';
-
 // ═══════════════════════════════════════════════════════════
 //  COURSE TYPE DEFINITIONS
 // ═══════════════════════════════════════════════════════════

@@ -18,8 +18,6 @@ import 'chat_camera_stub.dart'
     if (dart.library.html) 'chat_camera_web.dart'
     if (dart.library.io) 'chat_camera_native.dart';
 import 'consent_dialog.dart';
-import 'glass_card.dart';
-
 // ─── HELPERS ────────────────────────────────────────────────────
 
 void showSnack(BuildContext context, String message, {bool isError = false}) {
@@ -3504,8 +3502,6 @@ class _CalendarContentState extends State<_CalendarContent> {
     required bool prevCompleted,
     required bool nextCompleted,
   }) {
-    final bool showFilled = isToday || isSelected;
-
     return GestureDetector(
       onTap: () => setState(() => _selectedDay = date),
       child: Column(
@@ -4217,27 +4213,6 @@ class _ProgressPageState extends ConsumerState<_ProgressPage> {
   }
 
   // ── Weight Chart ──
-
-  String _weightPeriodLabel() {
-    return switch (_weightPeriod) {
-      'week' => 'Sett',
-      'month' => 'Mese',
-      'year' => 'Anno',
-      _ => 'Mese',
-    };
-  }
-
-  void _cycleWeightPeriod() {
-    setState(() {
-      _weightPeriod = switch (_weightPeriod) {
-        'week' => 'month',
-        'month' => 'year',
-        _ => 'week',
-      };
-      _loadingWeight = true;
-    });
-    _loadWeight();
-  }
 
   void _showSetGoalDialog() {
     final controller = TextEditingController();
@@ -5107,11 +5082,9 @@ class _StrengthChartPainter extends CustomPainter {
       for (final entry in allPoints.entries) {
         final pts = entry.value;
         final vals = categoryValues[entry.key]!;
-        final lbls = categoryLabels[entry.key] ?? [];
         if (idx < pts.length && idx < vals.length) {
           final color = categoryColors[entry.key] ?? Colors.white;
           final name = categoryNames[entry.key] ?? entry.key;
-          final label = idx < lbls.length ? lbls[idx] : '';
           tooltipLines.add((color, '$name: ${vals[idx] >= 0 ? "+" : ""}${vals[idx].toStringAsFixed(1)}%'));
           // Highlight dot
           canvas.drawCircle(pts[idx], 5, Paint()..color = color.withValues(alpha: 0.3));
@@ -5121,7 +5094,6 @@ class _StrengthChartPainter extends CustomPainter {
       }
 
       // Add date label
-      final firstVals = categoryValues[firstKey]!;
       final firstLbls = categoryLabels[firstKey] ?? [];
       if (idx < firstLbls.length && firstLbls[idx].isNotEmpty) {
         tooltipLines.insert(0, (Colors.white.withValues(alpha: 0.0), firstLbls[idx]));

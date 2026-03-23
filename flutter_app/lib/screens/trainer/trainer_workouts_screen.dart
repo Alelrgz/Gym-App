@@ -3425,7 +3425,6 @@ class _WorkoutTab extends StatelessWidget {
   final List clients;
   final dynamic service;
   final VoidCallback onRefresh;
-  final void Function(Map<String, dynamic>)? onEdit;
 
   const _WorkoutTab({
     required this.workouts,
@@ -3435,7 +3434,6 @@ class _WorkoutTab extends StatelessWidget {
     required this.clients,
     required this.service,
     required this.onRefresh,
-    this.onEdit,
   });
 
   @override
@@ -3581,11 +3579,7 @@ class _WorkoutTab extends StatelessWidget {
               label: 'Modifica',
               onTap: () {
                 Navigator.pop(ctx);
-                if (onEdit != null) {
-                  onEdit!(workout);
-                } else {
-                  _showEditWorkoutSheet(context, workout, service, onRefresh);
-                }
+                _showEditWorkoutSheet(context, workout, service, onRefresh);
               },
             ),
             _ActionRow(
@@ -4725,7 +4719,7 @@ class _VideoUploadButtonState extends ConsumerState<_VideoUploadButton> {
     setState(() => _uploading = true);
     try {
       final service = ref.read(trainerServiceProvider);
-      final result = await service.uploadExerciseVideo(widget.exerciseId, filePath, fileName ?? 'video.mp4');
+      final result = await service.uploadExerciseVideo(widget.exerciseId, filePath, fileName);
       ref.invalidate(trainerExercisesProvider);
       widget.onUploaded(result);
       if (mounted) {

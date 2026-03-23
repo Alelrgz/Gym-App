@@ -405,7 +405,6 @@ class _StaffAppointmentsScreenState
       if (!mounted) return;
 
       final availability = data['availability'] as List? ?? [];
-      final todayAppts = data['today_appointments'] as List? ?? [];
       final weekAppts = data['week_appointments'] as List? ?? [];
       final dayNames = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
 

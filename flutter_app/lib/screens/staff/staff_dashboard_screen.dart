@@ -2587,7 +2587,7 @@ class _PlanSelectorSheetState extends State<_PlanSelectorSheet> {
           SnackBar(
             content: Text(
               'Piano ${_selectedPlan!['name']} assegnato'
-              '${(amountPaid as num) > 0 ? ' — €${(amountPaid as num).toStringAsFixed(2)} ($methodLabel)' : ''}',
+              '${(amountPaid as num) > 0 ? ' — €${amountPaid.toStringAsFixed(2)} ($methodLabel)' : ''}',
             ),
           ),
         );

@@ -1482,18 +1482,3 @@ class _ZoneHeader extends StatelessWidget {
   }
 }
 
-class _InfoChip extends StatelessWidget {
-  final IconData icon;
-  final String text;
-
-  const _InfoChip(this.icon, this.text);
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(mainAxisSize: MainAxisSize.min, children: [
-      Icon(icon, size: 14, color: Colors.grey[500]),
-      const SizedBox(width: 4),
-      Text(text, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
-    ]);
-  }
-}

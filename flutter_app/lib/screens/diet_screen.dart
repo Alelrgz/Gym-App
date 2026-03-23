@@ -446,7 +446,6 @@ class _DietHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final pct = calsTarget > 0 ? ((calsCurrent / calsTarget) * 100).toInt() : 0;
     final motivation = score >= 90 ? 'Eccellente!' : score >= 75 ? 'Ottimi progressi!' : score >= 50 ? 'Continua così!' : score >= 25 ? 'Buon inizio!' : 'Iniziamo!';
     final motivColor = score >= 75 ? const Color(0xFF4ADE80) : score >= 50 ? const Color(0xFFFBBF24) : score >= 25 ? AppColors.primary : const Color(0xFFEF4444);
 
@@ -818,120 +817,6 @@ class _ConsistencyHeroCard extends StatelessWidget {
           ),
         ],
       ),
-    );
-  }
-}
-
-// ─── BENTO GRID: HYDRATION + MACROS ─────────────────────────────
-
-class _BentoGrid extends ConsumerWidget {
-  final DietProgress? diet;
-  const _BentoGrid({required this.diet});
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final current = diet?.hydration.current.toInt() ?? 0;
-    final target = diet?.hydration.target.toInt() ?? 2500;
-    final pct = target > 0 ? (current / target).clamp(0.0, 1.0) : 0.0;
-    final cals = diet?.calories ?? const MacroValue(current: 0, target: 0);
-    final remaining = cals.remaining.toInt();
-
-    return Row(
-      children: [
-        // Hydration card
-        Expanded(
-          child: GlassCard(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('IDRATAZIONE', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.grey[400], letterSpacing: 1.0)),
-                const SizedBox(height: 6),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text('$current', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: AppColors.textPrimary, height: 1.1)),
-                    const SizedBox(width: 2),
-                    Padding(padding: const EdgeInsets.only(bottom: 2), child: Text('ml', style: TextStyle(fontSize: 11, color: Colors.grey[500]))),
-                  ],
-                ),
-                Text('/ ${target}ml', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: LinearProgressIndicator(value: pct, minHeight: 5, backgroundColor: const Color(0xFF60A5FA).withValues(alpha: 0.15), valueColor: const AlwaysStoppedAnimation(Color(0xFF60A5FA))),
-                ),
-                const SizedBox(height: 8),
-                GestureDetector(
-                  onTap: () async {
-                    try { await ref.read(clientServiceProvider).addWater(); ref.invalidate(clientDataProvider); } catch (_) {}
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                    decoration: BoxDecoration(color: const Color(0xFF60A5FA).withValues(alpha: 0.15), borderRadius: BorderRadius.circular(8)),
-                    child: const Text('+ 250ml', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF60A5FA))),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(width: 10),
-        // Macros detail card
-        Expanded(
-          child: GlassCard(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('MACROS', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.grey[400], letterSpacing: 1.0)),
-                const SizedBox(height: 4),
-                Text('$remaining kcal', style: TextStyle(fontSize: 10, color: Colors.grey[500])),
-                const SizedBox(height: 10),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _MacroRingLarge(label: 'Pro', current: diet?.protein.current ?? 0, target: diet?.protein.target ?? 0, color: const Color(0xFF4ADE80)),
-                    _MacroRingLarge(label: 'Carb', current: diet?.carbs.current ?? 0, target: diet?.carbs.target ?? 0, color: const Color(0xFF60A5FA)),
-                    _MacroRingLarge(label: 'Fat', current: diet?.fat.current ?? 0, target: diet?.fat.target ?? 0, color: const Color(0xFFF472B6)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-}
-
-class _MacroRingLarge extends StatelessWidget {
-  final String label;
-  final double current;
-  final double target;
-  final Color color;
-  const _MacroRingLarge({required this.label, required this.current, required this.target, required this.color});
-
-  @override
-  Widget build(BuildContext context) {
-    final pct = target > 0 ? (current / target).clamp(0.0, 1.0) : 0.0;
-    return Column(
-      children: [
-        _AnimatedRing(
-          size: 48,
-          progress: pct,
-          color: color,
-          trackColor: const Color(0xFF333333),
-          strokeWidth: 4,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(label, style: TextStyle(fontSize: 7, color: Colors.grey[500])),
-              Text('${current.toInt()}g', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: color)),
-            ],
-          ),
-        ),
-      ],
     );
   }
 }

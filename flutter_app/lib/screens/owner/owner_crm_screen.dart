@@ -1440,8 +1440,8 @@ class _DietDetailSheetState extends ConsumerState<_DietDetailSheet> {
         svc.getClientDietConsistency(widget.clientId, period: 'month'),
       ]);
       if (mounted) setState(() {
-        _weekData = results[0] as Map<String, dynamic>;
-        _monthData = results[1] as Map<String, dynamic>;
+        _weekData = results[0];
+        _monthData = results[1];
         _loading = false;
       });
     } catch (e) {
@@ -1456,7 +1456,6 @@ class _DietDetailSheetState extends ConsumerState<_DietDetailSheet> {
   Widget build(BuildContext context) {
     final avgScore = (_data['average_score'] as num?)?.toInt() ?? 0;
     final currentStreak = (_data['current_streak'] as num?)?.toInt() ?? 0;
-    final totalDays = (_data['total_days'] as num?)?.toInt() ?? 0;
     final dietDays = _data['data'] as List<dynamic>? ?? [];
 
     // Calculate averages for the period

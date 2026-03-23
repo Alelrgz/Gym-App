@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1035419177257",
+    "project_id": "fitos-bb5ba",
+    "storage_bucket": "fitos-bb5ba.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1035419177257:android:63557d7d5de31623b52738",
+        "android_client_info": {
+          "package_name": "com.antigravity.gym.flutter_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDA5noTa3VEbcDQzQeUgkt0DBsXhGlhihE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

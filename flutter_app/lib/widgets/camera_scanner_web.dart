@@ -35,7 +35,6 @@ class CameraScannerModal extends StatefulWidget {
 
 class _CameraScannerModalState extends State<CameraScannerModal> {
   String _mode = 'photo'; // 'photo' or 'barcode'
-  bool _cameraReady = false;
   bool _captured = false;
   bool _facingUser = false;
   String? _error;
@@ -109,7 +108,6 @@ class _CameraScannerModalState extends State<CameraScannerModal> {
         await _videoElement!.play();
         if (mounted) {
           setState(() {
-            _cameraReady = true;
             _error = null;
           });
         }
@@ -137,7 +135,6 @@ class _CameraScannerModalState extends State<CameraScannerModal> {
     _stopCamera();
     setState(() {
       _facingUser = !_facingUser;
-      _cameraReady = false;
     });
     _startCamera();
   }

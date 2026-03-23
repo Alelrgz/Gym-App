@@ -55,8 +55,8 @@ class _OwnerFacilitiesScreenState extends ConsumerState<OwnerFacilitiesScreen> {
       ]);
       if (!mounted) return;
       setState(() {
-        _activityTypes = results[0] as List<Map<String, dynamic>>;
-        _bookings = results[1] as List<Map<String, dynamic>>;
+        _activityTypes = results[0];
+        _bookings = results[1];
         _loading = false;
       });
     } catch (_) {
@@ -741,7 +741,7 @@ class _OwnerFacilitiesScreenState extends ConsumerState<OwnerFacilitiesScreen> {
                       final data = {'name': nameCtrl.text, 'emoji': emojiCtrl.text, 'description': descCtrl.text};
                       try {
                         if (isEdit) {
-                          await ref.read(ownerServiceProvider).updateActivityType(type!['id'].toString(), data);
+                          await ref.read(ownerServiceProvider).updateActivityType(type['id'].toString(), data);
                         } else {
                           await ref.read(ownerServiceProvider).createActivityType(data);
                         }
@@ -861,7 +861,7 @@ class _OwnerFacilitiesScreenState extends ConsumerState<OwnerFacilitiesScreen> {
                       };
                       try {
                         if (isEdit) {
-                          await ref.read(ownerServiceProvider).updateFacility(facility!['id'].toString(), data);
+                          await ref.read(ownerServiceProvider).updateFacility(facility['id'].toString(), data);
                         } else {
                           await ref.read(ownerServiceProvider).createFacility(data);
                         }

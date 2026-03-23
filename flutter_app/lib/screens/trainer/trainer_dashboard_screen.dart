@@ -6,8 +6,6 @@ import '../../models/trainer_profile.dart';
 import '../../providers/trainer_provider.dart';
 import '../../services/trainer_service.dart';
 import '../../widgets/glass_card.dart';
-import '../../widgets/stat_card.dart';
-
 const double _kDesktopBreakpoint = 1024;
 
 class TrainerDashboardScreen extends ConsumerStatefulWidget {

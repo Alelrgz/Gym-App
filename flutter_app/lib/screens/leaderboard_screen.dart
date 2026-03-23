@@ -6,8 +6,6 @@ import 'package:go_router/go_router.dart';
 import '../config/theme.dart';
 import '../providers/client_provider.dart';
 import '../widgets/dashboard_sheets.dart';
-import '../widgets/glass_card.dart';
-
 class LeaderboardScreen extends ConsumerStatefulWidget {
   const LeaderboardScreen({super.key});
 
@@ -67,10 +65,6 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
           // Gems from client data
           final gems = clientAsync.valueOrNull?.gems ?? 0;
           // Daily quests from client data (raw JSON)
-          final quests = <Map<String, dynamic>>[];
-          // We get quests from the raw client data response - need raw json
-          // For now quests come through clientDataProvider which parses into ClientProfile
-          // Let's fetch them separately via the raw data
 
           return CustomScrollView(
             slivers: [
@@ -572,8 +566,6 @@ class _LeaderboardScreenState extends ConsumerState<LeaderboardScreen> {
   // ════════════════════════════════════════════════════════════════
   Widget _buildDailyQuestsSection() {
     // Get quests from the raw client data
-    final clientAsync = ref.watch(clientDataProvider);
-
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       child: Column(

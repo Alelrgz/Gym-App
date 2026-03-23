@@ -8,7 +8,6 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
-import '../../services/api_client.dart';
 import '../../config/api_config.dart';
 
 const double _kDesktopBreakpoint = 1024;

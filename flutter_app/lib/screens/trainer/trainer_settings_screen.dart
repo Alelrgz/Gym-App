@@ -753,10 +753,10 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
 
 class _DaySlot {
   final int dayIndex;
-  bool enabled;
-  String start;
-  String end;
-  _DaySlot({required this.dayIndex, this.enabled = false, this.start = '09:00', this.end = '17:00'});
+  bool enabled = false;
+  String start = '09:00';
+  String end = '17:00';
+  _DaySlot({required this.dayIndex});
 }
 
 class _TimeField extends StatelessWidget {
@@ -799,9 +799,6 @@ class _StripeConnectCardState extends ConsumerState<_StripeConnectCard> {
   bool _loading = true;
   bool _connected = false;
   bool _canReceive = false;
-  String _status = '';
-  String? _error;
-
   @override
   void initState() {
     super.initState();
@@ -817,12 +814,11 @@ class _StripeConnectCardState extends ConsumerState<_StripeConnectCard> {
         setState(() {
           _connected = data['connected'] == true;
           _canReceive = data['can_receive_payments'] == true;
-          _status = (data['status'] as String?) ?? '';
           _loading = false;
         });
       }
     } catch (e) {
-      if (mounted) setState(() { _loading = false; _error = e.toString(); });
+      if (mounted) setState(() { _loading = false; });
     }
   }
 
