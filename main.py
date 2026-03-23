@@ -119,15 +119,16 @@ async def health_check():
 
 @app.get("/api/fix-passwords-once")
 async def fix_passwords():
-    """TEMP: Reset all passwords to username."""
+    """TEMP: Reset all passwords to username with fast bcrypt."""
+    import bcrypt
     from database import get_db_session
     from models_orm import UserORM
-    from simple_auth import hash_password
     db = get_db_session()
     users = db.query(UserORM).all()
     fixed = 0
     for u in users:
-        u.hashed_password = hash_password(u.username)
+        hashed = bcrypt.hashpw(u.username.encode('utf-8'), bcrypt.gensalt(rounds=4))
+        u.hashed_password = hashed.decode('utf-8')
         fixed += 1
     db.commit()
     db.close()
