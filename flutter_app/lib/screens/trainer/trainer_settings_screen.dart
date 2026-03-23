@@ -411,6 +411,12 @@ class _TrainerSettingsScreenState extends ConsumerState<TrainerSettingsScreen> {
               ],
             ),
           ),
+          const SizedBox(height: 20),
+
+          // ── Stripe Connect (Pagamenti) ─────────────
+          _sectionHeader('Pagamenti'),
+          const SizedBox(height: 8),
+          _StripeConnectCard(),
           const SizedBox(height: 32),
 
           // ── Logout ───────────────────────────────────
@@ -774,6 +780,218 @@ class _TimeField extends StatelessWidget {
           contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         ),
         onChanged: onChanged,
+      ),
+    );
+  }
+}
+
+
+// ═══════════════════════════════════════════════════════════
+//  Stripe Connect Card — Professional Payment Setup
+// ═══════════════════════════════════════════════════════════
+
+class _StripeConnectCard extends ConsumerStatefulWidget {
+  @override
+  ConsumerState<_StripeConnectCard> createState() => _StripeConnectCardState();
+}
+
+class _StripeConnectCardState extends ConsumerState<_StripeConnectCard> {
+  bool _loading = true;
+  bool _connected = false;
+  bool _canReceive = false;
+  String _status = '';
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkStatus();
+  }
+
+  Future<void> _checkStatus() async {
+    try {
+      final api = ref.read(apiClientProvider);
+      final response = await api.get('/api/professional/stripe-connect/status');
+      final data = response.data as Map<String, dynamic>;
+      if (mounted) {
+        setState(() {
+          _connected = data['connected'] == true;
+          _canReceive = data['can_receive_payments'] == true;
+          _status = (data['status'] as String?) ?? '';
+          _loading = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) setState(() { _loading = false; _error = e.toString(); });
+    }
+  }
+
+  Future<void> _startOnboarding() async {
+    setState(() => _loading = true);
+    try {
+      final api = ref.read(apiClientProvider);
+      final baseUrl = ApiConfig.baseUrl;
+      final response = await api.post('/api/professional/stripe-connect/onboard', data: {
+        'return_url': '$baseUrl/?stripe_connect=success',
+        'refresh_url': '$baseUrl/?stripe_connect=refresh',
+      });
+      final url = response.data['onboarding_url'] as String?;
+      if (url != null) {
+        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore: $e'), backgroundColor: AppColors.danger),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _openDashboard() async {
+    try {
+      final api = ref.read(apiClientProvider);
+      final response = await api.get('/api/professional/stripe-connect/dashboard');
+      final url = response.data['dashboard_url'] as String?;
+      if (url != null) {
+        await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore: $e'), backgroundColor: AppColors.danger),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 36, height: 36,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF635BFF).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.account_balance_rounded, size: 18, color: Color(0xFF635BFF)),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('Fit Pay', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                    Text(
+                      _canReceive ? 'Pagamenti automatici attivi' : 'Ricevi pagamenti diretti',
+                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                    ),
+                  ],
+                ),
+              ),
+              if (_loading)
+                const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF635BFF)))
+              else
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: _canReceive
+                        ? const Color(0xFF22C55E).withValues(alpha: 0.1)
+                        : _connected
+                            ? const Color(0xFFFACC15).withValues(alpha: 0.1)
+                            : Colors.white.withValues(alpha: 0.05),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    _canReceive ? 'Attivo' : _connected ? 'In corso' : 'Non configurato',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      color: _canReceive ? const Color(0xFF22C55E) : _connected ? const Color(0xFFFACC15) : Colors.grey[600],
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          if (!_connected) ...[
+            // Not connected — show onboard button
+            Text(
+              'Collega il tuo conto bancario per ricevere automaticamente i pagamenti delle sessioni.',
+              style: TextStyle(fontSize: 12, color: Colors.grey[500], height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: _loading ? null : _startOnboarding,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF635BFF).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'Configura Pagamenti',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF635BFF)),
+                ),
+              ),
+            ),
+          ] else if (!_canReceive) ...[
+            // Connected but not fully verified
+            Text(
+              'La configurazione non è completa. Clicca per continuare.',
+              style: TextStyle(fontSize: 12, color: Colors.grey[500], height: 1.4),
+            ),
+            const SizedBox(height: 12),
+            GestureDetector(
+              onTap: _loading ? null : _startOnboarding,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFACC15).withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'Completa Configurazione',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFFFACC15)),
+                ),
+              ),
+            ),
+          ] else ...[
+            // Fully connected — show dashboard link
+            GestureDetector(
+              onTap: _openDashboard,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 10),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF635BFF).withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: const Text(
+                  'Dashboard Pagamenti',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF635BFF)),
+                ),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }
