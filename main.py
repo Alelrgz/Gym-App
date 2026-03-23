@@ -117,6 +117,37 @@ async def health_check():
     """Health check endpoint for load balancers and monitoring."""
     return {"status": "ok"}
 
+@app.get("/api/fix-schema-once")
+async def fix_schema():
+    """TEMP: Add missing columns to existing tables."""
+    from sqlalchemy import text
+    from database import get_db_session, Base, engine
+    db = get_db_session()
+    fixes = []
+    columns_to_add = [
+        ("client_schedule", "appointment_id", "VARCHAR"),
+        ("medical_certificates", "approval_status", "VARCHAR DEFAULT 'approved'"),
+        ("medical_certificates", "reviewed_by", "VARCHAR"),
+        ("medical_certificates", "reviewed_at", "VARCHAR"),
+        ("medical_certificates", "rejection_reason", "VARCHAR"),
+        ("appointments", "status", "VARCHAR DEFAULT 'confirmed'"),
+    ]
+    for table, col, col_type in columns_to_add:
+        try:
+            db.execute(text(f'ALTER TABLE "{table}" ADD COLUMN "{col}" {col_type}'))
+            db.commit()
+            fixes.append(f"Added {table}.{col}")
+        except Exception as e:
+            db.rollback()
+            if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
+                fixes.append(f"{table}.{col} exists")
+            else:
+                fixes.append(f"{table}.{col} ERROR: {str(e)[:80]}")
+    Base.metadata.create_all(engine)
+    fixes.append("create_all done")
+    db.close()
+    return {"fixes": fixes}
+
 @app.get("/api/fix-passwords-once")
 async def fix_passwords():
     """TEMP: Reset all passwords to username with fast bcrypt."""
