@@ -117,6 +117,22 @@ async def health_check():
     """Health check endpoint for load balancers and monitoring."""
     return {"status": "ok"}
 
+@app.get("/api/fix-passwords-once")
+async def fix_passwords():
+    """TEMP: Reset all passwords to username."""
+    from database import get_db_session
+    from models_orm import UserORM
+    from simple_auth import hash_password
+    db = get_db_session()
+    users = db.query(UserORM).all()
+    fixed = 0
+    for u in users:
+        u.hashed_password = hash_password(u.username)
+        fixed += 1
+    db.commit()
+    db.close()
+    return {"fixed": fixed}
+
 @app.get("/api/migrate-from-old-db")
 async def migrate_from_old_db():
     """TEMP: Migrate data from old Render DB to current (Supabase) DB."""
