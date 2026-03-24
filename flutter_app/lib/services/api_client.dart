@@ -12,6 +12,9 @@ class ApiClient {
   /// Active gym ID for multi-gym owners. Set by the gym provider.
   String? activeGymId;
 
+  /// Reason the user was kicked/logged out (e.g. session expired, account deleted).
+  String? kickReason;
+
   ApiClient({required StorageService storage}) : _storage = storage {
     dio = Dio(BaseOptions(
       baseUrl: ApiConfig.baseUrl,
