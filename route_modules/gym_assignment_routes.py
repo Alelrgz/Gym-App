@@ -16,6 +16,28 @@ from datetime import datetime
 router = APIRouter()
 
 
+# --- PUBLIC ENDPOINTS (no auth required) ---
+
+@router.get("/api/public/gym/{gym_code}")
+async def get_public_gym_info(gym_code: str):
+    """Public endpoint to resolve a gym code to gym info. Used by magic join links."""
+    from models_orm import GymORM
+    db = get_db_session()
+    try:
+        gym = db.query(GymORM).filter(GymORM.gym_code == gym_code.strip().upper()).first()
+        if not gym:
+            raise HTTPException(status_code=404, detail="Palestra non trovata")
+        owner = db.query(UserORM).filter(UserORM.id == gym.owner_id).first()
+        return {
+            "gym_code": gym.gym_code,
+            "gym_name": gym.name or (owner.username if owner else "Palestra"),
+            "gym_logo": gym.logo,
+            "owner_name": owner.username if owner else None,
+        }
+    finally:
+        db.close()
+
+
 # --- CLIENT ENDPOINTS ---
 
 @router.post("/api/client/join-gym")
@@ -169,6 +191,8 @@ async def get_approved_trainers(
 class GymSettingsUpdate(BaseModel):
     gym_name: Optional[str] = None
     password: Optional[str] = None
+    auto_approve_trainers: Optional[bool] = None
+    auto_approve_staff: Optional[bool] = None
 
 
 @router.get("/api/owner/gym-settings")
@@ -187,9 +211,13 @@ async def get_gym_settings(
         return {
             "gym_name": gym.name if gym else (user.gym_name or ""),
             "gym_logo": gym.logo if gym else (user.gym_logo or ""),
+            "gym_code": gym.gym_code if gym else "",
             "device_api_key": user.device_api_key or "",
             "gate_duration": getattr(user, 'gate_duration', 5) or 5,
             "default_commission_rate": getattr(user, 'default_commission_rate', 0) or 0,
+            "auto_approve_trainers": bool(gym.auto_approve_trainers) if gym else False,
+            "auto_approve_staff": bool(gym.auto_approve_staff) if gym else False,
+            "join_link": f"https://fitos-eu.onrender.com/join/{gym.gym_code}" if gym and gym.gym_code else None,
         }
     finally:
         db.close()
@@ -219,6 +247,10 @@ async def update_gym_settings(
         gym = db.query(GymORM).filter(GymORM.id == gym_id, GymORM.owner_id == user.id).first()
         if gym and request.gym_name is not None:
             gym.name = request.gym_name.strip()
+        if gym and request.auto_approve_trainers is not None:
+            gym.auto_approve_trainers = request.auto_approve_trainers
+        if gym and request.auto_approve_staff is not None:
+            gym.auto_approve_staff = request.auto_approve_staff
         # Also update legacy UserORM field if this is the primary gym
         if gym_id == user.id:
             db_user = db.query(UserORM).filter(UserORM.id == user.id).first()

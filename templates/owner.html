@@ -3993,12 +3993,17 @@ function displayImportResults(data) {
     const clientsList = document.getElementById('import-clients-list');
     if (data.created_clients && data.created_clients.length > 0) {
         clientsSection.classList.remove('hidden');
-        clientsList.innerHTML = data.created_clients.map(c =>
-            `<div class="bg-green-500/10 px-2 py-1.5 rounded flex justify-between items-center">
-                <span class="text-gray-300">${typeof escapeHtml === 'function' ? escapeHtml(c.name) : c.name}</span>
-                <span class="text-gray-500 font-mono">${typeof escapeHtml === 'function' ? escapeHtml(c.username) : c.username} / ${typeof escapeHtml === 'function' ? escapeHtml(c.temp_password) : c.temp_password}</span>
-            </div>`
-        ).join('');
+        clientsList.innerHTML = data.created_clients.map(c => {
+            const esc = typeof escapeHtml === 'function' ? escapeHtml : (s => s);
+            const waBtn = c.whatsapp_url
+                ? `<a href="${c.whatsapp_url}" target="_blank" style="background:#25D366;color:#fff;padding:0.2rem 0.5rem;border-radius:6px;font-size:0.6rem;text-decoration:none;white-space:nowrap;">WhatsApp</a>`
+                : '';
+            return `<div class="bg-green-500/10 px-2 py-1.5 rounded flex justify-between items-center gap-2" style="margin-bottom:0.25rem;">
+                <span class="text-gray-300">${esc(c.name)}</span>
+                <span class="text-gray-500 font-mono" style="font-size:0.65rem;">${esc(c.username)} / ${esc(c.temp_password)}</span>
+                ${waBtn}
+            </div>`;
+        }).join('');
     } else {
         clientsSection.classList.add('hidden');
     }

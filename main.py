@@ -117,6 +117,50 @@ async def health_check():
     """Health check endpoint for load balancers and monitoring."""
     return {"status": "ok"}
 
+@app.get("/join/{gym_code}")
+async def join_gym_landing(request: Request, gym_code: str):
+    """Magic link landing page — shows gym info + download links."""
+    from models_orm import GymORM, UserORM
+    from database import get_db_session
+    db = get_db_session()
+    try:
+        gym = db.query(GymORM).filter(GymORM.gym_code == gym_code.strip().upper()).first()
+        if not gym:
+            return HTMLResponse(f"""
+            <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+            <title>FitOS</title><style>body{{background:#111;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;}}
+            .card{{text-align:center;padding:2rem;}}</style></head>
+            <body><div class="card"><h1>Palestra non trovata</h1><p>Il codice "{gym_code}" non è valido.</p></div></body></html>
+            """, status_code=404)
+        owner = db.query(UserORM).filter(UserORM.id == gym.owner_id).first()
+        gym_name = gym.name or (owner.username if owner else "Palestra")
+        return HTMLResponse(f"""
+        <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Unisciti a {gym_name} su FitOS</title>
+        <style>
+            body{{background:#111;color:#fff;font-family:-apple-system,sans-serif;margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;}}
+            .card{{text-align:center;padding:2rem;max-width:400px;}}
+            .logo{{width:180px;margin-bottom:1rem;}}
+            h1{{color:#f15a24;font-size:1.8rem;margin:0.5rem 0;}}
+            h2{{font-weight:400;color:#999;font-size:1rem;margin-bottom:2rem;}}
+            .btn{{display:block;padding:1rem;margin:0.5rem 0;border-radius:12px;text-decoration:none;font-weight:700;font-size:1rem;}}
+            .btn-android{{background:#f15a24;color:#fff;}}
+            .btn-ios{{background:#fff;color:#111;}}
+            .code{{background:#222;padding:0.5rem 1rem;border-radius:8px;font-family:monospace;font-size:1.2rem;color:#f15a24;display:inline-block;margin:1rem 0;}}
+        </style></head>
+        <body><div class="card">
+            <img src="/static/fitos-logo.svg" class="logo" alt="FitOS">
+            <h1>{gym_name}</h1>
+            <h2>ti invita su FitOS</h2>
+            <div class="code">{gym.gym_code}</div>
+            <p style="color:#666;font-size:0.85rem;margin-bottom:1.5rem;">Usa questo codice dopo aver scaricato l'app</p>
+            <a href="#" class="btn btn-android">Scarica per Android</a>
+            <a href="#" class="btn btn-ios">Scarica per iOS</a>
+        </div></body></html>
+        """)
+    finally:
+        db.close()
+
 @app.get("/api/fix-schema-once")
 async def fix_schema():
     """TEMP: Add missing columns to existing tables."""
@@ -131,6 +175,8 @@ async def fix_schema():
         ("medical_certificates", "reviewed_at", "VARCHAR"),
         ("medical_certificates", "rejection_reason", "VARCHAR"),
         ("appointments", "status", "VARCHAR DEFAULT 'confirmed'"),
+        ("gyms", "auto_approve_trainers", "BOOLEAN DEFAULT FALSE"),
+        ("gyms", "auto_approve_staff", "BOOLEAN DEFAULT FALSE"),
     ]
     for table, col, col_type in columns_to_add:
         try:

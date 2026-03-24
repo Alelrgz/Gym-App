@@ -309,7 +309,10 @@ async def _do_register(request, username, password, email, role, sub_role, secre
             })
 
         gym_owner_id = gym_owner.id
-        is_approved = False  # Staff need owner approval
+        # Check auto-approve setting
+        from models_orm import GymORM
+        gym_record = db.query(GymORM).filter(GymORM.owner_id == gym_owner.id).first()
+        is_approved = bool(gym_record and gym_record.auto_approve_staff)
         role = "staff"  # Change role to staff
 
     elif role == "trainer":
@@ -335,7 +338,10 @@ async def _do_register(request, username, password, email, role, sub_role, secre
             })
 
         gym_owner_id = gym_owner.id
-        is_approved = False  # Trainers need owner approval
+        # Check auto-approve setting
+        from models_orm import GymORM
+        gym_record = db.query(GymORM).filter(GymORM.owner_id == gym_owner.id).first()
+        is_approved = bool(gym_record and gym_record.auto_approve_trainers)
 
     elif role == "nutritionist":
         # Nutritionists MUST have a gym code
@@ -360,7 +366,10 @@ async def _do_register(request, username, password, email, role, sub_role, secre
             })
 
         gym_owner_id = gym_owner.id
-        is_approved = False  # Nutritionists need owner approval
+        # Check auto-approve setting (nutritionists use same toggle as trainers)
+        from models_orm import GymORM
+        gym_record = db.query(GymORM).filter(GymORM.owner_id == gym_owner.id).first()
+        is_approved = bool(gym_record and gym_record.auto_approve_trainers)
 
     elif role == "client" and gym_code and gym_code.strip():
         # Clients can optionally join a gym

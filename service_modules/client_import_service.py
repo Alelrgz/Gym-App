@@ -390,6 +390,7 @@ class ClientImportService:
         result["created_clients"].append({
             "name": display_name,
             "email": email or "N/A",
+            "phone": phone or "",
             "username": username,
             "temp_password": temp_password,
             "plan": plan,

@@ -91,7 +91,24 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
             detail="Incorrect username or password",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    access_token = create_access_token(data={"sub": user.username, "role": user.role}, expires_delta=timedelta(hours=8))
+    # Generate a unique session ID for single-device enforcement
+    import secrets as _secrets
+    session_id = _secrets.token_urlsafe(16)
+
+    # Store session ID on user — invalidates any previous session
+    db = next(get_db())
+    try:
+        db_user = db.query(UserORM).filter(UserORM.id == user.id).first()
+        if db_user:
+            db_user.active_session_id = session_id
+            db.commit()
+    finally:
+        db.close()
+
+    access_token = create_access_token(
+        data={"sub": user.username, "role": user.role, "sid": session_id},
+        expires_delta=timedelta(hours=8)
+    )
 
     # Include gym list for owners
     gyms = []
@@ -120,6 +137,10 @@ async def register(
     user_data: dict,
     service: UserService = Depends(get_user_service)
 ):
+    # Block client self-registration — clients are created by staff/owner only
+    role = user_data.get("role", "client")
+    if role == "client":
+        raise HTTPException(status_code=403, detail="La registrazione clienti è disabilitata. Contatta la tua palestra.")
     return service.register_user(user_data)
 
 @router.get("/api/config/{gym_id}", response_model=GymConfig)

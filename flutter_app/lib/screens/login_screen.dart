@@ -95,6 +95,24 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     final authState = ref.watch(authProvider);
+    final apiClient = ref.read(apiClientProvider);
+
+    // Show kick reason if user was booted from another device
+    final kickReason = apiClient.kickReason;
+    if (kickReason != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted && apiClient.kickReason != null) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(kickReason),
+              backgroundColor: AppColors.warning,
+              duration: const Duration(seconds: 5),
+            ),
+          );
+          apiClient.kickReason = null; // Clear so it doesn't show again
+        }
+      });
+    }
 
     // Navigate on successful auth
     ref.listen<AuthState>(authProvider, (prev, next) {
@@ -186,20 +204,13 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Register link
-                  TextButton(
-                    onPressed: () => context.go('/register'),
-                    child: const Text.rich(
-                      TextSpan(
-                        text: 'Non hai un account? ',
-                        style: TextStyle(color: AppColors.textSecondary),
-                        children: [
-                          TextSpan(
-                            text: 'Registrati',
-                            style: TextStyle(color: AppColors.primary),
-                          ),
-                        ],
-                      ),
+                  // Info text — no self-registration
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Chiedi le credenziali alla tua palestra',
+                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                      textAlign: TextAlign.center,
                     ),
                   ),
                 ],

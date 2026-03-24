@@ -76,6 +76,9 @@ class UserORM(Base):
     # Firebase Cloud Messaging (for push notifications)
     fcm_server_key = Column(String, nullable=True)  # Firebase server key for sending push
 
+    # Single-device session enforcement
+    active_session_id = Column(String, nullable=True)  # Current active session — only one device at a time
+
 # --- GYM (Multi-gym support) ---
 
 class GymORM(Base):
@@ -115,6 +118,10 @@ class GymORM(Base):
 
     # Push notifications
     fcm_server_key = Column(String, nullable=True)
+
+    # Onboarding settings
+    auto_approve_trainers = Column(Boolean, default=False)
+    auto_approve_staff = Column(Boolean, default=False)
 
 
 # --- EXERCISE & WORKOUT LIBRARY (Global + Personal) ---
