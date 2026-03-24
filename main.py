@@ -177,6 +177,7 @@ async def fix_schema():
         ("appointments", "status", "VARCHAR DEFAULT 'confirmed'"),
         ("gyms", "auto_approve_trainers", "BOOLEAN DEFAULT FALSE"),
         ("gyms", "auto_approve_staff", "BOOLEAN DEFAULT FALSE"),
+        ("users", "active_session_id", "VARCHAR"),
     ]
     for table, col, col_type in columns_to_add:
         try:
