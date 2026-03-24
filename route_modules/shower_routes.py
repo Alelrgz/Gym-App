@@ -185,7 +185,8 @@ async def turnstile_verify(request: Request, data: dict, db: Session = Depends(g
     # Reconstruct UUID with dashes
     try:
         user_id = f"{hex_user_id[:8]}-{hex_user_id[8:12]}-{hex_user_id[12:16]}-{hex_user_id[16:20]}-{hex_user_id[20:]}"
-    except Exception:
+    except Exception as e:
+        logger.warning("Failed to parse user ID from QR data: %s", e)
         return {"access": False, "reason": "invalid_user_id", "member_name": None, "gate_seconds": 0}
 
     # Verify HMAC: check current and previous 30-second window

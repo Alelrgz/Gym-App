@@ -9,6 +9,9 @@ from service_modules.community_service import CommunityService, get_community_se
 from service_modules.upload_helper import save_file, _optimize_image, ALLOWED_IMAGE_EXTENSIONS, MAX_IMAGE_SIZE
 import uuid
 import os
+import logging
+
+logger = logging.getLogger("gym_app")
 
 router = APIRouter()
 
@@ -61,7 +64,8 @@ async def create_community_post(
         # Optimize image
         try:
             optimized, ext = _optimize_image(raw, max_size=(1200, 1200), crop_square=False)
-        except Exception:
+        except Exception as e:
+            logger.warning("Image optimization failed, using original: %s", e)
             optimized, ext = raw, os.path.splitext(image.filename)[1].lstrip(".")
 
         filename = f"{uuid.uuid4().hex}.{ext}"

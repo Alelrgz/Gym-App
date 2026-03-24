@@ -14,6 +14,12 @@ final clientDataProvider = FutureProvider.autoDispose<ClientProfile>((ref) async
   return service.getClientData();
 });
 
+/// Fetches all client-owned workouts. Refreshable.
+final clientWorkoutsProvider = FutureProvider.autoDispose<Map<String, dynamic>>((ref) async {
+  final service = ref.read(clientServiceProvider);
+  return service.getClientWorkouts();
+});
+
 /// Unread message count badge.
 final unreadMessagesProvider = FutureProvider.autoDispose<int>((ref) async {
   final service = ref.read(clientServiceProvider);

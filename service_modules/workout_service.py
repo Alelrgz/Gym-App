@@ -233,6 +233,69 @@ class WorkoutService:
         finally:
             db.close()
 
+    def get_client_workouts(self, client_id: str) -> dict:
+        """Get all workouts owned by a client plus today's assigned workout ID."""
+        from datetime import date
+        db = get_db_session()
+        try:
+            workouts = db.query(WorkoutORM).filter(
+                WorkoutORM.owner_id == client_id
+            ).all()
+
+            result = []
+            for w in workouts:
+                exercises = json.loads(w.exercises_json) if w.exercises_json else []
+                result.append({
+                    "id": w.id,
+                    "title": w.title,
+                    "duration": w.duration,
+                    "difficulty": w.difficulty,
+                    "exercises": exercises,
+                })
+
+            today_str = date.today().isoformat()
+            today_event = db.query(ClientScheduleORM).filter(
+                ClientScheduleORM.client_id == client_id,
+                ClientScheduleORM.date == today_str,
+                ClientScheduleORM.type == "workout",
+            ).first()
+
+            today_workout_id = today_event.workout_id if today_event else None
+
+            return {
+                "workouts": result,
+                "today_workout_id": today_workout_id,
+            }
+        finally:
+            db.close()
+
+    def delete_client_workout(self, workout_id: str, client_id: str) -> dict:
+        """Delete a workout owned by the client."""
+        db = get_db_session()
+        try:
+            workout = db.query(WorkoutORM).filter(WorkoutORM.id == workout_id).first()
+            if not workout:
+                raise HTTPException(status_code=404, detail="Workout not found")
+            if workout.owner_id != client_id:
+                raise HTTPException(status_code=403, detail="Cannot delete this workout")
+
+            # Also remove schedule entries referencing this workout
+            db.query(ClientScheduleORM).filter(
+                ClientScheduleORM.workout_id == workout_id,
+                ClientScheduleORM.client_id == client_id,
+            ).delete()
+
+            db.delete(workout)
+            db.commit()
+            return {"status": "success", "message": "Workout deleted"}
+        except HTTPException:
+            raise
+        except Exception as e:
+            db.rollback()
+            raise HTTPException(status_code=500, detail=f"Failed to delete workout: {str(e)}")
+        finally:
+            db.close()
+
 
 # Singleton instance for easy import
 workout_service = WorkoutService()

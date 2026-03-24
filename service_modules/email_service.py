@@ -81,7 +81,8 @@ class EmailService:
                         self._owner_orm.smtp_oauth_refresh_token = self.oauth_refresh_token
                     db.merge(self._owner_orm)
                     db.commit()
-                except Exception:
+                except Exception as e:
+                    logger.warning("Failed to commit refreshed OAuth token to DB: %s", e)
                     db.rollback()
                 finally:
                     db.close()

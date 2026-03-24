@@ -4,8 +4,11 @@ Handles file uploads to Cloudinary (production) or local filesystem (development
 """
 import os
 import uuid
+import logging
 from typing import Optional, Tuple
 from datetime import datetime
+
+logger = logging.getLogger("gym_app")
 
 # Try to import cloudinary
 try:
@@ -174,7 +177,8 @@ async def delete_file(url_or_public_id: str) -> bool:
 
             cloudinary.uploader.destroy(public_id)
             return True
-        except Exception:
+        except Exception as e:
+            logger.exception("Failed to delete file from Cloudinary: %s", url_or_public_id)
             return False
     else:
         # Local file deletion
@@ -186,7 +190,8 @@ async def delete_file(url_or_public_id: str) -> bool:
                     os.remove(file_path)
                     return True
             return False
-        except Exception:
+        except Exception as e:
+            logger.exception("Failed to delete local file: %s", url_or_public_id)
             return False
 
 

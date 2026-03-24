@@ -291,8 +291,8 @@ class MessageDispatchService:
         """Best-effort push notification alongside in-app."""
         try:
             self.send_push(client_id, title, message, gym_id)
-        except Exception:
-            pass  # Push is a bonus, don't fail the in-app delivery
+        except Exception as e:
+            logger.warning("Push notification failed for client %s: %s", client_id, e)
 
 
 # Singleton instance

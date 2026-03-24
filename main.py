@@ -161,247 +161,6 @@ async def join_gym_landing(request: Request, gym_code: str):
     finally:
         db.close()
 
-@app.get("/api/fix-schema-once")
-async def fix_schema():
-    """TEMP: Add missing columns to existing tables."""
-    from sqlalchemy import text
-    from database import get_db_session, Base, engine
-    db = get_db_session()
-    fixes = []
-    columns_to_add = [
-        ("client_schedule", "appointment_id", "VARCHAR"),
-        ("medical_certificates", "approval_status", "VARCHAR DEFAULT 'approved'"),
-        ("medical_certificates", "reviewed_by", "VARCHAR"),
-        ("medical_certificates", "reviewed_at", "VARCHAR"),
-        ("medical_certificates", "rejection_reason", "VARCHAR"),
-        ("appointments", "status", "VARCHAR DEFAULT 'confirmed'"),
-        ("gyms", "auto_approve_trainers", "BOOLEAN DEFAULT FALSE"),
-        ("gyms", "auto_approve_staff", "BOOLEAN DEFAULT FALSE"),
-        ("users", "active_session_id", "VARCHAR"),
-    ]
-    for table, col, col_type in columns_to_add:
-        try:
-            db.execute(text(f'ALTER TABLE "{table}" ADD COLUMN "{col}" {col_type}'))
-            db.commit()
-            fixes.append(f"Added {table}.{col}")
-        except Exception as e:
-            db.rollback()
-            if "already exists" in str(e).lower() or "duplicate" in str(e).lower():
-                fixes.append(f"{table}.{col} exists")
-            else:
-                fixes.append(f"{table}.{col} ERROR: {str(e)[:80]}")
-    Base.metadata.create_all(engine)
-    fixes.append("create_all done")
-    db.close()
-    return {"fixes": fixes}
-
-@app.get("/api/fix-passwords-once")
-async def fix_passwords():
-    """TEMP: Reset all passwords to username with fast bcrypt."""
-    import bcrypt
-    from database import get_db_session
-    from models_orm import UserORM
-    db = get_db_session()
-    users = db.query(UserORM).all()
-    fixed = 0
-    for u in users:
-        hashed = bcrypt.hashpw(u.username.encode('utf-8'), bcrypt.gensalt(rounds=4))
-        u.hashed_password = hashed.decode('utf-8')
-        fixed += 1
-    db.commit()
-    db.close()
-    return {"fixed": fixed}
-
-@app.get("/api/migrate-from-old-db")
-async def migrate_from_old_db():
-    """TEMP: Migrate data from old Render DB to current (Supabase) DB."""
-    import os
-    from sqlalchemy import create_engine, text, inspect
-    OLD_DB = "postgresql://gym_user:0b0TMaeTvus2CDi5SlrAuOulhG6wjTkS@dpg-d6rubfnafjfc73elfp70-a.oregon-postgres.render.com/gym_db_mfo6"
-    try:
-        old_engine = create_engine(OLD_DB)
-        with old_engine.connect() as old_conn:
-            old_conn.execute(text("SELECT 1"))
-    except Exception as e:
-        return {"error": f"Cannot connect to old DB: {str(e)[:200]}"}
-
-    from database import engine as new_engine, Base
-    # Create all tables on the new DB first
-    Base.metadata.create_all(new_engine)
-
-    migrated = {}
-    errors = {}
-    inspector = inspect(old_engine)
-    tables = inspector.get_table_names()
-
-    for table in tables:
-        try:
-            with old_engine.connect() as old_conn:
-                rows = old_conn.execute(text(f'SELECT * FROM "{table}"')).fetchall()
-                if not rows:
-                    continue
-                cols = old_conn.execute(text(f'SELECT * FROM "{table}" LIMIT 0')).keys()
-                col_names = list(cols)
-
-            with new_engine.begin() as new_conn:
-                # Check which columns exist in the new table
-                try:
-                    new_inspector = inspect(new_engine)
-                    new_cols = [c['name'] for c in new_inspector.get_columns(table)]
-                except:
-                    migrated[table] = f"0/{len(rows)} (table not in new DB)"
-                    continue
-
-                # Only insert columns that exist in both
-                common_cols = [c for c in col_names if c in new_cols]
-                if not common_cols:
-                    continue
-
-                col_str = ', '.join([f'"{c}"' for c in common_cols])
-                placeholders = ', '.join([f':{c}' for c in common_cols])
-
-                count = 0
-                for row in rows:
-                    row_dict = dict(zip(col_names, row))
-                    insert_dict = {c: row_dict[c] for c in common_cols}
-                    try:
-                        new_conn.execute(
-                            text(f'INSERT INTO "{table}" ({col_str}) VALUES ({placeholders}) ON CONFLICT DO NOTHING'),
-                            insert_dict
-                        )
-                        count += 1
-                    except Exception as row_err:
-                        pass
-                migrated[table] = f"{count}/{len(rows)}"
-        except Exception as e:
-            errors[table] = str(e)[:100]
-
-    # Fix passwords to username
-    try:
-        from simple_auth import hash_password
-        from database import get_db_session
-        db = get_db_session()
-        from models_orm import UserORM
-        users = db.query(UserORM).all()
-        for u in users:
-            u.hashed_password = hash_password(u.username)
-        db.commit()
-        migrated["_passwords_reset"] = f"{len(users)} users"
-        db.close()
-    except Exception as e:
-        errors["_passwords_reset"] = str(e)[:100]
-
-    return {"tables_found": len(tables), "migrated": migrated, "errors": errors}
-
-
-@app.post("/api/migrate-to-supabase")
-async def migrate_to_supabase(current_user: UserORM = Depends(get_current_user)):
-    """Migrate all data from current DB to Supabase. Requires owner role and SUPABASE_MIGRATION_URL env var."""
-    if current_user.role != "owner":
-        raise HTTPException(status_code=403, detail="Only owners can trigger migrations")
-
-    import psycopg2
-    from sqlalchemy import text
-
-    SUPABASE_URL = os.getenv("SUPABASE_MIGRATION_URL")
-    if not SUPABASE_URL:
-        raise HTTPException(status_code=400, detail="SUPABASE_MIGRATION_URL environment variable not set")
-
-    # 1. Test Supabase connection
-    try:
-        sb_conn = psycopg2.connect(SUPABASE_URL, sslmode="require")
-        sb_conn.autocommit = False
-        sb_cur = sb_conn.cursor()
-        sb_cur.execute("SELECT version()")
-        sb_version = sb_cur.fetchone()[0]
-    except Exception as e:
-        logger.error(f"Supabase connection failed: {e}")
-        raise HTTPException(status_code=500, detail="Supabase connection failed")
-
-    # 2. Get all tables from current DB
-    from database import get_db_session
-    db = get_db_session()
-    try:
-        tables_result = db.execute(text(
-            "SELECT table_name FROM information_schema.tables WHERE table_schema='public' AND table_type='BASE TABLE' ORDER BY table_name"
-        ))
-        tables = [r[0] for r in tables_result]
-    except Exception as e:
-        db.close()
-        sb_conn.close()
-        logger.error(f"Failed to list tables: {e}")
-        raise HTTPException(status_code=500, detail="Failed to list tables")
-
-    # 3. For each table: create it on Supabase if not exists, then copy data
-    migrated = {}
-    errors = {}
-
-    for table in tables:
-        try:
-            ddl_result = db.execute(text(
-                "SELECT 'CREATE TABLE IF NOT EXISTS \"' || :tbl || '\" (' || "
-                "string_agg("
-                "'\"' || column_name || '\" ' || "
-                "CASE "
-                "WHEN data_type = 'character varying' THEN 'TEXT' "
-                "WHEN data_type = 'integer' THEN 'INTEGER' "
-                "WHEN data_type = 'bigint' THEN 'BIGINT' "
-                "WHEN data_type = 'boolean' THEN 'BOOLEAN' "
-                "WHEN data_type = 'double precision' THEN 'DOUBLE PRECISION' "
-                "WHEN data_type = 'numeric' THEN 'NUMERIC' "
-                "WHEN data_type = 'text' THEN 'TEXT' "
-                "WHEN data_type = 'timestamp without time zone' THEN 'TIMESTAMP' "
-                "WHEN data_type = 'timestamp with time zone' THEN 'TIMESTAMPTZ' "
-                "WHEN data_type = 'date' THEN 'DATE' "
-                "ELSE 'TEXT' END, "
-                "', ' ORDER BY ordinal_position"
-                ") || ')' "
-                "FROM information_schema.columns "
-                "WHERE table_name = :tbl AND table_schema = 'public'"
-            ), {"tbl": table})
-            ddl = ddl_result.scalar()
-
-            if not ddl:
-                continue
-
-            sb_cur.execute(ddl)
-            sb_conn.commit()
-
-            rows_result = db.execute(text(f'SELECT * FROM "{table}"'))
-            rows = rows_result.fetchall()
-            if not rows:
-                migrated[table] = "0/0 (empty)"
-                continue
-
-            cols = rows_result.keys()
-            col_names = ', '.join([f'"{c}"' for c in cols])
-            placeholders = ', '.join(['%s'] * len(cols))
-            insert_sql = f'INSERT INTO "{table}" ({col_names}) VALUES ({placeholders}) ON CONFLICT DO NOTHING'
-
-            count = 0
-            for row in rows:
-                try:
-                    sb_cur.execute(insert_sql, tuple(row))
-                    count += 1
-                except Exception as row_err:
-                    sb_conn.rollback()
-                    logger.warning(f"Row insert failed in {table}: {row_err}")
-                    continue
-
-            sb_conn.commit()
-            migrated[table] = f"{count}/{len(rows)}"
-
-        except Exception as e:
-            sb_conn.rollback()
-            errors[table] = str(e)[:100]
-            logger.error(f"Migration failed for table {table}: {e}")
-
-    db.close()
-    sb_conn.close()
-
-    logger.info(f"Migration complete: {len(migrated)} tables migrated, {len(errors)} errors")
-    return {"migrated": migrated, "errors": errors, "tables_found": len(tables), "supabase_version": sb_version}
-
 @app.get("/api/version")
 async def get_version():
     """Get app version info for debugging deployed instances."""
@@ -686,7 +445,8 @@ def _safe_add_columns(engine, table_name, columns_list):
     try:
         inspector = inspect(engine)
         existing = {col['name'] for col in inspector.get_columns(table_name)}
-    except Exception:
+    except Exception as e:
+        logger.warning("Could not inspect columns for table %s: %s", table_name, e)
         existing = set()
 
     for col_name, col_type in columns_list:
@@ -996,6 +756,48 @@ async def startup_event():
     else:
         logger.info("File Storage: Local Filesystem (Development)")
 
+    # --- Data retention cleanup (TODO: move to a scheduled cron job) ---
+    try:
+        from sqlalchemy import text
+        from database import get_db_session
+        cleanup_db = get_db_session()
+        try:
+            now = datetime.utcnow()
+
+            # 1. Delete audit logs older than 90 days
+            cutoff_90 = (now - timedelta(days=90)).isoformat()
+            deleted_audit = cleanup_db.execute(
+                text("DELETE FROM sensitive_data_access_log WHERE accessed_at < :cutoff"),
+                {"cutoff": cutoff_90}
+            ).rowcount
+
+            # 2. Delete expired password reset tokens (expired and older than 7 days)
+            cutoff_7 = (now - timedelta(days=7)).isoformat()
+            deleted_tokens = cleanup_db.execute(
+                text("DELETE FROM password_reset_tokens WHERE expires_at < :cutoff"),
+                {"cutoff": cutoff_7}
+            ).rowcount
+
+            # 3. Delete old read notifications (older than 60 days, already read)
+            cutoff_60 = (now - timedelta(days=60)).isoformat()
+            deleted_notifs = cleanup_db.execute(
+                text("DELETE FROM notifications WHERE read = true AND created_at < :cutoff"),
+                {"cutoff": cutoff_60}
+            ).rowcount
+
+            cleanup_db.commit()
+            logger.info(
+                f"Data retention cleanup: {deleted_audit} audit logs, "
+                f"{deleted_tokens} expired tokens, {deleted_notifs} old notifications deleted"
+            )
+        except Exception as e:
+            logger.warning(f"Data retention cleanup error (non-fatal): {e}")
+            cleanup_db.rollback()
+        finally:
+            cleanup_db.close()
+    except Exception as e:
+        logger.warning(f"Data retention cleanup setup error (non-fatal): {e}")
+
     # Start background thread for automated message trigger checking
     import threading
     trigger_thread = threading.Thread(target=background_trigger_checker, daemon=True)
@@ -1292,8 +1094,8 @@ async def read_root(request: Request, gym_id: str = "iron_gym", role: str = "cli
         username = payload.get("sub")
         if token_role:
             role = token_role
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to decode JWT for role detection: %s", e)
 
     template_name = "client.html"
     if mode == "workout":

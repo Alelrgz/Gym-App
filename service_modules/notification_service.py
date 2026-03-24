@@ -258,7 +258,8 @@ def _auto_fcm_on_notification(mapper, connection, target):
         if target.data:
             try:
                 data = json.loads(target.data) if isinstance(target.data, str) else target.data
-            except Exception:
+            except Exception as e:
+                logger.warning("Failed to parse notification data JSON: %s", e)
                 data = None
 
         # Use a fresh session (connection is low-level, we need ORM queries)

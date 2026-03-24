@@ -34,6 +34,14 @@ def get_password_hash(password):
     hashed = bcrypt.hashpw(pwd_bytes, salt)
     return hashed.decode('utf-8')
 
+
+def validate_password(password: str):
+    """Validate password strength. Raises HTTPException(400) if too weak."""
+    from fastapi import HTTPException
+    if not password or len(password) < 6:
+        raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
+
+
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
     to_encode = data.copy()
     if expires_delta:
@@ -77,4 +85,15 @@ async def get_current_user(request: Request, db: Session = Depends(get_db)):
     user = db.query(UserORM).filter(UserORM.username == username).first()
     if user is None:
         raise credentials_exception
+
+    # Enforce single-session: if the token contains a session ID, it must match
+    # the user's current active_session_id (password changes invalidate old sessions)
+    token_sid = payload.get("sid")
+    if token_sid and user.active_session_id and token_sid != user.active_session_id:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Session expired. Please log in again.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
     return user

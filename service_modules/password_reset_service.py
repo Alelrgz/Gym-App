@@ -135,6 +135,9 @@ def reset_password(raw_token: str, new_password: str) -> dict:
         user.hashed_password = hashed
         user.must_change_password = False
 
+        # Regenerate session ID to force logout on all other devices
+        user.active_session_id = secrets.token_urlsafe(16)
+
         # Mark token as used
         matched_token.used_at = datetime.utcnow().isoformat()
         db.commit()
@@ -168,6 +171,9 @@ def staff_reset_password(staff_user, member_id: str) -> dict:
         hashed = bcrypt.hashpw(temp_password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
         member.hashed_password = hashed
         member.must_change_password = True
+
+        # Regenerate session ID to force logout on all devices
+        member.active_session_id = secrets.token_urlsafe(16)
         db.commit()
 
         logger.info(f"Staff {staff_user.id} reset password for member {member_id}")

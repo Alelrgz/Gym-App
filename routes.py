@@ -141,6 +141,12 @@ async def register(
     role = user_data.get("role", "client")
     if role == "client":
         raise HTTPException(status_code=403, detail="La registrazione clienti è disabilitata. Contatta la tua palestra.")
+
+    # Validate password strength
+    from auth import validate_password
+    password = user_data.get("password", "")
+    validate_password(password)
+
     return service.register_user(user_data)
 
 @router.get("/api/config/{gym_id}", response_model=GymConfig)

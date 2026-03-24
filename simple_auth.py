@@ -55,9 +55,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     hashed_bytes = hashed_password.encode('utf-8')
     return bcrypt.checkpw(pwd_bytes, hashed_bytes)
 
-def create_token(username: str, role: str) -> str:
+def create_token(username: str, role: str, session_id: str = None) -> str:
     expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode = {"sub": username, "role": role, "exp": expire}
+    if session_id:
+        to_encode["sid"] = session_id
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 # --- LOGIN PAGE ---
@@ -135,10 +137,16 @@ async def do_login(request: Request, db: Session = Depends(get_db)):
             "mode": "auth"
         })
 
+    # Generate session ID for single-device enforcement
+    import secrets as _secrets
+    session_id = _secrets.token_urlsafe(16)
+    user.active_session_id = session_id
+    db.commit()
+
     # Check if user must change password (first login after staff registration)
     if hasattr(user, 'must_change_password') and user.must_change_password:
         # Create token but redirect to setup-account
-        token = create_token(user.username, user.role)
+        token = create_token(user.username, user.role, session_id=session_id)
 
         if is_json:
             from fastapi.responses import JSONResponse
@@ -156,8 +164,8 @@ async def do_login(request: Request, db: Session = Depends(get_db)):
         response.set_cookie(key="access_token", value=token, httponly=True, secure=_COOKIE_SECURE, samesite=_COOKIE_SAMESITE)
         return response
 
-    # 3. Success - Create token
-    token = create_token(user.username, user.role)
+    # 3. Success - Create token (session_id already set above)
+    token = create_token(user.username, user.role, session_id=session_id)
     
     # 4. Return response based on client type
     if is_json:
@@ -234,10 +242,10 @@ async def _do_register(request, username, password, email, role, sub_role, secre
         })
 
     # Validate password length
-    if not password or len(password) < 12:
+    if not password or len(password) < 6:
         return templates.TemplateResponse("register.html", {
             "request": request,
-            "error": "Password must be at least 12 characters",
+            "error": "Password must be at least 6 characters",
             "gym_id": "iron_gym",
             "role": "client",
             "mode": "auth"
@@ -525,9 +533,9 @@ async def do_reset_password(request: Request):
     new_password = form.get("new_password", "").strip()
     confirm_password = form.get("confirm_password", "").strip()
 
-    if not new_password or len(new_password) < 12:
+    if not new_password or len(new_password) < 6:
         return templates.TemplateResponse("reset_password.html", {
-            "request": request, "error": "Password must be at least 12 characters.", "token": token
+            "request": request, "error": "Password must be at least 6 characters.", "token": token
         })
 
     if new_password != confirm_password:
@@ -646,8 +654,8 @@ async def do_setup_account(request: Request, db: Session = Depends(get_db)):
 
         if not new_password:
             errors.append("Password is required")
-        elif len(new_password) < 12:
-            errors.append("Password must be at least 12 characters")
+        elif len(new_password) < 6:
+            errors.append("Password must be at least 6 characters")
         elif new_password != confirm_password:
             errors.append("Passwords do not match")
 
@@ -665,10 +673,15 @@ async def do_setup_account(request: Request, db: Session = Depends(get_db)):
         user.username = new_username
         user.hashed_password = get_password_hash(new_password)
         user.must_change_password = False
+
+        # Regenerate session ID to force logout on all other devices
+        import secrets as _secrets
+        new_session_id = _secrets.token_urlsafe(16)
+        user.active_session_id = new_session_id
         db.commit()
 
-        # Create new token with updated username
-        new_token = create_token(new_username, user.role)
+        # Create new token with updated username and new session ID
+        new_token = create_token(new_username, user.role, session_id=new_session_id)
 
         # Redirect to dashboard
         response = RedirectResponse(url=f"/?role={user.role}", status_code=302)

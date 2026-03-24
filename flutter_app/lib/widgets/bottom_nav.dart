@@ -1,5 +1,6 @@
 import 'dart:ui' show ImageFilter;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import '../config/theme.dart';
 
 /// Callback type for FAB quick actions.
@@ -320,25 +321,28 @@ class _FabButton extends StatelessWidget {
   Widget build(BuildContext context) {
     final isOpen = rotation > 0;
     return GestureDetector(
-      onTap: onTap,
-      child: AnimatedRotation(
-        turns: isOpen ? 0.5 : 0,
-        duration: const Duration(milliseconds: 300),
-        curve: Curves.easeInOut,
-        child: Container(
-          width: isOpen ? 44 : 52,
-          height: isOpen ? 44 : 52,
-          decoration: BoxDecoration(
-            gradient: isOpen
-                ? null
-                : const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [AppColors.primary, AppColors.primaryHover],
-                  ),
-            color: isOpen ? Colors.white.withValues(alpha: 0.12) : null,
-            borderRadius: BorderRadius.circular(isOpen ? 14 : 16),
-          ),
+      onTap: () {
+        HapticFeedback.mediumImpact();
+        onTap();
+      },
+      child: Container(
+        width: isOpen ? 44 : 52,
+        height: isOpen ? 44 : 52,
+        decoration: BoxDecoration(
+          gradient: isOpen
+              ? null
+              : const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [AppColors.primary, AppColors.primaryHover],
+                ),
+          color: isOpen ? Colors.white.withValues(alpha: 0.12) : null,
+          borderRadius: BorderRadius.circular(isOpen ? 14 : 16),
+        ),
+        child: AnimatedRotation(
+          turns: isOpen ? 0.5 : 0,
+          duration: const Duration(milliseconds: 300),
+          curve: Curves.easeInOut,
           child: Icon(
             Icons.keyboard_arrow_up_rounded,
             color: Colors.white,

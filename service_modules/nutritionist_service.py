@@ -36,7 +36,8 @@ class NutritionistService:
                     DataConsentORM.status == "active"
                 ).all()
                 consented_ids = {c.client_id for c in consented}
-            except Exception:
+            except Exception as e:
+                logger.warning("Failed to query data consents for nutritionist %s: %s", nutritionist_id, e)
                 consented_ids = set()
 
             # 3. Clients who have booked a nutritionist appointment
@@ -46,7 +47,8 @@ class NutritionistService:
                     NutritionistAppointmentORM.nutritionist_id == nutritionist_id
                 ).distinct().all()
                 booked_ids = {b.client_id for b in booked}
-            except Exception:
+            except Exception as e:
+                logger.warning("Failed to query booked appointments for nutritionist %s: %s", nutritionist_id, e)
                 booked_ids = set()
 
             # Combine all client IDs
@@ -106,7 +108,8 @@ class NutritionistService:
                     try:
                         last_date = datetime.strptime(last_log.date, "%Y-%m-%d").date()
                         days_inactive = (today - last_date).days
-                    except Exception:
+                    except Exception as e:
+                        logger.warning("Failed to parse last log date for client: %s", e)
                         days_inactive = 99
 
                 status = "Active" if days_inactive <= 5 else "At Risk"
@@ -168,8 +171,8 @@ class NutritionistService:
                     try:
                         dob = datetime.strptime(profile.date_of_birth, "%Y-%m-%d").date()
                         age = (date.today() - dob).days // 365
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.warning("Failed to parse date_of_birth for BMR calculation: %s", e)
 
                 if age:
                     if profile.gender == "male":

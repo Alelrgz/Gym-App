@@ -168,8 +168,9 @@ async def get_todays_checkins(
             "count": len(checkins),
             "recent": recent
         }
-    except Exception:
+    except Exception as e:
         # Table might not exist yet
+        logger.warning("Failed to fetch checkin history: %s", e)
         return {
             "count": 0,
             "recent": []
@@ -392,8 +393,8 @@ async def get_member_details(
             # Check if checked in today
             if last_checkin and last_checkin.startswith(today):
                 checked_in_today = True
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to fetch checkin data for member: %s", e)
 
     # Get subscription info
     subscription_info = {
@@ -420,8 +421,8 @@ async def get_member_details(
                 "status": sub.status,
                 "expires": expires
             }
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to fetch subscription info: %s", e)
 
     # Format member since date
     member_since = member.created_at
@@ -429,8 +430,8 @@ async def get_member_details(
         try:
             if "T" in member_since:
                 member_since = member_since.split("T")[0]
-        except Exception:
-            pass
+        except Exception as e:
+            logger.warning("Failed to parse member_since date: %s", e)
 
     # Get medical certificate
     cert_info = None
@@ -461,8 +462,8 @@ async def get_member_details(
                 "approval_status": cert.approval_status or "approved",
                 "rejection_reason": cert.rejection_reason,
             }
-    except Exception:
-        pass
+    except Exception as e:
+        logger.warning("Failed to fetch medical certificate: %s", e)
 
     return {
         "id": member.id,
@@ -964,7 +965,8 @@ async def preview_subscription_change(
                 remaining_days = max(0, (period_end - now).days)
                 total_days = 365 if old_plan.billing_interval == "year" else 30
                 credit = round(old_plan_price * (remaining_days / total_days), 2)
-            except Exception:
+            except Exception as e:
+                logger.warning("Failed to calculate plan change credit: %s", e)
                 credit = 0.0
 
         amount_due = round(max(0, new_plan.price - credit), 2)
@@ -1039,7 +1041,8 @@ async def change_client_subscription(
                 remaining_days = max(0, (period_end - datetime.utcnow()).days)
                 total_days = 365 if old_plan.billing_interval == "year" else 30
                 credit = round((old_plan.price or 0) * (remaining_days / total_days), 2)
-            except Exception:
+            except Exception as e:
+                logger.warning("Failed to calculate subscription credit on plan change: %s", e)
                 credit = 0.0
 
         # Update existing subscription

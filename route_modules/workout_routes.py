@@ -98,3 +98,22 @@ async def client_update_workout(
 ):
     """Client updates their own workout."""
     return service.update_workout(workout_id, workout, current_user.id)
+
+
+@router.get("/api/client/workouts")
+async def client_list_workouts(
+    service: WorkoutService = Depends(get_workout_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """List all workouts owned by this client."""
+    return service.get_client_workouts(current_user.id)
+
+
+@router.delete("/api/client/workout/{workout_id}")
+async def client_delete_workout(
+    workout_id: str,
+    service: WorkoutService = Depends(get_workout_service),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Client deletes their own workout."""
+    return service.delete_client_workout(workout_id, current_user.id)

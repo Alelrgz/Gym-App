@@ -25,11 +25,14 @@ async def get_client_schedule(
 async def get_client_history(
     client_id: str,
     exercise_name: str = None,
-    service: ScheduleService = Depends(get_schedule_service)
+    service: ScheduleService = Depends(get_schedule_service),
+    current_user: UserORM = Depends(get_current_user)
 ):
     """Get historical performance data for a client's exercises."""
+    # Allow if the user is the client themselves, or a trainer/nutritionist
+    if current_user.id != client_id and current_user.role not in ("trainer", "nutritionist", "owner"):
+        raise HTTPException(status_code=403, detail="Not authorized to view this client's history")
     try:
-        # Ensure trainer has access to this client (skip auth for prototype)
         return service.get_client_exercise_history(client_id, exercise_name)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

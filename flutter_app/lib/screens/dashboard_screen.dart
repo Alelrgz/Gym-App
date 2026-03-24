@@ -354,7 +354,7 @@ class _WorkoutCard extends ConsumerWidget {
                 ] else ...[
                   const SizedBox(height: 8),
                   Text(
-                    'Il tuo trainer non ha ancora assegnato un allenamento per oggi.',
+                    'Nessun allenamento assegnato per oggi.\nCrea o scegli un allenamento.',
                     style: TextStyle(fontSize: 14, color: AppColors.textTertiary),
                   ),
                 ],
@@ -366,7 +366,91 @@ class _WorkoutCard extends ConsumerWidget {
                   children: [
                     Expanded(
                       child: GestureDetector(
-                        onTap: () => context.go('/workouts'),
+                        onTap: () {
+                          if (hasWorkout && !isCompleted) {
+                            showGeneralDialog(
+                              context: context,
+                              barrierDismissible: true,
+                              barrierLabel: '',
+                              barrierColor: Colors.black54,
+                              transitionDuration: const Duration(milliseconds: 250),
+                              transitionBuilder: (ctx, anim, anim2, child) {
+                                final curve = CurvedAnimation(parent: anim, curve: Curves.easeOutBack);
+                                return ScaleTransition(
+                                  scale: curve,
+                                  child: FadeTransition(opacity: anim, child: child),
+                                );
+                              },
+                              pageBuilder: (ctx, anim, anim2) => Dialog(
+                                backgroundColor: AppColors.surface,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                                insetPadding: const EdgeInsets.symmetric(horizontal: 32),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(24),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        'Vuoi iniziare "$title"?',
+                                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                                        textAlign: TextAlign.center,
+                                      ),
+                                      const SizedBox(height: 20),
+                                      Row(
+                                        children: [
+                                          Expanded(
+                                            flex: 3,
+                                            child: GestureDetector(
+                                              onTap: () {
+                                                Navigator.of(ctx).pop();
+                                                Navigator.of(context).push(MaterialPageRoute(
+                                                  builder: (_) => WorkoutScreen(initialWorkout: workout),
+                                                ));
+                                              },
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.primary,
+                                                  borderRadius: BorderRadius.circular(14),
+                                                ),
+                                                child: const Center(
+                                                  child: Text('Inizia', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 16)),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Expanded(
+                                            flex: 2,
+                                            child: GestureDetector(
+                                              onTap: () {
+                                                Navigator.of(ctx).pop();
+                                                context.go('/workouts');
+                                              },
+                                              child: Container(
+                                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                                decoration: BoxDecoration(
+                                                  color: AppColors.elevated,
+                                                  borderRadius: BorderRadius.circular(14),
+                                                  border: Border.all(color: AppColors.borderLight),
+                                                ),
+                                                child: const Center(
+                                                  child: Text('Cambia', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 14)),
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            );
+                          } else {
+                            context.go('/workouts');
+                          }
+                        },
                         child: Container(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           decoration: BoxDecoration(
@@ -383,7 +467,7 @@ class _WorkoutCard extends ConsumerWidget {
                                 const SizedBox(width: 8),
                               ],
                               Text(
-                                isCompleted ? 'Completato' : 'Inizia',
+                                isCompleted ? 'Completato' : (hasWorkout ? 'Inizia' : 'I Miei Allenamenti'),
                                 style: const TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.w700,
@@ -701,6 +785,74 @@ class _StreakPageState extends ConsumerState<_StreakPage> with SingleTickerProvi
   String _fmtDate(DateTime d) =>
       '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
 
+  Widget _buildWeekStreak() {
+    final now = DateTime.now();
+    // Get Monday of current week
+    final monday = now.subtract(Duration(days: now.weekday - 1));
+    final dayLabels = ['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'];
+    final completed = _completedDates;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Column(
+        children: [
+          const Text('Questa Settimana', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: List.generate(7, (i) {
+              final day = monday.add(Duration(days: i));
+              final dateStr = _fmtDate(day);
+              final isDone = completed.contains(dateStr);
+              final isToday = day.day == now.day && day.month == now.month && day.year == now.year;
+              final isPast = day.isBefore(DateTime(now.year, now.month, now.day));
+
+              return Column(
+                children: [
+                  Text(
+                    dayLabels[i],
+                    style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.grey[500]),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: isDone
+                          ? AppColors.primary
+                          : isToday
+                              ? AppColors.primary.withValues(alpha: 0.15)
+                              : Colors.white.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(10),
+                      border: isToday && !isDone ? Border.all(color: AppColors.primary, width: 1.5) : null,
+                    ),
+                    child: Center(
+                      child: isDone
+                          ? const Icon(Icons.check_rounded, size: 18, color: Colors.white)
+                          : Text(
+                              '${day.day}',
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                                color: isPast ? Colors.grey[600] : AppColors.textPrimary,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              );
+            }),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMonthlyCalendar() {
     final completed = _completedDates;
     final workouts = _workoutDates;
@@ -989,9 +1141,8 @@ class _StreakPageState extends ConsumerState<_StreakPage> with SingleTickerProvi
             ),
             const SizedBox(height: 36),
 
-            // ── Monthly Calendar ──
-            _buildMonthlyCalendar(),
-            _buildSelectedDayDetails(),
+            // ── Week Streak ──
+            _buildWeekStreak(),
             const SizedBox(height: 16),
 
             // ── Next milestone progress ──

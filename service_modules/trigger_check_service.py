@@ -230,8 +230,8 @@ class TriggerCheckService:
                         base = os.environ.get("SERVER_BASE_URL", "http://localhost:9008")
                         client_id = match.get("client_id", "")
                         ctx["checkout_link"] = f"{base}/api/redeem/{linked_offer_id}?client_id={client_id}"
-            except Exception:
-                pass
+            except Exception as e:
+                logger.exception("Failed to build offer context for trigger check")
             finally:
                 db.close()
 

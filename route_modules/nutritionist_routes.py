@@ -1,6 +1,7 @@
 """
 Nutritionist Routes - API endpoints for nutritionist dashboard, client body management, and appointments.
 """
+import logging
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
@@ -21,6 +22,8 @@ from service_modules.client_service import ClientService, get_client_service
 from service_modules.nutritionist_appointment_service import (
     NutritionistAppointmentService, get_nutritionist_appointment_service
 )
+
+logger = logging.getLogger("gym_app")
 
 router = APIRouter()
 
@@ -501,7 +504,8 @@ async def nutrition_checkout_success(
 
     try:
         checkout_session = stripe.checkout.Session.retrieve(session_id)
-    except Exception:
+    except Exception as e:
+        logger.exception("Failed to retrieve Stripe checkout session %s", session_id)
         return RedirectResponse(url="/?role=client&booking_error=payment_verification_failed")
 
     if checkout_session.payment_status != "paid":

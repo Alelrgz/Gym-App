@@ -453,6 +453,15 @@ class ClientService {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> getClientWorkouts() async {
+    final response = await _api.get(ApiConfig.clientWorkouts);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<void> deleteClientWorkout(String workoutId) async {
+    await _api.delete(ApiConfig.clientDeleteWorkout(workoutId));
+  }
+
   Future<List<Map<String, dynamic>>> getExerciseLibrary() async {
     final response = await _api.get(ApiConfig.exercises);
     final list = response.data as List<dynamic>;

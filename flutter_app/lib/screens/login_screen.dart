@@ -202,6 +202,21 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                       child: const Text('Accedi'),
                     ),
                   ),
+
+                  // Error message
+                  if (authState.error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 12, bottom: 4),
+                      child: Text(
+                        authState.error!,
+                        style: const TextStyle(
+                          color: AppColors.danger,
+                          fontSize: 13,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+
                   const SizedBox(height: 16),
 
                   // Info text — no self-registration
