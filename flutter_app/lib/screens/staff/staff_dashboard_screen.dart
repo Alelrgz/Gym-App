@@ -263,6 +263,8 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
         member['name']?.toString() ?? member['username']?.toString() ?? '?';
     final initial = name.isNotEmpty ? name[0].toUpperCase() : '?';
     final email = member['email']?.toString();
+    final profilePic = member['profile_picture']?.toString();
+    final hasPhoto = profilePic != null && profilePic.isNotEmpty && profilePic != 'null';
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 6),
@@ -271,23 +273,35 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         child: Row(
           children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                gradient: LinearGradient(colors: [
-                  AppColors.primary,
-                  AppColors.primary.withValues(alpha: 0.6),
-                ]),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Center(
-                child: Text(initial,
-                    style: const TextStyle(
-                        fontWeight: FontWeight.w800,
-                        fontSize: 16,
-                        color: Colors.white)),
-              ),
+            Stack(
+              children: [
+                if (hasPhoto)
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Image.network(
+                      profilePic!.startsWith('http') ? profilePic : 'http://localhost:9008$profilePic',
+                      width: 40, height: 40, fit: BoxFit.cover,
+                      errorBuilder: (_, __, ___) => _buildInitialAvatar(initial),
+                    ),
+                  )
+                else
+                  _buildInitialAvatar(initial),
+                if (!hasPhoto)
+                  Positioned(
+                    right: -2,
+                    top: -2,
+                    child: Container(
+                      width: 14,
+                      height: 14,
+                      decoration: BoxDecoration(
+                        color: AppColors.danger,
+                        shape: BoxShape.circle,
+                        border: Border.all(color: const Color(0xFF1a1a1a), width: 2),
+                      ),
+                      child: const Icon(Icons.camera_alt, size: 8, color: Colors.white),
+                    ),
+                  ),
+              ],
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -305,10 +319,36 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
                 ],
               ),
             ),
+            if (!hasPhoto)
+              const Padding(
+                padding: EdgeInsets.only(right: 4),
+                child: Icon(Icons.no_photography_outlined, size: 16, color: AppColors.danger),
+              ),
             const Icon(Icons.chevron_right,
                 size: 18, color: AppColors.textTertiary),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildInitialAvatar(String initial) {
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(colors: [
+          AppColors.primary,
+          AppColors.primary.withValues(alpha: 0.6),
+        ]),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Center(
+        child: Text(initial,
+            style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 16,
+                color: Colors.white)),
       ),
     );
   }
