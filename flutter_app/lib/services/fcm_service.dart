@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint, defaultTargetPlatform, TargetPlatform;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -78,9 +78,12 @@ class FcmService {
   Future<void> _registerToken(String token) async {
     if (_api == null) return;
     try {
+      final platform = kIsWeb ? 'web'
+          : defaultTargetPlatform == TargetPlatform.iOS ? 'ios'
+          : 'android';
       await _api!.post(
         ApiConfig.registerDevice,
-        data: {'token': token, 'platform': 'android'},
+        data: {'token': token, 'platform': platform},
       );
       debugPrint('[FCM] Token registered');
     } catch (e) {

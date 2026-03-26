@@ -118,6 +118,8 @@ class ApiConfig {
   static const updateWorkoutSet = '/api/client/schedule/update_set';
   static const clientCreateWorkout = '/api/client/workout/create';
   static String clientUpdateWorkout(String id) => '/api/client/workout/$id';
+  static const clientWorkouts = '/api/client/workouts';
+  static String clientDeleteWorkout(String id) => '/api/client/workout/$id';
 
   // Leaderboard
   static const leaderboardData = '/api/leaderboard/data';
@@ -195,6 +197,12 @@ class ApiConfig {
   // Subscription Plans
   static const ownerSubscriptionPlans = '/api/owner/subscription-plans';
   static String ownerSubscriptionPlan(String id) => '/api/owner/subscription-plans/$id';
+
+  // Owner Onboarding
+  static const ownerOnboardingStatus = '/api/owner/onboarding-status';
+  static const ownerSetupPlanTemplates = '/api/owner/setup-plan-templates';
+  static const ownerDefaultWaiver = '/api/owner/default-waiver';
+  static const ownerInviteStaff = '/api/owner/invite-staff';
 
   // Offers
   static const ownerOffers = '/api/owner/offers';

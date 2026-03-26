@@ -103,6 +103,7 @@ def _run_early_migrations():
                 sqlite_migrations = [
                     "ALTER TABLE community_posts ADD COLUMN max_participants INTEGER",
                     "ALTER TABLE community_posts ADD COLUMN participant_count INTEGER DEFAULT 0",
+                    "ALTER TABLE gyms ADD COLUMN welcome_message_template TEXT",
                 ]
                 for sql in sqlite_migrations:
                     try:

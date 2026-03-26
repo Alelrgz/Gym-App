@@ -1482,27 +1482,34 @@ async def onboard_new_client(
 #  REMOTE SIGNING SESSIONS (QR handoff for desktop → phone)
 # ═══════════════════════════════════════════════════════════
 import secrets as _secrets
-_signing_sessions: dict = {}  # token -> {client_name, waiver_text, signature_data, created_at, status}
-
-
 @router.post("/signing-session")
 async def create_signing_session(
     data: dict,
     request: Request,
-    user: UserORM = Depends(get_current_user)
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
     """Create a temporary signing session. Returns a token and URL for the phone."""
     if user.role not in ("staff", "owner"):
         raise HTTPException(status_code=403, detail="Only staff/owner can create signing sessions")
 
+    from models_orm import SigningSessionORM
+    # Clean up expired sessions
+    now = datetime.utcnow().isoformat()
+    db.query(SigningSessionORM).filter(SigningSessionORM.expires_at < now).delete()
+    db.commit()
+
     token = _secrets.token_urlsafe(24)
-    _signing_sessions[token] = {
-        "client_name": data.get("client_name", ""),
-        "waiver_text": data.get("waiver_text", ""),
-        "signature_data": None,
-        "status": "pending",  # pending | signed
-        "created_at": datetime.utcnow().isoformat(),
-    }
+    expires = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+    db.add(SigningSessionORM(
+        token=token,
+        client_name=data.get("client_name", ""),
+        waiver_text=data.get("waiver_text", ""),
+        status="pending",
+        created_by=user.id,
+        expires_at=expires,
+    ))
+    db.commit()
 
     base_url = str(request.base_url).rstrip("/")
     signing_url = f"{base_url}/sign/{token}"
@@ -1511,36 +1518,40 @@ async def create_signing_session(
 
 
 @router.get("/signing-session/{token}/status")
-async def get_signing_session_status(token: str):
+async def get_signing_session_status(token: str, db: Session = Depends(get_db)):
     """Poll for signing completion. No auth required (token is the secret)."""
-    session = _signing_sessions.get(token)
-    if not session:
+    from models_orm import SigningSessionORM
+    session = db.query(SigningSessionORM).filter(SigningSessionORM.token == token).first()
+    if not session or session.expires_at < datetime.utcnow().isoformat():
         raise HTTPException(status_code=404, detail="Session not found or expired")
 
-    if session["status"] == "signed":
-        sig = session["signature_data"]
-        # Clean up after retrieval
-        del _signing_sessions[token]
+    if session.status == "signed":
+        sig = session.signature_data
+        db.delete(session)
+        db.commit()
         return {"status": "signed", "signature_data": sig}
 
     return {"status": "pending"}
 
 
 @router.post("/signing-session/{token}/submit")
-async def submit_signing_session(token: str, data: dict):
+async def submit_signing_session(token: str, data: dict, db: Session = Depends(get_db)):
     """Submit signature from the phone browser. No auth required (token is the secret)."""
-    session = _signing_sessions.get(token)
-    if not session:
+    from models_orm import SigningSessionORM
+    session = db.query(SigningSessionORM).filter(SigningSessionORM.token == token).first()
+    if not session or session.expires_at < datetime.utcnow().isoformat():
         raise HTTPException(status_code=404, detail="Session not found or expired")
-    if session["status"] == "signed":
+    if session.status == "signed":
         raise HTTPException(status_code=400, detail="Already signed")
 
     sig = data.get("signature_data")
     if not sig:
         raise HTTPException(status_code=400, detail="signature_data is required")
 
-    session["signature_data"] = sig
-    session["status"] = "signed"
+    session.signature_data = sig
+    session.status = "signed"
+    session.signed_at = datetime.utcnow().isoformat()
+    db.commit()
     return {"status": "success", "message": "Firma registrata!"}
 
 
@@ -1574,19 +1585,51 @@ async def send_client_credentials(
         email = client.email or (profile.email if profile else None) or ""
         client_name = name or (profile.name if profile else None) or client.username
 
-        # Get gym name
+        # Get gym name and code
         gym_id = _effective_gym_id(user)
         gym_owner = db.query(UserORM).filter(UserORM.id == gym_id).first()
         gym_name = getattr(gym_owner, 'gym_name', None) or "FitOS"
 
-        message = (
-            f"Benvenuto in {gym_name}!\n\n"
-            f"Le tue credenziali per accedere all'app:\n"
-            f"Username: {username}\n"
-            f"Password: {temp_password}\n\n"
-            f"Cambia la password al primo accesso.\n"
-            f"Scarica l'app FitOS per iniziare!"
-        )
+        # Generate magic login link
+        import hashlib, hmac, os, uuid
+        from models_orm import MagicLoginTokenORM
+        magic_secret = os.environ.get("SECRET_KEY", "gym-secret-key-change-me")
+        raw_token = _secrets.token_urlsafe(32)
+        token_hash = hmac.new(magic_secret.encode(), raw_token.encode(), hashlib.sha256).hexdigest()
+        magic_expires = (datetime.utcnow() + timedelta(hours=24)).isoformat()
+        db.add(MagicLoginTokenORM(
+            id=str(uuid.uuid4()),
+            user_id=client.id,
+            token_hash=token_hash,
+            expires_at=magic_expires,
+        ))
+        db.commit()
+        magic_link = f"{data.get('base_url', '').rstrip('/') or ''}/magic/{raw_token}"
+
+        # Get gym code and custom template
+        from models_orm import GymORM
+        gym = db.query(GymORM).filter(GymORM.owner_id == gym_id).first()
+        gym_code = gym.gym_code if gym else (gym_owner.gym_code if gym_owner else "")
+        base_url = data.get('base_url', '').rstrip('/') or ''
+        join_link = f"{base_url}/join/{gym_code}" if gym_code else ""
+
+        # Use custom template if available, with placeholder substitution
+        template = gym.welcome_message_template if gym else None
+        if template:
+            message = template.replace("{nome}", client_name).replace("{username}", username)\
+                .replace("{password}", temp_password).replace("{palestra}", gym_name)\
+                .replace("{link}", magic_link).replace("{codice}", gym_code)\
+                .replace("{download}", join_link)
+        else:
+            message = (
+                f"Benvenuto in {gym_name}!\n\n"
+                f"Le tue credenziali per accedere all'app:\n"
+                f"Username: {username}\n"
+                f"Password: {temp_password}\n\n"
+                f"Oppure accedi direttamente:\n{magic_link}\n\n"
+                f"Cambia la password al primo accesso.\n"
+                f"Scarica l'app FitOS per iniziare!"
+            )
 
         if method == "email":
             if not email:
@@ -1650,6 +1693,11 @@ async def send_client_credentials(
             ))
             db.commit()
 
+            try:
+                from service_modules.notification_service import send_fcm_push
+                send_fcm_push(db, user.id, notif_title, notif_body, notif_data)
+            except Exception:
+                pass  # FCM is best-effort
 
             return {"status": "success", "method": "whatsapp", "link": whatsapp_link, "message": "Notifica inviata al tuo telefono"}
 
@@ -1675,7 +1723,11 @@ async def send_client_credentials(
             ))
             db.commit()
 
-            _send_fcm_push(db, user.id, gym_id, notif_title, notif_body, notif_data)
+            try:
+                from service_modules.notification_service import send_fcm_push
+                send_fcm_push(db, user.id, notif_title, notif_body, notif_data)
+            except Exception:
+                pass  # FCM is best-effort
 
             return {"status": "success", "method": "sms", "link": sms_link, "message": "Notifica inviata al tuo telefono"}
 

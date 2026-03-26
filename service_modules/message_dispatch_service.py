@@ -212,75 +212,13 @@ class MessageDispatchService:
         message: str,
         gym_id: str = None
     ) -> bool:
-        """Send a push notification via Firebase Cloud Messaging."""
-        import requests as req
-        from models_orm import FCMDeviceTokenORM
+        """Send a push notification via FCM v1 API (centralized, no per-gym config)."""
+        from .notification_service import send_fcm_push
 
         db = get_db_session()
         try:
-            # Get FCM server key from gym owner
-            server_key = None
-            if gym_id:
-                owner = db.query(UserORM).filter(UserORM.id == gym_id).first()
-                if owner:
-                    server_key = owner.fcm_server_key
-
-            if not server_key:
-                logger.debug(f"No FCM server key configured for gym {gym_id}")
-                return False
-
-            # Get device tokens for this user
-            tokens = db.query(FCMDeviceTokenORM).filter(
-                FCMDeviceTokenORM.user_id == client_id
-            ).all()
-
-            if not tokens:
-                logger.debug(f"No FCM tokens registered for user {client_id}")
-                return False
-
-            # Send to all registered devices
-            sent = 0
-            for device in tokens:
-                try:
-                    resp = req.post(
-                        "https://fcm.googleapis.com/fcm/send",
-                        json={
-                            "to": device.token,
-                            "notification": {
-                                "title": title,
-                                "body": message[:200],
-                                "sound": "default",
-                                "badge": 1,
-                            },
-                            "data": {
-                                "type": "automated_message",
-                                "click_action": "FLUTTER_NOTIFICATION_CLICK",
-                            }
-                        },
-                        headers={
-                            "Authorization": f"key={server_key}",
-                            "Content-Type": "application/json",
-                        },
-                        timeout=10,
-                    )
-                    if resp.status_code == 200:
-                        result = resp.json()
-                        if result.get("success", 0) > 0:
-                            sent += 1
-                        # Clean up invalid tokens
-                        if result.get("failure", 0) > 0:
-                            for r in result.get("results", []):
-                                if r.get("error") in ("NotRegistered", "InvalidRegistration"):
-                                    db.query(FCMDeviceTokenORM).filter(
-                                        FCMDeviceTokenORM.token == device.token
-                                    ).delete()
-                                    db.commit()
-                except Exception as e:
-                    logger.error(f"FCM send error for token {device.token[:20]}...: {e}")
-
-            logger.info(f"Push notification sent to {sent}/{len(tokens)} devices for user {client_id}")
-            return sent > 0
-
+            send_fcm_push(db, client_id, title, message, {"type": "automated_message"})
+            return True
         except Exception as e:
             logger.error(f"Failed to send push notification: {e}")
             return False

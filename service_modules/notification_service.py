@@ -11,74 +11,204 @@ import uuid
 logger = logging.getLogger("gym_app")
 
 
-def send_fcm_push(db, user_id: str, title: str, body: str, data: dict = None):
-    """Send an FCM push notification to a user's registered devices.
+def _get_fcm_access_token():
+    """Get OAuth2 access token for FCM v1 API using service account credentials."""
+    import os, time
 
-    Resolves the gym's FCM server key automatically from the user's gym_owner_id.
-    Can be called with an existing db session (e.g. from inline notification creation).
+    # Cache the token to avoid re-fetching on every push
+    if hasattr(_get_fcm_access_token, '_cached'):
+        token, expiry = _get_fcm_access_token._cached
+        if time.time() < expiry - 60:  # Refresh 60s before expiry
+            return token
+
+    sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+    if not sa_json:
+        sa_path = os.environ.get("GOOGLE_SERVICE_ACCOUNT_PATH")
+        if sa_path and os.path.exists(sa_path):
+            with open(sa_path) as f:
+                sa_json = f.read()
+
+    if not sa_json:
+        return None
+
+    try:
+        import json as _json, jwt as _pyjwt, requests as _req
+        sa = _json.loads(sa_json)
+        now = int(time.time())
+        payload = {
+            "iss": sa["client_email"],
+            "scope": "https://www.googleapis.com/auth/firebase.messaging",
+            "aud": "https://oauth2.googleapis.com/token",
+            "iat": now,
+            "exp": now + 3600,
+        }
+        signed_jwt = _pyjwt.encode(payload, sa["private_key"], algorithm="RS256")
+        resp = _req.post("https://oauth2.googleapis.com/token", data={
+            "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
+            "assertion": signed_jwt,
+        }, timeout=10)
+        if resp.status_code == 200:
+            token_data = resp.json()
+            access_token = token_data["access_token"]
+            _get_fcm_access_token._cached = (access_token, now + token_data.get("expires_in", 3600))
+            return access_token
+    except ImportError:
+        # Fallback: try google-auth library
+        try:
+            from google.oauth2 import service_account
+            import google.auth.transport.requests
+            import json as _json
+
+            sa = _json.loads(sa_json)
+            credentials = service_account.Credentials.from_service_account_info(
+                sa, scopes=["https://www.googleapis.com/auth/firebase.messaging"]
+            )
+            credentials.refresh(google.auth.transport.requests.Request())
+            _get_fcm_access_token._cached = (credentials.token, time.time() + 3500)
+            return credentials.token
+        except ImportError:
+            logger.error("FCM v1: Need PyJWT or google-auth package for service account auth")
+            return None
+    except Exception as e:
+        logger.error(f"FCM v1 token error: {e}")
+        return None
+
+
+def _get_fcm_project_id():
+    """Get Firebase project ID from service account or env var."""
+    import os, json as _json
+    project_id = os.environ.get("FIREBASE_PROJECT_ID")
+    if project_id:
+        return project_id
+    sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
+    if sa_json:
+        try:
+            return _json.loads(sa_json).get("project_id")
+        except Exception:
+            pass
+    return None
+
+
+def send_fcm_push(db, user_id: str, title: str, body: str, data: dict = None):
+    """Send push notification to a user's registered devices via FCM v1 API.
+
+    Uses centralized FitOS service account — no per-gym configuration needed.
+    Falls back to legacy API if service account not configured (for backward compat).
     """
     try:
         import requests as req
         from models_orm import FCMDeviceTokenORM
 
-        # Find the user to get their gym owner
-        user = db.query(UserORM).filter(UserORM.id == user_id).first()
-        if not user:
-            return
-
-        # Resolve FCM server key: check user themselves (if owner), then their gym owner
-        server_key = getattr(user, 'fcm_server_key', None)
-        if not server_key and user.gym_owner_id:
-            owner = db.query(UserORM).filter(UserORM.id == user.gym_owner_id).first()
-            if owner:
-                server_key = getattr(owner, 'fcm_server_key', None)
-
-        if not server_key:
-            return
-
-        # Get device tokens for this user
         tokens = db.query(FCMDeviceTokenORM).filter(
             FCMDeviceTokenORM.user_id == user_id
         ).all()
         if not tokens:
             return
 
-        for device in tokens:
-            try:
-                payload = {
-                    "to": device.token,
+        # Try FCM v1 first
+        access_token = _get_fcm_access_token()
+        project_id = _get_fcm_project_id()
+
+        if access_token and project_id:
+            _send_via_fcm_v1(db, tokens, title, body, data, access_token, project_id)
+        else:
+            # Fallback: try legacy per-gym server key (deprecated but may still work for some)
+            _send_via_legacy_fcm(db, user_id, tokens, title, body, data)
+
+    except Exception as e:
+        logger.error(f"Push notification error: {e}")
+
+
+def _send_via_fcm_v1(db, tokens, title, body, data, access_token, project_id):
+    """Send via FCM HTTP v1 API (modern, OAuth2-based)."""
+    import requests as req
+    from models_orm import FCMDeviceTokenORM
+
+    url = f"https://fcm.googleapis.com/v1/projects/{project_id}/messages:send"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
+
+    # Serialize data values to strings (FCM v1 requires string values in data)
+    str_data = {}
+    if data:
+        for k, v in data.items():
+            str_data[str(k)] = str(v) if v is not None else ""
+    str_data["click_action"] = "FLUTTER_NOTIFICATION_CLICK"
+
+    for device in tokens:
+        try:
+            payload = {
+                "message": {
+                    "token": device.token,
                     "notification": {
                         "title": title,
                         "body": body[:200],
-                        "sound": "default",
                     },
-                    "data": {
-                        **(data or {}),
-                        "click_action": "FLUTTER_NOTIFICATION_CLICK",
+                    "data": str_data,
+                    "android": {
+                        "notification": {"sound": "default"},
+                    },
+                    "apns": {
+                        "payload": {
+                            "aps": {"sound": "default", "badge": 1},
+                        },
                     },
                 }
-                resp = req.post(
-                    "https://fcm.googleapis.com/fcm/send",
-                    json=payload,
-                    headers={
-                        "Authorization": f"key={server_key}",
-                        "Content-Type": "application/json",
-                    },
-                    timeout=10,
-                )
-                if resp.status_code == 200:
-                    result = resp.json()
-                    if result.get("failure", 0) > 0:
-                        for r in result.get("results", []):
-                            if r.get("error") in ("NotRegistered", "InvalidRegistration"):
-                                db.query(FCMDeviceTokenORM).filter(
-                                    FCMDeviceTokenORM.token == device.token
-                                ).delete()
-                                db.commit()
-            except Exception as e:
-                logger.error(f"FCM push error for token {device.token[:20]}...: {e}")
-    except Exception as e:
-        logger.error(f"FCM push setup error: {e}")
+            }
+            resp = req.post(url, json=payload, headers=headers, timeout=10)
+            if resp.status_code == 404 or (resp.status_code == 400 and "UNREGISTERED" in resp.text):
+                db.query(FCMDeviceTokenORM).filter(
+                    FCMDeviceTokenORM.token == device.token
+                ).delete()
+                db.commit()
+            elif resp.status_code != 200:
+                logger.warning(f"FCM v1 error {resp.status_code}: {resp.text[:200]}")
+        except Exception as e:
+            logger.error(f"FCM v1 push error for token {device.token[:20]}...: {e}")
+
+
+def _send_via_legacy_fcm(db, user_id, tokens, title, body, data):
+    """Fallback: send via legacy FCM API (deprecated, for backward compatibility)."""
+    import requests as req
+    from models_orm import FCMDeviceTokenORM
+
+    user = db.query(UserORM).filter(UserORM.id == user_id).first()
+    if not user:
+        return
+
+    server_key = getattr(user, 'fcm_server_key', None)
+    if not server_key and user.gym_owner_id:
+        owner = db.query(UserORM).filter(UserORM.id == user.gym_owner_id).first()
+        if owner:
+            server_key = getattr(owner, 'fcm_server_key', None)
+
+    if not server_key:
+        return
+
+    for device in tokens:
+        try:
+            payload = {
+                "to": device.token,
+                "notification": {"title": title, "body": body[:200], "sound": "default"},
+                "data": {**(data or {}), "click_action": "FLUTTER_NOTIFICATION_CLICK"},
+            }
+            resp = req.post(
+                "https://fcm.googleapis.com/fcm/send",
+                json=payload,
+                headers={"Authorization": f"key={server_key}", "Content-Type": "application/json"},
+                timeout=10,
+            )
+            if resp.status_code == 200:
+                result = resp.json()
+                if result.get("failure", 0) > 0:
+                    for r in result.get("results", []):
+                        if r.get("error") in ("NotRegistered", "InvalidRegistration"):
+                            db.query(FCMDeviceTokenORM).filter(FCMDeviceTokenORM.token == device.token).delete()
+                            db.commit()
+        except Exception as e:
+            logger.error(f"Legacy FCM push error for token {device.token[:20]}...: {e}")
 
 
 class NotificationService:

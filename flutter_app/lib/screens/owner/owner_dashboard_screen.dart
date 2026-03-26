@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/client_provider.dart';
@@ -39,6 +40,12 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
   List<Map<String, dynamic>> _trainers = [];
   List<Map<String, dynamic>> _pendingTrainers = [];
   List<Map<String, dynamic>> _activityFeed = [];
+
+  // Onboarding checklist
+  List<Map<String, dynamic>> _onboardingSteps = [];
+  int _onboardingCompleted = 0;
+  int _onboardingTotal = 0;
+  bool _onboardingDismissed = false;
 
   bool _loading = true;
 
@@ -302,6 +309,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
         svc.getActivityFeed().catchError((_) => <Map<String, dynamic>>[]),
         svc.getGymSettings().catchError((_) => <String, dynamic>{}),
         svc.getCommissions(period: 'month').catchError((_) => <Map<String, dynamic>>[]),
+        svc.getOnboardingStatus().catchError((_) => <String, dynamic>{}),
       ]);
 
       if (!mounted) return;
@@ -330,6 +338,11 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
         _pendingTrainers = results[6] as List<Map<String, dynamic>>;
         _activityFeed = results[7] as List<Map<String, dynamic>>;
         _commissions = results[9] as List<Map<String, dynamic>>;
+        final onboarding = results[10] as Map<String, dynamic>;
+        _onboardingSteps = (onboarding['steps'] as List<dynamic>?)
+            ?.map((e) => Map<String, dynamic>.from(e as Map)).toList() ?? [];
+        _onboardingCompleted = (onboarding['completed'] as num?)?.toInt() ?? 0;
+        _onboardingTotal = (onboarding['total'] as num?)?.toInt() ?? 0;
         _gymName = (settings['gym_name'] as String?) ?? 'La Mia Palestra';
         _loading = false;
 
@@ -393,6 +406,12 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                       const SizedBox(height: 20),
                     ],
 
+                    // Onboarding checklist (hide when complete or dismissed)
+                    if (_onboardingSteps.isNotEmpty && _onboardingCompleted < _onboardingTotal && !_onboardingDismissed) ...[
+                      _buildOnboardingChecklist(),
+                      const SizedBox(height: 20),
+                    ],
+
                     // Main grid
                     if (isDesktop)
                       Row(
@@ -443,6 +462,265 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
   }
 
   // ═══════════════════════════════════════════════════════════
+  //  ONBOARDING CHECKLIST
+  // ═══════════════════════════════════════════════════════════
+  Widget _buildOnboardingChecklist() {
+    final progress = _onboardingTotal > 0 ? _onboardingCompleted / _onboardingTotal : 0.0;
+    final iconMap = {
+      'edit': Icons.edit_rounded,
+      'image': Icons.image_rounded,
+      'card_membership': Icons.card_membership_rounded,
+      'payment': Icons.payment_rounded,
+      'group': Icons.group_rounded,
+      'person_add': Icons.person_add_rounded,
+      'message': Icons.message_rounded,
+    };
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [AppColors.primary.withValues(alpha: 0.12), AppColors.primary.withValues(alpha: 0.04)],
+          begin: Alignment.topLeft, end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.rocket_launch_rounded, color: AppColors.primary, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text('Configura la tua palestra',
+                    style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+              ),
+              GestureDetector(
+                onTap: () => setState(() => _onboardingDismissed = true),
+                child: const Icon(Icons.close, size: 18, color: AppColors.textTertiary),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text('$_onboardingCompleted di $_onboardingTotal completati',
+              style: TextStyle(fontSize: 12, color: AppColors.textSecondary)),
+          const SizedBox(height: 12),
+          // Progress bar
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress,
+              backgroundColor: AppColors.surface,
+              color: AppColors.primary,
+              minHeight: 6,
+            ),
+          ),
+          const SizedBox(height: 14),
+          // Steps
+          ...List.generate(_onboardingSteps.length, (i) {
+            final step = _onboardingSteps[i];
+            final done = step['done'] == true;
+            final icon = iconMap[step['icon']] ?? Icons.check_circle_outline;
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Row(
+                children: [
+                  Icon(
+                    done ? Icons.check_circle_rounded : icon,
+                    size: 20,
+                    color: done ? const Color(0xFF22c55e) : AppColors.textTertiary,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      step['label']?.toString() ?? '',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: done ? AppColors.textSecondary : AppColors.textPrimary,
+                        decoration: done ? TextDecoration.lineThrough : null,
+                      ),
+                    ),
+                  ),
+                  if (!done)
+                    GestureDetector(
+                      onTap: () => _handleOnboardingStep(step['key']?.toString() ?? ''),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: AppColors.primary.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: const Text('Configura', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                      ),
+                    ),
+                ],
+              ),
+            );
+          }),
+          const SizedBox(height: 12),
+          // Quick action: create plan templates
+          if (_plans.isEmpty)
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: _createPlanTemplates,
+                icon: const Icon(Icons.auto_fix_high_rounded, size: 16),
+                label: const Text('Crea piani predefiniti'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  void _handleOnboardingStep(String key) {
+    // Navigate to the relevant settings section
+    switch (key) {
+      case 'gym_name':
+      case 'gym_logo':
+      case 'stripe':
+      case 'welcome_msg':
+        // Guide to settings tab
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Vai su Impostazioni per configurare'), duration: const Duration(seconds: 2)),
+        );
+        break;
+      case 'plans':
+        if (_plans.isEmpty) _createPlanTemplates();
+        break;
+      case 'staff':
+        _showInviteStaffDialog();
+        break;
+      case 'members':
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Usa lo staff per registrare il primo cliente'), duration: Duration(seconds: 2)),
+        );
+        break;
+    }
+  }
+
+  Future<void> _createPlanTemplates() async {
+    try {
+      final svc = ref.read(ownerServiceProvider);
+      final result = await svc.createPlanTemplates();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message']?.toString() ?? 'Piani creati!')),
+        );
+        _loadAll();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+      }
+    }
+  }
+
+  void _showInviteStaffDialog() {
+    final nameCtrl = TextEditingController();
+    final phoneCtrl = TextEditingController();
+    String role = 'staff';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDlgState) => Dialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Invita Staff', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                const SizedBox(height: 16),
+                TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(labelText: 'Nome *', prefixIcon: Icon(Icons.person, size: 20)),
+                  textCapitalization: TextCapitalization.words,
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: phoneCtrl,
+                  decoration: const InputDecoration(labelText: 'Telefono *', prefixIcon: Icon(Icons.phone, size: 20)),
+                  keyboardType: TextInputType.phone,
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    Expanded(
+                      child: ChoiceChip(
+                        label: const Text('Staff'),
+                        selected: role == 'staff',
+                        onSelected: (_) => setDlgState(() => role = 'staff'),
+                        selectedColor: AppColors.primary.withValues(alpha: 0.2),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: ChoiceChip(
+                        label: const Text('Trainer'),
+                        selected: role == 'trainer',
+                        onSelected: (_) => setDlgState(() => role = 'trainer'),
+                        selectedColor: AppColors.primary.withValues(alpha: 0.2),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                SizedBox(
+                  width: double.infinity,
+                  child: FilledButton.icon(
+                    onPressed: () async {
+                      if (nameCtrl.text.trim().isEmpty || phoneCtrl.text.trim().isEmpty) return;
+                      try {
+                        final svc = ref.read(ownerServiceProvider);
+                        final result = await svc.inviteStaff({
+                          'name': nameCtrl.text.trim(),
+                          'phone': phoneCtrl.text.trim(),
+                          'role': role,
+                        });
+                        if (ctx.mounted) Navigator.pop(ctx);
+                        final waUrl = result['whatsapp_url']?.toString();
+                        if (waUrl != null && waUrl.isNotEmpty) {
+                          final uri = Uri.parse(waUrl);
+                          launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('${nameCtrl.text} invitato come $role!')),
+                          );
+                          _loadAll();
+                        }
+                      } catch (e) {
+                        if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+                      }
+                    },
+                    icon: const Icon(Icons.send_rounded, size: 18),
+                    label: const Text('Invia via WhatsApp'),
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   //  PENDING STAFF BANNER
   // ═══════════════════════════════════════════════════════════
   Widget _buildPendingBanner() {

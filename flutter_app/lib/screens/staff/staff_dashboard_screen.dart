@@ -5,7 +5,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:qr_flutter/qr_flutter.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../config/api_config.dart';
 import '../../config/theme.dart';
 import '../../providers/staff_provider.dart';
 import '../../services/staff_service.dart';
@@ -77,6 +79,12 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
                 ),
               ),
               actions: [
+                IconButton(
+                  icon: const Icon(Icons.qr_code_2_rounded,
+                      color: AppColors.textSecondary),
+                  onPressed: () => _showJoinQr(),
+                  tooltip: 'QR Invito',
+                ),
                 IconButton(
                   icon: const Icon(Icons.qr_code_scanner_rounded,
                       color: AppColors.textSecondary),
@@ -351,6 +359,55 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
                 color: Colors.white)),
       ),
     );
+  }
+
+  void _showJoinQr() async {
+    try {
+      final service = ref.read(staffServiceProvider);
+      final info = await service.getGymInfo();
+      final gymCode = info['gym_code']?.toString() ?? '';
+      final gymName = info['gym_name']?.toString() ?? 'Palestra';
+      if (gymCode.isEmpty) {
+        if (mounted) ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Nessun codice palestra configurato')));
+        return;
+      }
+      final joinUrl = '${ApiConfig.baseUrl}/join/$gymCode';
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (ctx) => Dialog(
+          backgroundColor: AppColors.surface,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(gymName, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+                const SizedBox(height: 4),
+                const Text('Scansiona per unirti', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16)),
+                  child: QrImageView(data: joinUrl, version: QrVersions.auto, size: 220),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  decoration: BoxDecoration(color: AppColors.background, borderRadius: BorderRadius.circular(10)),
+                  child: Text(gymCode, style: const TextStyle(fontFamily: 'monospace', fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.primary, letterSpacing: 2)),
+                ),
+                const SizedBox(height: 16),
+                const Text('Il cliente scansiona con la fotocamera\ne scarica l\'app automaticamente', textAlign: TextAlign.center, style: TextStyle(color: AppColors.textTertiary, fontSize: 12)),
+              ],
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+    }
   }
 
   void _showQrScanner() {
@@ -1027,6 +1084,7 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
   final _emailController = TextEditingController();
   final _usernameController = TextEditingController();
   final _dobController = TextEditingController();
+  String? _profilePhotoBase64; // data:image/... base64
 
   // Step 1: Document (waiver or medical cert)
   String _documentType = 'waiver'; // 'waiver' or 'medical_certificate'
@@ -1094,6 +1152,9 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
         'payment_method': _paymentMethod,
         'document_type': _documentType,
       };
+      if (_profilePhotoBase64 != null) {
+        payload['profile_photo'] = _profilePhotoBase64;
+      }
       if (_documentType == 'waiver' && _waiverSigned) {
         payload['waiver_text'] = _waiverText ?? '';
         payload['document_data'] = _signatureBase64 ?? 'signed_on_device';
@@ -1297,11 +1358,63 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
     );
   }
 
+  Future<void> _pickProfilePhoto() async {
+    final picker = ImagePicker();
+    final picked = await picker.pickImage(source: ImageSource.camera, maxWidth: 600, maxHeight: 600, imageQuality: 80);
+    if (picked == null) return;
+    final bytes = await picked.readAsBytes();
+    final ext = picked.path.split('.').last.toLowerCase();
+    final mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
+    setState(() {
+      _profilePhotoBase64 = 'data:$mimeType;base64,${base64Encode(bytes)}';
+    });
+  }
+
   Widget _buildStep1() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const SizedBox(height: 8),
+        // Profile photo capture
+        Center(
+          child: GestureDetector(
+            onTap: _pickProfilePhoto,
+            child: Stack(
+              children: [
+                CircleAvatar(
+                  radius: 44,
+                  backgroundColor: AppColors.surface,
+                  backgroundImage: _profilePhotoBase64 != null
+                      ? MemoryImage(base64Decode(_profilePhotoBase64!.split(',').last))
+                      : null,
+                  child: _profilePhotoBase64 == null
+                      ? const Icon(Icons.person, size: 40, color: AppColors.textTertiary)
+                      : null,
+                ),
+                Positioned(
+                  bottom: 0, right: 0,
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      shape: BoxShape.circle,
+                      border: Border.all(color: AppColors.surface, width: 2),
+                    ),
+                    child: const Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 6),
+        Center(
+          child: Text(
+            _profilePhotoBase64 != null ? 'Tocca per cambiare' : 'Tocca per scattare foto',
+            style: const TextStyle(fontSize: 11, color: AppColors.textTertiary),
+          ),
+        ),
+        const SizedBox(height: 12),
         TextField(
           controller: _nameController,
           decoration: const InputDecoration(

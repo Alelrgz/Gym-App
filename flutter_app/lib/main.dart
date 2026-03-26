@@ -1,15 +1,16 @@
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show kIsWeb, debugPrint;
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:media_kit/media_kit.dart';
 
+import 'package:firebase_core/firebase_core.dart';
 import 'config/theme.dart';
 import 'services/local_notification_service.dart';
+import 'services/fcm_service.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';
-import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/diet_screen.dart';
@@ -44,6 +45,12 @@ void main() async {
     try {
       MediaKit.ensureInitialized();
     } catch (_) {}
+  }
+  try {
+    await Firebase.initializeApp();
+    if (!kIsWeb) debugPrint('[MAIN] Firebase initialized OK');
+  } catch (e) {
+    debugPrint('[MAIN] Firebase init failed: $e');
   }
   try {
     await LocalNotificationService().init();
@@ -87,8 +94,7 @@ class GymApp extends ConsumerWidget {
           : '/login',
       redirect: (context, state) {
         final isAuth = authState.status == AuthStatus.authenticated;
-        final isAuthRoute = state.matchedLocation == '/login' ||
-            state.matchedLocation == '/register';
+        final isAuthRoute = state.matchedLocation == '/login';
 
         if (!isAuth && !isAuthRoute) return '/login';
 
@@ -106,10 +112,6 @@ class GymApp extends ConsumerWidget {
         GoRoute(
           path: '/login',
           builder: (context, state) => const LoginScreen(),
-        ),
-        GoRoute(
-          path: '/register',
-          builder: (context, state) => const RegisterScreen(),
         ),
         GoRoute(
           path: '/leaderboard',

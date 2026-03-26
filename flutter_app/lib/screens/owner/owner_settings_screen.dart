@@ -302,14 +302,8 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
   }
 
   Future<void> _loadFcmSettings() async {
-    try {
-      final data = await ref.read(ownerServiceProvider).getFcmSettings();
-      if (mounted) {
-        setState(() {
-          _fcmConfigured = data['is_configured'] as bool? ?? false;
-        });
-      }
-    } catch (_) {}
+    // Push notifications are now managed centrally by FitOS — always configured
+    if (mounted) setState(() => _fcmConfigured = true);
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -620,6 +614,13 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
               ],
             ),
           ] else ...[
+            _guideBox([
+              'Metodo consigliato: accedi con Google o Microsoft',
+              'Autorizzi l\'invio email dal tuo account — nessuna password da inserire',
+              'Le email arriveranno ai tuoi clienti con il tuo indirizzo',
+              'In alternativa, configura un server SMTP manuale',
+            ]),
+            const SizedBox(height: 12),
             // OAuth sign-in buttons
             ...[
               Padding(
@@ -987,32 +988,24 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
             const SizedBox(height: 10),
             _actionBtn('Modifica Server Key', icon: Icons.edit_rounded, onTap: _showFcmModal),
           ] else ...[
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: Colors.black.withValues(alpha: 0.25),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text('Per attivare le notifiche push serve:', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.45))),
-                  const SizedBox(height: 4),
-                  Text('1. Un progetto Firebase (firebase.google.com)', style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.3))),
-                  Text('2. La Server Key da Cloud Messaging', style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.3))),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton.icon(
-                onPressed: _showFcmModal,
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFFACC15).withValues(alpha: 0.2), foregroundColor: const Color(0xFFFACC15)),
-                icon: const Icon(Icons.notifications_active_rounded, size: 16),
-                label: const Text('Configura Firebase'),
-              ),
+            Row(
+              children: [
+                Container(
+                  width: 34, height: 34,
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: const Color(0xFF4ADE80).withValues(alpha: 0.15)),
+                  child: const Center(child: Icon(Icons.cloud_done_rounded, size: 18, color: Color(0xFF4ADE80))),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Gestite da FitOS', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF4ADE80))),
+                      Text('Le notifiche push funzionano automaticamente — nessuna configurazione necessaria.', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
+                    ],
+                  ),
+                ),
+              ],
             ),
           ],
         ],
@@ -1104,13 +1097,20 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
           ),
           const SizedBox(height: 12),
           if (_stripeStatus == 'not_connected') ...[
-            Text('Connetti il tuo account Stripe per ricevere pagamenti direttamente.', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            Text('Ricevi pagamenti direttamente sul tuo conto. Gratuito e sicuro.', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+            const SizedBox(height: 12),
+            _guideBox([
+              'Premi "Connetti con Stripe" qui sotto',
+              'Crea un account Stripe (o accedi se ne hai già uno)',
+              'Completa la verifica — ci vogliono 2 minuti',
+              'Torna nell\'app — sei pronto a ricevere pagamenti!',
+            ]),
             const SizedBox(height: 12),
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: _startStripeConnect,
-                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF635BFF)),
+                style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF635BFF), padding: const EdgeInsets.symmetric(vertical: 14)),
                 icon: const Icon(Icons.payment_rounded, size: 16),
                 label: const Text('Connetti con Stripe'),
               ),
@@ -1796,6 +1796,47 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
             Text(label, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.6))),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _guideBox(List<String> steps) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withValues(alpha: 0.06),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.primary.withValues(alpha: 0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.lightbulb_outline_rounded, size: 14, color: AppColors.primary.withValues(alpha: 0.7)),
+              const SizedBox(width: 6),
+              Text('Come fare', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary.withValues(alpha: 0.7))),
+            ],
+          ),
+          const SizedBox(height: 8),
+          ...List.generate(steps.length, (i) => Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Container(
+                  width: 18, height: 18, margin: const EdgeInsets.only(right: 8, top: 1),
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                  ),
+                  child: Center(child: Text('${i + 1}', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: AppColors.primary))),
+                ),
+                Expanded(child: Text(steps[i], style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.6), height: 1.4))),
+              ],
+            ),
+          )),
+        ],
       ),
     );
   }

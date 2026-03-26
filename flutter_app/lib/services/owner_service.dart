@@ -80,6 +80,31 @@ class OwnerService {
     await _api.put(ApiConfig.ownerTrainerCommission(trainerId), data: {'commission_rate': rate});
   }
 
+  // ── Onboarding / Setup Wizard ──────────────────────────
+  Future<Map<String, dynamic>> getOnboardingStatus() async {
+    final response = await _api.get(ApiConfig.ownerOnboardingStatus);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> createPlanTemplates() async {
+    final response = await _api.post(ApiConfig.ownerSetupPlanTemplates);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> getDefaultWaiver() async {
+    final response = await _api.get(ApiConfig.ownerDefaultWaiver);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> inviteStaff(Map<String, dynamic> data) async {
+    final response = await _api.post(ApiConfig.ownerInviteStaff, data: data);
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<void> updateGymSettings(Map<String, dynamic> data) async {
+    await _api.post(ApiConfig.ownerGymSettings, data: data);
+  }
+
   // ── Subscription Plans ──────────────────────────────────
   Future<List<Map<String, dynamic>>> getSubscriptionPlans({bool includeInactive = true}) async {
     final response = await _api.get('${ApiConfig.ownerSubscriptionPlans}?include_inactive=$includeInactive');

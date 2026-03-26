@@ -6,6 +6,8 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from auth import get_current_user
 from models_orm import UserORM
 from service_modules.client_import_service import get_client_import_service, ClientImportService
+from database import get_db as _get_db_dep
+from sqlalchemy.orm import Session
 import logging
 
 logger = logging.getLogger("gym_app")
@@ -105,4 +107,100 @@ async def import_clients_csv(
         "errors": result["errors"],
         "created_clients": result["created_clients"],
         "gym_code": gym_code,
+        "can_bulk_send": True,
     }
+
+
+@router.post("/api/owner/send-credentials-bulk")
+async def send_credentials_bulk(
+    data: dict,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(_get_db_dep)
+):
+    """Send credentials to multiple clients at once via WhatsApp/email/SMS."""
+    if user.role not in ("owner", "staff"):
+        raise HTTPException(status_code=403, detail="Only owner/staff can send credentials")
+
+    client_ids = data.get("client_ids", [])
+    method = data.get("method", "whatsapp")
+    base_url = data.get("base_url", "")
+
+    if not client_ids:
+        raise HTTPException(status_code=400, detail="No client IDs provided")
+
+    from models_orm import ClientProfileORM, GymORM, MagicLoginTokenORM
+    from datetime import datetime, timedelta
+    import secrets as _sec, hashlib, hmac, os, uuid, urllib.parse, re
+
+    gym = db.query(GymORM).filter(GymORM.owner_id == user.id).first()
+    gym_code = gym.gym_code if gym else ""
+    gym_name = gym.name if gym else user.username
+    secret = os.environ.get("SECRET_KEY", "gym-secret-key-change-me")
+
+    sent = 0
+    failed = 0
+    results = []
+
+    for cid in client_ids:
+        try:
+            client = db.query(UserORM).filter(UserORM.id == cid).first()
+            if not client:
+                failed += 1
+                continue
+
+            profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == cid).first()
+            phone = getattr(client, 'phone', '') or ''
+            client_name = (profile.name if profile else None) or client.username
+
+            # Generate magic link
+            raw_token = _sec.token_urlsafe(32)
+            token_hash = hmac.new(secret.encode(), raw_token.encode(), hashlib.sha256).hexdigest()
+            db.add(MagicLoginTokenORM(
+                id=str(uuid.uuid4()),
+                user_id=client.id,
+                token_hash=token_hash,
+                expires_at=(datetime.utcnow() + timedelta(hours=24)).isoformat(),
+            ))
+
+            magic_link = f"{base_url.rstrip('/')}/magic/{raw_token}" if base_url else ""
+
+            msg = (
+                f"Ciao {client_name}! Benvenuto/a in {gym_name}.\n"
+                f"Le tue credenziali FitOS:\n"
+                f"Username: {client.username}\n"
+                f"Password: {client.username}\n"  # Default temp password = username
+            )
+            if magic_link:
+                msg += f"\nAccedi direttamente:\n{magic_link}\n"
+            if gym_code:
+                msg += f"\nScarica l'app: {base_url.rstrip('/')}/join/{gym_code}"
+
+            email = client.email or (profile.email if profile else None) or ""
+
+            # Auto mode: prefer WhatsApp (phone) > email > skip
+            effective_method = method
+            if method == "auto":
+                effective_method = "whatsapp" if phone else ("email" if email else "none")
+
+            if effective_method == "whatsapp" and phone:
+                clean_phone = re.sub(r'[\s\-\(\).]', '', phone)
+                if clean_phone.startswith("3") and len(clean_phone) == 10:
+                    clean_phone = "39" + clean_phone
+                elif clean_phone.startswith("+"):
+                    clean_phone = clean_phone[1:]
+                elif clean_phone.startswith("0"):
+                    clean_phone = "39" + clean_phone[1:]
+                wa_url = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(msg)}"
+                results.append({"client_id": cid, "name": client_name, "method": "whatsapp", "whatsapp_url": wa_url})
+                sent += 1
+            elif effective_method == "email" and email:
+                results.append({"client_id": cid, "name": client_name, "method": "email", "email": email})
+                sent += 1
+            else:
+                results.append({"client_id": cid, "name": client_name, "method": "none", "reason": "no_contact_info"})
+                failed += 1
+        except Exception:
+            failed += 1
+
+    db.commit()
+    return {"sent": sent, "failed": failed, "results": results}

@@ -122,6 +122,7 @@ class GymORM(Base):
     # Onboarding settings
     auto_approve_trainers = Column(Boolean, default=False)
     auto_approve_staff = Column(Boolean, default=False)
+    welcome_message_template = Column(Text, nullable=True)  # Custom WhatsApp/SMS message template
 
 
 # --- EXERCISE & WORKOUT LIBRARY (Global + Personal) ---
@@ -1069,6 +1070,37 @@ class PasswordResetTokenORM(Base):
     user_id = Column(String, ForeignKey("users.id"), index=True)
     token_hash = Column(String, nullable=False)
     token_type = Column(String, default="password_reset")  # "password_reset" or "username_recovery"
+    expires_at = Column(String, nullable=False)
+    used_at = Column(String, nullable=True)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+
+
+# --- SIGNING SESSIONS ---
+
+class SigningSessionORM(Base):
+    """Database-backed signing sessions for remote waiver/document signing."""
+    __tablename__ = "signing_sessions"
+
+    token = Column(String, primary_key=True, index=True)
+    client_name = Column(String, nullable=True)
+    waiver_text = Column(Text, nullable=True)
+    signature_data = Column(Text, nullable=True)  # Base64 PNG
+    status = Column(String, default="pending")  # pending | signed
+    created_by = Column(String, ForeignKey("users.id"), nullable=True)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    expires_at = Column(String, nullable=False)
+    signed_at = Column(String, nullable=True)
+
+
+# --- MAGIC LOGIN TOKENS ---
+
+class MagicLoginTokenORM(Base):
+    """One-time magic link tokens for passwordless login."""
+    __tablename__ = "magic_login_tokens"
+
+    id = Column(String, primary_key=True, index=True)
+    user_id = Column(String, ForeignKey("users.id"), index=True)
+    token_hash = Column(String, nullable=False)  # HMAC-SHA256 hash
     expires_at = Column(String, nullable=False)
     used_at = Column(String, nullable=True)
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())

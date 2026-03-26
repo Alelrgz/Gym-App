@@ -134,32 +134,156 @@ async def join_gym_landing(request: Request, gym_code: str):
             """, status_code=404)
         owner = db.query(UserORM).filter(UserORM.id == gym.owner_id).first()
         gym_name = gym.name or (owner.username if owner else "Palestra")
+        logo_url = gym.logo or "/static/fitos-logo.svg"
+        import os
+        android_url = os.environ.get("FITOS_ANDROID_URL", "")
+        ios_url = os.environ.get("FITOS_IOS_URL", "")
+        base_url = str(request.base_url).rstrip("/")
+        og_image = f"{base_url}{logo_url}" if logo_url.startswith("/") else logo_url
         return HTMLResponse(f"""
         <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
         <title>Unisciti a {gym_name} su FitOS</title>
+        <meta property="og:title" content="{gym_name} ti invita su FitOS">
+        <meta property="og:description" content="Scarica l'app FitOS e unisciti a {gym_name}. Codice: {gym.gym_code}">
+        <meta property="og:image" content="{og_image}">
+        <meta property="og:type" content="website">
         <style>
-            body{{background:#111;color:#fff;font-family:-apple-system,sans-serif;margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;}}
-            .card{{text-align:center;padding:2rem;max-width:400px;}}
-            .logo{{width:180px;margin-bottom:1rem;}}
-            h1{{color:#f15a24;font-size:1.8rem;margin:0.5rem 0;}}
-            h2{{font-weight:400;color:#999;font-size:1rem;margin-bottom:2rem;}}
-            .btn{{display:block;padding:1rem;margin:0.5rem 0;border-radius:12px;text-decoration:none;font-weight:700;font-size:1rem;}}
+            *{{box-sizing:border-box;}}
+            body{{background:#111;color:#fff;font-family:-apple-system,BlinkMacSystemFont,sans-serif;margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;}}
+            .card{{text-align:center;padding:2rem;max-width:420px;width:100%;}}
+            .logo{{width:80px;height:80px;border-radius:20px;margin-bottom:1rem;object-fit:cover;}}
+            h1{{color:#f15a24;font-size:1.6rem;margin:0.5rem 0 0.2rem;}}
+            h2{{font-weight:400;color:#999;font-size:1rem;margin:0 0 1.5rem;}}
+            .code-box{{background:#1a1a1a;border:1px solid #333;padding:1rem;border-radius:12px;margin:1rem 0;cursor:pointer;transition:border-color 0.2s;}}
+            .code-box:hover{{border-color:#f15a24;}}
+            .code-box .label{{color:#666;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.3rem;}}
+            .code{{font-family:monospace;font-size:1.5rem;color:#f15a24;font-weight:700;letter-spacing:0.1em;}}
+            .copied{{color:#4ade80;font-size:0.8rem;margin-top:0.3rem;display:none;}}
+            .steps{{text-align:left;margin:1.5rem 0;padding:0;list-style:none;}}
+            .steps li{{padding:0.6rem 0;color:#ccc;font-size:0.9rem;display:flex;align-items:center;gap:0.7rem;}}
+            .step-num{{background:#f15a24;color:#fff;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:0.75rem;font-weight:700;flex-shrink:0;}}
+            .btn{{display:block;padding:1rem;margin:0.5rem 0;border-radius:12px;text-decoration:none;font-weight:700;font-size:1rem;text-align:center;}}
             .btn-android{{background:#f15a24;color:#fff;}}
             .btn-ios{{background:#fff;color:#111;}}
-            .code{{background:#222;padding:0.5rem 1rem;border-radius:8px;font-family:monospace;font-size:1.2rem;color:#f15a24;display:inline-block;margin:1rem 0;}}
+            .btn-disabled{{background:#333;color:#666;pointer-events:none;}}
+            .divider{{color:#444;font-size:0.8rem;margin:0.5rem 0;}}
         </style></head>
         <body><div class="card">
-            <img src="/static/fitos-logo.svg" class="logo" alt="FitOS">
+            <img src="{logo_url}" class="logo" alt="{gym_name}">
             <h1>{gym_name}</h1>
             <h2>ti invita su FitOS</h2>
-            <div class="code">{gym.gym_code}</div>
-            <p style="color:#666;font-size:0.85rem;margin-bottom:1.5rem;">Usa questo codice dopo aver scaricato l'app</p>
-            <a href="#" class="btn btn-android">Scarica per Android</a>
-            <a href="#" class="btn btn-ios">Scarica per iOS</a>
-        </div></body></html>
+            <div class="code-box" onclick="copyCode()">
+                <div class="label">Il tuo codice palestra</div>
+                <div class="code">{gym.gym_code}</div>
+                <div class="copied" id="copied">Copiato!</div>
+            </div>
+            <ol class="steps">
+                <li><span class="step-num">1</span>Scarica l'app FitOS</li>
+                <li><span class="step-num">2</span>Accedi con le credenziali ricevute</li>
+                <li><span class="step-num">3</span>Inserisci il codice <b style="color:#f15a24">{gym.gym_code}</b> per unirti</li>
+            </ol>
+            {'<a href="' + android_url + '" class="btn btn-android">📱 Scarica per Android</a>' if android_url else '<a class="btn btn-disabled">Android — Presto disponibile</a>'}
+            <div class="divider">oppure</div>
+            {'<a href="' + ios_url + '" class="btn btn-ios">🍎 Scarica per iOS</a>' if ios_url else '<a class="btn btn-disabled">iOS — Presto disponibile</a>'}
+        </div>
+        <script>
+        function copyCode(){{
+            navigator.clipboard.writeText("{gym.gym_code}").then(function(){{
+                var el=document.getElementById("copied");el.style.display="block";
+                setTimeout(function(){{el.style.display="none";}},2000);
+            }});
+        }}
+        // Try deep link if app is installed
+        (function(){{
+            var ua=navigator.userAgent||"";
+            if(/android/i.test(ua)||/iphone|ipad/i.test(ua)){{
+                var deep="fitos://join/{gym.gym_code}";
+                var iframe=document.createElement("iframe");
+                iframe.style.display="none";iframe.src=deep;
+                document.body.appendChild(iframe);
+                setTimeout(function(){{document.body.removeChild(iframe);}},2000);
+            }}
+        }})();
+        </script>
+        </body></html>
         """)
     finally:
         db.close()
+
+@app.get("/magic/{token}")
+async def magic_login(request: Request, token: str):
+    """Magic link login — validates token, creates session, redirects."""
+    import hashlib, hmac, os
+    from models_orm import MagicLoginTokenORM, UserORM
+    from database import get_db_session
+    from auth import create_access_token
+    from datetime import datetime as _dt, timedelta as _td
+
+    db = get_db_session()
+    try:
+        secret = os.environ.get("SECRET_KEY", "gym-secret-key-change-me")
+        token_hash = hmac.new(secret.encode(), token.encode(), hashlib.sha256).hexdigest()
+
+        magic = db.query(MagicLoginTokenORM).filter(
+            MagicLoginTokenORM.token_hash == token_hash,
+            MagicLoginTokenORM.used_at == None,
+        ).first()
+
+        if not magic or magic.expires_at < _dt.utcnow().isoformat():
+            return HTMLResponse("""
+            <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+            <title>FitOS</title><style>body{background:#111;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;}
+            .card{text-align:center;padding:2rem;}</style></head>
+            <body><div class="card"><h2 style="color:#f15a24;">Link scaduto</h2><p style="color:#999;">Questo link non è più valido. Chiedi nuove credenziali alla tua palestra.</p></div></body></html>
+            """, status_code=410)
+
+        user = db.query(UserORM).filter(UserORM.id == magic.user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        # Mark token as used
+        magic.used_at = _dt.utcnow().isoformat()
+
+        # Create session
+        import secrets as _sec
+        session_id = _sec.token_urlsafe(16)
+        user.active_session_id = session_id
+        db.commit()
+
+        # Create JWT
+        jwt_token = create_access_token(
+            data={"sub": user.username, "role": user.role, "sid": session_id},
+            expires_delta=_td(days=90),
+        )
+
+        # Try deep link to app, fallback to web
+        return HTMLResponse(f"""
+        <html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+        <title>Accesso FitOS</title>
+        <style>body{{background:#111;color:#fff;font-family:-apple-system,sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;margin:0;}}
+        .card{{text-align:center;padding:2rem;max-width:400px;}}
+        h2{{color:#22c55e;}} p{{color:#999;}} .spinner{{margin:1rem auto;width:40px;height:40px;border:3px solid #333;border-top-color:#f15a24;border-radius:50%;animation:spin 0.8s linear infinite;}}
+        @keyframes spin{{to{{transform:rotate(360deg)}}}}
+        </style></head>
+        <body><div class="card">
+            <div class="spinner"></div>
+            <h2>Accesso in corso...</h2>
+            <p>Apertura dell'app FitOS</p>
+        </div>
+        <script>
+        var token = "{jwt_token}";
+        var deep = "fitos://login?token=" + token;
+        window.location.href = deep;
+        setTimeout(function(){{
+            // If app didn't open, show message
+            document.querySelector('.card').innerHTML = '<h2 style="color:#22c55e">✓ Accesso riuscito!</h2><p style="color:#999">Scarica l\\'app FitOS per accedere, oppure usa le credenziali ricevute.</p>';
+        }}, 3000);
+        </script>
+        </body></html>
+        """)
+    finally:
+        db.close()
+
 
 @app.get("/api/version")
 async def get_version():
@@ -224,7 +348,7 @@ from route_modules.profile_routes import router as profile_router
 app.include_router(profile_router)
 
 # Include staff routes
-from route_modules.staff_routes import router as staff_router, _signing_sessions
+from route_modules.staff_routes import router as staff_router
 app.include_router(staff_router)
 
 # ── Remote signing page (phone browser) ────────────────────
@@ -233,13 +357,20 @@ from fastapi.responses import HTMLResponse as _HTMLResponse
 @app.get("/sign/{token}", response_class=_HTMLResponse)
 async def signing_page(token: str):
     """Serve a self-contained HTML signing page for phone browser."""
-    session = _signing_sessions.get(token)
-    if not session or session["status"] == "signed":
+    from models_orm import SigningSessionORM
+    from database import get_db_session
+    from datetime import datetime as _dt
+    _sdb = get_db_session()
+    try:
+        session = _sdb.query(SigningSessionORM).filter(SigningSessionORM.token == token).first()
+    finally:
+        _sdb.close()
+    if not session or session.status == "signed" or session.expires_at < _dt.utcnow().isoformat():
         return _HTMLResponse(content="<html><body style='background:#111;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;'><h2>Sessione scaduta o già firmata</h2></body></html>", status_code=404)
 
     import html as _html
-    client_name = _html.escape(session["client_name"] or "")
-    waiver_text = _html.escape(session["waiver_text"] or "").replace("\n", "<br>")
+    client_name = _html.escape(session.client_name or "")
+    waiver_text = _html.escape(session.waiver_text or "").replace("\n", "<br>")
 
     return _HTMLResponse(content=f'''<!DOCTYPE html>
 <html lang="it">

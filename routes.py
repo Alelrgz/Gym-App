@@ -96,14 +96,44 @@ async def login(request: Request, form_data: OAuth2PasswordRequestForm = Depends
     session_id = _secrets.token_urlsafe(16)
 
     # Store session ID on user — invalidates any previous session
+    is_first_login = False
     db = next(get_db())
     try:
         db_user = db.query(UserORM).filter(UserORM.id == user.id).first()
         if db_user:
             db_user.active_session_id = session_id
+            is_first_login = bool(getattr(db_user, 'must_change_password', False)) and db_user.role == 'client'
             db.commit()
     finally:
         db.close()
+
+    # Send welcome push notification on first login
+    if is_first_login:
+        try:
+            from models_orm import NotificationORM
+            from datetime import datetime as _dt
+            db2 = next(get_db())
+            try:
+                existing = db2.query(NotificationORM).filter(
+                    NotificationORM.user_id == user.id,
+                    NotificationORM.type == "welcome"
+                ).first()
+                if not existing:
+                    db2.add(NotificationORM(
+                        user_id=user.id,
+                        type="welcome",
+                        title="Benvenuto su FitOS!",
+                        message="Completa il tuo profilo per iniziare: aggiungi una foto e i tuoi obiettivi.",
+                        read=False,
+                        created_at=_dt.utcnow().isoformat()
+                    ))
+                    db2.commit()
+                    from service_modules.notification_service import send_fcm_push
+                    send_fcm_push(db2, user.id, "Benvenuto su FitOS!", "Completa il tuo profilo per iniziare")
+            finally:
+                db2.close()
+        except Exception:
+            pass  # Welcome notification is best-effort
 
     access_token = create_access_token(
         data={"sub": user.username, "role": user.role, "sid": session_id},

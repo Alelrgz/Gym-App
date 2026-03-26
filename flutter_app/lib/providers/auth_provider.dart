@@ -1,8 +1,10 @@
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/user.dart';
 import '../services/api_client.dart';
 import '../services/auth_service.dart';
+import '../services/fcm_service.dart';
 import '../services/storage_service.dart';
 
 // --- Service singletons ---
@@ -72,6 +74,9 @@ class AuthNotifier extends StateNotifier<AuthState> {
       final user = await _authService.restoreSession();
       if (user != null) {
         state = AuthState(status: AuthStatus.authenticated, user: user);
+        if (!kIsWeb) {
+          try { await FcmService().init(_apiClient); } catch (_) {}
+        }
       } else {
         state = const AuthState(status: AuthStatus.unauthenticated);
       }
@@ -128,6 +133,12 @@ class AuthNotifier extends StateNotifier<AuthState> {
     try {
       final user = await _authService.login(username, password);
       state = AuthState(status: AuthStatus.authenticated, user: user);
+      // Initialize FCM push notifications after successful login
+      if (!kIsWeb) {
+        try {
+          await FcmService().init(_apiClient);
+        } catch (_) {}
+      }
     } catch (e) {
       print('[AUTH] Login error: $e');
       state = AuthState(

@@ -193,6 +193,7 @@ class GymSettingsUpdate(BaseModel):
     password: Optional[str] = None
     auto_approve_trainers: Optional[bool] = None
     auto_approve_staff: Optional[bool] = None
+    welcome_message_template: Optional[str] = None
 
 
 @router.get("/api/owner/gym-settings")
@@ -217,6 +218,7 @@ async def get_gym_settings(
             "default_commission_rate": getattr(user, 'default_commission_rate', 0) or 0,
             "auto_approve_trainers": bool(gym.auto_approve_trainers) if gym else False,
             "auto_approve_staff": bool(gym.auto_approve_staff) if gym else False,
+            "welcome_message_template": gym.welcome_message_template if gym else None,
             "join_link": f"https://fitos-eu.onrender.com/join/{gym.gym_code}" if gym and gym.gym_code else None,
         }
     finally:
@@ -251,6 +253,8 @@ async def update_gym_settings(
             gym.auto_approve_trainers = request.auto_approve_trainers
         if gym and request.auto_approve_staff is not None:
             gym.auto_approve_staff = request.auto_approve_staff
+        if gym and request.welcome_message_template is not None:
+            gym.welcome_message_template = request.welcome_message_template.strip() or None
         # Also update legacy UserORM field if this is the primary gym
         if gym_id == user.id:
             db_user = db.query(UserORM).filter(UserORM.id == user.id).first()
@@ -552,6 +556,240 @@ async def get_my_commissions(
             "total_revenue": round(total_revenue, 2),
             "commission_due": commission_due,
             "period": period,
+        }
+    finally:
+        db.close()
+
+
+# ═══════════════════════════════════════════════════════════
+#  OWNER ONBOARDING — SETUP WIZARD & CHECKLIST
+# ═══════════════════════════════════════════════════════════
+
+@router.get("/api/owner/onboarding-status")
+async def get_onboarding_status(
+    user: UserORM = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
+):
+    """Get owner's setup completion checklist."""
+    if user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+
+    from models_orm import GymORM, SubscriptionPlanORM
+    db = get_db_session()
+    try:
+        gym = db.query(GymORM).filter(GymORM.id == gym_id).first()
+        plans = db.query(SubscriptionPlanORM).filter(
+            SubscriptionPlanORM.gym_id == gym_id,
+            SubscriptionPlanORM.is_active == True
+        ).count()
+        members = db.query(UserORM).filter(
+            UserORM.gym_owner_id == gym_id,
+            UserORM.role == "client",
+            UserORM.is_active == True
+        ).count()
+        staff = db.query(UserORM).filter(
+            UserORM.gym_owner_id == gym_id,
+            UserORM.role == "owner",
+            UserORM.sub_role == "staff",
+            UserORM.is_active == True
+        ).count()
+        trainers = db.query(UserORM).filter(
+            UserORM.gym_owner_id == gym_id,
+            UserORM.role == "trainer",
+            UserORM.is_approved == True,
+            UserORM.is_active == True
+        ).count()
+
+        has_logo = bool(gym and gym.logo)
+        has_name = bool(gym and gym.name and gym.name != f"{user.username}'s Gym")
+        has_plans = plans > 0
+        has_stripe = bool(gym and gym.stripe_account_id and gym.stripe_account_status == "active")
+        has_members = members > 0
+        has_staff = staff > 0 or trainers > 0
+        has_waiver = bool(gym and gym.welcome_message_template)
+
+        steps = [
+            {"key": "gym_name", "label": "Nome palestra", "done": has_name, "icon": "edit"},
+            {"key": "gym_logo", "label": "Logo palestra", "done": has_logo, "icon": "image"},
+            {"key": "plans", "label": "Abbonamento", "done": has_plans, "icon": "card_membership"},
+            {"key": "stripe", "label": "Pagamenti (Stripe)", "done": has_stripe, "icon": "payment"},
+            {"key": "staff", "label": "Staff o trainer", "done": has_staff, "icon": "group"},
+            {"key": "members", "label": "Primo cliente", "done": has_members, "icon": "person_add"},
+            {"key": "welcome_msg", "label": "Messaggio benvenuto", "done": has_waiver, "icon": "message"},
+        ]
+        completed = sum(1 for s in steps if s["done"])
+
+        return {
+            "steps": steps,
+            "completed": completed,
+            "total": len(steps),
+            "is_complete": completed == len(steps),
+            "gym_code": gym.gym_code if gym else "",
+        }
+    finally:
+        db.close()
+
+
+@router.post("/api/owner/setup-plan-templates")
+async def create_plan_templates(
+    user: UserORM = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
+):
+    """Create pre-built subscription plan templates (Monthly, Quarterly, Annual)."""
+    if user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+
+    from models_orm import SubscriptionPlanORM
+    import uuid as _uuid
+    db = get_db_session()
+    try:
+        # Check if plans already exist
+        existing = db.query(SubscriptionPlanORM).filter(
+            SubscriptionPlanORM.gym_id == gym_id,
+            SubscriptionPlanORM.is_active == True
+        ).count()
+        if existing > 0:
+            return {"status": "skipped", "message": "Piani già esistenti", "created": 0}
+
+        import json
+        templates = [
+            {"name": "Mensile", "billing_type": "monthly", "price": 39.90,
+             "description": "Accesso completo alla palestra", "features": ["Accesso illimitato", "Scheda personalizzata"]},
+            {"name": "Trimestrale", "billing_type": "annual", "price": 33.30, "annual_price": 99.90, "installment_count": 4,
+             "description": "Risparmia con il piano trimestrale", "features": ["Accesso illimitato", "Scheda personalizzata", "Sconto 15%"]},
+            {"name": "Annuale", "billing_type": "annual", "price": 29.16, "annual_price": 349.90, "installment_count": 1,
+             "description": "Il miglior rapporto qualità-prezzo", "features": ["Accesso illimitato", "Scheda personalizzata", "Sconto 25%", "Priorità prenotazioni"]},
+        ]
+
+        created = 0
+        for t in templates:
+            db.add(SubscriptionPlanORM(
+                id=str(_uuid.uuid4()),
+                gym_id=gym_id,
+                name=t["name"],
+                description=t.get("description", ""),
+                price=t.get("price", 0),
+                billing_type=t["billing_type"],
+                annual_price=t.get("annual_price"),
+                installment_count=t.get("installment_count", 1),
+                features_json=json.dumps(t.get("features", [])),
+                is_active=True,
+                created_at=datetime.utcnow().isoformat(),
+            ))
+            created += 1
+        db.commit()
+        return {"status": "success", "message": f"{created} piani creati", "created": created}
+    finally:
+        db.close()
+
+
+@router.get("/api/owner/default-waiver")
+async def get_default_waiver(user: UserORM = Depends(get_current_user)):
+    """Get default Italian waiver text for gyms."""
+    if user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+
+    return {"waiver_text": """ASSUNZIONE DI RISCHIO E LIBERATORIA
+
+Il sottoscritto dichiara di aver scelto volontariamente di partecipare alle attività di fitness presso questa struttura.
+
+Dichiaro di essere consapevole che l'esercizio fisico può essere impegnativo e comportare rischi di infortuni. Comprendo che tali rischi includono, ma non si limitano a:
+- Lesioni derivanti dall'uso di attrezzature
+- Distorsioni, stiramenti e infortuni muscolari
+- Eventi cardiovascolari
+- Cadute e collisioni
+
+Con la presente assumo tutti i rischi connessi alla mia partecipazione alle attività di fitness e sollevo questa palestra, i suoi proprietari, dipendenti e collaboratori da qualsiasi responsabilità per infortuni o danni che possano verificarsi.
+
+Confermo che:
+- Sono fisicamente idoneo a partecipare a programmi di esercizio fisico
+- Consulterò un medico prima di iniziare qualsiasi programma di esercizio in caso di problemi di salute
+- Seguirò tutte le regole di sicurezza e le istruzioni fornite dallo staff
+- Segnalerò immediatamente eventuali infortuni o problemi di salute
+
+Con la firma sottostante, dichiaro di aver letto e compreso la presente liberatoria e di accettarne i termini."""}
+
+
+@router.post("/api/owner/invite-staff")
+async def invite_staff(
+    data: dict,
+    user: UserORM = Depends(get_current_user),
+    gym_id: str = Depends(get_gym_context),
+):
+    """Quick invite: create staff account and return WhatsApp link with credentials."""
+    if user.role != "owner":
+        raise HTTPException(status_code=403, detail="Owner only")
+
+    name = (data.get("name") or "").strip()
+    phone = (data.get("phone") or "").strip()
+    role = data.get("role", "staff")  # "staff" or "trainer"
+
+    if not name or not phone:
+        raise HTTPException(status_code=400, detail="Nome e telefono sono obbligatori")
+
+    import uuid as _uuid, secrets as _sec, re, urllib.parse
+    from auth import get_password_hash
+    from models_orm import GymORM
+
+    db = get_db_session()
+    try:
+        # Auto-generate username from name
+        username = name.lower().replace(" ", ".").replace("'", "")
+        # Ensure unique
+        existing = db.query(UserORM).filter(UserORM.username == username).first()
+        if existing:
+            username = f"{username}{_sec.randbelow(999):03d}"
+
+        password = _sec.token_urlsafe(12)
+        staff_id = str(_uuid.uuid4())
+        now = datetime.utcnow().isoformat()
+
+        new_user = UserORM(
+            id=staff_id,
+            username=username,
+            hashed_password=get_password_hash(password),
+            role="owner" if role == "staff" else "trainer",
+            sub_role="staff" if role == "staff" else None,
+            is_active=True,
+            is_approved=True,
+            gym_owner_id=gym_id if role != "staff" else None,
+            phone=phone,
+            must_change_password=True,
+            created_at=now,
+        )
+        # Staff are sub-owners; trainers link via gym_owner_id
+        if role == "staff":
+            new_user.gym_owner_id = gym_id
+        db.add(new_user)
+        db.commit()
+
+        # Build WhatsApp link
+        gym = db.query(GymORM).filter(GymORM.id == gym_id).first()
+        gym_name = gym.name if gym else "FitOS"
+        msg = (
+            f"Ciao {name}! Sei stato aggiunto come {'staff' if role == 'staff' else 'trainer'} "
+            f"in {gym_name} su FitOS.\n\n"
+            f"Le tue credenziali:\n"
+            f"Username: {username}\n"
+            f"Password: {password}\n\n"
+            f"Cambia la password al primo accesso."
+        )
+        clean_phone = re.sub(r'[\s\-\(\).]', '', phone)
+        if clean_phone.startswith("3") and len(clean_phone) == 10:
+            clean_phone = "39" + clean_phone
+        elif clean_phone.startswith("+"):
+            clean_phone = clean_phone[1:]
+        elif clean_phone.startswith("0"):
+            clean_phone = "39" + clean_phone[1:]
+
+        wa_url = f"https://wa.me/{clean_phone}?text={urllib.parse.quote(msg)}"
+
+        return {
+            "status": "success",
+            "staff_id": staff_id,
+            "username": username,
+            "temporary_password": password,
+            "whatsapp_url": wa_url,
         }
     finally:
         db.close()
