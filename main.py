@@ -212,22 +212,50 @@ async def join_gym_landing(request: Request, gym_code: str):
 
 @app.post("/api/test-push/{user_id}")
 async def test_push(user_id: str):
-    """Temporary: send a test push notification to a user."""
-    from models_orm import NotificationORM
+    """Temporary: send a test push notification to a user with full diagnostics."""
+    from models_orm import NotificationORM, FCMDeviceTokenORM
+    from service_modules.notification_service import send_fcm_push, _get_fcm_access_token, _get_fcm_project_id
     from database import get_db_session
     from datetime import datetime as _dt
+    import traceback
+
     db = get_db_session()
+    diag = {}
     try:
-        db.add(NotificationORM(
-            user_id=user_id,
-            type="test",
-            title="Test Push Notification",
-            message="Se vedi questo, le notifiche push funzionano!",
-            read=False,
-            created_at=_dt.utcnow().isoformat()
-        ))
-        db.commit()
-        return {"status": "sent", "user_id": user_id}
+        # 1. Check device tokens
+        tokens = db.query(FCMDeviceTokenORM).filter(FCMDeviceTokenORM.user_id == user_id).all()
+        diag["device_tokens"] = len(tokens)
+        diag["tokens"] = [{"platform": getattr(t, "platform", "?"), "token_prefix": t.token[:30]} for t in tokens]
+
+        # 2. Check FCM credentials
+        access_token = _get_fcm_access_token()
+        project_id = _get_fcm_project_id()
+        diag["fcm_access_token"] = "ok" if access_token else "MISSING"
+        diag["fcm_project_id"] = project_id or "MISSING"
+
+        # 3. Try direct FCM push (bypass after_insert event)
+        if tokens and access_token and project_id:
+            import requests as req
+            url = f"https://fcm.googleapis.com/v1/projects/{project_id}/messages:send"
+            headers = {"Authorization": f"Bearer {access_token}", "Content-Type": "application/json"}
+            payload = {
+                "message": {
+                    "token": tokens[0].token,
+                    "notification": {"title": "FitOS Test", "body": "Se vedi questo, le notifiche push funzionano!"},
+                    "data": {"click_action": "FLUTTER_NOTIFICATION_CLICK"},
+                }
+            }
+            resp = req.post(url, json=payload, headers=headers, timeout=10)
+            diag["fcm_response_status"] = resp.status_code
+            diag["fcm_response_body"] = resp.text[:300]
+        else:
+            diag["fcm_skip_reason"] = "no tokens or no credentials"
+
+        return {"status": "sent", "user_id": user_id, "diagnostics": diag}
+    except Exception as e:
+        diag["error"] = str(e)
+        diag["traceback"] = traceback.format_exc()[-500:]
+        return {"status": "error", "diagnostics": diag}
     finally:
         db.close()
 
