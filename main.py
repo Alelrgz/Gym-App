@@ -210,6 +210,28 @@ async def join_gym_landing(request: Request, gym_code: str):
     finally:
         db.close()
 
+@app.post("/api/test-push/{user_id}")
+async def test_push(user_id: str):
+    """Temporary: send a test push notification to a user."""
+    from models_orm import NotificationORM
+    from database import get_db_session
+    from datetime import datetime as _dt
+    db = get_db_session()
+    try:
+        db.add(NotificationORM(
+            user_id=user_id,
+            type="test",
+            title="Test Push Notification",
+            message="Se vedi questo, le notifiche push funzionano!",
+            read=False,
+            created_at=_dt.utcnow().isoformat()
+        ))
+        db.commit()
+        return {"status": "sent", "user_id": user_id}
+    finally:
+        db.close()
+
+
 @app.get("/magic/{token}")
 async def magic_login(request: Request, token: str):
     """Magic link login — validates token, creates session, redirects."""
