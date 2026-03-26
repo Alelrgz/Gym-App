@@ -34,7 +34,7 @@ def _get_fcm_access_token():
     try:
         import json as _json, requests as _req
         from jose import jwt as _jose_jwt
-        sa = _json.loads(sa_json)
+        sa = _json.loads(sa_json, strict=False)
         now = int(time.time())
         claims = {
             "iss": sa["client_email"],
@@ -70,7 +70,7 @@ def _get_fcm_project_id():
     sa_json = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON")
     if sa_json:
         try:
-            return _json.loads(sa_json).get("project_id")
+            return _json.loads(sa_json, strict=False).get("project_id")
         except Exception:
             pass
     return None
