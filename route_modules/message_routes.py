@@ -83,6 +83,24 @@ async def send_message(
         "sender_name": user.username
     })
 
+    # Send FCM push for when the receiver's app is in the background
+    try:
+        from service_modules.notification_service import send_fcm_push
+        from database import get_db_session
+        db = get_db_session()
+        try:
+            send_fcm_push(
+                db, request.receiver_id,
+                user.username or "Nuovo messaggio",
+                request.content[:200],
+                {"type": "chat_message", "sender_id": user.id, "conversation_id": result.get("conversation_id", "")},
+                image_url=user.profile_picture,
+            )
+        finally:
+            db.close()
+    except Exception:
+        pass  # FCM is best-effort
+
     return {
         "conversation_id": result.get("conversation_id"),
         "message": result
@@ -188,5 +206,24 @@ async def upload_media_message(
         "message": result,
         "sender_name": user.username
     })
+
+    # Send FCM push for when the receiver's app is in the background
+    try:
+        from service_modules.notification_service import send_fcm_push
+        from database import get_db_session
+        media_labels = {"image": "una foto", "video": "un video", "voice": "un messaggio vocale"}
+        db = get_db_session()
+        try:
+            send_fcm_push(
+                db, receiver_id,
+                user.username or "Nuovo messaggio",
+                f"Ti ha inviato {media_labels.get(media_type, 'un file')}",
+                {"type": "chat_message", "sender_id": user.id, "conversation_id": result.get("conversation_id", "")},
+                image_url=user.profile_picture,
+            )
+        finally:
+            db.close()
+    except Exception:
+        pass  # FCM is best-effort
 
     return {"conversation_id": result.get("conversation_id"), "message": result}

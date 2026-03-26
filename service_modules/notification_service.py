@@ -76,7 +76,7 @@ def _get_fcm_project_id():
     return None
 
 
-def send_fcm_push(db, user_id: str, title: str, body: str, data: dict = None):
+def send_fcm_push(db, user_id: str, title: str, body: str, data: dict = None, image_url: str = None):
     """Send push notification to a user's registered devices via FCM v1 API.
 
     Uses centralized FitOS service account — no per-gym configuration needed.
@@ -97,7 +97,7 @@ def send_fcm_push(db, user_id: str, title: str, body: str, data: dict = None):
         project_id = _get_fcm_project_id()
 
         if access_token and project_id:
-            _send_via_fcm_v1(db, tokens, title, body, data, access_token, project_id)
+            _send_via_fcm_v1(db, tokens, title, body, data, access_token, project_id, image_url)
         else:
             # Fallback: try legacy per-gym server key (deprecated but may still work for some)
             _send_via_legacy_fcm(db, user_id, tokens, title, body, data)
@@ -106,7 +106,7 @@ def send_fcm_push(db, user_id: str, title: str, body: str, data: dict = None):
         logger.error(f"Push notification error: {e}")
 
 
-def _send_via_fcm_v1(db, tokens, title, body, data, access_token, project_id):
+def _send_via_fcm_v1(db, tokens, title, body, data, access_token, project_id, image_url=None):
     """Send via FCM HTTP v1 API (modern, OAuth2-based)."""
     import requests as req
     from models_orm import FCMDeviceTokenORM
@@ -126,21 +126,26 @@ def _send_via_fcm_v1(db, tokens, title, body, data, access_token, project_id):
 
     for device in tokens:
         try:
+            notification = {
+                "title": title,
+                "body": body[:200],
+            }
+            if image_url:
+                notification["image"] = image_url
+
             payload = {
                 "message": {
                     "token": device.token,
-                    "notification": {
-                        "title": title,
-                        "body": body[:200],
-                    },
+                    "notification": notification,
                     "data": str_data,
                     "android": {
-                        "notification": {"sound": "default"},
+                        "notification": {"sound": "default", **({"image": image_url} if image_url else {})},
                     },
                     "apns": {
                         "payload": {
-                            "aps": {"sound": "default", "badge": 1},
+                            "aps": {"sound": "default", "badge": 1, "mutable-content": 1},
                         },
+                        **({"fcm_options": {"image": image_url}} if image_url else {}),
                     },
                 }
             }
