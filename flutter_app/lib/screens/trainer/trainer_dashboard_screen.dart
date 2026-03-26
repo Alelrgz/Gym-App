@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import '../../config/api_config.dart';
 import '../../config/theme.dart';
 import '../../models/trainer_profile.dart';
 import '../../providers/trainer_provider.dart';
+import '../../providers/client_provider.dart';
 import '../../services/trainer_service.dart';
+import '../../widgets/dashboard_sheets.dart';
 import '../../widgets/glass_card.dart';
 const double _kDesktopBreakpoint = 1024;
 
@@ -188,6 +191,7 @@ class _TrainerDashboardScreenState extends ConsumerState<TrainerDashboardScreen>
                       padding: const EdgeInsets.only(bottom: 8),
                       child: GestureDetector(
                         onTap: () => setState(() => _selectedClient = c),
+                        onDoubleTap: () => _showClientActionModal(context, c),
                         child: _ClientCard(client: c, isSelected: isSelected),
                       ),
                     );
@@ -519,6 +523,162 @@ class _TrainerDashboardScreenState extends ConsumerState<TrainerDashboardScreen>
     );
   }
 
+  void _showClientActionModal(BuildContext context, TrainerClient client) {
+    final isAtRisk = client.status == 'at_risk' || client.status == 'inactive';
+    final statusColor = isAtRisk ? AppColors.danger : const Color(0xFF22C55E);
+    final statusText = isAtRisk ? 'A Rischio' : 'Attivo';
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Close',
+      barrierColor: Colors.black.withValues(alpha: 0.80),
+      transitionDuration: const Duration(milliseconds: 600),
+      transitionBuilder: (ctx, animation, secondaryAnimation, child) {
+        final curved = CurvedAnimation(parent: animation, curve: const Cubic(0.16, 1, 0.3, 1));
+        return FadeTransition(
+          opacity: curved,
+          child: SlideTransition(
+            position: Tween<Offset>(begin: const Offset(0, 0.04), end: Offset.zero).animate(curved),
+            child: child,
+          ),
+        );
+      },
+      pageBuilder: (ctx, animation, secondaryAnimation) {
+        return Center(
+          child: Material(
+            color: Colors.transparent,
+            child: Container(
+              width: 300,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: const Color(0xFF1A1A1A),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Header: Name + Close
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 20,
+                        backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                        backgroundImage: client.profilePicture != null
+                            ? NetworkImage(
+                                client.profilePicture!.startsWith('http')
+                                    ? client.profilePicture!
+                                    : '${ApiConfig.baseUrl}${client.profilePicture}',
+                              )
+                            : null,
+                        child: client.profilePicture == null
+                            ? Text(client.name.isNotEmpty ? client.name[0].toUpperCase() : '?',
+                                style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary))
+                            : null,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(client.name,
+                            style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white)),
+                      ),
+                      GestureDetector(
+                        onTap: () => Navigator.pop(ctx),
+                        child: Icon(Icons.close_rounded, color: Colors.white.withValues(alpha: 0.4), size: 22),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+
+                  // Status
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.04),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                          Text('STATO', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.4), letterSpacing: 0.5)),
+                          const SizedBox(height: 2),
+                          Text(statusText, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: statusColor)),
+                        ]),
+                        Row(children: [
+                          Icon(Icons.bar_chart_rounded, size: 16, color: Colors.white.withValues(alpha: 0.35)),
+                          const SizedBox(width: 4),
+                          Text('Statistiche', style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.35))),
+                        ]),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Action buttons
+                  _ActionModalBtn(icon: Icons.assignment_rounded, label: 'Vedi Programma', onTap: () {
+                    Navigator.pop(ctx);
+                    context.go('/trainer/schedule');
+                  }),
+                  const SizedBox(height: 8),
+                  _ActionModalBtn(icon: Icons.calendar_today_rounded, label: 'Prenota Appuntamento', onTap: () {
+                    Navigator.pop(ctx);
+                    context.go('/trainer/schedule');
+                  }),
+                  const SizedBox(height: 8),
+                  if (client.isPremium) ...[
+                    _ActionModalBtn(icon: Icons.restaurant_rounded, label: 'Gestisci Dieta', onTap: () {
+                      Navigator.pop(ctx);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Gestione dieta - Prossimamente')),
+                      );
+                    }),
+                    const SizedBox(height: 8),
+                  ],
+                  _ActionModalBtn(icon: Icons.chat_bubble_outline_rounded, label: 'Messaggia Cliente', isPrimary: true, onTap: () {
+                    Navigator.pop(ctx);
+                    _openChatWithClient(context, client);
+                  }),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<void> _openChatWithClient(BuildContext context, TrainerClient client) async {
+    try {
+      final service = ref.read(clientServiceProvider);
+      final conversations = await service.getConversations();
+      Map<String, dynamic>? conv;
+      for (final c in conversations) {
+        if (c['other_user_id']?.toString() == client.id) {
+          conv = Map<String, dynamic>.from(c);
+          break;
+        }
+      }
+      conv ??= {
+        'id': '',
+        'other_user_id': client.id,
+        'other_user_name': client.name,
+        'other_user_profile_picture': client.profilePicture,
+      };
+      if (mounted) {
+        showChatSheet(context, ref, conv);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore apertura chat: $e')),
+        );
+      }
+    }
+  }
+
   List<TrainerClient> _filterClients(List<TrainerClient> clients) {
     return clients.where((c) {
       if (_searchQuery.isNotEmpty && !c.name.toLowerCase().contains(_searchQuery)) return false;
@@ -553,7 +713,10 @@ class _TrainerDashboardScreenState extends ConsumerState<TrainerDashboardScreen>
         final client = filtered[index];
         return Padding(
           padding: const EdgeInsets.only(bottom: 8),
-          child: _ClientCard(client: client),
+          child: GestureDetector(
+            onTap: () => _showClientActionModal(context, client),
+            child: _ClientCard(client: client),
+          ),
         );
       },
     );
@@ -2158,6 +2321,53 @@ class _PendingAppointmentCard extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionModalBtn extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isPrimary;
+  final VoidCallback onTap;
+
+  const _ActionModalBtn({
+    required this.icon,
+    required this.label,
+    this.isPrimary = false,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(vertical: 11),
+        decoration: BoxDecoration(
+          color: isPrimary ? const Color(0xFFF15A24) : const Color(0xFF252525),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: isPrimary ? Colors.transparent : Colors.white.withValues(alpha: 0.06),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(icon, size: 16, color: isPrimary ? Colors.white : Colors.white.withValues(alpha: 0.85)),
+            const SizedBox(width: 8),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: FontWeight.w700,
+                color: isPrimary ? Colors.white : Colors.white.withValues(alpha: 0.85),
+              ),
             ),
           ],
         ),

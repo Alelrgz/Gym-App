@@ -1,5 +1,4 @@
-import 'dart:io' show Platform;
-import 'package:flutter/foundation.dart' show kIsWeb, kDebugMode;
+import 'package:flutter/foundation.dart' show kIsWeb;
 
 class ApiConfig {
   /// Override this at app startup to point native builds at your backend.
@@ -20,13 +19,7 @@ class ApiConfig {
   /// Auto-detect: use local server only on Windows/macOS/Linux debug builds.
   /// Mobile (Android/iOS) always uses production, even in debug mode.
   static bool get useLocalServer {
-    if (kIsWeb) return false;
-    if (!kDebugMode) return false; // Release builds always use production
-    try {
-      return Platform.isWindows || Platform.isMacOS || Platform.isLinux;
-    } catch (_) {
-      return false;
-    }
+    return false; // Always use production (Render)
   }
 
   static String get baseUrl {
