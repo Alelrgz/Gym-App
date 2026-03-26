@@ -232,6 +232,17 @@ async def test_push(user_id: str):
         sa_json_raw = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
         diag["sa_env_set"] = bool(sa_json_raw)
         diag["sa_env_len"] = len(sa_json_raw)
+        diag["sa_env_first100"] = sa_json_raw[:100] if sa_json_raw else ""
+        try:
+            import json as _j
+            parsed = _j.loads(sa_json_raw)
+            diag["sa_parsed"] = True
+            diag["sa_project_id"] = parsed.get("project_id", "MISSING")
+            diag["sa_client_email"] = parsed.get("client_email", "MISSING")[:40]
+            diag["sa_has_private_key"] = "private_key" in parsed
+        except Exception as parse_err:
+            diag["sa_parsed"] = False
+            diag["sa_parse_error"] = str(parse_err)
         try:
             access_token = _get_fcm_access_token()
         except Exception as e:
