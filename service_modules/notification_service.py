@@ -32,17 +32,18 @@ def _get_fcm_access_token():
         return None
 
     try:
-        import json as _json, jwt as _pyjwt, requests as _req
+        import json as _json, requests as _req
+        from jose import jwt as _jose_jwt
         sa = _json.loads(sa_json)
         now = int(time.time())
-        payload = {
+        claims = {
             "iss": sa["client_email"],
             "scope": "https://www.googleapis.com/auth/firebase.messaging",
             "aud": "https://oauth2.googleapis.com/token",
             "iat": now,
             "exp": now + 3600,
         }
-        signed_jwt = _pyjwt.encode(payload, sa["private_key"], algorithm="RS256")
+        signed_jwt = _jose_jwt.encode(claims, sa["private_key"], algorithm="RS256")
         resp = _req.post("https://oauth2.googleapis.com/token", data={
             "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
             "assertion": signed_jwt,
@@ -52,22 +53,8 @@ def _get_fcm_access_token():
             access_token = token_data["access_token"]
             _get_fcm_access_token._cached = (access_token, now + token_data.get("expires_in", 3600))
             return access_token
-    except ImportError:
-        # Fallback: try google-auth library
-        try:
-            from google.oauth2 import service_account
-            import google.auth.transport.requests
-            import json as _json
-
-            sa = _json.loads(sa_json)
-            credentials = service_account.Credentials.from_service_account_info(
-                sa, scopes=["https://www.googleapis.com/auth/firebase.messaging"]
-            )
-            credentials.refresh(google.auth.transport.requests.Request())
-            _get_fcm_access_token._cached = (credentials.token, time.time() + 3500)
-            return credentials.token
-        except ImportError:
-            logger.error("FCM v1: Need PyJWT or google-auth package for service account auth")
+        else:
+            logger.error(f"FCM v1 token request failed {resp.status_code}: {resp.text[:200]}")
             return None
     except Exception as e:
         logger.error(f"FCM v1 token error: {e}")
