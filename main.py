@@ -228,8 +228,20 @@ async def test_push(user_id: str):
         diag["tokens"] = [{"platform": getattr(t, "platform", "?"), "token_prefix": t.token[:30]} for t in tokens]
 
         # 2. Check FCM credentials
-        access_token = _get_fcm_access_token()
-        project_id = _get_fcm_project_id()
+        import os
+        sa_json_raw = os.environ.get("GOOGLE_SERVICE_ACCOUNT_JSON", "")
+        diag["sa_env_set"] = bool(sa_json_raw)
+        diag["sa_env_len"] = len(sa_json_raw)
+        try:
+            access_token = _get_fcm_access_token()
+        except Exception as e:
+            access_token = None
+            diag["fcm_token_error"] = str(e)
+        try:
+            project_id = _get_fcm_project_id()
+        except Exception as e:
+            project_id = None
+            diag["fcm_project_error"] = str(e)
         diag["fcm_access_token"] = "ok" if access_token else "MISSING"
         diag["fcm_project_id"] = project_id or "MISSING"
 
