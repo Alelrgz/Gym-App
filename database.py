@@ -96,6 +96,25 @@ def _run_early_migrations():
         import logging
         logging.getLogger("gym_app").warning(f"Early migrations skipped (DB may not be ready): {e}")
 
+    # Postgres + SQLite: add new columns to gyms table
+    try:
+        with engine.connect() as conn:
+            gym_columns = [
+                ('welcome_message_template', 'TEXT'),
+            ]
+            for col_name, col_type in gym_columns:
+                try:
+                    conn.execute(text(f"ALTER TABLE gyms ADD COLUMN {col_name} {col_type}"))
+                    conn.commit()
+                except Exception:
+                    try:
+                        conn.rollback()
+                    except Exception:
+                        pass
+    except Exception as e:
+        import logging
+        logging.getLogger("gym_app").warning(f"Gyms migration: {e}")
+
     # SQLite: add new columns to existing tables
     if not IS_POSTGRES:
         try:
