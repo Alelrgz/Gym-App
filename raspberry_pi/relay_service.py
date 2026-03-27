@@ -20,6 +20,15 @@ import threading
 
 app = Flask(__name__)
 
+
+@app.after_request
+def add_cors_headers(response):
+    """Allow requests from any origin (kiosk runs on HTTPS, relay on HTTP)."""
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'POST, GET, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    return response
+
 HOLD_SECONDS = 1.5  # How long the turnstile stays unlocked
 relay_lock = threading.Lock()
 
