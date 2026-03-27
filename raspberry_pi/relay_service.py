@@ -105,11 +105,39 @@ def health():
     })
 
 
+@app.route('/kiosk', methods=['GET'])
+def kiosk_proxy():
+    """Serve the kiosk page from Render through localhost (avoids HTTPS→HTTP mixed content)."""
+    import requests as req
+    from flask import request as flask_req, Response
+
+    device_key = flask_req.args.get('key', '')
+    server = REMOTE_SERVER
+    try:
+        resp = req.get(f"{server}/kiosk?key={device_key}", timeout=10)
+        # Replace the localhost:5555/trigger URL is already correct (same origin)
+        # Just serve the HTML as-is — fetch('/api/device/...') needs to go to Render though
+        html = resp.text
+        # Rewrite API calls to go to Render, keep /trigger local
+        html = html.replace("const API_BASE = \"\";", f'const API_BASE = "{server}";')
+        return Response(html, content_type='text/html')
+    except Exception as e:
+        return f"<html><body style='background:#111;color:#fff;'><h2>Errore connessione server: {e}</h2></body></html>", 503
+
+
+REMOTE_SERVER = "https://fitos-eu.onrender.com"
+
+
 if __name__ == '__main__':
+    import sys
+    if len(sys.argv) > 1:
+        REMOTE_SERVER = sys.argv[1]
+
     relay_id = find_relay_id()
     if relay_id:
         print(f"USB HID relay found: {relay_id}")
     else:
         print("WARNING: No USB relay detected. Install usbrelay and plug in the relay.")
     print(f"Relay service listening on http://localhost:5555")
+    print(f"Kiosk page: http://localhost:5555/kiosk?key=YOUR_DEVICE_KEY")
     app.run(host='127.0.0.1', port=5555, debug=False)
