@@ -1585,6 +1585,10 @@ async def create_photo_snap_session(
     db.commit()
 
     base_url = str(request.base_url).rstrip("/")
+    # For QR codes scanned by phones, localhost won't work — use production URL
+    if "localhost" in base_url or "127.0.0.1" in base_url:
+        import os
+        base_url = os.environ.get("PRODUCTION_URL", "https://fitos-eu.onrender.com")
     return {"token": token, "url": f"{base_url}/snap/{token}"}
 
 
