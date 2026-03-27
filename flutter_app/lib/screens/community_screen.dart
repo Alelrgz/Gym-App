@@ -9,6 +9,21 @@ import '../providers/client_provider.dart';
 import '../providers/community_provider.dart';
 import '../widgets/dashboard_sheets.dart';
 
+String relativeTime(String? iso) {
+  if (iso == null) return '';
+  final dt = DateTime.tryParse(iso);
+  if (dt == null) return '';
+  final utc = dt.isUtc ? dt : DateTime.utc(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second);
+  final diff = DateTime.now().toUtc().difference(utc);
+  if (diff.isNegative) return 'ora';
+  if (diff.inMinutes < 1) return 'ora';
+  if (diff.inMinutes < 60) return '${diff.inMinutes}min';
+  if (diff.inHours < 24) return '${diff.inHours}h';
+  if (diff.inDays < 7) return '${diff.inDays}g';
+  if (diff.inDays < 30) return '${(diff.inDays / 7).floor()} sett';
+  return '${(diff.inDays / 30).floor()} mesi';
+}
+
 class CommunityScreen extends ConsumerStatefulWidget {
   const CommunityScreen({super.key});
 
@@ -336,22 +351,7 @@ class _PostCard extends StatelessWidget {
 
   const _PostCard({required this.post, required this.onLike, required this.onComment, required this.onDelete, this.onParticipate});
 
-  String _relativeTime(String? iso) {
-    if (iso == null) return '';
-    try {
-      // Server stores UTC times without 'Z' suffix — parse as UTC
-      var dt = DateTime.parse(iso);
-      if (!dt.isUtc) dt = DateTime.utc(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.millisecond);
-      final diff = DateTime.now().toUtc().difference(dt);
-      if (diff.inMinutes < 1) return 'ora';
-      if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-      if (diff.inHours < 24) return '${diff.inHours}h';
-      if (diff.inDays < 7) return '${diff.inDays}g';
-      return '${(diff.inDays / 7).floor()}s';
-    } catch (_) {
-      return '';
-    }
-  }
+  String _relativeTime(String? iso) => relativeTime(iso);
 
   String? _resolveUrl(String? url) {
     if (url == null || url.isEmpty) return null;
@@ -1220,22 +1220,7 @@ class _PostDetailPageState extends State<_PostDetailPage> with SingleTickerProvi
     }
   }
 
-  String _relativeTime(String? iso) {
-    if (iso == null) return '';
-    try {
-      // Server stores UTC times without 'Z' suffix — parse as UTC
-      var dt = DateTime.parse(iso);
-      if (!dt.isUtc) dt = DateTime.utc(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.millisecond);
-      final diff = DateTime.now().toUtc().difference(dt);
-      if (diff.inMinutes < 1) return 'ora';
-      if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-      if (diff.inHours < 24) return '${diff.inHours}h';
-      if (diff.inDays < 7) return '${diff.inDays}g';
-      return '${(diff.inDays / 7).floor()}s';
-    } catch (_) {
-      return '';
-    }
-  }
+  String _relativeTime(String? iso) => relativeTime(iso);
 
   String? _resolveUrl(String? url) {
     if (url == null || url.isEmpty) return null;
@@ -1545,21 +1530,7 @@ class _CommentsSheetState extends State<_CommentsSheet> {
     return '${ApiConfig.baseUrl}$url';
   }
 
-  String _relativeTime(String? iso) {
-    if (iso == null) return '';
-    try {
-      // Server stores UTC times without 'Z' suffix — parse as UTC
-      var dt = DateTime.parse(iso);
-      if (!dt.isUtc) dt = DateTime.utc(dt.year, dt.month, dt.day, dt.hour, dt.minute, dt.second, dt.millisecond);
-      final diff = DateTime.now().toUtc().difference(dt);
-      if (diff.inMinutes < 1) return 'ora';
-      if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-      if (diff.inHours < 24) return '${diff.inHours}h';
-      return '${diff.inDays}g';
-    } catch (_) {
-      return '';
-    }
-  }
+  String _relativeTime(String? iso) => relativeTime(iso);
 
   @override
   Widget build(BuildContext context) {

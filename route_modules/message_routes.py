@@ -10,7 +10,7 @@ from gym_context import get_gym_context
 from models_orm import UserORM, ClientProfileORM
 from database import get_db_session
 from service_modules.message_service import MessageService, get_message_service
-from service_modules.upload_helper import save_file, ALLOWED_VIDEO_EXTENSIONS, ALLOWED_AUDIO_EXTENSIONS, MAX_VIDEO_SIZE, MAX_AUDIO_SIZE, MAX_IMAGE_SIZE
+from service_modules.upload_helper import save_file, _optimize_image, ALLOWED_VIDEO_EXTENSIONS, ALLOWED_AUDIO_EXTENSIONS, MAX_VIDEO_SIZE, MAX_AUDIO_SIZE, MAX_IMAGE_SIZE
 from sockets import manager
 
 router = APIRouter(tags=["Messages"])
@@ -186,6 +186,11 @@ async def upload_media_message(
     content = await file.read()
     if len(content) > max_size:
         raise HTTPException(status_code=413, detail=f"File too large (max {max_size // 1024 // 1024}MB)")
+
+    # Compress images before storing
+    if media_type == "image":
+        content, opt_ext = _optimize_image(content, max_size=(1200, 1200), crop_square=False)
+        ext = opt_ext
 
     filename = f"{uuid.uuid4()}.{ext or 'bin'}"
     file_url = await save_file(content, folder, filename, upload_type=media_type)

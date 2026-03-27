@@ -37,7 +37,11 @@ class ProfileScreen extends ConsumerWidget {
                         CircleAvatar(
                           radius: 48,
                           backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-                          child: _buildAvatar(user),
+                          child: clientData.when(
+                            data: (profile) => _buildAvatarFromUrl(profile.profilePicture),
+                            loading: () => _buildAvatar(user),
+                            error: (_, _) => _buildAvatar(user),
+                          ),
                         ),
                         Positioned(
                           bottom: 0, right: 0,
@@ -205,6 +209,22 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
+  Widget _buildAvatarFromUrl(String? url) {
+    if (url != null && url.isNotEmpty) {
+      final resolved = url.startsWith('http') ? url : '${ApiConfig.baseUrl}$url';
+      return ClipOval(
+        child: Image.network(
+          resolved,
+          width: 96,
+          height: 96,
+          fit: BoxFit.cover,
+          errorBuilder: (_, _, _) => const Icon(Icons.person, size: 48, color: AppColors.primary),
+        ),
+      );
+    }
+    return const Icon(Icons.person, size: 48, color: AppColors.primary);
+  }
+
   Widget _buildAvatar(dynamic user) {
     if (user?.profilePicture != null) {
       final url = user!.profilePicture!;
@@ -322,7 +342,10 @@ class ProfileScreen extends ConsumerWidget {
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
       builder: (_) => _EditProfileSheet(ref: ref),
-    );
+    ).then((_) {
+      // Refresh data after edit dialog closes
+      ref.invalidate(clientDataProvider);
+    });
   }
 
   void _showPrivacySettings(BuildContext context, WidgetRef ref) {
@@ -497,8 +520,13 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
       final service = widget.ref.read(clientServiceProvider);
       await service.uploadProfilePicture(bytes.toList(), picked.name);
       if (mounted) {
-        showSnack(context, 'Foto profilo aggiornata');
+        // Clear image cache to force reload with new URL
+        imageCache.clear();
+        imageCache.clearLiveImages();
         widget.ref.invalidate(clientDataProvider);
+        showSnack(context, 'Foto profilo aggiornata');
+        // Close and reopen the dialog to refresh
+        if (mounted) Navigator.of(context).pop();
       }
     } catch (e) {
       if (mounted) showSnack(context, 'Errore upload: $e');
@@ -509,7 +537,9 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final user = widget.ref.watch(authProvider).user;
+    final clientData = widget.ref.watch(clientDataProvider);
+    final profilePicUrl = clientData.whenData((d) => d.profilePicture).value
+        ?? widget.ref.watch(authProvider).user?.profilePicture;
     return Padding(
       padding: EdgeInsets.only(
         left: 24, right: 24, top: 24,
@@ -540,9 +570,11 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                     backgroundColor: AppColors.primary.withValues(alpha: 0.2),
                     child: _uploadingPic
                         ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-                        : user?.profilePicture != null
+                        : profilePicUrl != null
                             ? ClipOval(
-                                child: Image.network(user!.profilePicture!, width: 88, height: 88, fit: BoxFit.cover,
+                                child: Image.network(
+                                  profilePicUrl.startsWith('http') ? profilePicUrl : '${ApiConfig.baseUrl}$profilePicUrl',
+                                  width: 88, height: 88, fit: BoxFit.cover,
                                   errorBuilder: (_, _, _) => const Icon(Icons.person, size: 44, color: AppColors.primary)),
                               )
                             : const Icon(Icons.person, size: 44, color: AppColors.primary),
