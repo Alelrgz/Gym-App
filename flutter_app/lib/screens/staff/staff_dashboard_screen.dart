@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
 import 'package:file_picker/file_picker.dart';
@@ -11,6 +12,7 @@ import '../../config/api_config.dart';
 import '../../config/theme.dart';
 import '../../providers/staff_provider.dart';
 import '../../services/staff_service.dart';
+import '../../providers/websocket_provider.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/stat_card.dart';
 
@@ -25,11 +27,126 @@ class StaffDashboardScreen extends ConsumerStatefulWidget {
 class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
+  StreamSubscription<Map<String, dynamic>>? _checkinSub;
+
+  @override
+  void initState() {
+    super.initState();
+    // Listen for client check-ins at the turnstile
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final ws = ref.read(websocketServiceProvider);
+      _checkinSub = ws.messages
+          .where((m) => m['type'] == 'client_checkin')
+          .listen(_showCheckinNotification);
+    });
+  }
 
   @override
   void dispose() {
+    _checkinSub?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _showCheckinNotification(Map<String, dynamic> data) {
+    final username = data['username'] as String? ?? 'Cliente';
+    final photo = data['profile_picture'] as String?;
+    final time = DateTime.tryParse(data['time'] as String? ?? '');
+    final timeStr = time != null
+        ? '${time.hour.toString().padLeft(2, '0')}:${time.minute.toString().padLeft(2, '0')}'
+        : '';
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Close',
+      barrierColor: Colors.black.withValues(alpha: 0.5),
+      transitionDuration: const Duration(milliseconds: 400),
+      transitionBuilder: (ctx, animation, _, child) {
+        return SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero)
+              .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+          child: child,
+        );
+      },
+      pageBuilder: (ctx, _, __) {
+        // Auto-dismiss after 5 seconds
+        Future.delayed(const Duration(seconds: 5), () {
+          if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
+        });
+        return Align(
+          alignment: Alignment.topCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 40),
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: 340,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A1A1A),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF22C55E).withValues(alpha: 0.3)),
+                  boxShadow: [
+                    BoxShadow(
+                      color: const Color(0xFF22C55E).withValues(alpha: 0.1),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    ),
+                  ],
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                      backgroundImage: photo != null && photo.isNotEmpty
+                          ? NetworkImage(
+                              photo.startsWith('http') ? photo : '${ApiConfig.baseUrl}$photo',
+                            )
+                          : null,
+                      child: photo == null || photo.isEmpty
+                          ? Text(
+                              username.isNotEmpty ? username[0].toUpperCase() : '?',
+                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: AppColors.primary),
+                            )
+                          : null,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(Icons.login_rounded, size: 14, color: Color(0xFF22C55E)),
+                              const SizedBox(width: 6),
+                              const Text(
+                                'Check-in',
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF22C55E)),
+                              ),
+                              const Spacer(),
+                              if (timeStr.isNotEmpty)
+                                Text(timeStr, style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.4))),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            username,
+                            style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _viewMemberProfile(Map<String, dynamic> member) async {

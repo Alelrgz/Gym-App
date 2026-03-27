@@ -181,6 +181,11 @@ async def device_verify_access(request: Request, data: dict, db: Session = Depen
             # Push gate event to connected Pi via WebSocket
             import asyncio
             asyncio.ensure_future(_notify_gate(owner.id, member.username))
+            # Notify staff dashboard of check-in
+            asyncio.ensure_future(_notify_staff_checkin(
+                db, owner.id, member.username,
+                member.profile_picture, member.id
+            ))
             return {"valid": True, "username": member.username, "user_id": user_id}
 
     raise HTTPException(status_code=401, detail="Token expired or invalid")
@@ -198,6 +203,27 @@ async def _notify_gate(owner_id: str, username: str):
             await ws.send_json({"gate": "open", "username": username})
         except Exception:
             _gate_connections.pop(owner_id, None)
+
+
+async def _notify_staff_checkin(db, owner_id: str, username: str, profile_picture: str, member_id: str):
+    """Push check-in notification to all connected staff/owner users of this gym."""
+    from sockets import manager
+    try:
+        # Find staff + owner users for this gym
+        staff_users = db.query(UserORM).filter(
+            ((UserORM.gym_owner_id == owner_id) | (UserORM.id == owner_id)),
+            UserORM.role.in_(["staff", "owner"]),
+        ).all()
+        for user in staff_users:
+            await manager.send_to_user(user.id, {
+                "type": "client_checkin",
+                "username": username,
+                "profile_picture": profile_picture,
+                "member_id": member_id,
+                "time": datetime.utcnow().isoformat(),
+            })
+    except Exception as e:
+        logger.warning(f"Staff check-in notify error: {e}")
 
 
 @router.get("/api/device/ping")
