@@ -1564,29 +1564,31 @@ async def demo_launcher(request: Request, db: Session = Depends(get_db)):
 
 
 @app.get("/kiosk", response_class=HTMLResponse)
-async def kiosk_page(request: Request, key: str = "", db: Session = Depends(get_db)):
+async def kiosk_page(request: Request, key: str = ""):
     """Entrance kiosk for Raspberry Pi + QR scanner. Auth via device API key."""
     if not key:
         return HTMLResponse("<h1>Missing device key. Use /kiosk?key=YOUR_DEVICE_KEY</h1>", status_code=401)
 
-    owner = db.query(UserORM).filter(
-        UserORM.device_api_key == key,
-        UserORM.role == "owner"
-    ).first()
-
-    if not owner:
-        return HTMLResponse("<h1>Invalid device key.</h1>", status_code=401)
-
-    gym_name = owner.gym_name or owner.username or "Gym"
-
+    from database import get_db_session
+    db = get_db_session()
     try:
-        return templates.TemplateResponse("kiosk.html", {
-            "request": request,
-            "device_key": key,
-            "gym_name": gym_name,
-        })
-    except Exception as e:
-        return HTMLResponse(f"<pre>Template error: {e}</pre>", status_code=500)
+        owner = db.query(UserORM).filter(
+            UserORM.device_api_key == key,
+            UserORM.role == "owner"
+        ).first()
+
+        if not owner:
+            return HTMLResponse("<h1>Invalid device key.</h1>", status_code=401)
+
+        gym_name = owner.gym_name or owner.username or "Gym"
+    finally:
+        db.close()
+
+    return templates.TemplateResponse("kiosk.html", {
+        "request": request,
+        "device_key": key,
+        "gym_name": gym_name,
+    })
 
 
 # ---- Pi Kiosk Setup Endpoints ----
