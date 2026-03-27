@@ -160,7 +160,8 @@ async function processQR(rawValue) {
             const data = await res.json();
             document.getElementById('granted-name').textContent = data.username;
             showState(stateGranted, 4000);
-            // Relay is triggered by Pi polling /api/device/gate-poll
+            // Trigger relay (same-origin when served via localhost proxy)
+            fetch('/trigger', { method: 'POST' }).catch(() => {});
         } else {
             const err = await res.json().catch(() => ({}));
             document.getElementById('denied-reason').textContent =
