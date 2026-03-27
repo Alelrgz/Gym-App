@@ -155,6 +155,34 @@ async def shower_session_complete(request: Request, data: dict, db: Session = De
     return {"status": "logged", "session_id": session_id}
 
 
+@router.post("/api/device/verify-access")
+async def device_verify_access(request: Request, data: dict, db: Session = Depends(get_db)):
+    """Verify QR access token from kiosk browser. Auth via X-Device-Key header."""
+    owner = _get_device_owner(request, db)
+
+    token = data.get("token", "")
+    user_id = data.get("user_id", "")
+    if not token or not user_id:
+        raise HTTPException(status_code=400, detail="Token and user_id required")
+
+    current_window = int(time.time() // 30)
+    for window in [current_window, current_window - 1]:
+        raw = f"{user_id}:{window}:{_ACCESS_SECRET}"
+        expected = hashlib.sha256(raw.encode()).hexdigest()[:12]
+        if token == expected:
+            member = db.query(UserORM).filter(
+                UserORM.id == user_id,
+                UserORM.gym_owner_id == owner.id,
+                UserORM.role == "client",
+                UserORM.is_active == True
+            ).first()
+            if not member:
+                raise HTTPException(status_code=404, detail="Member not found")
+            return {"valid": True, "username": member.username, "user_id": user_id}
+
+    raise HTTPException(status_code=401, detail="Token expired or invalid")
+
+
 @router.get("/api/device/ping")
 async def device_ping(request: Request):
     """Device health check for ESP32 boot sequence."""
