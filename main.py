@@ -1162,6 +1162,38 @@ async def startup_event():
     for route in app.routes:
         logger.info(f"{route.path} [{route.name}]")
 
+@app.websocket("/ws/gate/{device_key}")
+async def gate_websocket(websocket: WebSocket, device_key: str):
+    """WebSocket for Pi gate relay. Pi connects and waits for gate-open events."""
+    from route_modules.shower_routes import _gate_connections
+    db = get_db_session()
+    try:
+        owner = db.query(UserORM).filter(
+            UserORM.device_api_key == device_key,
+            UserORM.role == "owner"
+        ).first()
+    finally:
+        db.close()
+
+    if not owner:
+        await websocket.close(code=4001, reason="Invalid device key")
+        return
+
+    await websocket.accept()
+    _gate_connections[owner.id] = websocket
+    logger.info(f"Gate WebSocket connected for owner {owner.id}")
+
+    try:
+        while True:
+            # Keep connection alive — Pi sends pings, we just wait
+            await websocket.receive_text()
+    except Exception:
+        pass
+    finally:
+        _gate_connections.pop(owner.id, None)
+        logger.info(f"Gate WebSocket disconnected for owner {owner.id}")
+
+
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
     # Try to authenticate user from cookie

@@ -178,26 +178,26 @@ async def device_verify_access(request: Request, data: dict, db: Session = Depen
             ).first()
             if not member:
                 raise HTTPException(status_code=404, detail="Member not found")
-            # Store gate event for Pi polling
-            if not hasattr(device_verify_access, '_gate_events'):
-                device_verify_access._gate_events = {}
-            device_verify_access._gate_events[owner.id] = {
-                "username": member.username, "time": time.time()
-            }
+            # Push gate event to connected Pi via WebSocket
+            import asyncio
+            asyncio.ensure_future(_notify_gate(owner.id, member.username))
             return {"valid": True, "username": member.username, "user_id": user_id}
 
     raise HTTPException(status_code=401, detail="Token expired or invalid")
 
 
-@router.get("/api/device/gate-poll")
-async def gate_poll(request: Request, db: Session = Depends(get_db)):
-    """Pi polls this to check if it should open the gate."""
-    owner = _get_device_owner(request, db)
-    events = getattr(device_verify_access, '_gate_events', {})
-    event = events.pop(owner.id, None)
-    if event and time.time() - event["time"] < 30:
-        return {"gate": "open", "username": event["username"]}
-    return {"gate": "closed"}
+# ── Gate WebSocket for Pi relay ──────────────────────────────
+_gate_connections: dict = {}  # owner_id -> WebSocket
+
+
+async def _notify_gate(owner_id: str, username: str):
+    """Push gate-open event to connected Pi."""
+    ws = _gate_connections.get(owner_id)
+    if ws:
+        try:
+            await ws.send_json({"gate": "open", "username": username})
+        except Exception:
+            _gate_connections.pop(owner_id, None)
 
 
 @router.get("/api/device/ping")
