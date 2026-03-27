@@ -1584,11 +1584,20 @@ async def kiosk_page(request: Request, key: str = ""):
     finally:
         db.close()
 
-    return templates.TemplateResponse("kiosk.html", {
-        "request": request,
-        "device_key": key,
-        "gym_name": gym_name,
-    })
+    try:
+        return templates.TemplateResponse(request, "kiosk.html", {
+            "device_key": key,
+            "gym_name": gym_name,
+        })
+    except TypeError:
+        # Older Starlette signature
+        return templates.TemplateResponse("kiosk.html", {
+            "request": request,
+            "device_key": key,
+            "gym_name": gym_name,
+        })
+    except Exception as e:
+        return HTMLResponse(f"<pre>Template error: {type(e).__name__}: {e}</pre>", status_code=500)
 
 
 # ---- Pi Kiosk Setup Endpoints ----
