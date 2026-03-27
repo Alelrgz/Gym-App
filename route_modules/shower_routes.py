@@ -178,9 +178,26 @@ async def device_verify_access(request: Request, data: dict, db: Session = Depen
             ).first()
             if not member:
                 raise HTTPException(status_code=404, detail="Member not found")
+            # Store gate event for Pi polling
+            if not hasattr(device_verify_access, '_gate_events'):
+                device_verify_access._gate_events = {}
+            device_verify_access._gate_events[owner.id] = {
+                "username": member.username, "time": time.time()
+            }
             return {"valid": True, "username": member.username, "user_id": user_id}
 
     raise HTTPException(status_code=401, detail="Token expired or invalid")
+
+
+@router.get("/api/device/gate-poll")
+async def gate_poll(request: Request, db: Session = Depends(get_db)):
+    """Pi polls this to check if it should open the gate."""
+    owner = _get_device_owner(request, db)
+    events = getattr(device_verify_access, '_gate_events', {})
+    event = events.pop(owner.id, None)
+    if event and time.time() - event["time"] < 30:
+        return {"gate": "open", "username": event["username"]}
+    return {"gate": "closed"}
 
 
 @router.get("/api/device/ping")
