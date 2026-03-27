@@ -1360,7 +1360,48 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
 
   Future<void> _pickProfilePhoto() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.camera, maxWidth: 600, maxHeight: 600, imageQuality: 80);
+
+    // Choose: camera, gallery, or QR (remote phone snap)
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: AppColors.primary),
+              title: const Text('Scatta foto', style: TextStyle(color: Colors.white)),
+              subtitle: const Text('Usa la webcam del PC', style: TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+              onTap: () => Navigator.pop(ctx, 'camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: AppColors.primary),
+              title: const Text('Scegli dalla galleria', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(ctx, 'gallery'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.qr_code, color: AppColors.primary),
+              title: const Text('Scatta da telefono (QR)', style: TextStyle(color: Colors.white)),
+              subtitle: const Text('Scansiona il QR col telefono e scatta una foto', style: TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+              onTap: () => Navigator.pop(ctx, 'qr'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null) return;
+
+    if (choice == 'qr') {
+      await _startRemotePhotoSnap();
+      return;
+    }
+
+    final source = choice == 'camera' ? ImageSource.camera : ImageSource.gallery;
+    final picked = await picker.pickImage(source: source, maxWidth: 600, maxHeight: 600, imageQuality: 80);
     if (picked == null) return;
     final bytes = await picked.readAsBytes();
     final ext = picked.path.split('.').last.toLowerCase();
@@ -1368,6 +1409,38 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
     setState(() {
       _profilePhotoBase64 = 'data:$mimeType;base64,${base64Encode(bytes)}';
     });
+  }
+
+  Future<void> _startRemotePhotoSnap() async {
+    try {
+      final service = widget.ref.read(staffServiceProvider);
+      final session = await service.createPhotoSnapSession();
+      final token = session['token'] as String;
+      final url = session['url'] as String;
+
+      if (!mounted) return;
+      final photoData = await showDialog<String>(
+        context: context,
+        barrierDismissible: false,
+        builder: (ctx) => _RemotePhotoSnapDialog(
+          url: url,
+          token: token,
+          service: service,
+        ),
+      );
+
+      if (photoData != null && mounted) {
+        setState(() {
+          _profilePhotoBase64 = photoData;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore: $e')),
+        );
+      }
+    }
   }
 
   Widget _buildStep1() {
@@ -2183,6 +2256,173 @@ class _RemoteSigningDialogState extends State<_RemoteSigningDialog> {
                 Text(
                   'In attesa della firma di ${widget.clientName.isNotEmpty ? widget.clientName : "cliente"}...',
                   style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Annulla'),
+        ),
+      ],
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  REMOTE PHOTO SNAP DIALOG (QR code → phone camera)
+// ═══════════════════════════════════════════════════════════
+class _RemotePhotoSnapDialog extends StatefulWidget {
+  final String url;
+  final String token;
+  final StaffService service;
+
+  const _RemotePhotoSnapDialog({
+    required this.url,
+    required this.token,
+    required this.service,
+  });
+
+  @override
+  State<_RemotePhotoSnapDialog> createState() => _RemotePhotoSnapDialogState();
+}
+
+class _RemotePhotoSnapDialogState extends State<_RemotePhotoSnapDialog> {
+  bool _polling = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _startPolling();
+  }
+
+  @override
+  void dispose() {
+    _polling = false;
+    super.dispose();
+  }
+
+  Future<void> _startPolling() async {
+    while (_polling && mounted) {
+      await Future.delayed(const Duration(seconds: 2));
+      if (!_polling || !mounted) break;
+      try {
+        final result = await widget.service.pollPhotoSnapSession(widget.token);
+        if (result['status'] == 'uploaded' && mounted) {
+          _polling = false;
+          final photoData = result['photo_data']?.toString();
+          await Future.delayed(const Duration(milliseconds: 500));
+          if (mounted) Navigator.pop(context, photoData);
+          return;
+        }
+      } catch (_) {}
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      title: Row(
+        children: [
+          Container(
+            width: 32,
+            height: 32,
+            decoration: BoxDecoration(
+              color: AppColors.primary.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: const Icon(Icons.camera_alt, size: 18, color: AppColors.primary),
+          ),
+          const SizedBox(width: 10),
+          const Flexible(
+            child: Text('Foto dal Telefono',
+                style: TextStyle(fontSize: 18, color: AppColors.textPrimary)),
+          ),
+        ],
+      ),
+      content: SizedBox(
+        width: 340,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Scansiona il QR code con il telefono per scattare una foto del cliente.',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: QrImageView(
+                data: widget.url,
+                version: QrVersions.auto,
+                size: 200,
+                backgroundColor: Colors.white,
+                eyeStyle: const QrEyeStyle(
+                  eyeShape: QrEyeShape.square,
+                  color: Color(0xFF1A1A1A),
+                ),
+                dataModuleStyle: const QrDataModuleStyle(
+                  dataModuleShape: QrDataModuleShape.square,
+                  color: Color(0xFF1A1A1A),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: () {
+                Clipboard.setData(ClipboardData(text: widget.url));
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Link copiato!')),
+                );
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Flexible(
+                      child: Text(
+                        widget.url,
+                        style: const TextStyle(fontSize: 11, color: AppColors.textTertiary),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Icon(Icons.copy, size: 14, color: AppColors.textTertiary),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(
+                  width: 16,
+                  height: 16,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    color: AppColors.primary.withValues(alpha: 0.6),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Text(
+                  'In attesa della foto...',
+                  style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
                 ),
               ],
             ),

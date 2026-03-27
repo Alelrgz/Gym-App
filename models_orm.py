@@ -1092,6 +1092,18 @@ class SigningSessionORM(Base):
     signed_at = Column(String, nullable=True)
 
 
+class PhotoSnapSessionORM(Base):
+    """Temporary session for remote photo capture via QR code."""
+    __tablename__ = "photo_snap_sessions"
+
+    token = Column(String, primary_key=True, index=True)
+    photo_data = Column(Text, nullable=True)  # Base64 data URL
+    status = Column(String, default="pending")  # pending | uploaded
+    created_by = Column(String, ForeignKey("users.id"), nullable=True)
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    expires_at = Column(String, nullable=False)
+
+
 # --- MAGIC LOGIN TOKENS ---
 
 class MagicLoginTokenORM(Base):

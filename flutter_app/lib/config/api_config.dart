@@ -294,6 +294,8 @@ class ApiConfig {
   static const staffSendCredentials = '/api/staff/send-credentials';
   static const staffSigningSession = '/api/staff/signing-session';
   static String staffSigningSessionStatus(String token) => '/api/staff/signing-session/$token/status';
+  static const staffPhotoSnapSession = '/api/staff/photo-snap-session';
+  static String staffPhotoSnapSessionStatus(String token) => '/api/staff/photo-snap-session/$token/status';
   static String staffCheckoutSessionStatus(String id) => '/api/staff/checkout-session-status/$id';
   static const staffNfcTags = '/api/staff/nfc-tags';
   static const staffRegisterNfc = '/api/staff/register-nfc';

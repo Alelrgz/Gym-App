@@ -427,6 +427,156 @@ app.include_router(staff_router)
 # ── Remote signing page (phone browser) ────────────────────
 from fastapi.responses import HTMLResponse as _HTMLResponse
 
+@app.get("/snap/{token}", response_class=_HTMLResponse)
+async def photo_snap_page(token: str):
+    """Serve a self-contained camera capture page for phone browser."""
+    from models_orm import PhotoSnapSessionORM
+    from database import get_db_session
+    from datetime import datetime as _dt
+    _sdb = get_db_session()
+    try:
+        session = _sdb.query(PhotoSnapSessionORM).filter(PhotoSnapSessionORM.token == token).first()
+    finally:
+        _sdb.close()
+    if not session or session.status == "uploaded" or session.expires_at < _dt.utcnow().isoformat():
+        return _HTMLResponse(content="<html><body style='background:#111;color:#fff;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh;'><h2>Sessione scaduta o già usata</h2></body></html>", status_code=404)
+
+    return _HTMLResponse(content=f'''<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>FitOS — Foto Cliente</title>
+<style>
+* {{ margin:0; padding:0; box-sizing:border-box; }}
+body {{ background:#111; color:#fff; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; min-height:100dvh; display:flex; flex-direction:column; }}
+.header {{ padding:16px 20px; text-align:center; }}
+.header h1 {{ font-size:22px; font-weight:800; }}
+.header p {{ font-size:13px; color:#999; margin-top:4px; }}
+#camera-view {{ flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; padding:16px; }}
+video {{ width:100%; max-width:400px; border-radius:16px; background:#000; }}
+canvas {{ display:none; }}
+#preview {{ width:100%; max-width:400px; border-radius:16px; }}
+.controls {{ padding:16px 20px 32px; display:flex; gap:12px; justify-content:center; }}
+.btn {{ padding:14px 28px; border:none; border-radius:14px; font-size:15px; font-weight:700; cursor:pointer; }}
+.btn-primary {{ background:#f15a24; color:#fff; }}
+.btn-secondary {{ background:#252525; color:#fff; border:1px solid rgba(255,255,255,0.1); }}
+.btn-success {{ background:#22c55e; color:#fff; }}
+.btn:disabled {{ opacity:0.5; }}
+#success {{ display:none; flex:1; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20px; }}
+#success .checkmark {{ font-size:64px; margin-bottom:16px; }}
+#success h2 {{ font-size:22px; margin-bottom:8px; }}
+#success p {{ color:#999; font-size:14px; }}
+#error-msg {{ color:#ef4444; text-align:center; padding:8px; font-size:13px; display:none; }}
+</style>
+</head>
+<body>
+<div class="header">
+  <h1>Foto Cliente</h1>
+  <p>Scatta una foto per il profilo</p>
+</div>
+
+<div id="camera-view">
+  <video id="video" autoplay playsinline></video>
+  <img id="preview" style="display:none">
+  <canvas id="canvas"></canvas>
+  <div id="error-msg"></div>
+</div>
+
+<div class="controls" id="capture-controls">
+  <button class="btn btn-primary" id="captureBtn" onclick="capture()">Scatta Foto</button>
+</div>
+<div class="controls" id="confirm-controls" style="display:none">
+  <button class="btn btn-secondary" onclick="retry()">Riprova</button>
+  <button class="btn btn-success" id="confirmBtn" onclick="confirm()">Conferma</button>
+</div>
+
+<div id="success">
+  <div class="checkmark">✅</div>
+  <h2>Foto inviata!</h2>
+  <p>Puoi chiudere questa pagina</p>
+</div>
+
+<script>
+const token = "{token}";
+let stream = null;
+let photoDataUrl = null;
+
+async function startCamera() {{
+  try {{
+    stream = await navigator.mediaDevices.getUserMedia({{
+      video: {{ facingMode: "environment", width: {{ ideal: 800 }}, height: {{ ideal: 800 }} }}
+    }});
+    document.getElementById('video').srcObject = stream;
+  }} catch(e) {{
+    try {{
+      stream = await navigator.mediaDevices.getUserMedia({{ video: {{ facingMode: "user" }} }});
+      document.getElementById('video').srcObject = stream;
+    }} catch(e2) {{
+      const errEl = document.getElementById('error-msg');
+      errEl.textContent = 'Impossibile accedere alla fotocamera. Verifica i permessi.';
+      errEl.style.display = 'block';
+    }}
+  }}
+}}
+
+function capture() {{
+  const video = document.getElementById('video');
+  const canvas = document.getElementById('canvas');
+  const size = Math.min(video.videoWidth, video.videoHeight, 600);
+  canvas.width = size;
+  canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  const sx = (video.videoWidth - size) / 2;
+  const sy = (video.videoHeight - size) / 2;
+  ctx.drawImage(video, sx, sy, size, size, 0, 0, size, size);
+  photoDataUrl = canvas.toDataURL('image/jpeg', 0.85);
+
+  document.getElementById('preview').src = photoDataUrl;
+  document.getElementById('preview').style.display = 'block';
+  document.getElementById('video').style.display = 'none';
+  document.getElementById('capture-controls').style.display = 'none';
+  document.getElementById('confirm-controls').style.display = 'flex';
+}}
+
+function retry() {{
+  document.getElementById('preview').style.display = 'none';
+  document.getElementById('video').style.display = 'block';
+  document.getElementById('capture-controls').style.display = 'flex';
+  document.getElementById('confirm-controls').style.display = 'none';
+  photoDataUrl = null;
+}}
+
+async function confirm() {{
+  const btn = document.getElementById('confirmBtn');
+  btn.disabled = true;
+  btn.textContent = 'Invio...';
+  try {{
+    const resp = await fetch('/api/staff/photo-snap-session/' + token + '/upload', {{
+      method: 'POST',
+      headers: {{ 'Content-Type': 'application/json' }},
+      body: JSON.stringify({{ photo_data: photoDataUrl }})
+    }});
+    if (!resp.ok) throw new Error('Upload failed');
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    document.getElementById('camera-view').style.display = 'none';
+    document.getElementById('confirm-controls').style.display = 'none';
+    document.getElementById('success').style.display = 'flex';
+  }} catch(e) {{
+    btn.disabled = false;
+    btn.textContent = 'Conferma';
+    const errEl = document.getElementById('error-msg');
+    errEl.textContent = 'Errore durante l\\'invio. Riprova.';
+    errEl.style.display = 'block';
+  }}
+}}
+
+startCamera();
+</script>
+</body>
+</html>''')
+
+
 @app.get("/sign/{token}", response_class=_HTMLResponse)
 async def signing_page(token: str):
     """Serve a self-contained HTML signing page for phone browser."""

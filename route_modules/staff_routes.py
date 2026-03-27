@@ -1555,6 +1555,79 @@ async def submit_signing_session(token: str, data: dict, db: Session = Depends(g
     return {"status": "success", "message": "Firma registrata!"}
 
 
+# ═══════════════════════════════════════════════════════════
+#  REMOTE PHOTO SNAP (QR handoff for desktop → phone camera)
+# ═══════════════════════════════════════════════════════════
+
+@router.post("/photo-snap-session")
+async def create_photo_snap_session(
+    request: Request,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Create a temporary photo capture session. Returns a token and URL for the phone."""
+    if user.role not in ("staff", "owner"):
+        raise HTTPException(status_code=403, detail="Only staff/owner can create photo sessions")
+
+    from models_orm import PhotoSnapSessionORM
+    now = datetime.utcnow().isoformat()
+    db.query(PhotoSnapSessionORM).filter(PhotoSnapSessionORM.expires_at < now).delete()
+    db.commit()
+
+    token = _secrets.token_urlsafe(24)
+    expires = (datetime.utcnow() + timedelta(minutes=10)).isoformat()
+    db.add(PhotoSnapSessionORM(
+        token=token,
+        status="pending",
+        created_by=user.id,
+        expires_at=expires,
+    ))
+    db.commit()
+
+    base_url = str(request.base_url).rstrip("/")
+    # For QR codes scanned by phones, localhost won't work — use production URL
+    if "localhost" in base_url or "127.0.0.1" in base_url:
+        import os
+        base_url = os.environ.get("PRODUCTION_URL", "https://fitos-eu.onrender.com")
+    return {"token": token, "url": f"{base_url}/snap/{token}"}
+
+
+@router.get("/photo-snap-session/{token}/status")
+async def get_photo_snap_status(token: str, db: Session = Depends(get_db)):
+    """Poll for photo upload. No auth required (token is the secret)."""
+    from models_orm import PhotoSnapSessionORM
+    session = db.query(PhotoSnapSessionORM).filter(PhotoSnapSessionORM.token == token).first()
+    if not session or session.expires_at < datetime.utcnow().isoformat():
+        raise HTTPException(status_code=404, detail="Session not found or expired")
+
+    if session.status == "uploaded":
+        photo = session.photo_data
+        db.delete(session)
+        db.commit()
+        return {"status": "uploaded", "photo_data": photo}
+
+    return {"status": "pending"}
+
+
+@router.post("/photo-snap-session/{token}/upload")
+async def upload_photo_snap(token: str, data: dict, db: Session = Depends(get_db)):
+    """Receive photo from phone browser. No auth required (token is the secret)."""
+    from models_orm import PhotoSnapSessionORM
+    session = db.query(PhotoSnapSessionORM).filter(PhotoSnapSessionORM.token == token).first()
+    if not session or session.expires_at < datetime.utcnow().isoformat():
+        raise HTTPException(status_code=404, detail="Session not found or expired")
+    if session.status == "uploaded":
+        raise HTTPException(status_code=400, detail="Already uploaded")
+
+    photo = data.get("photo_data")
+    if not photo or not photo.startswith("data:image/"):
+        raise HTTPException(status_code=400, detail="photo_data must be a data:image/ URL")
+
+    session.photo_data = photo
+    session.status = "uploaded"
+    db.commit()
+    return {"status": "success"}
+
 
 @router.post("/send-credentials")
 async def send_client_credentials(
