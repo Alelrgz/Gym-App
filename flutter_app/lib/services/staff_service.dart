@@ -170,6 +170,16 @@ class StaffService {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> createPhotoSnapSession() async {
+    final response = await _api.post(ApiConfig.staffPhotoSnapSession, data: {});
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<Map<String, dynamic>> pollPhotoSnapSession(String token) async {
+    final response = await _api.get(ApiConfig.staffPhotoSnapSessionStatus(token));
+    return response.data as Map<String, dynamic>;
+  }
+
   // ── Password / Username ───────────────────────────────────
   Future<Map<String, dynamic>> resetMemberPassword(String memberId) async {
     final response = await _api.post(
