@@ -9,7 +9,16 @@ final websocketServiceProvider = Provider<WebSocketService>((ref) {
   final ws = WebSocketService(storage: storage);
   StreamSubscription<Map<String, dynamic>>? notifSub;
 
-  // Auto-connect when authenticated, disconnect on logout
+  // Connect immediately if already authenticated
+  final currentAuth = ref.read(authProvider);
+  if (currentAuth.status == AuthStatus.authenticated) {
+    ws.connect();
+    notifSub = ws.messages.listen((msg) {
+      _handleLocalNotification(msg);
+    });
+  }
+
+  // Auto-connect when auth state changes
   ref.listen(authProvider, (prev, next) {
     if (next.status == AuthStatus.authenticated) {
       ws.connect();
