@@ -1579,11 +1579,14 @@ async def kiosk_page(request: Request, key: str = "", db: Session = Depends(get_
 
     gym_name = owner.gym_name or owner.username or "Gym"
 
-    return templates.TemplateResponse("kiosk.html", {
-        "request": request,
-        "device_key": key,
-        "gym_name": gym_name,
-    })
+    try:
+        return templates.TemplateResponse("kiosk.html", {
+            "request": request,
+            "device_key": key,
+            "gym_name": gym_name,
+        })
+    except Exception as e:
+        return HTMLResponse(f"<pre>Template error: {e}</pre>", status_code=500)
 
 
 # ---- Pi Kiosk Setup Endpoints ----
