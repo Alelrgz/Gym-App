@@ -462,6 +462,21 @@ class ClientService {
     await _api.delete(ApiConfig.clientDeleteWorkout(workoutId));
   }
 
+  Future<void> createSplit(String name, Map<String, dynamic> schedule) async {
+    await _api.post('/api/client/split', data: {'name': name, 'schedule': schedule});
+  }
+
+  Future<void> updateSplit(String splitId, {String? name, Map<String, dynamic>? schedule}) async {
+    final data = <String, dynamic>{};
+    if (name != null) data['name'] = name;
+    if (schedule != null) data['schedule'] = schedule;
+    await _api.put('/api/client/split/$splitId', data: data);
+  }
+
+  Future<void> deleteSplit(String splitId) async {
+    await _api.delete('/api/client/split/$splitId');
+  }
+
   Future<List<Map<String, dynamic>>> getExerciseLibrary() async {
     final response = await _api.get(ApiConfig.exercises);
     final list = response.data as List<dynamic>;

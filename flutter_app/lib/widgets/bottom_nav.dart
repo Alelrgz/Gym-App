@@ -157,8 +157,8 @@ class AppBottomNav extends StatelessWidget {
                     child: Transform.scale(
                       scale: itemAnim.value,
                       child: GestureDetector(
-                        onTap: () {
-                          Navigator.of(ctx, rootNavigator: true).maybePop();
+                        onTap: () async {
+                          await Navigator.of(ctx, rootNavigator: true).maybePop();
                           onFabAction?.call(action.actionId);
                         },
                         child: Column(

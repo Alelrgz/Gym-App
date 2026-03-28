@@ -79,7 +79,7 @@ class DashboardScreen extends ConsumerWidget {
                   const SizedBox(width: 8),
                   _TopBarIcon(
                     icon: Icons.calendar_today_rounded,
-                    onTap: () => showBookAppointmentSheet(context, ref),
+                    onTap: () => showCalendarSheet(context, ref),
                   ),
                   const SizedBox(width: 8),
                   _TopBarIconBadge(

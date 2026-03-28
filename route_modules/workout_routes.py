@@ -1,10 +1,12 @@
 """
 Workout Routes - API endpoints for workout management.
 """
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Body
 from auth import get_current_user
-from models_orm import UserORM
+from models_orm import UserORM, WeeklySplitORM
 from service_modules.workout_service import WorkoutService, get_workout_service
+from database import get_db_session
+import json, uuid
 
 router = APIRouter()
 
@@ -105,8 +107,21 @@ async def client_list_workouts(
     service: WorkoutService = Depends(get_workout_service),
     current_user: UserORM = Depends(get_current_user)
 ):
-    """List all workouts owned by this client."""
-    return service.get_client_workouts(current_user.id)
+    """List all workouts owned by this client, plus their split."""
+    result = service.get_client_workouts(current_user.id)
+    # Also include client splits
+    db = get_db_session()
+    try:
+        splits = db.query(WeeklySplitORM).filter(WeeklySplitORM.owner_id == current_user.id).all()
+        result["splits"] = [{
+            "id": s.id,
+            "name": s.name,
+            "days_per_week": s.days_per_week,
+            "schedule": json.loads(s.schedule_json) if s.schedule_json else {},
+        } for s in splits]
+    finally:
+        db.close()
+    return result
 
 
 @router.delete("/api/client/workout/{workout_id}")
@@ -117,3 +132,92 @@ async def client_delete_workout(
 ):
     """Client deletes their own workout."""
     return service.delete_client_workout(workout_id, current_user.id)
+
+
+@router.get("/api/client/splits")
+async def get_client_splits(current_user: UserORM = Depends(get_current_user)):
+    """Get all client's personal weekly splits."""
+    db = get_db_session()
+    try:
+        splits = db.query(WeeklySplitORM).filter(WeeklySplitORM.owner_id == current_user.id).all()
+        return {
+            "splits": [{
+                "id": s.id,
+                "name": s.name,
+                "days_per_week": s.days_per_week,
+                "schedule": json.loads(s.schedule_json) if s.schedule_json else {},
+            } for s in splits]
+        }
+    finally:
+        db.close()
+
+
+@router.post("/api/client/split")
+async def create_client_split(
+    data: dict = Body(...),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Create a new client split."""
+    db = get_db_session()
+    try:
+        schedule = data.get("schedule", {})
+        name = data.get("name", "La Mia Split")
+        split = WeeklySplitORM(
+            id=str(uuid.uuid4()),
+            name=name,
+            days_per_week=len([v for v in schedule.values() if v]),
+            schedule_json=json.dumps(schedule),
+            owner_id=current_user.id,
+        )
+        db.add(split)
+        db.commit()
+        return {"status": "success", "id": split.id}
+    finally:
+        db.close()
+
+
+@router.put("/api/client/split/{split_id}")
+async def update_client_split(
+    split_id: str,
+    data: dict = Body(...),
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Update a client split."""
+    db = get_db_session()
+    try:
+        split = db.query(WeeklySplitORM).filter(
+            WeeklySplitORM.id == split_id,
+            WeeklySplitORM.owner_id == current_user.id
+        ).first()
+        if not split:
+            raise HTTPException(status_code=404, detail="Split not found")
+        if "name" in data:
+            split.name = data["name"]
+        if "schedule" in data:
+            split.schedule_json = json.dumps(data["schedule"])
+            split.days_per_week = len([v for v in data["schedule"].values() if v])
+        db.commit()
+        return {"status": "success"}
+    finally:
+        db.close()
+
+
+@router.delete("/api/client/split/{split_id}")
+async def delete_client_split(
+    split_id: str,
+    current_user: UserORM = Depends(get_current_user)
+):
+    """Delete a client split."""
+    db = get_db_session()
+    try:
+        split = db.query(WeeklySplitORM).filter(
+            WeeklySplitORM.id == split_id,
+            WeeklySplitORM.owner_id == current_user.id
+        ).first()
+        if not split:
+            raise HTTPException(status_code=404, detail="Split not found")
+        db.delete(split)
+        db.commit()
+        return {"status": "success"}
+    finally:
+        db.close()

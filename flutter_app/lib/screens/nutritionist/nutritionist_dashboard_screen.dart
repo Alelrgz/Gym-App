@@ -19,6 +19,7 @@ class _NutritionistDashboardScreenState
     extends ConsumerState<NutritionistDashboardScreen> {
   String _searchQuery = '';
   String? _statFilter; // null, 'active', 'at_risk', 'total', 'diets'
+  bool _sidebarCollapsed = false;
   String? _selectedClientId;
   Map<String, dynamic>? _clientDetail;
   bool _loadingDetail = false;
@@ -40,6 +41,7 @@ class _NutritionistDashboardScreenState
 
   // Expandable sections
   final Set<String> _expandedSections = {'overview', 'meal_plan'};
+  final Set<String> _expandedMeals = {}; // "day-idx" keys for expanded meal rows
 
   NutritionistService get _service =>
       ref.read(nutritionistServiceProvider);
@@ -102,18 +104,23 @@ class _NutritionistDashboardScreenState
           children: [
             _buildHeader(data),
             const SizedBox(height: 16),
-            _buildStatsRow(data),
-            const SizedBox(height: 16),
             Expanded(
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // LEFT: Client list only
-                  SizedBox(
-                    width: 380,
+                  // LEFT: Collapsible client sidebar
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOut,
+                    width: _sidebarCollapsed ? 56 : 300,
+                    clipBehavior: Clip.hardEdge,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.02),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
                     child: _buildLeftPanel(clients),
                   ),
-                  const SizedBox(width: 20),
+                  const SizedBox(width: 16),
                   // RIGHT: Client detail
                   Expanded(
                     child: _selectedClientId != null && _clientDetail != null
@@ -192,8 +199,6 @@ class _NutritionistDashboardScreenState
                   children: [
                     _buildHeader(data),
                     const SizedBox(height: 16),
-                    _buildStatsRow(data),
-                    const SizedBox(height: 16),
                     _buildSearchBar(),
                   ],
                 ),
@@ -222,64 +227,62 @@ class _NutritionistDashboardScreenState
   //  HEADER
   // ═══════════════════════════════════════════════════════
   Widget _buildHeader(Map<String, dynamic> data) {
-    return Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Nutrizionista',
-                style: TextStyle(
-                    fontSize: 11,
-                    color: Colors.grey[600],
-                    fontWeight: FontWeight.w600,
-                    letterSpacing: 1.5),
-              ),
-              Text(
-                data['name'] ?? 'Nutrizionista',
-                style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════
-  //  STATS ROW
-  // ═══════════════════════════════════════════════════════
-  Widget _buildStatsRow(Map<String, dynamic> data) {
     final clients = data['clients'] as List? ?? [];
     final active = data['active_clients'] ?? 0;
     final atRisk = data['at_risk_clients'] ?? 0;
     final total = clients.length;
-    final diets = clients
-        .where((c) => c['calories_target'] != null)
-        .length;
+    final diets = clients.where((c) => c['calories_target'] != null).length;
 
     return Row(
       children: [
-        _StatCard(value: '$active', label: 'Attivi', color: AppColors.success,
-            isActive: _statFilter == 'active',
-            onTap: () => setState(() => _statFilter = _statFilter == 'active' ? null : 'active')),
-        const SizedBox(width: 8),
-        _StatCard(value: '$atRisk', label: 'A Rischio', color: AppColors.danger,
-            isActive: _statFilter == 'at_risk',
-            onTap: () => setState(() => _statFilter = _statFilter == 'at_risk' ? null : 'at_risk')),
-        const SizedBox(width: 8),
-        _StatCard(value: '$total', label: 'Totali', color: Colors.white,
-            isActive: _statFilter == 'total',
-            onTap: () => setState(() => _statFilter = _statFilter == 'total' ? null : 'total')),
-        const SizedBox(width: 8),
-        _StatCard(value: '$diets', label: 'Diete', color: AppColors.primary,
-            isActive: _statFilter == 'diets',
-            onTap: () => setState(() => _statFilter = _statFilter == 'diets' ? null : 'diets')),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Nutrizionista',
+                style: TextStyle(fontSize: 11, color: Colors.grey[600],
+                    fontWeight: FontWeight.w600, letterSpacing: 1.5)),
+            Text(data['name'] ?? 'Nutrizionista',
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+          ],
+        ),
+        const Spacer(),
+        _statPill('$active', 'Attivi', AppColors.success, 'active'),
+        const SizedBox(width: 6),
+        _statPill('$atRisk', 'A Rischio', AppColors.danger, 'at_risk'),
+        const SizedBox(width: 6),
+        _statPill('$total', 'Totali', Colors.white, 'total'),
+        const SizedBox(width: 6),
+        _statPill('$diets', 'Diete', AppColors.primary, 'diets'),
       ],
+    );
+  }
+
+  Widget _statPill(String value, String label, Color color, String filterKey) {
+    final isActive = _statFilter == filterKey;
+    return GestureDetector(
+      onTap: () => setState(() => _statFilter = _statFilter == filterKey ? null : filterKey),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(20),
+          border: isActive
+              ? Border.all(color: color.withValues(alpha: 0.4), width: 1.5)
+              : Border.all(color: Colors.transparent, width: 1.5),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 5, height: 5, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+            const SizedBox(width: 5),
+            Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700,
+                color: isActive ? color : Colors.white)),
+            const SizedBox(width: 4),
+            Text(label, style: TextStyle(fontSize: 10, color: isActive ? color.withValues(alpha: 0.7) : Colors.grey[600],
+                fontWeight: FontWeight.w500)),
+          ],
+        ),
+      ),
     );
   }
 
@@ -289,28 +292,84 @@ class _NutritionistDashboardScreenState
   Widget _buildLeftPanel(List<Map<String, dynamic>> clients) {
     return Column(
       children: [
-        _buildSearchBar(),
-        const SizedBox(height: 10),
+        // Toggle + search
+        Padding(
+          padding: EdgeInsets.all(_sidebarCollapsed ? 12 : 14),
+          child: Row(
+            children: [
+              if (!_sidebarCollapsed) ...[
+                Expanded(child: _buildSearchBar()),
+                const SizedBox(width: 8),
+              ],
+              GestureDetector(
+                onTap: () => setState(() => _sidebarCollapsed = !_sidebarCollapsed),
+                child: Container(
+                  width: 32, height: 32,
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    _sidebarCollapsed ? Icons.chevron_right_rounded : Icons.chevron_left_rounded,
+                    size: 18, color: Colors.grey[500],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        // Client list
         Expanded(
           child: clients.isEmpty
-              ? Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.people_outline_rounded, size: 32, color: Colors.grey[800]),
-                      const SizedBox(height: 8),
-                      Text('Nessun cliente',
-                          style: TextStyle(fontSize: 13, color: Colors.grey[700])),
-                    ],
-                  ),
-                )
-              : ListView.builder(
-                  padding: EdgeInsets.zero,
-                  itemCount: clients.length,
-                  itemBuilder: (_, i) => _buildClientTile(clients[i]),
-                ),
+              ? (_sidebarCollapsed
+                  ? const SizedBox.shrink()
+                  : Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.people_outline_rounded, size: 32, color: Colors.grey[800]),
+                          const SizedBox(height: 8),
+                          Text('Nessun cliente', style: TextStyle(fontSize: 13, color: Colors.grey[700])),
+                        ],
+                      ),
+                    ))
+              : _sidebarCollapsed
+                  ? _buildCollapsedClientList(clients)
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      itemCount: clients.length,
+                      itemBuilder: (_, i) => _buildClientTile(clients[i]),
+                    ),
         ),
       ],
+    );
+  }
+
+  Widget _buildCollapsedClientList(List<Map<String, dynamic>> clients) {
+    return ListView.builder(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      itemCount: clients.length,
+      itemBuilder: (_, i) {
+        final c = clients[i];
+        final id = c['id'] as String;
+        final name = c['name'] as String? ?? '?';
+        final isSelected = id == _selectedClientId;
+
+        return GestureDetector(
+          onTap: () => _selectClient(id),
+          child: Container(
+            width: 40, height: 40,
+            margin: const EdgeInsets.only(bottom: 6),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: isSelected
+                  ? Border.all(color: AppColors.primary, width: 2)
+                  : null,
+            ),
+            child: _avatar(name, c['profile_picture'], 36),
+          ),
+        );
+      },
     );
   }
 
@@ -414,7 +473,59 @@ class _NutritionistDashboardScreenState
     }
     return SingleChildScrollView(
       padding: const EdgeInsets.only(bottom: 40),
-      child: _buildClientDetailContent(),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 720),
+          child: _buildClientDetailContent(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGroupCard({required List<Widget> children}) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.04)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: children,
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(String title, String sectionKey) {
+    final isExpanded = _expandedSections.contains(sectionKey);
+    return GestureDetector(
+      onTap: () => _toggleSection(sectionKey),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 12),
+        child: Row(
+          children: [
+            Text(title, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.white)),
+            const Spacer(),
+            AnimatedRotation(
+              turns: isExpanded ? 0.5 : 0,
+              duration: const Duration(milliseconds: 200),
+              child: Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Colors.grey[500]),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandableContent(String sectionKey, Widget child) {
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 250),
+      curve: Curves.easeInOut,
+      alignment: Alignment.topCenter,
+      child: _expandedSections.contains(sectionKey)
+          ? Padding(padding: const EdgeInsets.only(bottom: 4), child: child)
+          : const SizedBox.shrink(),
     );
   }
 
@@ -425,125 +536,42 @@ class _NutritionistDashboardScreenState
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        // Client header — always visible
         _buildClientHeader(d),
+        const SizedBox(height: 20),
+
+        // At a Glance
+        _buildGroupCard(children: [
+          _buildOverviewCard(d),
+          Divider(color: Colors.white.withValues(alpha: 0.06), height: 24),
+          _buildHealthProfileButton(d),
+        ]),
         const SizedBox(height: 16),
 
-        // Overview card — always visible (merged stats + computed metrics)
-        _buildOverviewCard(d),
-        const SizedBox(height: 8),
+        // Body & Goals
+        _buildGroupCard(children: [
+          _buildSectionHeader('Composizione Corporea', 'body_composition'),
+          _buildExpandableContent('body_composition', _buildBodyCompositionForm(d)),
+          Divider(color: Colors.white.withValues(alpha: 0.06), height: 1),
+          _buildSectionHeader('Obiettivi & Dieta', 'goals_diet'),
+          _buildExpandableContent('goals_diet', _buildGoalsDietContent(d, diet)),
+        ]),
+        const SizedBox(height: 16),
 
-        // Health profile button
-        _buildHealthProfileButton(d),
-        const SizedBox(height: 8),
+        // Meal Plan
+        _buildGroupCard(children: [
+          _buildSectionHeader('Piano Alimentare Settimanale', 'meal_plan'),
+          _buildExpandableContent('meal_plan', _buildMealPlanEditor()),
+        ]),
+        const SizedBox(height: 16),
 
-        // Body Composition — expandable
-        _buildSection(
-          title: 'Composizione Corporea',
-          summary: 'Last: ${d['weight'] ?? '—'}kg, ${d['body_fat_pct'] ?? '—'}% BF',
-          sectionKey: 'body_composition',
-          child: _buildBodyCompositionForm(d),
-        ),
-        const SizedBox(height: 4),
-
-        // Goals & Diet — expandable
-        _buildSection(
-          title: 'Obiettivi & Dieta',
-          summary: 'Goal: ${d['weight_goal'] ?? '—'}kg | ${diet['calories_target'] ?? '—'} kcal',
-          sectionKey: 'goals_diet',
-          child: _buildGoalsDietContent(d, diet),
-        ),
-        const SizedBox(height: 4),
-
-        // Meal Plan — expandable, default open
-        _buildSection(
-          title: 'Piano Alimentare Settimanale',
-          summary: '${_dayLabels[_mealPlanDay]} - ${(_mealPlan[_mealPlanDay] ?? []).length} pasti',
-          sectionKey: 'meal_plan',
-          child: _buildMealPlanEditor(),
-        ),
-        const SizedBox(height: 4),
-
-        // Charts — expandable
-        _buildSection(
-          title: 'Grafici Progressi',
-          summary: 'Peso, composizione, costanza dieta',
-          sectionKey: 'charts',
-          child: _buildChartsContent(),
-        ),
-        const SizedBox(height: 4),
-
-        // Notes — expandable
-        _buildSection(
-          title: 'Note',
-          summary: 'Appunti e promemoria',
-          sectionKey: 'notes',
-          child: _buildNotesContent(),
-        ),
-      ],
-    );
-  }
-
-  // ═══════════════════════════════════════════════════════
-  //  EXPANDABLE SECTION PATTERN
-  // ═══════════════════════════════════════════════════════
-  Widget _buildSection({
-    required String title,
-    required String summary,
-    required String sectionKey,
-    required Widget child,
-  }) {
-    final isExpanded = _expandedSections.contains(sectionKey);
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        GestureDetector(
-          onTap: () => _toggleSection(sectionKey),
-          child: Container(
-            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 4),
-            child: Row(
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey[400],
-                  ),
-                ),
-                const SizedBox(width: 8),
-                if (!isExpanded)
-                  Expanded(
-                    child: Text(
-                      summary,
-                      style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                if (isExpanded) const Spacer(),
-                Icon(
-                  isExpanded
-                      ? Icons.keyboard_arrow_up_rounded
-                      : Icons.keyboard_arrow_down_rounded,
-                  size: 18,
-                  color: Colors.grey[600],
-                ),
-              ],
-            ),
-          ),
-        ),
-        AnimatedSize(
-          duration: const Duration(milliseconds: 250),
-          curve: Curves.easeInOut,
-          alignment: Alignment.topCenter,
-          child: isExpanded
-              ? Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: child,
-                )
-              : const SizedBox.shrink(),
-        ),
+        // Insights
+        _buildGroupCard(children: [
+          _buildSectionHeader('Grafici Progressi', 'charts'),
+          _buildExpandableContent('charts', _buildChartsContent()),
+          Divider(color: Colors.white.withValues(alpha: 0.06), height: 1),
+          _buildSectionHeader('Note', 'notes'),
+          _buildExpandableContent('notes', _buildNotesContent()),
+        ]),
       ],
     );
   }
@@ -599,56 +627,43 @@ class _NutritionistDashboardScreenState
 
   // ── Overview Card (merged stats + computed) ─────────────
   Widget _buildOverviewCard(Map<String, dynamic> d) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(16),
-      ),
-      child: Column(
-        children: [
-          // Top row: weight, BF%, lean, fat
-          Row(
+    return Column(
+      children: [
+        // 2x2 grid with dividers
+        IntrinsicHeight(
+          child: Row(
             children: [
-              _MetricTile(
-                  label: 'Peso (kg)', value: d['weight']?.toString() ?? '—'),
-              const SizedBox(width: 8),
-              _MetricTile(
-                  label: 'Massa Grassa %',
-                  value: d['body_fat_pct']?.toString() ?? '—'),
-              const SizedBox(width: 8),
-              _MetricTile(
-                  label: 'Massa Magra',
-                  value: d['lean_mass'] != null ? '${d['lean_mass']}kg' : '—'),
-              const SizedBox(width: 8),
-              _MetricTile(
-                  label: 'Massa Grassa',
-                  value: d['fat_mass'] != null ? '${d['fat_mass']}kg' : '—'),
+              _MetricTile(label: 'Peso', value: d['weight']?.toString() ?? '—', unit: 'kg'),
+              Container(width: 1, color: Colors.white.withValues(alpha: 0.06)),
+              _MetricTile(label: 'Massa Grassa', value: d['body_fat_pct']?.toString() ?? '—', unit: '%'),
             ],
           ),
-          if (d['bmi'] != null || d['bmr'] != null || d['tdee'] != null) ...[
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Divider(
-                color: Colors.white.withValues(alpha: 0.06),
-                height: 1,
-              ),
-            ),
-            // Bottom row: BMI, BMR, TDEE
-            Row(
+        ),
+        Divider(color: Colors.white.withValues(alpha: 0.06), height: 1),
+        IntrinsicHeight(
+          child: Row(
+            children: [
+              _MetricTile(label: 'Massa Magra', value: d['lean_mass']?.toString() ?? '—', unit: 'kg'),
+              Container(width: 1, color: Colors.white.withValues(alpha: 0.06)),
+              _MetricTile(label: 'Massa Grassa', value: d['fat_mass']?.toString() ?? '—', unit: 'kg'),
+            ],
+          ),
+        ),
+        if (d['bmi'] != null || d['bmr'] != null || d['tdee'] != null) ...[
+          Divider(color: Colors.white.withValues(alpha: 0.06), height: 1),
+          IntrinsicHeight(
+            child: Row(
               children: [
                 _MetricTile(label: 'BMI', value: d['bmi']?.toString() ?? '—'),
-                const SizedBox(width: 8),
-                _MetricTile(
-                    label: 'BMR (kcal)', value: d['bmr']?.toString() ?? '—'),
-                const SizedBox(width: 8),
-                _MetricTile(
-                    label: 'TDEE (kcal)', value: d['tdee']?.toString() ?? '—'),
+                Container(width: 1, color: Colors.white.withValues(alpha: 0.06)),
+                _MetricTile(label: 'BMR', value: d['bmr']?.toString() ?? '—', unit: 'kcal'),
+                Container(width: 1, color: Colors.white.withValues(alpha: 0.06)),
+                _MetricTile(label: 'TDEE', value: d['tdee']?.toString() ?? '—', unit: 'kcal'),
               ],
             ),
-          ],
+          ),
         ],
-      ),
+      ],
     );
   }
 
@@ -703,21 +718,14 @@ class _NutritionistDashboardScreenState
 
     return Column(
       children: [
-        Row(
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
           children: [
-            Expanded(
-                child: _field('Peso (kg) *', weightCtrl, 'bc-weight')),
-            const SizedBox(width: 8),
-            Expanded(
-                child: _field('Massa Grassa %', bfCtrl, 'bc-bodyfat')),
-            const SizedBox(width: 8),
-            Expanded(
-                child:
-                    _field('Massa Grassa (kg)', fmCtrl, 'bc-fatmass')),
-            const SizedBox(width: 8),
-            Expanded(
-                child:
-                    _field('Massa Magra (kg)', lmCtrl, 'bc-leanmass')),
+            SizedBox(width: 150, child: _field('Peso (kg) *', weightCtrl, 'bc-weight')),
+            SizedBox(width: 150, child: _field('Massa Grassa %', bfCtrl, 'bc-bodyfat')),
+            SizedBox(width: 150, child: _field('Massa Grassa (kg)', fmCtrl, 'bc-fatmass')),
+            SizedBox(width: 150, child: _field('Massa Magra (kg)', lmCtrl, 'bc-leanmass')),
           ],
         ),
         const SizedBox(height: 12),
@@ -796,7 +804,8 @@ class _NutritionistDashboardScreenState
         const SizedBox(height: 8),
         Row(
           children: [
-            Expanded(
+            SizedBox(
+                width: 150,
                 child: _field(
                     'Peso obiettivo kg', goalCtrl, 'weight-goal')),
             const SizedBox(width: 8),
@@ -837,23 +846,14 @@ class _NutritionistDashboardScreenState
             style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600,
                 color: Colors.grey[500], letterSpacing: 0.5)),
         const SizedBox(height: 8),
-        Row(
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
           children: [
-            Expanded(child: _field('Calorie', calCtrl, 'diet-cal')),
-            const SizedBox(width: 8),
-            Expanded(
-                child: _field('Proteine (g)', proCtrl, 'diet-pro')),
-          ],
-        ),
-        const SizedBox(height: 8),
-        Row(
-          children: [
-            Expanded(
-                child:
-                    _field('Carboidrati (g)', carbCtrl, 'diet-carb')),
-            const SizedBox(width: 8),
-            Expanded(
-                child: _field('Grassi (g)', fatCtrl, 'diet-fat')),
+            SizedBox(width: 150, child: _field('Calorie', calCtrl, 'diet-cal')),
+            SizedBox(width: 150, child: _field('Proteine (g)', proCtrl, 'diet-pro')),
+            SizedBox(width: 150, child: _field('Carboidrati (g)', carbCtrl, 'diet-carb')),
+            SizedBox(width: 150, child: _field('Grassi (g)', fatCtrl, 'diet-fat')),
           ],
         ),
         const SizedBox(height: 12),
@@ -1004,8 +1004,15 @@ class _NutritionistDashboardScreenState
     );
   }
 
+  static const _mealIcons = {
+    'colazione': '🍳',
+    'spuntino_mattina': '🥤',
+    'pranzo': '🍝',
+    'spuntino_pomeriggio': '🥤',
+    'cena': '🍽️',
+  };
+
   List<Widget> _buildMealEntries(List<Map<String, dynamic>> meals) {
-    // Group by meal_type
     final mealOrder = _mealTypes.map((m) => m['value']).toList();
     final grouped = <String, List<_IndexedMeal>>{};
     for (var i = 0; i < meals.length; i++) {
@@ -1029,100 +1036,173 @@ class _NutritionistDashboardScreenState
 
       for (final entry in entries) {
         final isAlt = (entry.meal['alternative_index'] ?? 0) > 0;
-        widgets.add(Padding(
-          padding: EdgeInsets.only(
-              left: isAlt ? 16 : 0, bottom: 8),
-          child: _buildMealEntryCard(entry.index, entry.meal, isAlt),
-        ));
+        widgets.add(_buildMealRow(entry.index, entry.meal, isAlt));
       }
 
       // Add alternative button
       widgets.add(Padding(
-        padding: const EdgeInsets.only(left: 16, bottom: 8),
+        padding: const EdgeInsets.only(left: 40, bottom: 4),
         child: GestureDetector(
           onTap: () => _addAlternativeEntry(type),
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Icon(Icons.add_circle_outline,
-                  size: 12, color: _kAmber.withValues(alpha: 0.5)),
+              Icon(Icons.add_circle_outline, size: 12, color: _kAmber.withValues(alpha: 0.5)),
               const SizedBox(width: 4),
-              Text('Alternativa',
-                  style: TextStyle(
-                      fontSize: 10,
-                      color: _kAmber.withValues(alpha: 0.5))),
+              Text('Alternativa', style: TextStyle(fontSize: 10, color: _kAmber.withValues(alpha: 0.5))),
             ],
           ),
         ),
       ));
     }
+
+    // Day totals
+    int totalCal = 0, totalPro = 0, totalCarb = 0, totalFat = 0;
+    for (final m in meals.where((m) => (m['alternative_index'] ?? 0) == 0)) {
+      totalCal += (m['calories'] as int? ?? 0);
+      totalPro += (m['protein'] as int? ?? 0);
+      totalCarb += (m['carbs'] as int? ?? 0);
+      totalFat += (m['fat'] as int? ?? 0);
+    }
+    if (meals.isNotEmpty) {
+      widgets.add(Container(
+        margin: const EdgeInsets.only(top: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        decoration: BoxDecoration(
+          color: AppColors.primary.withValues(alpha: 0.08),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Row(
+          children: [
+            Text('Totale', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.grey[400])),
+            const Spacer(),
+            Text('$totalCal kcal', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary)),
+            const SizedBox(width: 12),
+            Text('P $totalPro', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+            const SizedBox(width: 8),
+            Text('C $totalCarb', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+            const SizedBox(width: 8),
+            Text('G $totalFat', style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+          ],
+        ),
+      ));
+    }
+
     return widgets;
   }
 
-  Widget _buildMealEntryCard(
-      int idx, Map<String, dynamic> meal, bool isAlt) {
-    final nameCtrl =
-        TextEditingController(text: meal['meal_name']?.toString() ?? '');
-    final descCtrl =
-        TextEditingController(text: meal['description']?.toString() ?? '');
-    final calCtrl =
-        TextEditingController(text: (meal['calories'] ?? 0).toString());
-    final proCtrl =
-        TextEditingController(text: (meal['protein'] ?? 0).toString());
-    final carbCtrl =
-        TextEditingController(text: (meal['carbs'] ?? 0).toString());
-    final fatCtrl =
-        TextEditingController(text: (meal['fat'] ?? 0).toString());
-
+  Widget _buildMealRow(int idx, Map<String, dynamic> meal, bool isAlt) {
+    final mealKey = '$_mealPlanDay-$idx';
+    final isExpanded = _expandedMeals.contains(mealKey);
     final mealType = meal['meal_type'] as String? ?? 'colazione';
-    final mealLabel =
-        _mealTypes.firstWhere((m) => m['value'] == mealType,
-            orElse: () => {'label': mealType})['label']!;
+    final mealLabel = _mealTypes.firstWhere(
+        (m) => m['value'] == mealType, orElse: () => {'label': mealType})['label']!;
+    final name = meal['meal_name']?.toString() ?? '';
+    final cal = meal['calories'] ?? 0;
+    final icon = _mealIcons[mealType] ?? '🍽️';
+
+    return Padding(
+      padding: EdgeInsets.only(left: isAlt ? 24 : 0, bottom: 2),
+      child: Column(
+        children: [
+          // Compact row — always visible
+          GestureDetector(
+            onTap: () => setState(() {
+              if (isExpanded) {
+                _expandedMeals.remove(mealKey);
+              } else {
+                _expandedMeals.add(mealKey);
+              }
+            }),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: isExpanded
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : Colors.white.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                children: [
+                  Text(icon, style: const TextStyle(fontSize: 14)),
+                  const SizedBox(width: 8),
+                  if (isAlt) ...[
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
+                      decoration: BoxDecoration(
+                        color: _kAmber.withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text('ALT', style: const TextStyle(fontSize: 8, fontWeight: FontWeight.w700, color: _kAmber)),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  Text(mealLabel, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                      color: isAlt ? Colors.grey[500] : Colors.white)),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(name.isNotEmpty ? name : '—',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                        overflow: TextOverflow.ellipsis),
+                  ),
+                  Text('$cal', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600,
+                      color: cal > 0 ? Colors.white : Colors.grey[700])),
+                  Text(' kcal', style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+                  const SizedBox(width: 6),
+                  Icon(isExpanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                      size: 16, color: Colors.grey[600]),
+                ],
+              ),
+            ),
+          ),
+
+          // Expanded detail
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            curve: Curves.easeInOut,
+            alignment: Alignment.topCenter,
+            child: isExpanded
+                ? _buildMealDetail(idx, meal, isAlt)
+                : const SizedBox.shrink(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMealDetail(int idx, Map<String, dynamic> meal, bool isAlt) {
+    final nameCtrl = TextEditingController(text: meal['meal_name']?.toString() ?? '');
+    final descCtrl = TextEditingController(text: meal['description']?.toString() ?? '');
+    final calCtrl = TextEditingController(text: (meal['calories'] ?? 0).toString());
+    final proCtrl = TextEditingController(text: (meal['protein'] ?? 0).toString());
+    final carbCtrl = TextEditingController(text: (meal['carbs'] ?? 0).toString());
+    final fatCtrl = TextEditingController(text: (meal['fat'] ?? 0).toString());
+    final mealType = meal['meal_type'] as String? ?? 'colazione';
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 4),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(10),
+          bottomRight: Radius.circular(10),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Meal type + delete
           Row(
             children: [
-              if (isAlt)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(mealLabel,
-                        style: TextStyle(
-                            fontSize: 11, color: Colors.grey[600])),
-                    const SizedBox(width: 6),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 6, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: _kAmber.withValues(alpha: 0.2),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Text(
-                          'ALT ${meal['alternative_index']}',
-                          style: const TextStyle(
-                              fontSize: 9,
-                              fontWeight: FontWeight.w700,
-                              color: _kAmber)),
-                    ),
-                  ],
-                )
-              else
-                Expanded(
-                  child: _mealTypeDropdown(idx, mealType),
-                ),
-              const Spacer(),
+              if (!isAlt) Expanded(child: _mealTypeDropdown(idx, mealType)),
+              if (isAlt) const Spacer(),
               GestureDetector(
-                onTap: () => _removeMealEntry(idx),
-                child: const Icon(Icons.delete_outline,
-                    size: 16, color: AppColors.danger),
+                onTap: () {
+                  _expandedMeals.remove('$_mealPlanDay-$idx');
+                  _removeMealEntry(idx);
+                },
+                child: const Icon(Icons.delete_outline, size: 16, color: AppColors.danger),
               ),
             ],
           ),
@@ -1135,27 +1215,23 @@ class _NutritionistDashboardScreenState
             _mealPlan[_mealPlanDay]![idx]['description'] = v;
           }, fontSize: 11),
           const SizedBox(height: 8),
-          Row(
+          // Compact macro row
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
             children: [
-              _macroField('Kcal', calCtrl, (v) {
-                _mealPlan[_mealPlanDay]![idx]['calories'] =
-                    int.tryParse(v) ?? 0;
-              }),
-              const SizedBox(width: 6),
-              _macroField('Prot', proCtrl, (v) {
-                _mealPlan[_mealPlanDay]![idx]['protein'] =
-                    int.tryParse(v) ?? 0;
-              }),
-              const SizedBox(width: 6),
-              _macroField('Carb', carbCtrl, (v) {
-                _mealPlan[_mealPlanDay]![idx]['carbs'] =
-                    int.tryParse(v) ?? 0;
-              }),
-              const SizedBox(width: 6),
-              _macroField('Grassi', fatCtrl, (v) {
-                _mealPlan[_mealPlanDay]![idx]['fat'] =
-                    int.tryParse(v) ?? 0;
-              }),
+              SizedBox(width: 80, child: _macroField('Kcal', calCtrl, (v) {
+                _mealPlan[_mealPlanDay]![idx]['calories'] = int.tryParse(v) ?? 0;
+              })),
+              SizedBox(width: 80, child: _macroField('Prot', proCtrl, (v) {
+                _mealPlan[_mealPlanDay]![idx]['protein'] = int.tryParse(v) ?? 0;
+              })),
+              SizedBox(width: 80, child: _macroField('Carb', carbCtrl, (v) {
+                _mealPlan[_mealPlanDay]![idx]['carbs'] = int.tryParse(v) ?? 0;
+              })),
+              SizedBox(width: 80, child: _macroField('Grassi', fatCtrl, (v) {
+                _mealPlan[_mealPlanDay]![idx]['fat'] = int.tryParse(v) ?? 0;
+              })),
             ],
           ),
         ],
@@ -2188,8 +2264,7 @@ class _NutritionistDashboardScreenState
 
   Widget _macroField(
       String label, TextEditingController ctrl, ValueChanged<String> onChanged) {
-    return Expanded(
-      child: Column(
+    return Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(label,
@@ -2225,8 +2300,7 @@ class _NutritionistDashboardScreenState
             ),
           ),
         ],
-      ),
-    );
+      );
   }
 
   Widget _sectionLabel(String text) {
@@ -2250,86 +2324,41 @@ class _NutritionistDashboardScreenState
 //  SMALL HELPER WIDGETS
 // ═══════════════════════════════════════════════════════════
 
-class _StatCard extends StatelessWidget {
-  final String value;
-  final String label;
-  final Color color;
-  final bool isActive;
-  final VoidCallback? onTap;
-
-  const _StatCard(
-      {required this.value, required this.label, required this.color,
-       this.isActive = false, this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return Expanded(
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.03),
-            borderRadius: BorderRadius.circular(16),
-            border: isActive
-                ? Border.all(color: color.withValues(alpha: 0.4), width: 1.5)
-                : Border.all(color: Colors.transparent, width: 1.5),
-          ),
-          child: Column(
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      color: color,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(value,
-                      style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w700,
-                          color: isActive ? color : Colors.white)),
-                ],
-              ),
-              const SizedBox(height: 4),
-              Text(label,
-                  style: TextStyle(
-                      fontSize: 10,
-                      color: isActive ? color.withValues(alpha: 0.7) : Colors.grey[600],
-                      fontWeight: FontWeight.w500,
-                      letterSpacing: 0.3)),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 class _MetricTile extends StatelessWidget {
   final String label;
   final String value;
+  final String? unit;
 
-  const _MetricTile({required this.label, required this.value});
+  const _MetricTile({required this.label, required this.value, this.unit});
 
   @override
   Widget build(BuildContext context) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 12),
         child: Column(
           children: [
-            Text(value,
-                style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.baseline,
+              textBaseline: TextBaseline.alphabetic,
+              children: [
+                Text(value,
+                    style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white)),
+                if (unit != null) ...[
+                  const SizedBox(width: 2),
+                  Text(unit!,
+                      style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                          color: Colors.grey[500])),
+                ],
+              ],
+            ),
             const SizedBox(height: 2),
             Text(label,
                 style: TextStyle(

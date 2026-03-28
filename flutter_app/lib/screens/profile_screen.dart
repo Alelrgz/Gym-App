@@ -372,14 +372,22 @@ class ProfileScreen extends ConsumerWidget {
 
   void _showHealthProfileSheet(BuildContext context, WidgetRef ref) {
     final clientService = ref.read(clientServiceProvider);
-    showModalBottomSheet(
+    showGeneralDialog(
       context: context,
-      isScrollControlled: true,
-      backgroundColor: AppColors.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      barrierDismissible: true,
+      barrierLabel: 'Health Profile',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 250),
+      transitionBuilder: (context, anim, secondAnim, child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+          child: FadeTransition(opacity: anim, child: child),
+        );
+      },
+      pageBuilder: (context, _, __) => Material(
+        color: Colors.transparent,
+        child: _HealthProfileSheet(clientService: clientService),
       ),
-      builder: (_) => _HealthProfileSheet(clientService: clientService),
     );
   }
 
@@ -1194,6 +1202,7 @@ class _HealthProfileSheet extends StatefulWidget {
 }
 
 class _HealthProfileSheetState extends State<_HealthProfileSheet> {
+  int _step = 0; // 0 = Dati Base, 1 = Salute, 2 = Stile di Vita
   bool _loading = true;
   bool _saving = false;
 
@@ -1275,116 +1284,168 @@ class _HealthProfileSheetState extends State<_HealthProfileSheet> {
       );
     }
 
-    return DraggableScrollableSheet(
-      expand: false,
-      initialChildSize: 0.85,
-      maxChildSize: 0.95,
-      builder: (_, scrollCtrl) {
-        return SingleChildScrollView(
-          controller: scrollCtrl,
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40, height: 4,
+    final stepTitles = ['Dati Base', 'Salute & Alimentazione', 'Stile di Vita'];
+
+    return Center(
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 400),
+        margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 40),
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Header
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 20, 12, 0),
+              child: Row(children: [
+                Icon(Icons.favorite_rounded, color: AppColors.primary, size: 22),
+                const SizedBox(width: 8),
+                Text(stepTitles[_step],
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
+                const Spacer(),
+                IconButton(
+                  icon: const Icon(Icons.close, color: Colors.grey, size: 22),
+                  onPressed: () => Navigator.pop(context),
+                ),
+              ]),
+            ),
+
+            // Step dots
+            Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(3, (i) => Container(
+                  width: i == _step ? 24 : 8,
+                  height: 8,
+                  margin: const EdgeInsets.symmetric(horizontal: 3),
                   decoration: BoxDecoration(
-                    color: Colors.grey[700],
-                    borderRadius: BorderRadius.circular(2),
+                    color: i == _step ? AppColors.primary : Colors.grey[700],
+                    borderRadius: BorderRadius.circular(4),
                   ),
+                )),
+              ),
+            ),
+
+            // Step content
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 200),
+                  child: _buildStep(),
                 ),
               ),
-              const SizedBox(height: 16),
-              Row(children: [
-                Icon(Icons.favorite_rounded, color: const Color(0xFFF59E0B), size: 22),
-                const SizedBox(width: 8),
-                const Text('Profilo Salute',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white)),
-              ]),
-              const SizedBox(height: 20),
+            ),
 
-              // Basic
-              _label('Dati Base'),
-              const SizedBox(height: 8),
-              Row(children: [
-                Expanded(child: _textField('Altezza (cm)', _heightCtrl, TextInputType.number)),
-                const SizedBox(width: 8),
-                Expanded(child: _dropdownField('Sesso', _gender, ['', 'male', 'female', 'other'],
-                    ['—', 'Maschio', 'Femmina', 'Altro'], (v) => setState(() => _gender = v))),
-              ]),
-              const SizedBox(height: 8),
-              Row(children: [
-                Expanded(child: _textField('Data di Nascita', _dobCtrl, TextInputType.datetime)),
-                const SizedBox(width: 8),
-                Expanded(child: _dropdownField('Livello Attività', _activityLevel,
-                    ['', 'sedentary', 'light', 'moderate', 'active', 'very_active'],
-                    ['—', 'Sedentario', 'Leggero', 'Moderato', 'Attivo', 'Molto Attivo'],
-                    (v) => setState(() => _activityLevel = v))),
-              ]),
-              const SizedBox(height: 16),
-
-              // Medical
-              _label('Salute & Alimentazione'),
-              const SizedBox(height: 8),
-              _textField('Allergie / Intolleranze', _allergiesCtrl, TextInputType.text),
-              const SizedBox(height: 8),
-              _textField('Condizioni Mediche', _medicalCtrl, TextInputType.text),
-              const SizedBox(height: 8),
-              _textField('Integratori', _supplementsCtrl, TextInputType.text),
-              const SizedBox(height: 16),
-
-              // Lifestyle
-              _label('Stile di Vita'),
-              const SizedBox(height: 8),
-              Row(children: [
-                Expanded(child: _textField('Ore di Sonno', _sleepCtrl, TextInputType.number)),
-                const SizedBox(width: 8),
-                Expanded(child: _dropdownField('Frequenza Pasti', _mealFrequency,
-                    ['', '3_meals', '5_small', 'intermittent_fasting', 'custom'],
-                    ['—', '3 Pasti', '5 Piccoli Pasti', 'Digiuno Intermittente', 'Personalizzato'],
-                    (v) => setState(() => _mealFrequency = v))),
-              ]),
-              const SizedBox(height: 8),
-              Row(children: [
-                Expanded(child: _dropdownField('Preferenze Alimentari', _foodPreferences,
-                    ['', 'none', 'vegan', 'vegetarian', 'halal', 'kosher', 'other'],
-                    ['—', 'Nessuna', 'Vegano', 'Vegetariano', 'Halal', 'Kosher', 'Altro'],
-                    (v) => setState(() => _foodPreferences = v))),
-                const SizedBox(width: 8),
-                Expanded(child: _dropdownField('Occupazione', _occupationType,
-                    ['', 'sedentary', 'light_physical', 'heavy_physical'],
-                    ['—', 'Sedentaria', 'Attività Leggera', 'Lavoro Fisico'],
-                    (v) => setState(() => _occupationType = v))),
-              ]),
-              const SizedBox(height: 24),
-
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _saving ? null : _save,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            // Bottom buttons
+            Padding(
+              padding: const EdgeInsets.all(20),
+              child: Row(children: [
+                if (_step > 0)
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => setState(() => _step--),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      ),
+                      child: Text('Indietro', style: TextStyle(color: Colors.grey[400], fontWeight: FontWeight.w600)),
+                    ),
                   ),
-                  child: _saving
-                      ? const SizedBox(width: 20, height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                      : const Text('Salva Profilo Salute',
-                          style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                if (_step > 0) const SizedBox(width: 12),
+                Expanded(
+                  flex: 2,
+                  child: ElevatedButton(
+                    onPressed: _saving ? null : () {
+                      if (_step < 2) {
+                        setState(() => _step++);
+                      } else {
+                        _save();
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primary,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    ),
+                    child: _saving
+                        ? const SizedBox(width: 20, height: 20,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : Text(_step < 2 ? 'Avanti' : 'Salva',
+                            style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                  ),
                 ),
-              ),
-              const SizedBox(height: 20),
-            ],
-          ),
-        );
-      },
+              ]),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
-  Widget _label(String text) => Text(text,
-      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.grey[400]));
+  Widget _buildStep() {
+    switch (_step) {
+      case 0:
+        return Column(
+          key: const ValueKey(0),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _textField('Altezza (cm)', _heightCtrl, TextInputType.number),
+            const SizedBox(height: 12),
+            _dropdownField('Sesso', _gender, ['', 'male', 'female'],
+                ['—', 'Maschio', 'Femmina'], (v) => setState(() => _gender = v)),
+            const SizedBox(height: 12),
+            _textField('Data di Nascita', _dobCtrl, TextInputType.datetime),
+            const SizedBox(height: 12),
+            _dropdownField('Livello Attività', _activityLevel,
+                ['', 'sedentary', 'light', 'moderate', 'active', 'very_active'],
+                ['—', 'Sedentario', 'Leggero', 'Moderato', 'Attivo', 'Molto Attivo'],
+                (v) => setState(() => _activityLevel = v)),
+          ],
+        );
+      case 1:
+        return Column(
+          key: const ValueKey(1),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _textField('Allergie / Intolleranze', _allergiesCtrl, TextInputType.text),
+            const SizedBox(height: 12),
+            _textField('Condizioni Mediche', _medicalCtrl, TextInputType.text),
+            const SizedBox(height: 12),
+            _textField('Integratori', _supplementsCtrl, TextInputType.text),
+          ],
+        );
+      case 2:
+        return Column(
+          key: const ValueKey(2),
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _textField('Ore di Sonno', _sleepCtrl, TextInputType.number),
+            const SizedBox(height: 12),
+            _dropdownField('Frequenza Pasti', _mealFrequency,
+                ['', '3_meals', '5_small', 'intermittent_fasting', 'custom'],
+                ['—', '3 Pasti', '5 Piccoli Pasti', 'Digiuno Intermittente', 'Personalizzato'],
+                (v) => setState(() => _mealFrequency = v)),
+            const SizedBox(height: 12),
+            _dropdownField('Preferenze Alimentari', _foodPreferences,
+                ['', 'none', 'vegan', 'vegetarian', 'halal', 'kosher', 'other'],
+                ['—', 'Nessuna', 'Vegano', 'Vegetariano', 'Halal', 'Kosher', 'Altro'],
+                (v) => setState(() => _foodPreferences = v)),
+            const SizedBox(height: 12),
+            _dropdownField('Occupazione', _occupationType,
+                ['', 'sedentary', 'light_physical', 'heavy_physical'],
+                ['—', 'Sedentaria', 'Attività Leggera', 'Lavoro Fisico'],
+                (v) => setState(() => _occupationType = v)),
+          ],
+        );
+      default:
+        return const SizedBox.shrink();
+    }
+  }
 
   Widget _textField(String label, TextEditingController ctrl, TextInputType type) {
     return TextField(
@@ -1406,6 +1467,7 @@ class _HealthProfileSheetState extends State<_HealthProfileSheet> {
       List<String> labels, ValueChanged<String> onChanged) {
     return DropdownButtonFormField<String>(
       initialValue: values.contains(value) ? value : '',
+      isExpanded: true,
       dropdownColor: AppColors.surface,
       style: const TextStyle(color: Colors.white, fontSize: 14),
       decoration: InputDecoration(
