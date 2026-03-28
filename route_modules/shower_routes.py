@@ -178,9 +178,62 @@ async def device_verify_access(request: Request, data: dict, db: Session = Depen
             ).first()
             if not member:
                 raise HTTPException(status_code=404, detail="Member not found")
+            # Record check-in
+            db.add(CheckInORM(
+                member_id=user_id,
+                gym_owner_id=owner.id,
+                checked_in_at=datetime.utcnow().isoformat(),
+                notes="QR turnstile",
+            ))
+            db.commit()
+            # Push gate event to connected Pi via WebSocket
+            import asyncio
+            asyncio.ensure_future(_notify_gate(owner.id, member.username))
+            # Notify staff dashboard of check-in (use fresh db since this one closes)
+            asyncio.ensure_future(_notify_staff_checkin(
+                owner.id, member.username,
+                member.profile_picture, member.id
+            ))
             return {"valid": True, "username": member.username, "user_id": user_id}
 
     raise HTTPException(status_code=401, detail="Token expired or invalid")
+
+
+# ── Gate WebSocket for Pi relay ──────────────────────────────
+_gate_connections: dict = {}  # owner_id -> WebSocket
+
+
+async def _notify_gate(owner_id: str, username: str):
+    """Push gate-open event to connected Pi."""
+    ws = _gate_connections.get(owner_id)
+    if ws:
+        try:
+            await ws.send_json({"gate": "open", "username": username})
+        except Exception:
+            _gate_connections.pop(owner_id, None)
+
+
+async def _notify_staff_checkin(owner_id: str, username: str, profile_picture: str, member_id: str):
+    """Push check-in notification to all connected staff/owner users of this gym."""
+    from sockets import manager
+    db = get_db_session()
+    try:
+        staff_users = db.query(UserORM).filter(
+            ((UserORM.gym_owner_id == owner_id) | (UserORM.id == owner_id)),
+            UserORM.role.in_(["staff", "owner"]),
+        ).all()
+        for user in staff_users:
+            await manager.send_to_user(user.id, {
+                "type": "client_checkin",
+                "username": username,
+                "profile_picture": profile_picture,
+                "member_id": member_id,
+                "time": datetime.utcnow().isoformat(),
+            })
+    except Exception as e:
+        logger.warning(f"Staff check-in notify error: {e}")
+    finally:
+        db.close()
 
 
 @router.get("/api/device/ping")

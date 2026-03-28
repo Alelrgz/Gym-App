@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/websocket_provider.dart';
 import '../../config/api_config.dart';
 
 const double _kDesktopBreakpoint = 1024;
@@ -35,7 +36,8 @@ class _StaffHomeScreenState extends ConsumerState<StaffHomeScreen> {
   @override
   void initState() {
     super.initState();
-    // Only poll on mobile — desktop doesn't need to receive push-to-phone notifications
+    // Initialize WebSocket for real-time notifications (check-ins, etc.)
+    ref.read(websocketServiceProvider);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final width = MediaQuery.of(context).size.shortestSide;
       if (width < 600) {

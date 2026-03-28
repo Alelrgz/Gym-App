@@ -160,8 +160,8 @@ async function processQR(rawValue) {
             const data = await res.json();
             document.getElementById('granted-name').textContent = data.username;
             showState(stateGranted, 4000);
-            // Trigger relay to open turnstile
-            fetch('http://localhost:5555/trigger', { method: 'POST' }).catch(() => {});
+            // Trigger relay (same-origin when served via localhost proxy)
+            fetch('/trigger', { method: 'POST' }).catch(() => {});
         } else {
             const err = await res.json().catch(() => ({}));
             document.getElementById('denied-reason').textContent =

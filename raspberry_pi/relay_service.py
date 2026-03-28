@@ -20,6 +20,15 @@ import threading
 
 app = Flask(__name__)
 
+
+@app.after_request
+def add_cors_headers(response):
+    """Allow requests from any origin (kiosk runs on HTTPS, relay on HTTP)."""
+    response.headers['Access-Control-Allow-Origin'] = '*'
+    response.headers['Access-Control-Allow-Methods'] = 'POST, GET, OPTIONS'
+    response.headers['Access-Control-Allow-Headers'] = 'Content-Type'
+    return response
+
 HOLD_SECONDS = 1.5  # How long the turnstile stays unlocked
 relay_lock = threading.Lock()
 
@@ -96,11 +105,86 @@ def health():
     })
 
 
+@app.route('/kiosk', methods=['GET'])
+def kiosk_proxy():
+    """Serve the kiosk page from Render through localhost (avoids all CORS/mixed-content issues)."""
+    import requests as req
+    from flask import request as flask_req, Response
+
+    device_key = flask_req.args.get('key', '')
+    server = REMOTE_SERVER
+    try:
+        resp = req.get(f"{server}/kiosk?key={device_key}", timeout=10)
+        html = resp.text
+        # Keep API_BASE empty — all API calls will be proxied through localhost too
+        return Response(html, content_type='text/html')
+    except Exception as e:
+        return f"<html><body style='background:#111;color:#fff;'><h2>Errore connessione server: {e}</h2></body></html>", 503
+
+
+@app.route('/api/<path:path>', methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
+def api_proxy(path):
+    """Proxy all /api/* calls to Render so the kiosk page stays same-origin."""
+    import requests as req
+    from flask import request as flask_req, Response
+
+    url = f"{REMOTE_SERVER}/api/{path}"
+    headers = {k: v for k, v in flask_req.headers if k.lower() not in ('host', 'content-length')}
+
+    try:
+        resp = req.request(
+            method=flask_req.method,
+            url=url,
+            headers=headers,
+            data=flask_req.get_data(),
+            params=flask_req.args,
+            timeout=15,
+        )
+        return Response(resp.content, status=resp.status_code,
+                        headers={'Content-Type': resp.headers.get('Content-Type', 'application/json')})
+    except Exception as e:
+        return jsonify({"detail": f"Proxy error: {e}"}), 502
+
+
+REMOTE_SERVER = "https://fitos-eu.onrender.com"
+DEVICE_KEY = ""
+_pending_triggers = []
+
+
+@app.route('/relay-trigger', methods=['POST'])
+def relay_trigger_from_server():
+    """Called by the kiosk page JS — queues a relay trigger."""
+    _pending_triggers.append(True)
+    return jsonify({"status": "queued"})
+
+
+def _poll_and_trigger():
+    """Background thread: watch for pending triggers and fire the relay."""
+    import time as _t
+    while True:
+        if _pending_triggers:
+            _pending_triggers.clear()
+            relay_id = find_relay_id()
+            if relay_id:
+                trigger_relay(relay_id)
+        _t.sleep(0.3)
+
+
 if __name__ == '__main__':
+    import sys
+    if len(sys.argv) > 1:
+        REMOTE_SERVER = sys.argv[1]
+
     relay_id = find_relay_id()
     if relay_id:
         print(f"USB HID relay found: {relay_id}")
     else:
         print("WARNING: No USB relay detected. Install usbrelay and plug in the relay.")
+
+    # Start relay trigger thread
+    trigger_thread = threading.Thread(target=_poll_and_trigger, daemon=True)
+    trigger_thread.start()
+
     print(f"Relay service listening on http://localhost:5555")
-    app.run(host='127.0.0.1', port=5555, debug=False)
+    print(f"Kiosk page: http://localhost:5555/kiosk?key=YOUR_DEVICE_KEY")
+    app.run(host='0.0.0.0', port=5555, debug=False)

@@ -1162,6 +1162,38 @@ async def startup_event():
     for route in app.routes:
         logger.info(f"{route.path} [{route.name}]")
 
+@app.websocket("/ws/gate/{device_key}")
+async def gate_websocket(websocket: WebSocket, device_key: str):
+    """WebSocket for Pi gate relay. Pi connects and waits for gate-open events."""
+    from route_modules.shower_routes import _gate_connections
+    db = get_db_session()
+    try:
+        owner = db.query(UserORM).filter(
+            UserORM.device_api_key == device_key,
+            UserORM.role == "owner"
+        ).first()
+    finally:
+        db.close()
+
+    if not owner:
+        await websocket.close(code=4001, reason="Invalid device key")
+        return
+
+    await websocket.accept()
+    _gate_connections[owner.id] = websocket
+    logger.info(f"Gate WebSocket connected for owner {owner.id}")
+
+    try:
+        while True:
+            # Keep connection alive — Pi sends pings, we just wait
+            await websocket.receive_text()
+    except Exception:
+        pass
+    finally:
+        _gate_connections.pop(owner.id, None)
+        logger.info(f"Gate WebSocket disconnected for owner {owner.id}")
+
+
 @app.websocket("/ws/{client_id}")
 async def websocket_endpoint(websocket: WebSocket, client_id: str):
     # Try to authenticate user from cookie
@@ -1564,26 +1596,40 @@ async def demo_launcher(request: Request, db: Session = Depends(get_db)):
 
 
 @app.get("/kiosk", response_class=HTMLResponse)
-async def kiosk_page(request: Request, key: str = "", db: Session = Depends(get_db)):
+async def kiosk_page(request: Request, key: str = ""):
     """Entrance kiosk for Raspberry Pi + QR scanner. Auth via device API key."""
     if not key:
         return HTMLResponse("<h1>Missing device key. Use /kiosk?key=YOUR_DEVICE_KEY</h1>", status_code=401)
 
-    owner = db.query(UserORM).filter(
-        UserORM.device_api_key == key,
-        UserORM.role == "owner"
-    ).first()
+    from database import get_db_session
+    db = get_db_session()
+    try:
+        owner = db.query(UserORM).filter(
+            UserORM.device_api_key == key,
+            UserORM.role == "owner"
+        ).first()
 
-    if not owner:
-        return HTMLResponse("<h1>Invalid device key.</h1>", status_code=401)
+        if not owner:
+            return HTMLResponse("<h1>Invalid device key.</h1>", status_code=401)
 
-    gym_name = owner.gym_name or owner.username or "Gym"
+        gym_name = owner.gym_name or owner.username or "Gym"
+    finally:
+        db.close()
 
-    return templates.TemplateResponse("kiosk.html", {
-        "request": request,
-        "device_key": key,
-        "gym_name": gym_name,
-    })
+    try:
+        return templates.TemplateResponse(request, "kiosk.html", {
+            "device_key": key,
+            "gym_name": gym_name,
+        })
+    except TypeError:
+        # Older Starlette signature
+        return templates.TemplateResponse("kiosk.html", {
+            "request": request,
+            "device_key": key,
+            "gym_name": gym_name,
+        })
+    except Exception as e:
+        return HTMLResponse(f"<pre>Template error: {type(e).__name__}: {e}</pre>", status_code=500)
 
 
 # ---- Pi Kiosk Setup Endpoints ----
