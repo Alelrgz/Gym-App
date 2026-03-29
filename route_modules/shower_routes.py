@@ -222,14 +222,17 @@ async def _notify_staff_checkin(owner_id: str, username: str, profile_picture: s
             ((UserORM.gym_owner_id == owner_id) | (UserORM.id == owner_id)),
             UserORM.role.in_(["staff", "owner"]),
         ).all()
+        logger.info(f"Check-in notify: owner={owner_id}, staff_count={len(staff_users)}, online={list(manager.user_connections.keys())}")
         for user in staff_users:
-            await manager.send_to_user(user.id, {
+            logger.info(f"  Sending to {user.username} (id={user.id})")
+            sent = await manager.send_to_user(user.id, {
                 "type": "client_checkin",
                 "username": username,
                 "profile_picture": profile_picture,
                 "member_id": member_id,
                 "time": datetime.utcnow().isoformat(),
             })
+            logger.info(f"  Result: {'delivered' if sent else 'not online'}")
     except Exception as e:
         logger.warning(f"Staff check-in notify error: {e}")
     finally:

@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config/api_config.dart';
 import 'storage_service.dart';
@@ -37,13 +38,18 @@ class WebSocketService {
     _intentionalClose = false;
 
     final token = await _storage.getToken();
-    if (token == null) return;
+    if (token == null) {
+      debugPrint('[WS] No token found — skipping connect');
+      return;
+    }
 
     final clientId = DateTime.now().millisecondsSinceEpoch.toString();
     final wsUrl = '${ApiConfig.wsUrl}/ws/$clientId?token=$token';
+    debugPrint('[WS] Connecting to $wsUrl');
 
     try {
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
+      debugPrint('[WS] Connected');
       _channel!.stream.listen(
         (data) {
           try {
