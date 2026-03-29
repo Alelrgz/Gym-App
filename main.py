@@ -210,6 +210,28 @@ async def join_gym_landing(request: Request, gym_code: str):
     finally:
         db.close()
 
+@app.get("/api/debug/ws-connections")
+async def debug_ws_connections():
+    """Temp: show all connected WebSocket users."""
+    return {
+        "total_connections": len(manager.active_connections),
+        "user_connections": {uid: str(ws.client) for uid, ws in manager.user_connections.items()},
+    }
+
+
+@app.post("/api/test-ws/{user_id}")
+async def test_ws_send(user_id: str):
+    """Temp: send a test WebSocket message to a specific user."""
+    sent = await manager.send_to_user(user_id, {
+        "type": "client_checkin",
+        "username": "Test User",
+        "profile_picture": None,
+        "member_id": "test",
+        "time": "2026-03-29T18:00:00",
+    })
+    return {"sent": sent, "user_id": user_id, "online_users": list(manager.user_connections.keys())}
+
+
 @app.post("/api/test-push/{user_id}")
 async def test_push(user_id: str):
     """Temporary: send a test push notification to a user with full diagnostics."""
