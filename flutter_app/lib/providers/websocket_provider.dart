@@ -60,7 +60,7 @@ void _handleLocalNotification(Map<String, dynamic> msg) {
 
   if (type == 'notification' || type == 'automated_message') {
     notif.show(
-      title: msg['title'] as String? ?? 'FitOS',
+      title: msg['title'] as String? ?? "Heaven's Fit",
       body: msg['message'] as String? ?? msg['body'] as String? ?? '',
       payload: type,
     );

@@ -1,7 +1,6 @@
 import 'dart:math' show pi, min;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import '../config/theme.dart';
 import '../models/diet_data.dart';
 import '../providers/client_provider.dart';
@@ -45,6 +44,116 @@ String _fullDayName(int dayIndex) => switch (dayIndex) {
   4 => 'Venerdì', 5 => 'Sabato', 6 => 'Domenica', _ => '',
 };
 
+// ─── ADD MEAL TO PLAN (shared sheet) ─────────────────────────────
+
+void showAddMealToPlanSheet(BuildContext context, WidgetRef ref, int dayOfWeek, VoidCallback onDone) {
+  final nameCtrl = TextEditingController();
+  final descCtrl = TextEditingController();
+  final calsCtrl = TextEditingController();
+  final proCtrl = TextEditingController();
+  final carbCtrl = TextEditingController();
+  final fatCtrl = TextEditingController();
+  String selectedType = 'colazione';
+
+  showModalBottomSheet(
+    context: context,
+    isScrollControlled: true,
+    backgroundColor: AppColors.surface,
+    shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+    builder: (ctx) => StatefulBuilder(
+      builder: (ctx, setSheetState) => Padding(
+        padding: EdgeInsets.fromLTRB(24, 16, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            Text('Aggiungi pasto — ${_fullDayName(dayOfWeek)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 36,
+              child: ListView(
+                scrollDirection: Axis.horizontal,
+                children: _typeOrder.map((t) {
+                  final sel = t == selectedType;
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: ChoiceChip(
+                      label: Text(_mealLabel(t), style: TextStyle(fontSize: 12, color: sel ? Colors.white : AppColors.textTertiary)),
+                      selected: sel,
+                      selectedColor: AppColors.primary,
+                      backgroundColor: Colors.white.withValues(alpha: 0.05),
+                      side: BorderSide.none,
+                      onSelected: (_) => setSheetState(() => selectedType = t),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+            const SizedBox(height: 14),
+            _buildSheetInput(nameCtrl, 'Nome pasto (es. Yogurt greco con frutta)'),
+            const SizedBox(height: 8),
+            _buildSheetInput(descCtrl, 'Ingredienti (es. 150g yogurt, 30g granola)', maxLines: 2),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(child: _buildSheetInput(calsCtrl, 'Kcal', number: true)),
+                const SizedBox(width: 8),
+                Expanded(child: _buildSheetInput(proCtrl, 'Pro (g)', number: true)),
+                const SizedBox(width: 8),
+                Expanded(child: _buildSheetInput(carbCtrl, 'Carbo (g)', number: true)),
+                const SizedBox(width: 8),
+                Expanded(child: _buildSheetInput(fatCtrl, 'Grassi (g)', number: true)),
+              ],
+            ),
+            const SizedBox(height: 18),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () async {
+                  if (nameCtrl.text.trim().isEmpty) return;
+                  Navigator.pop(ctx);
+                  await ref.read(clientServiceProvider).addMealToPlan(
+                    dayOfWeek: dayOfWeek,
+                    mealType: selectedType,
+                    mealName: nameCtrl.text.trim(),
+                    description: descCtrl.text.trim(),
+                    calories: int.tryParse(calsCtrl.text) ?? 0,
+                    protein: int.tryParse(proCtrl.text) ?? 0,
+                    carbs: int.tryParse(carbCtrl.text) ?? 0,
+                    fat: int.tryParse(fatCtrl.text) ?? 0,
+                  );
+                  onDone();
+                },
+                child: const Text('Aggiungi'),
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
+
+Widget _buildSheetInput(TextEditingController ctrl, String hint, {bool number = false, int maxLines = 1}) {
+  return TextField(
+    controller: ctrl,
+    keyboardType: number ? TextInputType.number : TextInputType.text,
+    maxLines: maxLines,
+    style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+    decoration: InputDecoration(
+      hintText: hint,
+      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.25), fontSize: 13),
+      filled: true,
+      fillColor: Colors.white.withValues(alpha: 0.05),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+    ),
+  );
+}
+
 // ─── MAIN SCREEN ─────────────────────────────────────────────────
 
 class DietScreen extends ConsumerStatefulWidget {
@@ -87,8 +196,6 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     });
 
     final clientData = ref.watch(clientDataProvider);
-    final unreadMessages = ref.watch(unreadMessagesProvider);
-    final unreadNotifications = ref.watch(unreadNotificationsProvider);
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -125,27 +232,6 @@ class _DietScreenState extends ConsumerState<DietScreen> {
             },
             child: CustomScrollView(
               slivers: [
-                // ── TOP BAR (FitOS logo + action icons) ──
-                SliverAppBar(
-                  floating: true,
-                  backgroundColor: AppColors.background,
-                  surfaceTintColor: Colors.transparent,
-                  toolbarHeight: 68,
-                  title: Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: SvgPicture.asset('assets/fitos-logo.svg', height: 34),
-                  ),
-                  centerTitle: false,
-                  actions: [
-                    _TopBarIcon(icon: Icons.calendar_today_rounded, onTap: () => showCalendarSheet(context, ref)),
-                    const SizedBox(width: 8),
-                    _TopBarIconBadge(icon: Icons.notifications_none_rounded, count: unreadNotifications.valueOrNull ?? 0, onTap: () => showNotificationsSheet(context, ref)),
-                    const SizedBox(width: 8),
-                    _TopBarIconBadge(icon: Icons.send_rounded, count: unreadMessages.valueOrNull ?? 0, onTap: () => showConversationsSheet(context, ref)),
-                    const SizedBox(width: 16),
-                  ],
-                ),
-
                 // ── CONTENT ──
                 SliverPadding(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
@@ -161,21 +247,30 @@ class _DietScreenState extends ConsumerState<DietScreen> {
                       ],
                       const SizedBox(height: 16),
 
-                      // B-E: Regular content
-                      Column(
-                          children: [
-                            // B. Quick Actions
-                            _QuickActions(
-                              onAddMeal: () => _showManualMealDialog(context),
-                              onScanMeal: () => _scanMeal(context),
-                              onSearch: () => showSnack(context, 'Ricerca — Prossimamente'),
-                            ),
-                            const SizedBox(height: 16),
+                      // B. Meal plan container (fixed height, internal scroll)
+                      _MealPlanContainer(
+                        selectedDay: _selectedDay,
+                        onDaySelected: (d) => setState(() => _selectedDay = d),
+                        planMode: diet?.planMode ?? 'fixed',
+                        canEdit: hasNoNutritionist,
+                      ),
+                      const SizedBox(height: 16),
 
-                            // C. Calendar Meal Plan
-                            _CalendarMealPlanCard(selectedDay: _selectedDay, onDaySelected: (d) => setState(() => _selectedDay = d)),
-                          ],
-                        ),
+                      // C. Quick Actions (below the container)
+                      _QuickActions(
+                        onAddMeal: () {
+                          if (hasNoNutritionist) {
+                            showAddMealToPlanSheet(context, ref, _selectedDay, () {
+                              ref.invalidate(clientDataProvider);
+                              setState(() {}); // trigger rebuild
+                            });
+                          } else {
+                            _showManualMealDialog(context);
+                          }
+                        },
+                        onScanMeal: () => _scanMeal(context),
+                        onSearch: () => showSnack(context, 'Ricerca — Prossimamente'),
+                      ),
                     ]),
                   ),
                 ),
@@ -367,70 +462,6 @@ class _DietScreenState extends ConsumerState<DietScreen> {
     if (v is int) return v;
     if (v is double) return v.round();
     return int.tryParse(v.toString()) ?? 0;
-  }
-}
-
-// ─── TOP BAR ICONS (matching dashboard_screen.dart) ──────────────
-
-class _TopBarIcon extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-  const _TopBarIcon({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 40, height: 40,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: 0.05),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-        ),
-        child: Icon(icon, size: 20, color: AppColors.textPrimary),
-      ),
-    );
-  }
-}
-
-class _TopBarIconBadge extends StatelessWidget {
-  final IconData icon;
-  final int count;
-  final VoidCallback onTap;
-  const _TopBarIconBadge({required this.icon, required this.count, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 40, height: 40,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              width: 40, height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.05),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-              ),
-              child: Icon(icon, size: 20, color: AppColors.textPrimary),
-            ),
-            if (count > 0)
-              Positioned(
-                top: -2, right: -2,
-                child: Container(
-                  width: 18, height: 18,
-                  decoration: const BoxDecoration(color: AppColors.danger, shape: BoxShape.circle),
-                  child: Center(child: Text(count > 99 ? '99' : '$count', style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700))),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
@@ -874,10 +905,36 @@ class _ActionPill extends StatelessWidget {
 
 // ─── CALENDAR + MEAL PLAN (single glass card like web) ───────────
 
+// ─── MEAL PLAN CONTAINER (fixed height, internal scroll) ─────────
+
+class _MealPlanContainer extends StatelessWidget {
+  final int selectedDay;
+  final ValueChanged<int> onDaySelected;
+  final String planMode;
+  final bool canEdit;
+  const _MealPlanContainer({required this.selectedDay, required this.onDaySelected, this.planMode = 'fixed', this.canEdit = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: 380,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+      ),
+      clipBehavior: Clip.antiAlias,
+      child: _CalendarMealPlanCard(selectedDay: selectedDay, onDaySelected: onDaySelected, planMode: planMode, canEdit: canEdit),
+    );
+  }
+}
+
 class _CalendarMealPlanCard extends ConsumerStatefulWidget {
   final int selectedDay;
   final ValueChanged<int> onDaySelected;
-  const _CalendarMealPlanCard({required this.selectedDay, required this.onDaySelected});
+  final String planMode;
+  final bool canEdit;
+  const _CalendarMealPlanCard({required this.selectedDay, required this.onDaySelected, this.planMode = 'fixed', this.canEdit = false});
   @override
   ConsumerState<_CalendarMealPlanCard> createState() => _CalendarMealPlanCardState();
 }
@@ -886,6 +943,8 @@ class _CalendarMealPlanCardState extends ConsumerState<_CalendarMealPlanCard> {
   Map<String, dynamic>? _plan;
   bool _loading = true;
   final Set<String> _checkedMeals = {};
+  final Map<String, int> _selectedAlt = {};
+  final Set<String> _collapsedSlots = {..._typeOrder, 'altro'};
 
   @override
   void initState() {
@@ -903,7 +962,6 @@ class _CalendarMealPlanCardState extends ConsumerState<_CalendarMealPlanCard> {
       final plan = results[0]['plan'] as Map<String, dynamic>?;
       final logEntries = results[1]['meals'] as List<dynamic>? ?? [];
 
-      // Build a map of meal_type -> list of logged meal names
       final logMap = <String, List<dynamic>>{};
       for (final entry in logEntries) {
         if (entry is Map<String, dynamic>) {
@@ -912,7 +970,6 @@ class _CalendarMealPlanCardState extends ConsumerState<_CalendarMealPlanCard> {
         }
       }
 
-      // Pre-check meals that match today's logs
       if (plan != null) {
         final todayKey = (DateTime.now().weekday - 1).toString();
         final dayMeals = plan[todayKey] as List<dynamic>?;
@@ -923,8 +980,7 @@ class _CalendarMealPlanCardState extends ConsumerState<_CalendarMealPlanCard> {
               final name = meal['meal_name'] as String? ?? '';
               final logged = logMap[type];
               if (logged != null && logged.any((l) => l['meal_name'] == name)) {
-                final idx = dayMeals.indexOf(meal);
-                _checkedMeals.add('${type}_${name}_${meal['id'] ?? idx}');
+                _checkedMeals.add('${type}_${name}_${meal['id'] ?? 0}');
               }
             }
           }
@@ -937,8 +993,43 @@ class _CalendarMealPlanCardState extends ConsumerState<_CalendarMealPlanCard> {
     }
   }
 
+  void _showMealOptions(Map<String, dynamic> meal) {
+    final mealId = meal['id'];
+    if (mealId == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 36, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 12),
+              Text(meal['meal_name'] ?? '', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              const SizedBox(height: 4),
+              ListTile(
+                leading: const Icon(Icons.delete_outline_rounded, color: AppColors.danger),
+                title: const Text('Elimina pasto', style: TextStyle(color: AppColors.danger)),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  await ref.read(clientServiceProvider).deleteMealFromPlan(mealId as int);
+                  _loadPlan();
+                  ref.invalidate(clientDataProvider);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   void _toggleMealCheck(String mealId, Map<String, dynamic> meal) {
-    if (_checkedMeals.contains(mealId)) return; // Already logged, can't uncheck
+    if (_checkedMeals.contains(mealId)) return;
 
     setState(() => _checkedMeals.add(mealId));
 
@@ -946,129 +1037,174 @@ class _CalendarMealPlanCardState extends ConsumerState<_CalendarMealPlanCard> {
       'name': meal['meal_name'] ?? '', 'meal_type': meal['meal_type'] ?? 'Snack',
       'cals': meal['calories'] ?? 0, 'protein': meal['protein'] ?? 0, 'carbs': meal['carbs'] ?? 0, 'fat': meal['fat'] ?? 0,
     }).then((_) {
-      // Refresh diet data so rings update in real time
       ref.invalidate(clientDataProvider);
     }).catchError((_) {
-      // Revert on failure
       if (mounted) setState(() => _checkedMeals.remove(mealId));
     });
   }
 
+  static const _dayLabels = ['Lun', 'Mar', 'Mer', 'Gio', 'Ven', 'Sab', 'Dom'];
+
   @override
   Widget build(BuildContext context) {
-    return GlassCard(
-      padding: EdgeInsets.zero,
-      child: Column(
-        children: [
-          // Calendar strip (p-4 pb-3 like web)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-            child: _buildCalendar(),
+    return Column(
+      children: [
+        // Pinned day picker
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 14, 8),
+          child: _buildDayPicker(),
+        ),
+        Container(height: 0.5, color: Colors.white.withValues(alpha: 0.06)),
+        // Scrollable meal slots
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+            child: _buildMealSlots(),
           ),
-          // Divider (border-t border-white/10 like web)
-          Container(height: 1, color: Colors.white.withValues(alpha: 0.1)),
-          // Meal plan section
-          _buildMealPlan(),
-        ],
-      ),
+        ),
+      ],
     );
   }
 
-  Widget _buildCalendar() {
-    final now = DateTime.now();
-    final monday = now.subtract(Duration(days: now.weekday - 1));
-    const labels = ['LUN', 'MAR', 'MER', 'GIO', 'VEN', 'SAB', 'DOM'];
+  Widget _buildDayPicker() {
+    final isToday = widget.selectedDay == DateTime.now().weekday - 1;
+    final label = isToday ? 'Oggi' : _dayLabels[widget.selectedDay];
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: List.generate(7, (i) {
-        final date = monday.add(Duration(days: i));
-        final isToday = date.day == now.day && date.month == now.month && date.year == now.year;
-        final isSelected = i == widget.selectedDay;
-
-        return GestureDetector(
-          onTap: () => widget.onDaySelected(i),
-          child: Column(
+      children: [
+        // Spacer to balance the right side
+        SizedBox(
+          width: 50,
+          child: isToday ? null : const SizedBox.shrink(),
+        ),
+        // Centered arrows + label
+        Expanded(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text(
-                labels[i],
-                style: TextStyle(
-                  fontSize: 10,
-                  letterSpacing: 0.5,
-                  fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                  color: isSelected ? AppColors.primary : const Color(0xFF6B7280),
+              GestureDetector(
+                onTap: () => widget.onDaySelected((widget.selectedDay - 1 + 7) % 7),
+                child: Container(
+                  width: 32, height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.04),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+                  ),
+                  child: const Icon(Icons.chevron_left_rounded, size: 18, color: AppColors.textSecondary),
                 ),
               ),
-              const SizedBox(height: 6),
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(12),
-                  color: isToday ? AppColors.primary : Colors.transparent,
-                  boxShadow: isToday ? [BoxShadow(color: AppColors.primary.withValues(alpha: 0.35), blurRadius: 12, offset: const Offset(0, 4))] : null,
+              const SizedBox(width: 14),
+              GestureDetector(
+                onTap: () => _showDayPicker(context),
+                child: Text(
+                  label,
+                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                 ),
-                child: Center(
-                  child: Text(
-                    '${date.day}',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w700,
-                      color: isToday ? Colors.white : AppColors.textPrimary,
-                    ),
+              ),
+              const SizedBox(width: 14),
+              GestureDetector(
+                onTap: () => widget.onDaySelected((widget.selectedDay + 1) % 7),
+                child: Container(
+                  width: 32, height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: Colors.white.withValues(alpha: 0.04),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
                   ),
+                  child: const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.textSecondary),
                 ),
               ),
             ],
           ),
-        );
-      }),
+        ),
+        // Fixed right: Oggi button or empty space
+        SizedBox(
+          width: 50,
+          child: isToday
+              ? null
+              : GestureDetector(
+                  onTap: () => widget.onDaySelected(DateTime.now().weekday - 1),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.10),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Text('Oggi', textAlign: TextAlign.center, style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                  ),
+                ),
+        ),
+      ],
     );
   }
 
-  Widget _buildMealPlan() {
-    final isToday = widget.selectedDay == DateTime.now().weekday - 1;
-    final dayLabel = isToday ? 'Oggi' : _fullDayName(widget.selectedDay);
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Header row (like web: px-4 pt-3 pb-2)
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+  void _showDayPicker(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                'PIANO ALIMENTARE - ${dayLabel.toUpperCase()}',
-                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: Colors.white.withValues(alpha: 0.6), letterSpacing: 1.0),
-              ),
+              Container(width: 36, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 16),
+              for (int i = 0; i < 7; i++)
+                ListTile(
+                  title: Text(
+                    _dayLabels[i],
+                    style: TextStyle(
+                      color: i == widget.selectedDay ? AppColors.primary : AppColors.textPrimary,
+                      fontWeight: i == widget.selectedDay ? FontWeight.w700 : FontWeight.w500,
+                    ),
+                  ),
+                  trailing: i == DateTime.now().weekday - 1
+                      ? Text('oggi', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.3)))
+                      : null,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    widget.onDaySelected(i);
+                  },
+                ),
             ],
           ),
-          const SizedBox(height: 8),
-          if (_loading)
-            const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)))
-          else
-            _buildMeals(),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _buildMeals() {
+  Widget _buildMealSlots() {
+    if (_loading) {
+      return const Padding(padding: EdgeInsets.symmetric(vertical: 32), child: Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)));
+    }
+
     final dayMeals = _plan?[widget.selectedDay.toString()] as List<dynamic>?;
     if (dayMeals == null || dayMeals.isEmpty) {
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Text('Nessun piano assegnato per questo giorno', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.3))),
+        padding: const EdgeInsets.symmetric(vertical: 24),
+        child: Center(
+          child: Column(
+            children: [
+              Icon(Icons.restaurant_menu_rounded, color: Colors.white.withValues(alpha: 0.15), size: 36),
+              const SizedBox(height: 10),
+              Text('Nessun piano per questo giorno', style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.3))),
+            ],
+          ),
+        ),
       );
     }
 
-    // Group by meal type
-    final grouped = <String, List<Map<String, dynamic>>>{};
+    // Group by meal_type, then split by alternative_index
+    final grouped = <String, Map<int, List<Map<String, dynamic>>>>{};
     for (final meal in dayMeals) {
       if (meal is Map<String, dynamic>) {
         final type = meal['meal_type'] as String? ?? 'altro';
-        grouped.putIfAbsent(type, () => []).add(meal);
+        final altIdx = (meal['alternative_index'] as num?)?.toInt() ?? 0;
+        grouped.putIfAbsent(type, () => {});
+        grouped[type]!.putIfAbsent(altIdx, () => []).add(meal);
       }
     }
 
@@ -1081,108 +1217,376 @@ class _CalendarMealPlanCardState extends ConsumerState<_CalendarMealPlanCard> {
 
     return Column(
       children: [
-        for (final type in sortedTypes)
-          for (final m in grouped[type]!)
-            _buildMealRow(type, m, grouped[type]!),
+        for (final type in sortedTypes) ...[
+          _MealSlotCard(
+            type: type,
+            alternatives: grouped[type]!,
+            selectedAlt: _selectedAlt[type] ?? 0,
+            onAltChanged: (idx) => setState(() => _selectedAlt[type] = idx),
+            checkedMeals: _checkedMeals,
+            onToggleCheck: _toggleMealCheck,
+            isCollapsed: _collapsedSlots.contains(type),
+            planMode: widget.planMode,
+            canEdit: widget.canEdit,
+            onMealOptions: widget.canEdit ? _showMealOptions : null,
+            onToggleCollapse: () => setState(() {
+              if (_collapsedSlots.contains(type)) {
+                _collapsedSlots.remove(type);
+              } else {
+                _collapsedSlots.add(type);
+              }
+            }),
+          ),
+          const SizedBox(height: 8),
+        ],
       ],
     );
   }
+}
 
-  Widget _buildMealRow(String type, Map<String, dynamic> m, List<Map<String, dynamic>> meals) {
-    final mealId = '${type}_${m['meal_name']}_${m['id'] ?? meals.indexOf(m)}';
-    final isChecked = _checkedMeals.contains(mealId);
-    final emoji = _mealEmoji(type);
-    final color = _mealColor(type);
-    final label = _mealLabel(type);
+// ─── MEAL SLOT CARD (swipeable alternatives) ─────────────────────
 
-    final cals = (m['calories'] as num?)?.toInt() ?? 0;
-    final protein = (m['protein'] as num?)?.toInt() ?? 0;
-    final carbs = (m['carbs'] as num?)?.toInt() ?? 0;
-    final fat = (m['fat'] as num?)?.toInt() ?? 0;
+class _MealSlotCard extends StatefulWidget {
+  final String type;
+  final Map<int, List<Map<String, dynamic>>> alternatives;
+  final int selectedAlt;
+  final ValueChanged<int> onAltChanged;
+  final Set<String> checkedMeals;
+  final void Function(String mealId, Map<String, dynamic> meal) onToggleCheck;
+  final bool isCollapsed;
+  final String planMode;
+  final bool canEdit;
+  final void Function(Map<String, dynamic> meal)? onMealOptions;
+  final VoidCallback onToggleCollapse;
 
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 10),
-      child: GestureDetector(
-        onTap: () => _toggleMealCheck(mealId, m),
-        child: AnimatedOpacity(
-          duration: const Duration(milliseconds: 200),
-          opacity: isChecked ? 0.5 : 1.0,
-          child: Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: isChecked
-                  ? const Color(0xFF4ADE80).withValues(alpha: 0.06)
-                  : Colors.white.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.center,
-              children: [
-                // Emoji icon
-                Container(
-                  width: 44, height: 44,
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
+  const _MealSlotCard({
+    required this.type,
+    required this.alternatives,
+    required this.selectedAlt,
+    required this.onAltChanged,
+    required this.checkedMeals,
+    required this.onToggleCheck,
+    required this.isCollapsed,
+    this.planMode = 'fixed',
+    this.canEdit = false,
+    this.onMealOptions,
+    required this.onToggleCollapse,
+  });
+
+  @override
+  State<_MealSlotCard> createState() => _MealSlotCardState();
+}
+
+class _MealSlotCardState extends State<_MealSlotCard> {
+  late PageController _pageController;
+  bool _expanded = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController(initialPage: widget.selectedAlt);
+  }
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final altKeys = widget.alternatives.keys.toList()..sort();
+    final isFlexible = widget.planMode == 'flexible';
+    final hasAlternatives = altKeys.length > 1 && isFlexible;
+    final currentAlt = widget.selectedAlt.clamp(0, altKeys.length - 1);
+    final meals = widget.alternatives[altKeys[currentAlt]] ?? [];
+    final emoji = _mealEmoji(widget.type);
+    final color = _mealColor(widget.type);
+    final label = _mealLabel(widget.type);
+    final collapsed = widget.isCollapsed;
+
+    // Check if any meal in this slot is checked
+    final isSlotChecked = meals.any((m) {
+      final mealId = '${widget.type}_${m['meal_name']}_${m['id'] ?? 0}';
+      return widget.checkedMeals.contains(mealId);
+    });
+
+    // Summarize for collapsed view
+    final totalCals = meals.fold<int>(0, (sum, m) => sum + ((m['calories'] as num?)?.toInt() ?? 0));
+    final firstName = meals.isNotEmpty ? (meals.first['meal_name'] as String? ?? '') : '';
+
+    return Container(
+      decoration: BoxDecoration(
+        color: isSlotChecked
+            ? const Color(0xFF4ADE80).withValues(alpha: 0.04)
+            : Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isSlotChecked
+              ? const Color(0xFF4ADE80).withValues(alpha: 0.12)
+              : Colors.white.withValues(alpha: 0.06),
+          width: 0.5,
+        ),
+      ),
+      child: Column(
+        children: [
+          // ── Header (always visible, tappable to collapse) ──
+          GestureDetector(
+            onTap: widget.onToggleCollapse,
+            behavior: HitTestBehavior.opaque,
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(14, 12, 12, collapsed ? 12 : 4),
+              child: Row(
+                children: [
+                  Text(emoji, style: const TextStyle(fontSize: 16)),
+                  const SizedBox(width: 8),
+                  Text(label, style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: color)),
+                  if (collapsed) ...[
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        firstName,
+                        style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.35)),
+                        maxLines: 1, overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    Text('$totalCals kcal', style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.3))),
+                  ] else
+                    const Spacer(),
+                  if (hasAlternatives && !collapsed)
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                      decoration: BoxDecoration(
+                        color: color.withValues(alpha: 0.08),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${currentAlt + 1}/${altKeys.length}',
+                        style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: color),
+                      ),
+                    ),
+                  if (isSlotChecked)
+                    Padding(
+                      padding: const EdgeInsets.only(left: 6),
+                      child: Icon(Icons.check_circle_rounded, color: const Color(0xFF4ADE80), size: 18),
+                    ),
+                  const SizedBox(width: 4),
+                  Icon(
+                    collapsed ? Icons.keyboard_arrow_down_rounded : Icons.keyboard_arrow_up_rounded,
+                    size: 18, color: Colors.white.withValues(alpha: 0.25),
                   ),
-                  child: Center(child: Text(emoji, style: const TextStyle(fontSize: 20))),
+                ],
+              ),
+            ),
+          ),
+
+          // ── Expanded content ──
+          if (!collapsed) ...[
+            // Swipeable content
+            if (hasAlternatives)
+              SizedBox(
+                height: _cardContentHeight(meals),
+                child: PageView.builder(
+                  controller: _pageController,
+                  itemCount: altKeys.length,
+                  onPageChanged: (idx) => widget.onAltChanged(idx),
+                  itemBuilder: (_, idx) {
+                    final altMeals = widget.alternatives[altKeys[idx]] ?? [];
+                    return _buildAltContent(altMeals, color);
+                  },
                 ),
-                const SizedBox(width: 14),
-                // Meal info
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+              )
+            else
+              _buildAltContent(meals, color),
+
+            // Dots indicator
+            if (hasAlternatives) ...[
+              const SizedBox(height: 2),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List.generate(altKeys.length, (i) => Container(
+                  width: i == currentAlt ? 14 : 5,
+                  height: 5,
+                  margin: const EdgeInsets.symmetric(horizontal: 2),
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(3),
+                    color: i == currentAlt ? color : Colors.white.withValues(alpha: 0.10),
+                  ),
+                )),
+              ),
+            ],
+
+            // Expand/collapse for description
+            if (meals.any((m) => (m['description'] as String?)?.isNotEmpty == true))
+              GestureDetector(
+                onTap: () => setState(() => _expanded = !_expanded),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(14, 4, 14, 0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        label,
-                        style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: color, letterSpacing: 0.3),
+                        _expanded ? 'Meno dettagli' : 'Ingredienti',
+                        style: TextStyle(fontSize: 11, color: Colors.white.withValues(alpha: 0.25), fontWeight: FontWeight.w500),
                       ),
-                      const SizedBox(height: 3),
-                      Text(
-                        m['meal_name'] as String? ?? '',
-                        style: TextStyle(
-                          fontSize: 15,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.textPrimary,
-                          decoration: isChecked ? TextDecoration.lineThrough : null,
-                          decorationColor: AppColors.textSecondary,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                      const SizedBox(height: 6),
-                      // Macro pills
-                      Row(
-                        children: [
-                          _macroPill('P', '${protein}g', const Color(0xFFFF9500)),
-                          const SizedBox(width: 6),
-                          _macroPill('C', '${carbs}g', const Color(0xFF34C759)),
-                          const SizedBox(width: 6),
-                          _macroPill('G', '${fat}g', const Color(0xFFFF3B30)),
-                        ],
+                      const SizedBox(width: 3),
+                      Icon(
+                        _expanded ? Icons.keyboard_arrow_up_rounded : Icons.keyboard_arrow_down_rounded,
+                        size: 14, color: Colors.white.withValues(alpha: 0.25),
                       ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 10),
-                // Calories + check
+              ),
+
+            // Log button
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 6, 12, 12),
+              child: GestureDetector(
+                onTap: isSlotChecked ? null : () {
+                  for (final m in meals) {
+                    final mealId = '${widget.type}_${m['meal_name']}_${m['id'] ?? 0}';
+                    if (!widget.checkedMeals.contains(mealId)) {
+                      widget.onToggleCheck(mealId, m);
+                    }
+                  }
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: isSlotChecked
+                        ? const Color(0xFF4ADE80).withValues(alpha: 0.08)
+                        : color.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        isSlotChecked ? Icons.check_rounded : Icons.add_rounded,
+                        size: 15,
+                        color: isSlotChecked ? const Color(0xFF4ADE80) : color,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        isSlotChecked ? 'Registrato' : 'Registra',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                          color: isSlotChecked ? const Color(0xFF4ADE80) : color,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  double _cardContentHeight(List<Map<String, dynamic>> meals) {
+    // Base height per meal item + padding
+    return (meals.length * 58.0) + 16;
+  }
+
+  Widget _buildAltContent(List<Map<String, dynamic>> meals, Color color) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(14, 10, 14, 0),
+      child: Column(
+        children: [
+          for (final m in meals) _buildMealItem(m, color),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMealItem(Map<String, dynamic> m, Color color) {
+    final name = m['meal_name'] as String? ?? '';
+    final cals = (m['calories'] as num?)?.toInt() ?? 0;
+    final protein = (m['protein'] as num?)?.toInt() ?? 0;
+    final carbs = (m['carbs'] as num?)?.toInt() ?? 0;
+    final fat = (m['fat'] as num?)?.toInt() ?? 0;
+    final desc = m['description'] as String? ?? '';
+    final mealId = '${widget.type}_${name}_${m['id'] ?? 0}';
+    final isChecked = widget.checkedMeals.contains(mealId);
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: GestureDetector(
+        onLongPress: widget.canEdit && widget.onMealOptions != null ? () => widget.onMealOptions!(m) : null,
+        child: Container(
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isChecked
+              ? const Color(0xFF4ADE80).withValues(alpha: 0.04)
+              : Colors.white.withValues(alpha: 0.03),
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Name + calories row
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    name,
+                    style: TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                      color: isChecked ? AppColors.textTertiary : AppColors.textPrimary,
+                      decoration: isChecked ? TextDecoration.lineThrough : null,
+                      decorationColor: AppColors.textTertiary,
+                    ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(width: 12),
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Text(
-                      '$cals',
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-                    ),
-                    Text(
-                      'kcal',
-                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.grey[600]),
-                    ),
+                    Text('$cals', style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                    Text('kcal', style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.3))),
                   ],
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 8),
+            // Macro pills
+            Row(
+              children: [
+                _macroPill('P', '${protein}g', const Color(0xFFFF9500)),
+                const SizedBox(width: 6),
+                _macroPill('C', '${carbs}g', const Color(0xFF34C759)),
+                const SizedBox(width: 6),
+                _macroPill('G', '${fat}g', const Color(0xFFFF3B30)),
+              ],
+            ),
+            // Description / ingredients (expanded)
+            if (_expanded && desc.isNotEmpty) ...[
+              const SizedBox(height: 10),
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.03),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
+                ),
+                child: Text(
+                  desc,
+                  style: TextStyle(fontSize: 12, color: Colors.white.withValues(alpha: 0.5), height: 1.5),
+                ),
+              ),
+            ],
+          ],
         ),
+      ),
       ),
     );
   }

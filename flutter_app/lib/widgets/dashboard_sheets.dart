@@ -329,11 +329,19 @@ class _ConversationsPage extends StatefulWidget {
 class _ConversationsPageState extends State<_ConversationsPage> {
   List<dynamic> _conversations = [];
   bool _loading = true;
+  final _searchController = TextEditingController();
+  String _searchQuery = '';
 
   @override
   void initState() {
     super.initState();
     _load();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _load() async {
@@ -352,8 +360,53 @@ class _ConversationsPageState extends State<_ConversationsPage> {
     return '${ApiConfig.baseUrl}$path';
   }
 
+  List<dynamic> get _filteredConversations {
+    if (_searchQuery.isEmpty) return _conversations;
+    return _conversations.where((c) {
+      final name = (c['other_user_name']?.toString() ?? '').toLowerCase();
+      final msg = (c['last_message_preview']?.toString() ?? '').toLowerCase();
+      return name.contains(_searchQuery) || msg.contains(_searchQuery);
+    }).toList();
+  }
+
+  void _showNewChatPicker() async {
+    final service = widget.ref.read(clientServiceProvider);
+    List<dynamic> friends = [];
+    try {
+      friends = await service.getFriends();
+    } catch (_) {}
+
+    if (!mounted) return;
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => _NewChatSheet(
+        friends: friends,
+        profilePictureUrl: _profilePictureUrl,
+        onSelect: (friend) {
+          Navigator.pop(ctx);
+          // Build a conversation-like map and open chat
+          final conv = <String, dynamic>{
+            'other_user_id': friend['id']?.toString() ?? friend['user_id']?.toString(),
+            'other_user_name': friend['name']?.toString() ?? friend['username']?.toString() ?? 'Utente',
+            'other_user_profile_picture': friend['profile_picture']?.toString(),
+            'conversation_id': friend['conversation_id']?.toString(),
+          };
+          showChatSheet(context, widget.ref, conv).then((_) => _load());
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
+    final filtered = _filteredConversations;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -368,122 +421,313 @@ class _ConversationsPageState extends State<_ConversationsPage> {
           style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 18),
         ),
         centerTitle: true,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.edit_square, color: AppColors.textSecondary, size: 22),
+            onPressed: _showNewChatPicker,
+            tooltip: 'Nuova chat',
+          ),
+        ],
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(color: AppColors.primary))
-          : _conversations.isEmpty
-              ? _emptyState('Nessuna conversazione', Icons.chat_bubble_outline_rounded)
-              : ListView.builder(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: _conversations.length,
-                  itemBuilder: (_, i) {
-                    final c = _conversations[i] as Map<String, dynamic>;
-                    final unread = (c['unread_count'] as int?) ?? 0;
-                    final name = c['other_user_name']?.toString() ?? 'Utente';
-                    final picUrl = _profilePictureUrl(c['other_user_profile_picture']?.toString());
-                    final lastMsg = c['last_message_preview']?.toString() ?? '';
-                    final lastTime = _timeAgo(c['last_message_at']?.toString());
+          : Column(
+              children: [
+                // ── Search bar ──
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+                    ),
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
+                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+                      decoration: InputDecoration(
+                        hintText: 'Cerca conversazione...',
+                        hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 15),
+                        prefixIcon: Icon(Icons.search_rounded, color: Colors.white.withValues(alpha: 0.3), size: 20),
+                        suffixIcon: _searchQuery.isNotEmpty
+                            ? GestureDetector(
+                                onTap: () {
+                                  _searchController.clear();
+                                  setState(() => _searchQuery = '');
+                                },
+                                child: Icon(Icons.close_rounded, color: Colors.white.withValues(alpha: 0.3), size: 18),
+                              )
+                            : null,
+                        border: InputBorder.none,
+                        enabledBorder: InputBorder.none,
+                        focusedBorder: InputBorder.none,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                      ),
+                    ),
+                  ),
+                ),
+                // ── Conversations list ──
+                Expanded(
+                  child: filtered.isEmpty
+                      ? _emptyState(
+                          _searchQuery.isNotEmpty ? 'Nessun risultato' : 'Nessuna conversazione',
+                          _searchQuery.isNotEmpty ? Icons.search_off_rounded : Icons.chat_bubble_outline_rounded,
+                        )
+                      : ListView.builder(
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          itemCount: filtered.length,
+                          itemBuilder: (_, i) {
+                            final c = filtered[i] as Map<String, dynamic>;
+                            final unread = (c['unread_count'] as int?) ?? 0;
+                            final name = c['other_user_name']?.toString() ?? 'Utente';
+                            final picUrl = _profilePictureUrl(c['other_user_profile_picture']?.toString());
+                            final lastMsg = c['last_message_preview']?.toString() ?? '';
+                            final lastTime = _timeAgo(c['last_message_at']?.toString());
 
-                    return GestureDetector(
-                      onTap: () {
-                        showChatSheet(context, widget.ref, c);
-                      },
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 4),
-                        padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
-                          color: unread > 0
-                              ? Colors.white.withValues(alpha: 0.04)
-                              : Colors.transparent,
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Row(
-                          children: [
-                            // Avatar
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                shape: BoxShape.circle,
-                                gradient: picUrl.isEmpty
-                                    ? const LinearGradient(
-                                        colors: [AppColors.primary, Color(0xFFE04E1A)],
-                                        begin: Alignment.topLeft,
-                                        end: Alignment.bottomRight,
-                                      )
-                                    : null,
-                              ),
-                              clipBehavior: Clip.antiAlias,
-                              child: picUrl.isNotEmpty
-                                  ? Image.network(picUrl, fit: BoxFit.cover,
-                                      errorBuilder: (_, _, _) => const Icon(Icons.person, color: Colors.white70, size: 22))
-                                  : const Icon(Icons.person, color: Colors.white70, size: 22),
-                            ),
-                            const SizedBox(width: 12),
-                            // Name + last message
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    name,
-                                    style: TextStyle(
-                                      color: AppColors.textPrimary,
-                                      fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w500,
-                                      fontSize: 15,
+                            return GestureDetector(
+                              onTap: () {
+                                showChatSheet(context, widget.ref, c).then((_) => _load());
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 4),
+                                padding: const EdgeInsets.all(12),
+                                decoration: BoxDecoration(
+                                  color: unread > 0
+                                      ? Colors.white.withValues(alpha: 0.04)
+                                      : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(14),
+                                ),
+                                child: Row(
+                                  children: [
+                                    // Avatar
+                                    Container(
+                                      width: 50,
+                                      height: 50,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        gradient: picUrl.isEmpty
+                                            ? LinearGradient(
+                                                colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.6)],
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                              )
+                                            : null,
+                                      ),
+                                      clipBehavior: Clip.antiAlias,
+                                      child: picUrl.isNotEmpty
+                                          ? Image.network(picUrl, fit: BoxFit.cover,
+                                              errorBuilder: (_, _, _) => const Icon(Icons.person, color: Colors.white70, size: 24))
+                                          : const Icon(Icons.person, color: Colors.white70, size: 24),
                                     ),
-                                  ),
-                                  const SizedBox(height: 3),
-                                  Text(
-                                    lastMsg,
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                    style: TextStyle(
-                                      color: unread > 0 ? AppColors.textSecondary : AppColors.textTertiary,
-                                      fontSize: 13,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            // Time + badge
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(lastTime,
-                                    style: TextStyle(
-                                      color: unread > 0 ? AppColors.primary : AppColors.textTertiary,
-                                      fontSize: 11,
-                                    )),
-                                if (unread > 0) ...[
-                                  const SizedBox(height: 6),
-                                  Container(
-                                    width: 22,
-                                    height: 22,
-                                    decoration: const BoxDecoration(
-                                      color: AppColors.primary,
-                                      shape: BoxShape.circle,
-                                    ),
-                                    alignment: Alignment.center,
-                                    child: Text(
-                                      '$unread',
-                                      style: const TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w700,
+                                    const SizedBox(width: 14),
+                                    // Name + last message
+                                    Expanded(
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            name,
+                                            style: TextStyle(
+                                              color: AppColors.textPrimary,
+                                              fontWeight: unread > 0 ? FontWeight.w700 : FontWeight.w500,
+                                              fontSize: 16,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            lastMsg,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              color: unread > 0 ? AppColors.textSecondary : AppColors.textTertiary,
+                                              fontSize: 13,
+                                              fontWeight: unread > 0 ? FontWeight.w500 : FontWeight.w400,
+                                            ),
+                                          ),
+                                        ],
                                       ),
                                     ),
+                                    const SizedBox(width: 8),
+                                    // Time + badge
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.end,
+                                      children: [
+                                        Text(lastTime,
+                                            style: TextStyle(
+                                              color: unread > 0 ? AppColors.primary : AppColors.textTertiary,
+                                              fontSize: 11,
+                                            )),
+                                        if (unread > 0) ...[
+                                          const SizedBox(height: 6),
+                                          Container(
+                                            width: 22,
+                                            height: 22,
+                                            decoration: const BoxDecoration(
+                                              color: AppColors.primary,
+                                              shape: BoxShape.circle,
+                                            ),
+                                            alignment: Alignment.center,
+                                            child: Text(
+                                              '$unread',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w700,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                ),
+              ],
+            ),
+    );
+  }
+}
+
+// ─── NEW CHAT PICKER SHEET ──────────────────────────────────────
+
+class _NewChatSheet extends StatefulWidget {
+  final List<dynamic> friends;
+  final String Function(String?) profilePictureUrl;
+  final void Function(Map<String, dynamic> friend) onSelect;
+
+  const _NewChatSheet({required this.friends, required this.profilePictureUrl, required this.onSelect});
+
+  @override
+  State<_NewChatSheet> createState() => _NewChatSheetState();
+}
+
+class _NewChatSheetState extends State<_NewChatSheet> {
+  String _filter = '';
+
+  List<dynamic> get _filtered {
+    if (_filter.isEmpty) return widget.friends;
+    return widget.friends.where((f) {
+      final name = (f['name']?.toString() ?? f['username']?.toString() ?? '').toLowerCase();
+      return name.contains(_filter);
+    }).toList();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPad = MediaQuery.of(context).viewInsets.bottom;
+    return Padding(
+      padding: EdgeInsets.only(bottom: bottomPad),
+      child: DraggableScrollableSheet(
+        initialChildSize: 0.65,
+        minChildSize: 0.4,
+        maxChildSize: 0.85,
+        expand: false,
+        builder: (ctx, scrollController) => Column(
+          children: [
+            const SizedBox(height: 12),
+            Container(width: 36, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+            const SizedBox(height: 16),
+            const Text('Nuova Chat', style: TextStyle(color: AppColors.textPrimary, fontSize: 18, fontWeight: FontWeight.w700)),
+            const SizedBox(height: 12),
+            // Search
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+                ),
+                child: TextField(
+                  onChanged: (v) => setState(() => _filter = v.toLowerCase()),
+                  style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+                  decoration: InputDecoration(
+                    hintText: 'Cerca amico...',
+                    hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 15),
+                    prefixIcon: Icon(Icons.search_rounded, color: Colors.white.withValues(alpha: 0.3), size: 20),
+                    border: InputBorder.none,
+                    enabledBorder: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 8),
+            // Friends list
+            Expanded(
+              child: _filtered.isEmpty
+                  ? Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.people_outline_rounded, color: Colors.white.withValues(alpha: 0.2), size: 40),
+                          const SizedBox(height: 12),
+                          Text(
+                            widget.friends.isEmpty ? 'Nessun amico aggiunto' : 'Nessun risultato',
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.35), fontSize: 14),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: scrollController,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: _filtered.length,
+                      itemBuilder: (_, i) {
+                        final f = _filtered[i] as Map<String, dynamic>;
+                        final name = f['name']?.toString() ?? f['username']?.toString() ?? 'Utente';
+                        final picUrl = widget.profilePictureUrl(f['profile_picture']?.toString());
+
+                        return GestureDetector(
+                          onTap: () => widget.onSelect(f),
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 2),
+                            padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 44,
+                                  height: 44,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: picUrl.isEmpty
+                                        ? LinearGradient(
+                                            colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.6)],
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                          )
+                                        : null,
                                   ),
-                                ],
+                                  clipBehavior: Clip.antiAlias,
+                                  child: picUrl.isNotEmpty
+                                      ? Image.network(picUrl, fit: BoxFit.cover,
+                                          errorBuilder: (_, _, _) => const Icon(Icons.person, color: Colors.white70, size: 20))
+                                      : const Icon(Icons.person, color: Colors.white70, size: 20),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Text(name, style: const TextStyle(color: AppColors.textPrimary, fontSize: 16, fontWeight: FontWeight.w500)),
+                                ),
+                                Icon(Icons.chat_bubble_outline_rounded, color: Colors.white.withValues(alpha: 0.25), size: 20),
                               ],
                             ),
-                          ],
-                        ),
-                      ),
-                    );
-                  },
-                ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

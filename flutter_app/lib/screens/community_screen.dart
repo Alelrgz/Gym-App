@@ -1,13 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_svg/flutter_svg.dart';
 import 'package:image_picker/image_picker.dart';
 import '../config/api_config.dart';
 import '../config/theme.dart';
 import '../providers/client_provider.dart';
 import '../providers/community_provider.dart';
-import '../widgets/dashboard_sheets.dart';
 
 String relativeTime(String? iso) {
   if (iso == null) return '';
@@ -51,10 +49,6 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
 
   @override
   Widget build(BuildContext context) {
-    final unreadMessages = ref.watch(unreadMessagesProvider);
-    final unreadNotifications = ref.watch(unreadNotificationsProvider);
-
-    final isDesktop = MediaQuery.of(context).size.width > 1024;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -90,41 +84,7 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
             backgroundColor: AppColors.background,
             surfaceTintColor: Colors.transparent,
             elevation: 0,
-            // On desktop (inside sidebar shell), hide the logo/icons toolbar
-            toolbarHeight: isDesktop ? 0 : 68,
-            title: isDesktop
-                ? null
-                : Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: SvgPicture.asset('assets/fitos-logo.svg', height: 34),
-                  ),
-            centerTitle: false,
-            actions: isDesktop
-                ? null
-                : [
-                    _TopBarIcon(
-                      icon: Icons.qr_code_rounded,
-                      onTap: () => showQrAccessDialog(context, ref),
-                    ),
-                    const SizedBox(width: 8),
-                    _TopBarIcon(
-                      icon: Icons.calendar_today_rounded,
-                      onTap: () => showCalendarSheet(context, ref),
-                    ),
-                    const SizedBox(width: 8),
-                    _TopBarIconBadge(
-                      icon: Icons.notifications_none_rounded,
-                      count: unreadNotifications.valueOrNull ?? 0,
-                      onTap: () => showNotificationsSheet(context, ref),
-                    ),
-                    const SizedBox(width: 8),
-                    _TopBarIconBadge(
-                      icon: Icons.send_rounded,
-                      count: unreadMessages.valueOrNull ?? 0,
-                      onTap: () => showConversationsSheet(context, ref),
-                    ),
-                    const SizedBox(width: 16),
-                  ],
+            toolbarHeight: 0,
             bottom: TabBar(
               controller: _tabController,
               indicatorColor: AppColors.primary,
@@ -1628,85 +1588,6 @@ class _CommentsSheetState extends State<_CommentsSheet> {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-// ─── TOP BAR ICONS ──────────────────────────────────────────────
-
-class _TopBarIcon extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _TopBarIcon({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: 0.05),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-        ),
-        child: Icon(icon, size: 20, color: AppColors.textPrimary),
-      ),
-    );
-  }
-}
-
-class _TopBarIconBadge extends StatelessWidget {
-  final IconData icon;
-  final int count;
-  final VoidCallback onTap;
-
-  const _TopBarIconBadge({required this.icon, required this.count, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 40,
-        height: 40,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.05),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-              ),
-              child: Icon(icon, size: 20, color: AppColors.textPrimary),
-            ),
-            if (count > 0)
-              Positioned(
-                top: -2,
-                right: -2,
-                child: Container(
-                  width: 18,
-                  height: 18,
-                  decoration: const BoxDecoration(
-                    color: AppColors.danger,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      count > 99 ? '99' : '$count',
-                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
       ),
     );
   }

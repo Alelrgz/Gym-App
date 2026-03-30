@@ -2,6 +2,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show SystemNavigator;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
 import '../config/api_config.dart';
@@ -273,17 +274,27 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       },
       child: Scaffold(
         backgroundColor: AppColors.background,
-        body: PageView(
-          controller: _pageController,
-          allowImplicitScrolling: true, // pre-renders adjacent pages
-          onPageChanged: (index) {
-            widget.navigationShell.goBranch(index, initialLocation: index == widget.navigationShell.currentIndex);
-          },
+        body: Column(
           children: [
-            _KeepAlivePage(child: const DashboardScreen()),
-            _KeepAlivePage(child: const DietScreen()),
-            _KeepAlivePage(child: const CommunityScreen()),
-            _KeepAlivePage(child: const ProfileScreen()),
+            // ── Persistent top bar ──
+            _PersistentTopBar(pageController: _pageController),
+            // ── Page content ──
+            Expanded(
+              child: PageView(
+                controller: _pageController,
+                allowImplicitScrolling: true,
+                onPageChanged: (index) {
+                  setState(() {});
+                  widget.navigationShell.goBranch(index, initialLocation: index == widget.navigationShell.currentIndex);
+                },
+                children: [
+                  _KeepAlivePage(child: const DashboardScreen()),
+                  _KeepAlivePage(child: const DietScreen()),
+                  _KeepAlivePage(child: const CommunityScreen()),
+                  _KeepAlivePage(child: const ProfileScreen()),
+                ],
+              ),
+            ),
           ],
         ),
         bottomNavigationBar: AppBottomNav(
@@ -315,5 +326,134 @@ class _KeepAlivePageState extends State<_KeepAlivePage> with AutomaticKeepAliveC
   Widget build(BuildContext context) {
     super.build(context);
     return widget.child;
+  }
+}
+
+// ─── PERSISTENT TOP BAR ─────────────────────────────────────────
+
+class _PersistentTopBar extends ConsumerWidget {
+  final PageController pageController;
+  const _PersistentTopBar({required this.pageController});
+
+  int get _currentPage => pageController.hasClients ? (pageController.page?.round() ?? 0) : 0;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    // Hide on profile page (index 3)
+    if (_currentPage == 3) return const SizedBox.shrink();
+
+    final unreadMessages = ref.watch(unreadMessagesProvider);
+    final unreadNotifications = ref.watch(unreadNotificationsProvider);
+    final top = MediaQuery.of(context).padding.top;
+
+    return Container(
+      color: AppColors.background,
+      padding: EdgeInsets.only(top: top + 10, left: 24, right: 24, bottom: 6),
+      child: SizedBox(
+        height: 48,
+        child: Row(
+          children: [
+            SvgPicture.asset('assets/heavens-fit-logo.svg', height: 26),
+            const Spacer(),
+            _TopIcon(
+              icon: Icons.login_rounded,
+              onTap: () => showQrAccessDialog(context, ref),
+            ),
+            const SizedBox(width: 8),
+            _TopIcon(
+              icon: Icons.calendar_today_rounded,
+              onTap: () => showCalendarSheet(context, ref),
+            ),
+            const SizedBox(width: 8),
+            _TopIconBadge(
+              icon: Icons.notifications_none_rounded,
+              count: unreadNotifications.valueOrNull ?? 0,
+              onTap: () => showNotificationsSheet(context, ref),
+            ),
+            const SizedBox(width: 8),
+            _TopIconBadge(
+              icon: Icons.send_rounded,
+              count: unreadMessages.valueOrNull ?? 0,
+              onTap: () => showConversationsSheet(context, ref),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TopIcon extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+  const _TopIcon({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 38,
+        height: 38,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white.withValues(alpha: 0.04),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+        ),
+        child: Icon(icon, size: 19, color: AppColors.textSecondary),
+      ),
+    );
+  }
+}
+
+class _TopIconBadge extends StatelessWidget {
+  final IconData icon;
+  final int count;
+  final VoidCallback onTap;
+  const _TopIconBadge({required this.icon, required this.count, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: SizedBox(
+        width: 38,
+        height: 38,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: 38,
+              height: 38,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.white.withValues(alpha: 0.04),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+              ),
+              child: Icon(icon, size: 19, color: AppColors.textSecondary),
+            ),
+            if (count > 0)
+              Positioned(
+                top: -2,
+                right: -2,
+                child: Container(
+                  width: 18,
+                  height: 18,
+                  decoration: const BoxDecoration(
+                    color: AppColors.danger,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Center(
+                    child: Text(
+                      count > 99 ? '99' : '$count',
+                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }

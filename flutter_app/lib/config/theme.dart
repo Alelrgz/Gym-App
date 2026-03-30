@@ -2,16 +2,16 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
-  static const background = Color(0xFF0F0F0F);
-  static const surface = Color(0xFF1A1A1A);
-  static const elevated = Color(0xFF141414);
-  static const primary = Color(0xFFF97316);
-  static const primaryHover = Color(0xFFEA580C);
-  static const textPrimary = Color(0xFFFFFFFF);
-  static const textSecondary = Color(0x99FFFFFF); // 60% white
-  static const textTertiary = Color(0x66FFFFFF); // 40% white
-  static const border = Color(0x0FFFFFFF); // 6% white
-  static const borderLight = Color(0x1AFFFFFF); // 10% white
+  static const background = Color(0xFF0A0A0A);
+  static const surface = Color(0xFF161616);
+  static const elevated = Color(0xFF111111);
+  static const primary = Color(0xFFFF8C00);
+  static const primaryHover = Color(0xFFE07A00);
+  static const textPrimary = Color(0xFFF5F5F5);
+  static const textSecondary = Color(0x8CFFFFFF); // 55% white
+  static const textTertiary = Color(0x55FFFFFF); // 33% white
+  static const border = Color(0x0DFFFFFF); // 5% white
+  static const borderLight = Color(0x14FFFFFF); // 8% white
   static const success = Color(0xFF22C55E);
   static const danger = Color(0xFFEF4444);
   static const warning = Color(0xFFFACC15);
@@ -60,13 +60,13 @@ class AppTheme {
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.06),
+        fillColor: Colors.white.withValues(alpha: 0.04),
         border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: BorderSide.none,
         ),
         focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(14),
           borderSide: const BorderSide(color: AppColors.primary, width: 1),
         ),
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -77,7 +77,7 @@ class AppTheme {
           backgroundColor: AppColors.primary,
           foregroundColor: Colors.white,
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
         ),
       ),
@@ -99,11 +99,11 @@ class AppTheme {
 
 /// Glass-morphism decoration for containers
 class GlassDecoration {
-  static BoxDecoration card({double opacity = 0.04, double borderRadius = 24}) {
+  static BoxDecoration card({double opacity = 0.03, double borderRadius = 24}) {
     return BoxDecoration(
       color: Colors.white.withValues(alpha: opacity),
       borderRadius: BorderRadius.circular(borderRadius),
-      border: Border.all(color: AppColors.borderLight),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
     );
   }
 
@@ -113,12 +113,12 @@ class GlassDecoration {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          Colors.white.withValues(alpha: 0.10),
-          Colors.white.withValues(alpha: 0.04),
+          Colors.white.withValues(alpha: 0.07),
+          Colors.white.withValues(alpha: 0.02),
         ],
       ),
       borderRadius: BorderRadius.circular(borderRadius),
-      border: Border.all(color: AppColors.borderLight),
+      border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
     );
   }
 
@@ -128,12 +128,12 @@ class GlassDecoration {
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
         colors: [
-          AppColors.primary.withValues(alpha: 0.15),
-          AppColors.primary.withValues(alpha: 0.05),
+          AppColors.primary.withValues(alpha: 0.10),
+          AppColors.primary.withValues(alpha: 0.03),
         ],
       ),
       borderRadius: BorderRadius.circular(borderRadius),
-      border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2), width: 0.5),
     );
   }
 }

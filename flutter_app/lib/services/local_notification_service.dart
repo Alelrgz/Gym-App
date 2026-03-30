@@ -16,7 +16,7 @@ class LocalNotificationService {
   static const _androidChannel = AndroidNotificationChannel(
     'fitos_general',
     'Notifiche Generali',
-    description: 'Notifiche dall\'app FitOS',
+    description: "Notifiche dall'app Heaven's Fit",
     importance: Importance.high,
   );
 

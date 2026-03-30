@@ -42,4 +42,4 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/fitos-logo.svg
+    - assets/heavens-fit-logo.svg

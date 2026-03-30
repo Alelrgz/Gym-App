@@ -341,7 +341,8 @@ async def get_fitness_goal(current_user: UserORM = Depends(get_current_user)):
             "protein_target": settings.protein_target,
             "carbs_target": settings.carbs_target,
             "fat_target": settings.fat_target,
-            "has_trainer": has_trainer
+            "has_trainer": has_trainer,
+            "plan_mode": getattr(settings, 'plan_mode', 'fixed') or 'fixed'
         }
     finally:
         db.close()

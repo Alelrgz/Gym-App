@@ -143,7 +143,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                 children: [
                   // Logo / Title
                   SvgPicture.asset(
-                    'assets/fitos-logo.svg',
+                    'assets/heavens-fit-logo.svg',
                     height: 80,
                   ),
                   const SizedBox(height: 16),

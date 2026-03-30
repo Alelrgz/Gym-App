@@ -18,11 +18,9 @@ class DashboardScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final clientData = ref.watch(clientDataProvider);
-    final unreadMessages = ref.watch(unreadMessagesProvider);
-    final unreadNotifications = ref.watch(unreadNotificationsProvider);
 
     return Scaffold(
-      backgroundColor: AppColors.background,
+      backgroundColor: const Color(0xFF0A0A0A),
       body: clientData.when(
         loading: () => const Center(
           child: CircularProgressIndicator(color: AppColors.primary),
@@ -60,43 +58,6 @@ class DashboardScreen extends ConsumerWidget {
           },
           child: CustomScrollView(
             slivers: [
-              // --- TOP BAR ---
-              SliverAppBar(
-                floating: true,
-                backgroundColor: AppColors.background,
-                surfaceTintColor: Colors.transparent,
-                toolbarHeight: 68,
-                title: Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: SvgPicture.asset('assets/fitos-logo.svg', height: 34),
-                ),
-                centerTitle: false,
-                actions: [
-                  _TopBarIcon(
-                    icon: Icons.qr_code_rounded,
-                    onTap: () => showQrAccessDialog(context, ref),
-                  ),
-                  const SizedBox(width: 8),
-                  _TopBarIcon(
-                    icon: Icons.calendar_today_rounded,
-                    onTap: () => showCalendarSheet(context, ref),
-                  ),
-                  const SizedBox(width: 8),
-                  _TopBarIconBadge(
-                    icon: Icons.notifications_none_rounded,
-                    count: unreadNotifications.valueOrNull ?? 0,
-                    onTap: () => showNotificationsSheet(context, ref),
-                  ),
-                  const SizedBox(width: 8),
-                  _TopBarIconBadge(
-                    icon: Icons.send_rounded,
-                    count: unreadMessages.valueOrNull ?? 0,
-                    onTap: () => showConversationsSheet(context, ref),
-                  ),
-                  const SizedBox(width: 16),
-                ],
-              ),
-
               // --- CONTENT ---
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
@@ -147,86 +108,7 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-// ─── TOP BAR ICONS ───────────────────────────────────────────────
-
-class _TopBarIcon extends StatelessWidget {
-  final IconData icon;
-  final VoidCallback onTap;
-
-  const _TopBarIcon({required this.icon, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 40,
-        height: 40,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: Colors.white.withValues(alpha: 0.05),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-        ),
-        child: Icon(icon, size: 20, color: AppColors.textPrimary),
-      ),
-    );
-  }
-}
-
-class _TopBarIconBadge extends StatelessWidget {
-  final IconData icon;
-  final int count;
-  final VoidCallback onTap;
-
-  const _TopBarIconBadge({required this.icon, required this.count, required this.onTap});
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 40,
-        height: 40,
-        child: Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: Colors.white.withValues(alpha: 0.05),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
-              ),
-              child: Icon(icon, size: 20, color: AppColors.textPrimary),
-            ),
-            if (count > 0)
-              Positioned(
-                top: -2,
-                right: -2,
-                child: Container(
-                  width: 18,
-                  height: 18,
-                  decoration: const BoxDecoration(
-                    color: AppColors.danger,
-                    shape: BoxShape.circle,
-                  ),
-                  child: Center(
-                    child: Text(
-                      count > 99 ? '99' : '$count',
-                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// ─── 1. WORKOUT CARD (Orange Gradient) ───────────────────────────
+// ─── 1. WORKOUT CARD ─────────────────────────────────────────────
 
 class _WorkoutCard extends ConsumerWidget {
   final ClientProfile profile;
@@ -242,9 +124,9 @@ class _WorkoutCard extends ConsumerWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: AppColors.borderLight),
+        color: Colors.white.withValues(alpha: 0.03),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -252,15 +134,15 @@ class _WorkoutCard extends ConsumerWidget {
         children: [
           // Accent bar
           Container(
-            height: 4,
+            height: 3,
             decoration: BoxDecoration(
               gradient: isCompleted
                   ? const LinearGradient(colors: [Color(0xFF22C55E), Color(0xFF16A34A)])
-                  : const LinearGradient(colors: [Color(0xFFF97316), Color(0xFFEA580C)]),
+                  : const LinearGradient(colors: [AppColors.primary, Color(0xFFE07A00)]),
             ),
           ),
           Padding(
-            padding: const EdgeInsets.fromLTRB(20, 20, 20, 22),
+            padding: const EdgeInsets.fromLTRB(20, 22, 20, 24),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -268,13 +150,13 @@ class _WorkoutCard extends ConsumerWidget {
                 Row(
                   children: [
                     Container(
-                      width: 40,
-                      height: 40,
+                      width: 42,
+                      height: 42,
                       decoration: BoxDecoration(
                         color: isCompleted
-                            ? const Color(0xFF22C55E).withValues(alpha: 0.15)
-                            : AppColors.primary.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
+                            ? const Color(0xFF22C55E).withValues(alpha: 0.10)
+                            : AppColors.primary.withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(14),
                       ),
                       child: Icon(
                         isCompleted ? Icons.check_rounded : Icons.fitness_center_rounded,
@@ -290,12 +172,13 @@ class _WorkoutCard extends ConsumerWidget {
                           Text(
                             'Allenamento di Oggi',
                             style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: FontWeight.w600,
-                              color: AppColors.textSecondary,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w500,
+                              color: AppColors.textTertiary,
+                              letterSpacing: 0.3,
                             ),
                           ),
-                          const SizedBox(height: 2),
+                          const SizedBox(height: 4),
                           Text(
                             title,
                             style: const TextStyle(
@@ -452,12 +335,12 @@ class _WorkoutCard extends ConsumerWidget {
                           }
                         },
                         child: Container(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 15),
                           decoration: BoxDecoration(
                             color: isCompleted
                                 ? const Color(0xFF22C55E)
                                 : AppColors.primary,
-                            borderRadius: BorderRadius.circular(14),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                           child: Row(
                             mainAxisAlignment: MainAxisAlignment.center,
@@ -470,7 +353,7 @@ class _WorkoutCard extends ConsumerWidget {
                                 isCompleted ? 'Completato' : (hasWorkout ? 'Inizia' : 'I Miei Allenamenti'),
                                 style: const TextStyle(
                                   color: Colors.white,
-                                  fontWeight: FontWeight.w700,
+                                  fontWeight: FontWeight.w600,
                                   fontSize: 16,
                                 ),
                               ),
@@ -483,11 +366,11 @@ class _WorkoutCard extends ConsumerWidget {
                     GestureDetector(
                       onTap: () => showCoopModal(context, ref),
                       child: Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+                        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
                         decoration: BoxDecoration(
-                          color: AppColors.elevated,
-                          border: Border.all(color: AppColors.borderLight),
-                          borderRadius: BorderRadius.circular(14),
+                          color: Colors.white.withValues(alpha: 0.04),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+                          borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
                           children: [
@@ -517,18 +400,18 @@ class _MetadataChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
       decoration: BoxDecoration(
-        color: AppColors.elevated,
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.borderLight),
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           Icon(icon, size: 14, color: AppColors.textTertiary),
           const SizedBox(width: 6),
-          Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: AppColors.textSecondary)),
+          Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w400, color: AppColors.textSecondary)),
         ],
       ),
     );
@@ -615,7 +498,7 @@ class _StreakGemsCardState extends State<_StreakGemsCard>
                   );
                 },
                 child: SvgPicture.string(
-                  _lucideFlame.replaceAll('currentColor', '#F97316'),
+                  _lucideFlame.replaceAll('currentColor', '#FF8C00'),
                   width: 34,
                   height: 34,
                 ),
@@ -624,7 +507,7 @@ class _StreakGemsCardState extends State<_StreakGemsCard>
               // Large streak number
               ShaderMask(
                 shaderCallback: (bounds) => const LinearGradient(
-                  colors: [Color(0xFFFB923C), Color(0xFFF87171), Color(0xFFFB923C)],
+                  colors: [Color(0xFFFF8C00), Color(0xFFFFB347), Color(0xFFFF8C00)],
                 ).createShader(bounds),
                 child: Text(
                   _streakDisplay(),
@@ -644,8 +527,8 @@ class _StreakGemsCardState extends State<_StreakGemsCard>
                   _streakLabel(),
                   style: const TextStyle(
                     fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Color(0xFFFB923C),
+                    fontWeight: FontWeight.w600,
+                    color: AppColors.primary,
                     letterSpacing: 0.5,
                     height: 1.3,
                   ),
@@ -702,8 +585,8 @@ class _StreakGemsCardState extends State<_StreakGemsCard>
                 _nextGoal(),
                 style: const TextStyle(
                   fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  color: Color(0xFFFB923C),
+                  fontWeight: FontWeight.w600,
+                  color: AppColors.primary,
                 ),
               ),
             ],
@@ -966,7 +849,7 @@ class _StreakPageState extends ConsumerState<_StreakPage> with SingleTickerProvi
             ),
             child: isCompleted
                 ? SvgPicture.string(
-                    _lucideFlame.replaceAll('currentColor', '#F97316'),
+                    _lucideFlame.replaceAll('currentColor', '#FF8C00'),
                     width: 16, height: 16, fit: BoxFit.scaleDown,
                   )
                 : Center(
@@ -1115,7 +998,7 @@ class _StreakPageState extends ConsumerState<_StreakPage> with SingleTickerProvi
                 );
               },
               child: SvgPicture.string(
-                _lucideFlame.replaceAll('currentColor', '#F97316'),
+                _lucideFlame.replaceAll('currentColor', '#FF8C00'),
                 width: 80,
                 height: 80,
               ),
@@ -1123,7 +1006,7 @@ class _StreakPageState extends ConsumerState<_StreakPage> with SingleTickerProvi
             const SizedBox(height: 16),
             ShaderMask(
               shaderCallback: (bounds) => const LinearGradient(
-                colors: [Color(0xFFFB923C), Color(0xFFF87171), Color(0xFFFB923C)],
+                colors: [Color(0xFFFF8C00), Color(0xFFFFB347), Color(0xFFFF8C00)],
               ).createShader(bounds),
               child: Text(
                 '$_weeks',
@@ -1159,7 +1042,7 @@ class _StreakPageState extends ConsumerState<_StreakPage> with SingleTickerProvi
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       const Text('Prossimo obiettivo', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                      Text('$_nextMilestone settimane', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Color(0xFFFB923C))),
+                      Text('$_nextMilestone settimane', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.primary)),
                     ],
                   ),
                   const SizedBox(height: 14),
@@ -1169,7 +1052,7 @@ class _StreakPageState extends ConsumerState<_StreakPage> with SingleTickerProvi
                       value: progress.clamp(0.0, 1.0),
                       minHeight: 10,
                       backgroundColor: Colors.white.withValues(alpha: 0.06),
-                      valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFB923C)),
+                      valueColor: const AlwaysStoppedAnimation<Color>(AppColors.primary),
                     ),
                   ),
                   const SizedBox(height: 10),
@@ -1277,14 +1160,14 @@ class _PhotoMealsGrid extends ConsumerWidget {
                               child: Container(
                                 padding: const EdgeInsets.symmetric(vertical: 10),
                                 decoration: BoxDecoration(
-                                  color: Colors.black.withValues(alpha: 0.55),
-                                  border: Border.all(color: AppColors.primary.withValues(alpha: 0.5)),
+                                  color: Colors.black.withValues(alpha: 0.50),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 0.5),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Text(
                                   'PROGRESSI',
                                   textAlign: TextAlign.center,
-                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary, letterSpacing: 1.0),
+                                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary, letterSpacing: 1.0),
                                 ),
                               ),
                             ),
@@ -1372,10 +1255,10 @@ class _TodayMealsCardState extends State<_TodayMealsCard> {
         Text(
           'PASTI DI OGGI',
           style: TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
-            color: Colors.grey[500],
-            letterSpacing: 1.0,
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: Colors.white.withValues(alpha: 0.35),
+            letterSpacing: 1.2,
           ),
         ),
         const SizedBox(height: 8),
@@ -1411,12 +1294,12 @@ class _TodayMealsCardState extends State<_TodayMealsCard> {
                             children: [
                               Row(
                                 children: [
-                                  Icon(icon, size: 16, color: AppColors.primary),
+                                  Icon(icon, size: 14, color: AppColors.primary),
                                   const SizedBox(width: 6),
                                   Flexible(
                                     child: Text(
                                       typeLabel,
-                                      style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.primary, letterSpacing: 0.5),
+                                      style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.45), letterSpacing: 0.5),
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
@@ -1449,8 +1332,8 @@ class _TodayMealsCardState extends State<_TodayMealsCard> {
             width: double.infinity,
             padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.05),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              color: Colors.white.withValues(alpha: 0.04),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Text(
@@ -1458,7 +1341,7 @@ class _TodayMealsCardState extends State<_TodayMealsCard> {
               textAlign: TextAlign.center,
               style: TextStyle(
                 fontSize: 11,
-                fontWeight: FontWeight.w700,
+                fontWeight: FontWeight.w600,
                 color: AppColors.primary,
                 letterSpacing: 1.0,
               ),
@@ -1516,7 +1399,7 @@ class _TrainerCard extends StatelessWidget {
                 children: [
                   Text(
                     'IL MIO TRAINER',
-                    style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.w600, letterSpacing: 1.0),
+                    style: TextStyle(fontSize: 10, color: Colors.white.withValues(alpha: 0.35), fontWeight: FontWeight.w500, letterSpacing: 1.2),
                   ),
                   Text(
                     profile.trainerName ?? '',
@@ -1554,9 +1437,10 @@ class _CircleButton extends StatelessWidget {
         height: 40,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
-          color: Colors.white.withValues(alpha: 0.1),
+          color: Colors.white.withValues(alpha: 0.05),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
         ),
-        child: Icon(icon, size: 20, color: AppColors.textPrimary),
+        child: Icon(icon, size: 18, color: AppColors.textSecondary),
       ),
     );
   }
@@ -1576,9 +1460,9 @@ class _LeaderboardLinkCard extends StatelessWidget {
             height: 40,
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(12),
-              color: const Color(0xFF84CC16).withValues(alpha: 0.2),
+              color: AppColors.primary.withValues(alpha: 0.10),
             ),
-            child: const Icon(Icons.emoji_events_rounded, size: 20, color: Color(0xFFA3E635)),
+            child: Icon(Icons.emoji_events_rounded, size: 20, color: AppColors.primary),
           ),
           const SizedBox(width: 12),
           const Expanded(
@@ -1587,12 +1471,12 @@ class _LeaderboardLinkCard extends StatelessWidget {
               children: [
                 Text(
                   'Sfide Giornaliere & Classifiche',
-                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
                 ),
                 SizedBox(height: 2),
                 Text(
                   'Completa sfide per guadagnare gemme',
-                  style: TextStyle(fontSize: 10, color: AppColors.textTertiary),
+                  style: TextStyle(fontSize: 11, color: AppColors.textTertiary),
                 ),
               ],
             ),

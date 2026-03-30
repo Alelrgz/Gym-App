@@ -1319,6 +1319,8 @@ Example response:
             settings.fat_target = diet_data.fat
             settings.hydration_target = diet_data.hydration_target
             settings.consistency_target = diet_data.consistency_target
+            if hasattr(diet_data, 'plan_mode') and diet_data.plan_mode:
+                settings.plan_mode = diet_data.plan_mode
 
             db.commit()
             return {"status": "success"}

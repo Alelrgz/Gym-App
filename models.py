@@ -243,6 +243,7 @@ class AssignDietRequest(BaseModel):
     fat: int
     hydration_target: int
     consistency_target: int
+    plan_mode: str = "fixed"  # 'fixed' or 'flexible'
 
 class SelfAssignDietRequest(BaseModel):
     calories: int

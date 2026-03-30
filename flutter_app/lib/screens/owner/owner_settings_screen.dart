@@ -302,7 +302,7 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
   }
 
   Future<void> _loadFcmSettings() async {
-    // Push notifications are now managed centrally by FitOS — always configured
+    // Push notifications are now managed centrally by Heaven's Fit — always configured
     if (mounted) setState(() => _fcmConfigured = true);
   }
 
@@ -1000,7 +1000,7 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Gestite da FitOS', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF4ADE80))),
+                      const Text("Gestite da Heaven's Fit", style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Color(0xFF4ADE80))),
                       Text('Le notifiche push funzionano automaticamente — nessuna configurazione necessaria.', style: TextStyle(fontSize: 11, color: Colors.grey[600])),
                     ],
                   ),

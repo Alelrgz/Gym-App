@@ -50,6 +50,7 @@ class DietProgress {
   final int consistencyTarget;
   final Map<String, List<DietItem>> dietLog;
   final List<String> photos;
+  final String planMode; // 'fixed' or 'flexible'
 
   const DietProgress({
     required this.calories,
@@ -61,6 +62,7 @@ class DietProgress {
     this.consistencyTarget = 80,
     this.dietLog = const {},
     this.photos = const [],
+    this.planMode = 'fixed',
   });
 
   int get totalMealsToday =>
@@ -102,6 +104,7 @@ class DietProgress {
       consistencyTarget: (json['consistency_target'] as num?)?.toInt() ?? 80,
       dietLog: dietLog,
       photos: photosRaw.whereType<String>().toList(),
+      planMode: json['plan_mode'] as String? ?? 'fixed',
     );
   }
 

@@ -208,6 +208,7 @@ class ClientService:
                     },
                     "hydration": {"current": diet_settings.hydration_current, "target": diet_settings.hydration_target},
                     "consistency_target": diet_settings.consistency_target,
+                    "plan_mode": getattr(diet_settings, 'plan_mode', 'fixed') or 'fixed',
                     # Weekly health scores (Mon-Sun) for consistency chart
                     "weekly_health_scores": self._get_weekly_health_scores(client_id, db, diet_settings)
                 }

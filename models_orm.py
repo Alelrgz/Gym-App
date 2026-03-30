@@ -309,6 +309,9 @@ class ClientDietSettingsORM(Base):
     # Track when we last reset (YYYY-MM-DD)
     last_reset_date = Column(String, nullable=True)
 
+    # Plan mode: 'fixed' (follow exactly) or 'flexible' (choose alternatives)
+    plan_mode = Column(String, default="fixed")
+
 class ClientDietLogORM(Base):
     __tablename__ = "client_diet_log"
 

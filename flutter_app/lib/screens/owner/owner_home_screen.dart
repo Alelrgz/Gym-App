@@ -117,7 +117,7 @@ class _DesktopSidebar extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 24, 16, 8),
             child: Column(
               children: [
-                SvgPicture.asset('assets/fitos-logo.svg', height: 36),
+                SvgPicture.asset('assets/heavens-fit-logo.svg', height: 36),
                 const SizedBox(height: 6),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
