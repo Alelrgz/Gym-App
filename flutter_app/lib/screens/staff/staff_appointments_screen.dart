@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../config/theme.dart';
 import '../../providers/staff_provider.dart';
+import '../../providers/websocket_provider.dart' show checkinNotifier;
 import '../../widgets/glass_card.dart';
 import '../../widgets/stat_card.dart';
 
@@ -19,9 +20,22 @@ class _StaffAppointmentsScreenState
   String _searchQuery = '';
 
   @override
+  void initState() {
+    super.initState();
+    checkinNotifier.addListener(_onCheckin);
+  }
+
+  @override
   void dispose() {
+    checkinNotifier.removeListener(_onCheckin);
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onCheckin() {
+    if (checkinNotifier.value != null && mounted) {
+      ref.invalidate(staffCheckinsProvider);
+    }
   }
 
   Future<void> _quickCheckIn(String memberId, String memberName) async {

@@ -149,10 +149,15 @@ async def get_todays_checkins(
 
     try:
         # Try to get check-ins if table exists
+        total = db.query(CheckInORM).filter(
+            CheckInORM.gym_owner_id == user.gym_owner_id,
+            CheckInORM.checked_in_at.like(f"{today}%")
+        ).count()
+
         checkins = db.query(CheckInORM).filter(
             CheckInORM.gym_owner_id == user.gym_owner_id,
             CheckInORM.checked_in_at.like(f"{today}%")
-        ).order_by(CheckInORM.checked_in_at.desc()).limit(10).all()
+        ).order_by(CheckInORM.checked_in_at.desc()).limit(20).all()
 
         recent = []
         for c in checkins:
@@ -165,7 +170,7 @@ async def get_todays_checkins(
                 })
 
         return {
-            "count": len(checkins),
+            "count": total,
             "recent": recent
         }
     except Exception as e:

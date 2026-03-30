@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../services/websocket_service.dart';
 import '../services/local_notification_service.dart';
@@ -40,6 +41,9 @@ final websocketServiceProvider = Provider<WebSocketService>((ref) {
   return ws;
 });
 
+/// Global notifier for check-in events — staff dashboard listens to this.
+final checkinNotifier = ValueNotifier<Map<String, dynamic>?>(null);
+
 /// Show a local notification for relevant WebSocket messages.
 void _handleLocalNotification(Map<String, dynamic> msg) {
   final type = msg['type'] as String? ?? '';
@@ -60,6 +64,10 @@ void _handleLocalNotification(Map<String, dynamic> msg) {
       body: msg['message'] as String? ?? msg['body'] as String? ?? '',
       payload: type,
     );
+  } else if (type == 'client_checkin') {
+    debugPrint('[CHECKIN] Setting checkinNotifier with: ${msg['username']}');
+    checkinNotifier.value = null; // Reset first to ensure change fires
+    checkinNotifier.value = msg;
   } else if (type == 'new_message') {
     final sender = msg['sender_name'] as String? ?? 'Nuovo messaggio';
     final text = msg['text'] as String? ?? msg['message'] as String? ?? '';

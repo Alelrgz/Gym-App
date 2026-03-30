@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config/api_config.dart';
+import '../providers/websocket_provider.dart' show checkinNotifier;
 import 'storage_service.dart';
 
 class WebSocketService {
@@ -49,19 +50,34 @@ class WebSocketService {
 
     try {
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
-      debugPrint('[WS] Connected');
       _channel!.stream.listen(
         (data) {
+          debugPrint('[WS] Received: ${data.toString().substring(0, data.toString().length.clamp(0, 100))}');
           try {
             final msg = jsonDecode(data as String) as Map<String, dynamic>;
-            if (msg['type'] != 'pong') {
-              _messageController.add(msg);
+            if (msg['type'] == 'pong') return;
+            debugPrint('[WS] Broadcasting message type: ${msg['type']}');
+            _messageController.add(msg);
+            // Check-in notification — set global notifier directly
+            if (msg['type'] == 'client_checkin') {
+              debugPrint('[WS] Setting checkinNotifier');
+              checkinNotifier.value = null;
+              checkinNotifier.value = msg;
             }
-          } catch (_) {}
+          } catch (e) {
+            debugPrint('[WS] Parse error: $e');
+          }
         },
-        onDone: _onDisconnected,
-        onError: (_) => _onDisconnected(),
+        onDone: () {
+          debugPrint('[WS] Stream done');
+          _onDisconnected();
+        },
+        onError: (e) {
+          debugPrint('[WS] Stream error: $e');
+          _onDisconnected();
+        },
       );
+      debugPrint('[WS] Connected');
       _startPingTimer();
     } catch (e) {
       _scheduleReconnect();

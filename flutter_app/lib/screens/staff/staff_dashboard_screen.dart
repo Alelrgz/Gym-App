@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
+import '../../providers/websocket_provider.dart' show checkinNotifier;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -12,7 +13,6 @@ import '../../config/api_config.dart';
 import '../../config/theme.dart';
 import '../../providers/staff_provider.dart';
 import '../../services/staff_service.dart';
-import '../../providers/websocket_provider.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/stat_card.dart';
 
@@ -27,25 +27,38 @@ class StaffDashboardScreen extends ConsumerStatefulWidget {
 class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
-  StreamSubscription<Map<String, dynamic>>? _checkinSub;
+  Timer? _pollTimer;
 
   @override
   void initState() {
     super.initState();
-    // Listen for client check-ins at the turnstile
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      final ws = ref.read(websocketServiceProvider);
-      _checkinSub = ws.messages
-          .where((m) => m['type'] == 'client_checkin')
-          .listen(_showCheckinNotification);
+    _pollTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (!mounted) return;
+      ref.invalidate(staffCheckinsProvider);
     });
+    checkinNotifier.addListener(_onCheckinEvent);
   }
 
   @override
   void dispose() {
-    _checkinSub?.cancel();
+    checkinNotifier.removeListener(_onCheckinEvent);
+    _pollTimer?.cancel();
     _searchController.dispose();
     super.dispose();
+  }
+
+  void _onCheckinEvent() {
+    final data = checkinNotifier.value;
+    if (data == null || !mounted) return;
+    debugPrint('[STAFF] Showing check-in for: ${data['username']}');
+    ref.invalidate(staffCheckinsProvider);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('✅ Check-in: ${data['username']}'),
+        backgroundColor: const Color(0xFF22C55E),
+        duration: const Duration(seconds: 4),
+      ),
+    );
   }
 
   void _showCheckinNotification(Map<String, dynamic> data) {
@@ -170,6 +183,7 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+
     final membersAsync = ref.watch(staffMembersProvider);
     final checkinsAsync = ref.watch(staffCheckinsProvider);
 

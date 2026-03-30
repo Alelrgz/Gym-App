@@ -8,6 +8,7 @@ import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/staff_provider.dart';
 import '../../providers/websocket_provider.dart';
 import '../../config/api_config.dart';
 
@@ -38,6 +39,7 @@ class _StaffHomeScreenState extends ConsumerState<StaffHomeScreen> {
     super.initState();
     // Initialize WebSocket for real-time notifications (check-ins, etc.)
     ref.read(websocketServiceProvider);
+    checkinNotifier.addListener(_onCheckinEvent);
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final width = MediaQuery.of(context).size.shortestSide;
       if (width < 600) {
@@ -48,8 +50,88 @@ class _StaffHomeScreenState extends ConsumerState<StaffHomeScreen> {
 
   @override
   void dispose() {
+    checkinNotifier.removeListener(_onCheckinEvent);
     _notifTimer?.cancel();
     super.dispose();
+  }
+
+  void _onCheckinEvent() {
+    final data = checkinNotifier.value;
+    if (data == null || !mounted) return;
+    final username = data['username'] as String? ?? 'Cliente';
+    final photo = data['profile_picture'] as String?;
+
+    // Refresh check-in data
+    ref.invalidate(staffCheckinsProvider);
+    ref.invalidate(staffMembersProvider);
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Close',
+      barrierColor: Colors.black.withValues(alpha: 0.3),
+      transitionDuration: const Duration(milliseconds: 400),
+      transitionBuilder: (ctx, animation, _, child) {
+        return SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero)
+              .animate(CurvedAnimation(parent: animation, curve: Curves.easeOutCubic)),
+          child: child,
+        );
+      },
+      pageBuilder: (ctx, _, __) {
+        Future.delayed(const Duration(seconds: 5), () {
+          if (Navigator.of(ctx).canPop()) Navigator.of(ctx).pop();
+        });
+        return Align(
+          alignment: Alignment.topCenter,
+          child: Padding(
+            padding: const EdgeInsets.only(top: 40),
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: 340,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1A1A1A),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: const Color(0xFF22C55E).withValues(alpha: 0.3)),
+                  boxShadow: [BoxShadow(color: const Color(0xFF22C55E).withValues(alpha: 0.1), blurRadius: 20, spreadRadius: 2)],
+                ),
+                child: Row(
+                  children: [
+                    CircleAvatar(
+                      radius: 28,
+                      backgroundColor: const Color(0xFFF15A24).withValues(alpha: 0.15),
+                      backgroundImage: photo != null && photo.isNotEmpty ? NetworkImage(photo) : null,
+                      child: photo == null || photo.isEmpty
+                          ? Text(username.isNotEmpty ? username[0].toUpperCase() : '?',
+                              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w700, color: Color(0xFFF15A24)))
+                          : null,
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Row(children: [
+                            Icon(Icons.login_rounded, size: 14, color: Color(0xFF22C55E)),
+                            SizedBox(width: 6),
+                            Text('Check-in', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF22C55E))),
+                          ]),
+                          const SizedBox(height: 4),
+                          Text(username, style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700, color: Colors.white)),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Future<void> _checkForActionableNotifications() async {
