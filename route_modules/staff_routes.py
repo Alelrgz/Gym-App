@@ -1458,6 +1458,7 @@ async def onboard_new_client(
                 photo_filename = f"{client_id}.{ext}"
                 url = await _save_file(optimized, "profiles", photo_filename)
                 new_user.profile_picture = url
+                new_user.registration_photo = url  # Staff-taken photo for ID verification
             except Exception as photo_err:
                 logger.warning(f"Failed to save profile photo: {photo_err}")
 

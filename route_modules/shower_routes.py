@@ -192,7 +192,7 @@ async def device_verify_access(request: Request, data: dict, db: Session = Depen
             # Notify staff dashboard of check-in (use fresh db since this one closes)
             asyncio.ensure_future(_notify_staff_checkin(
                 owner.id, member.username,
-                member.profile_picture, member.id
+                member.registration_photo or member.profile_picture, member.id
             ))
             return {"valid": True, "username": member.username, "user_id": user_id}
 

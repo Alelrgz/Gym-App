@@ -17,6 +17,7 @@ class UserORM(Base):
     created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
     settings = Column(String, nullable=True) # JSON string
     profile_picture = Column(String, nullable=True)  # Path to profile image
+    registration_photo = Column(String, nullable=True)  # Photo taken by staff at sign-up (for ID at check-in)
     bio = Column(String, nullable=True)  # User bio/description (mainly for trainers)
     specialties = Column(String, nullable=True)  # Comma-separated trainer specialties (e.g., "Yoga,Calisthenics,Bodybuilding")
 
