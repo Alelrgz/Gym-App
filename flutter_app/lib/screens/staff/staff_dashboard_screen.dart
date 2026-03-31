@@ -1582,6 +1582,25 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
   }
 
 
+  void _showReactivateSearch(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => _ReactivateSearchSheet(
+        ref: widget.ref,
+        onReactivated: () {
+          Navigator.pop(ctx); // close search
+          Navigator.pop(context); // close onboarding wizard
+          widget.ref.invalidate(staffMembersProvider);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
@@ -1621,6 +1640,31 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
+                ),
+                const SizedBox(height: 8),
+                // Re-registration banner
+                GestureDetector(
+                  onTap: () => _showReactivateSearch(context),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.person_search_rounded, size: 18, color: AppColors.primary),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text('Ex-membro? Cerca e riattiva',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                        ),
+                        Icon(Icons.chevron_right, size: 18, color: AppColors.primary),
+                      ],
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 // Progress
@@ -4327,4 +4371,211 @@ class _SignaturePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _SignaturePainter oldDelegate) => true;
+}
+
+
+class _ReactivateSearchSheet extends StatefulWidget {
+  final WidgetRef ref;
+  final VoidCallback onReactivated;
+
+  const _ReactivateSearchSheet({required this.ref, required this.onReactivated});
+
+  @override
+  State<_ReactivateSearchSheet> createState() => _ReactivateSearchSheetState();
+}
+
+class _ReactivateSearchSheetState extends State<_ReactivateSearchSheet> {
+  final _controller = TextEditingController();
+  List<Map<String, dynamic>> _results = [];
+  bool _searching = false;
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    _debounce?.cancel();
+    if (query.length < 2) {
+      setState(() => _results = []);
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 400), () => _search(query));
+  }
+
+  Future<void> _search(String query) async {
+    setState(() => _searching = true);
+    try {
+      final service = widget.ref.read(staffServiceProvider);
+      final results = await service.searchFormerMembers(query);
+      if (mounted) setState(() { _results = results; _searching = false; });
+    } catch (e) {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
+  Future<void> _reactivate(Map<String, dynamic> member) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text('Riattiva ${member['username']}?',
+            style: const TextStyle(color: AppColors.textPrimary)),
+        content: const Text(
+          'L\'account verrà riattivato con tutti i dati precedenti.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annulla')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text('Riattiva'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      final service = widget.ref.read(staffServiceProvider);
+      final result = await service.reactivateMember(member['id']);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'] ?? 'Membro riattivato')),
+        );
+        widget.onReactivated();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.4,
+      maxChildSize: 0.9,
+      expand: false,
+      builder: (ctx, scrollController) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(width: 40, height: 4,
+                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+            ),
+            const SizedBox(height: 16),
+            const Text('Cerca Ex-Membro',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            const SizedBox(height: 4),
+            const Text('Cerca per nome, email o telefono',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _controller,
+              onChanged: _onSearchChanged,
+              autofocus: true,
+              style: const TextStyle(color: AppColors.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Cerca...',
+                hintStyle: TextStyle(color: Colors.grey[600]),
+                prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+                suffixIcon: _searching
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(width: 16, height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)),
+                      )
+                    : null,
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.06),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: _results.isEmpty
+                  ? Center(
+                      child: Text(
+                        _controller.text.length < 2
+                            ? 'Digita almeno 2 caratteri'
+                            : 'Nessun ex-membro trovato',
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: scrollController,
+                      itemCount: _results.length,
+                      itemBuilder: (ctx, i) {
+                        final m = _results[i];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: GestureDetector(
+                            onTap: () => _reactivate(m),
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.04),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                              ),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 22,
+                                    backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                                    backgroundImage: m['profile_picture'] != null
+                                        ? NetworkImage(m['profile_picture'])
+                                        : null,
+                                    child: m['profile_picture'] == null
+                                        ? Text(
+                                            (m['username'] ?? '?')[0].toUpperCase(),
+                                            style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
+                                          )
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(m['username'] ?? '',
+                                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                                        if (m['email'] != null)
+                                          Text(m['email'], style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text('Riattiva',
+                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

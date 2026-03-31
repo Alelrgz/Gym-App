@@ -53,6 +53,76 @@ async def get_staff_gym_info(
     }
 
 
+@router.get("/search-former-members")
+async def search_former_members(
+    q: str = "",
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Search for inactive/former members by name, email, or phone for re-registration."""
+    if user.role not in ("staff", "owner"):
+        raise HTTPException(status_code=403, detail="Staff access only")
+    if not q or len(q) < 2:
+        return []
+
+    gym_owner_id = user.gym_owner_id or (user.id if user.role == "owner" else None)
+    if not gym_owner_id:
+        return []
+
+    search = f"%{q.lower()}%"
+    members = db.query(UserORM).filter(
+        UserORM.gym_owner_id == gym_owner_id,
+        UserORM.role == "client",
+        UserORM.is_active == False,
+        (UserORM.username.ilike(search) | UserORM.email.ilike(search) | UserORM.phone.ilike(search))
+    ).limit(20).all()
+
+    return [
+        {
+            "id": m.id,
+            "username": m.username,
+            "email": m.email,
+            "phone": getattr(m, 'phone', None),
+            "profile_picture": m.registration_photo or m.profile_picture,
+            "created_at": m.created_at,
+        }
+        for m in members
+    ]
+
+
+@router.post("/reactivate-member")
+async def reactivate_member(
+    data: dict,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Reactivate a former member instead of creating a new account."""
+    if user.role not in ("staff", "owner"):
+        raise HTTPException(status_code=403, detail="Staff access only")
+
+    member_id = data.get("member_id", "")
+    if not member_id:
+        raise HTTPException(status_code=400, detail="member_id required")
+
+    gym_owner_id = user.gym_owner_id or (user.id if user.role == "owner" else None)
+    member = db.query(UserORM).filter(
+        UserORM.id == member_id,
+        UserORM.gym_owner_id == gym_owner_id,
+        UserORM.role == "client",
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    member.is_active = True
+    db.commit()
+
+    return {
+        "status": "ok",
+        "username": member.username,
+        "message": f"{member.username} è stato riattivato"
+    }
+
+
 @router.get("/members")
 async def get_gym_members(
     user: UserORM = Depends(get_current_user),

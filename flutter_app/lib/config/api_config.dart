@@ -286,6 +286,8 @@ class ApiConfig {
   static const staffChangeSubscription = '/api/staff/change-subscription';
   static const staffChangeSubscriptionPreview = '/api/staff/change-subscription/preview';
   static const staffWaiverTemplate = '/api/staff/waiver-template';
+  static const staffSearchFormerMembers = '/api/staff/search-former-members';
+  static const staffReactivateMember = '/api/staff/reactivate-member';
   static const staffOnboardClient = '/api/staff/onboard-client';
   static const staffResetMemberPassword = '/api/staff/reset-member-password';
   static const staffChangeMemberUsername = '/api/staff/change-member-username';

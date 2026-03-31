@@ -60,6 +60,17 @@ class StaffService {
     return response.data as Map<String, dynamic>;
   }
 
+  // ── Former Members (Re-registration) ─────────────────────
+  Future<List<Map<String, dynamic>>> searchFormerMembers(String query) async {
+    final response = await _api.get('${ApiConfig.staffSearchFormerMembers}?q=$query');
+    return (response.data as List).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> reactivateMember(String memberId) async {
+    final response = await _api.post(ApiConfig.staffReactivateMember, data: {'member_id': memberId});
+    return response.data as Map<String, dynamic>;
+  }
+
   // ── Subscriptions ─────────────────────────────────────────
   Future<List<Map<String, dynamic>>> getSubscriptionPlans() async {
     final response = await _api.get(ApiConfig.staffSubscriptionPlans);
