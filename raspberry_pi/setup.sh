@@ -1,15 +1,20 @@
 #!/bin/bash
 # =============================================================
-#  Gym Kiosk Pi Setup — run this on a fresh Raspberry Pi
+#  Heaven's Fit — Turnstile Pi Setup
 #
-#  Usage:
-#    curl -sL http://SERVER:9008/api/pi-setup/DEVICE_KEY | sudo bash
+#  For electricians: ONE command to set everything up.
 #
-#  Or manually:
-#    sudo bash setup.sh SERVER_URL DEVICE_KEY
+#  Method 1 (recommended):
+#    curl -sL https://fitos-eu.onrender.com/api/pi-setup/DEVICE_KEY | sudo bash
 #
-#  Example:
-#    sudo bash setup.sh http://192.168.1.8:9008 83875f18-500e-4ab9-b9d5-15e7f1c2a204
+#  Method 2 (manual):
+#    sudo bash setup.sh https://fitos-eu.onrender.com DEVICE_KEY
+#
+#  Method 3 (USB stick):
+#    Put a file named "kiosk.conf" on a USB stick with:
+#      KIOSK_SERVER=https://fitos-eu.onrender.com
+#      KIOSK_DEVICE_KEY=your-device-key-here
+#    Plug the USB into the Pi, then run: sudo bash setup.sh
 # =============================================================
 
 set -e
@@ -18,10 +23,28 @@ SERVER="${1:-__SERVER__}"
 DEVICE_KEY="${2:-__DEVICE_KEY__}"
 INSTALL_DIR="/opt/kiosk"
 
+# ---- Try reading config from USB stick if no args given ----
+if [[ "$SERVER" == "__SERVER__" ]] || [[ "$DEVICE_KEY" == "__DEVICE_KEY__" ]]; then
+    # Look for kiosk.conf on any mounted USB drive
+    for mount in /media/* /mnt/*; do
+        if [ -f "$mount/kiosk.conf" ]; then
+            echo "Found config on USB: $mount/kiosk.conf"
+            source "$mount/kiosk.conf"
+            SERVER="${KIOSK_SERVER:-$SERVER}"
+            DEVICE_KEY="${KIOSK_DEVICE_KEY:-$DEVICE_KEY}"
+            break
+        fi
+    done
+fi
+
 # ---- Validate ----
 if [[ "$SERVER" == "__SERVER__" ]] || [[ "$DEVICE_KEY" == "__DEVICE_KEY__" ]]; then
     echo "ERROR: SERVER and DEVICE_KEY are required."
-    echo "Usage: sudo bash setup.sh http://YOUR_SERVER:9008 YOUR_DEVICE_KEY"
+    echo ""
+    echo "Options:"
+    echo "  1. curl -sL https://SERVER/api/pi-setup/DEVICE_KEY | sudo bash"
+    echo "  2. sudo bash setup.sh SERVER_URL DEVICE_KEY"
+    echo "  3. Put kiosk.conf on a USB stick and run: sudo bash setup.sh"
     exit 1
 fi
 

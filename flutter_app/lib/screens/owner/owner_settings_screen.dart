@@ -1515,8 +1515,8 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
             const SizedBox(height: 16),
             Divider(color: Colors.white.withValues(alpha: 0.06)),
             const SizedBox(height: 8),
-            _fieldLabel('Comando Setup Raspberry Pi'),
-            Text('L\'elettricista esegue questo via SSH sul Raspberry Pi.', style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+            _fieldLabel('Setup Raspberry Pi'),
+            Text('L\'elettricista esegue questo comando via SSH sul Raspberry Pi.', style: TextStyle(fontSize: 10, color: Colors.grey[600])),
             const SizedBox(height: 6),
             Container(
               width: double.infinity,
@@ -1527,8 +1527,54 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
                 border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
               ),
               child: SelectableText(
-                'curl -sSL ${ApiConfig.baseUrl}/kiosk-setup | DEVICE_KEY=$_deviceApiKey bash',
+                'curl -sL ${ApiConfig.productionUrl}/api/pi-setup/$_deviceApiKey | sudo bash',
                 style: const TextStyle(fontSize: 11, fontFamily: 'monospace', color: Color(0xFF6EE7B7)),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton.icon(
+                    onPressed: () {
+                      Clipboard.setData(ClipboardData(
+                        text: 'curl -sL ${ApiConfig.productionUrl}/api/pi-setup/$_deviceApiKey | sudo bash',
+                      ));
+                      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Comando copiato!')));
+                    },
+                    icon: const Icon(Icons.copy, size: 14),
+                    label: const Text('Copia comando'),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: const Color(0xFF6EE7B7),
+                      side: const BorderSide(color: Color(0xFF6EE7B7)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            _fieldLabel('Istruzioni per l\'elettricista'),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+              ),
+              child: const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('1. Collega il Raspberry Pi alla corrente e a internet (WiFi/Ethernet)', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                  SizedBox(height: 4),
+                  Text('2. Collega il lettore QR USB e il modulo relay USB', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                  SizedBox(height: 4),
+                  Text('3. Collega il relay al contatto pulito del tornello (NO + COM)', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                  SizedBox(height: 4),
+                  Text('4. Accedi al Pi via SSH (utente: pi) ed esegui il comando sopra', style: TextStyle(fontSize: 12, color: Colors.white70)),
+                  SizedBox(height: 4),
+                  Text('5. Fatto! Il Pi si configura automaticamente', style: TextStyle(fontSize: 12, color: Colors.white70, fontWeight: FontWeight.w600)),
+                ],
               ),
             ),
           ],
