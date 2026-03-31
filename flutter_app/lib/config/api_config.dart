@@ -289,6 +289,7 @@ class ApiConfig {
   static const staffOnboardClient = '/api/staff/onboard-client';
   static const staffResetMemberPassword = '/api/staff/reset-member-password';
   static const staffChangeMemberUsername = '/api/staff/change-member-username';
+  static const staffUpdateRegistrationPhoto = '/api/staff/update-registration-photo';
   static const staffCreatePaymentIntent = '/api/staff/create-payment-intent';
   static const staffOnboardingCheckoutSession = '/api/staff/onboarding-checkout-session';
   static const staffSendCredentials = '/api/staff/send-credentials';

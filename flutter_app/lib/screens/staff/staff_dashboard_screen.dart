@@ -774,6 +774,66 @@ class _MemberProfileSheetState extends State<_MemberProfileSheet> {
     }
   }
 
+  Future<void> _updateRegistrationPhoto() async {
+    final choice = await showModalBottomSheet<ImageSource>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: AppColors.primary),
+              title: const Text('Scatta foto', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: AppColors.primary),
+              title: const Text('Scegli dalla galleria', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null) return;
+
+    try {
+      final picked = await ImagePicker().pickImage(
+        source: choice,
+        maxWidth: 600,
+        maxHeight: 600,
+        imageQuality: 80,
+      );
+      if (picked == null) return;
+
+      final bytes = await picked.readAsBytes();
+      final b64 = base64Encode(bytes);
+      final ext = picked.path.split('.').last.toLowerCase();
+      final mimeExt = (ext == 'png') ? 'png' : 'jpeg';
+      final dataUrl = 'data:image/$mimeExt;base64,$b64';
+
+      final service = widget.ref.read(staffServiceProvider);
+      await service.updateRegistrationPhoto(widget.memberId, dataUrl);
+
+      if (mounted) {
+        ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+          const SnackBar(content: Text('Foto di registrazione aggiornata')),
+        );
+        _loadProfile();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+          SnackBar(content: Text('Errore: $e')),
+        );
+      }
+    }
+  }
+
   void _openPlanSelector() async {
     try {
       final service = widget.ref.read(staffServiceProvider);
@@ -851,21 +911,48 @@ class _MemberProfileSheetState extends State<_MemberProfileSheet> {
             // ── Header ───────────────────────────────
             Row(
               children: [
-                Container(
-                  width: 56, height: 56,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [
-                      AppColors.primary,
-                      AppColors.primary.withValues(alpha: 0.6),
-                    ]),
-                    borderRadius: BorderRadius.circular(16),
+                GestureDetector(
+                  onTap: () => _updateRegistrationPhoto(),
+                  child: Stack(
+                    children: [
+                      Container(
+                        width: 56, height: 56,
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(colors: [
+                            AppColors.primary,
+                            AppColors.primary.withValues(alpha: 0.6),
+                          ]),
+                          borderRadius: BorderRadius.circular(16),
+                          image: (p['registration_photo'] ?? p['profile_picture']) != null
+                              ? DecorationImage(
+                                  image: NetworkImage(p['registration_photo'] ?? p['profile_picture']),
+                                  fit: BoxFit.cover,
+                                )
+                              : null,
+                        ),
+                        child: (p['registration_photo'] ?? p['profile_picture']) == null
+                            ? Center(
+                                child: Text(initial,
+                                    style: const TextStyle(
+                                        fontSize: 24,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.white)))
+                            : null,
+                      ),
+                      Positioned(
+                        bottom: -2, right: -2,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.surface, width: 2),
+                          ),
+                          child: const Icon(Icons.camera_alt, size: 12, color: Colors.white),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: Center(
-                      child: Text(initial,
-                          style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white))),
                 ),
                 const SizedBox(width: 16),
                 Expanded(

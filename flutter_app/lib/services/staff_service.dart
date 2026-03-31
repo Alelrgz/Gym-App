@@ -198,6 +198,15 @@ class StaffService {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> updateRegistrationPhoto(
+      String memberId, String photoData) async {
+    final response = await _api.post(
+      ApiConfig.staffUpdateRegistrationPhoto,
+      data: {'member_id': memberId, 'photo_data': photoData},
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
   // ── NFC Tags ──────────────────────────────────────────────
   Future<List<Map<String, dynamic>>> getNfcTags() async {
     final response = await _api.get(ApiConfig.staffNfcTags);

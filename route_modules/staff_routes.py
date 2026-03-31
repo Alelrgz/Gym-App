@@ -476,6 +476,7 @@ async def get_member_details(
         "name": getattr(member, 'name', None) or member.username,
         "email": member.email,
         "profile_picture": member.profile_picture,
+        "registration_photo": member.registration_photo,
         "member_since": member_since,
         "trainer_name": trainer_name,
         "status": "active" if member.is_active else "inactive",
@@ -1245,6 +1246,46 @@ async def change_member_username(
         raise HTTPException(status_code=400, detail=result["message"])
 
     return result
+
+
+@router.post("/update-registration-photo")
+async def update_registration_photo(
+    data: dict,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Staff updates a member's registration photo (for ID verification at check-in)."""
+    if user.role not in ("staff", "owner"):
+        raise HTTPException(status_code=403, detail="Staff or owner access required")
+
+    member_id = data.get("member_id", "")
+    photo_data = data.get("photo_data", "")
+    if not member_id or not photo_data:
+        raise HTTPException(status_code=400, detail="member_id and photo_data required")
+
+    member = db.query(UserORM).filter(UserORM.id == member_id).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    if photo_data.startswith("data:image/"):
+        import base64 as b64
+        from service_modules.upload_helper import save_file as _save_file, _optimize_image
+        try:
+            header, photo_b64 = photo_data.split(",", 1)
+            ext = header.split("/")[1].split(";")[0]
+            if ext not in ("png", "jpg", "jpeg", "webp"):
+                ext = "jpg"
+            photo_bytes = b64.b64decode(photo_b64)
+            optimized, ext = _optimize_image(photo_bytes, max_size=(400, 400), crop_square=True)
+            photo_filename = f"reg_{member_id}.{ext}"
+            url = await _save_file(optimized, "registration_photos", photo_filename)
+            member.registration_photo = url
+            db.commit()
+            return {"status": "ok", "registration_photo": url}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to save photo: {e}")
+    else:
+        raise HTTPException(status_code=400, detail="Invalid photo data format")
 
 
 @router.post("/onboard-client")
