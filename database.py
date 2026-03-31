@@ -76,6 +76,7 @@ def _run_early_migrations():
                     ('shower_daily_limit', 'INTEGER'),
                     ('device_api_key', 'TEXT'),
                     ('commission_rate', 'DOUBLE PRECISION'),
+                    ('registration_photo', 'TEXT'),
                 ]
 
                 for col_name, col_type in needed_columns:
