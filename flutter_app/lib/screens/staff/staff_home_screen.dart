@@ -70,7 +70,7 @@ class _StaffHomeScreenState extends ConsumerState<StaffHomeScreen> {
       barrierDismissible: true,
       barrierLabel: 'Close',
       barrierColor: Colors.black.withValues(alpha: 0.3),
-      transitionDuration: const Duration(milliseconds: 400),
+      transitionDuration: AppAnim.medium,
       transitionBuilder: (ctx, animation, _, child) {
         return SlideTransition(
           position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero)
@@ -422,7 +422,7 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: AppAnim.fast,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: widget.isActive

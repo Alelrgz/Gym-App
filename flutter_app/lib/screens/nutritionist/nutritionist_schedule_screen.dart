@@ -296,7 +296,7 @@ class _NutritionistScheduleScreenState
                   child: CircularProgressIndicator(
                       color: AppColors.primary, strokeWidth: 2)),
             ),
-            error: (_, __) => Padding(
+            error: (_, _) => Padding(
               padding: const EdgeInsets.all(20),
               child: Text('Errore nel caricamento',
                   style: TextStyle(fontSize: 12, color: Colors.grey[600])),
@@ -341,7 +341,7 @@ class _NutritionistScheduleScreenState
     return Padding(
       padding: const EdgeInsets.only(bottom: 4),
       child: AnimatedOpacity(
-        duration: const Duration(milliseconds: 150),
+        duration: AppAnim.fast,
         opacity: slot.enabled ? 1.0 : 0.45,
         child: Container(
           height: 48,
@@ -363,7 +363,7 @@ class _NutritionistScheduleScreenState
                   });
                 },
                 child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
+                  duration: AppAnim.fast,
                   width: 44,
                   height: 24,
                   decoration: BoxDecoration(
@@ -373,7 +373,7 @@ class _NutritionistScheduleScreenState
                         : Colors.white.withValues(alpha: 0.1),
                   ),
                   child: AnimatedAlign(
-                    duration: const Duration(milliseconds: 200),
+                    duration: AppAnim.fast,
                     alignment: slot.enabled
                         ? Alignment.centerRight
                         : Alignment.centerLeft,

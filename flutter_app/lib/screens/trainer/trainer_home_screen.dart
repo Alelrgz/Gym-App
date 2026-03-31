@@ -5,6 +5,8 @@ import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import '../../config/theme.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/client_provider.dart';
+import '../../widgets/dashboard_sheets.dart';
 
 const double _kDesktopBreakpoint = 1024;
 const double _kSidebarWidth = 200;
@@ -60,7 +62,12 @@ class TrainerHomeScreen extends ConsumerWidget {
       // ── Mobile: Bottom Nav ─────────────────────────────
       scaffold = Scaffold(
         backgroundColor: AppColors.background,
-        body: navigationShell,
+        body: Column(
+          children: [
+            _ProfessionalTopBar(),
+            Expanded(child: navigationShell),
+          ],
+        ),
         bottomNavigationBar: _MobileBottomNav(
           currentIndex: navIndex,
           onTap: goTo,
@@ -220,7 +227,7 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
       child: GestureDetector(
         onTap: widget.onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
+          duration: AppAnim.fast,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
             color: widget.isActive
@@ -309,6 +316,82 @@ class _MobileBottomNav extends StatelessWidget {
             }),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ─── PROFESSIONAL TOP BAR (shared by trainer & nutritionist) ────
+
+class _ProfessionalTopBar extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final unreadMessages = ref.watch(unreadMessagesProvider);
+    final unreadNotifications = ref.watch(unreadNotificationsProvider);
+    final top = MediaQuery.of(context).padding.top;
+
+    return Container(
+      color: AppColors.background,
+      padding: EdgeInsets.only(top: top + 10, left: 20, right: 20, bottom: 6),
+      child: SizedBox(
+        height: 48,
+        child: Row(
+          children: [
+            SvgPicture.asset('assets/heavens-fit-logo.svg', height: 24),
+            const Spacer(),
+            _TopBarIcon(
+              icon: Icons.notifications_none_rounded,
+              count: unreadNotifications.valueOrNull ?? 0,
+              onTap: () => showNotificationsSheet(context, ref),
+            ),
+            const SizedBox(width: 8),
+            _TopBarIcon(
+              icon: Icons.send_rounded,
+              count: unreadMessages.valueOrNull ?? 0,
+              onTap: () => showConversationsSheet(context, ref),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _TopBarIcon extends StatelessWidget {
+  final IconData icon;
+  final int count;
+  final VoidCallback onTap;
+  const _TopBarIcon({required this.icon, this.count = 0, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            width: 36, height: 36,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.04),
+            ),
+            child: Icon(icon, size: 19, color: AppColors.textSecondary),
+          ),
+          if (count > 0)
+            Positioned(
+              top: -2, right: -2,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: const BoxDecoration(
+                  color: AppColors.danger,
+                  shape: BoxShape.circle,
+                ),
+                child: Text('$count',
+                  style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
+              ),
+            ),
+        ],
       ),
     );
   }

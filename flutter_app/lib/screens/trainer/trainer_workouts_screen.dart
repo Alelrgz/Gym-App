@@ -166,7 +166,7 @@ class _TrainerWorkoutsScreenState extends ConsumerState<TrainerWorkoutsScreen> w
                 Expanded(
                   flex: 12,
                   child: AnimatedSwitcher(
-                    duration: const Duration(milliseconds: 300),
+                    duration: AppAnim.medium,
                     switchInCurve: Curves.easeOut,
                     switchOutCurve: Curves.easeIn,
                     transitionBuilder: (child, animation) => FadeTransition(
@@ -374,7 +374,7 @@ class _TrainerWorkoutsScreenState extends ConsumerState<TrainerWorkoutsScreen> w
                   builder: (context, candidateData, rejectedData) {
                     final isHovering = candidateData.isNotEmpty || _isDragOver;
                     return AnimatedContainer(
-                      duration: const Duration(milliseconds: 200),
+                      duration: AppAnim.fast,
                       width: double.infinity,
                       padding: const EdgeInsets.symmetric(vertical: 24),
                       decoration: BoxDecoration(
@@ -521,7 +521,7 @@ class _TrainerWorkoutsScreenState extends ConsumerState<TrainerWorkoutsScreen> w
                       ? _enterBuilderMode
                       : () => _showCreateSplitForm(context, trainer.workouts),
               child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
+                duration: AppAnim.fast,
                 width: 30, height: 30,
                 decoration: BoxDecoration(
                   color: _isBuilderMode
@@ -531,7 +531,7 @@ class _TrainerWorkoutsScreenState extends ConsumerState<TrainerWorkoutsScreen> w
                 ),
                 child: AnimatedRotation(
                   turns: _isBuilderMode ? 0.125 : 0,
-                  duration: const Duration(milliseconds: 200),
+                  duration: AppAnim.fast,
                   child: Icon(
                     _isBuilderMode ? Icons.close_rounded : Icons.add_rounded,
                     color: _isBuilderMode ? AppColors.danger : Colors.grey[400],
@@ -2334,7 +2334,7 @@ class _ClientCardState extends ConsumerState<_ClientCard> {
     final cardContent = GestureDetector(
       onTap: () => _showClientModal(context, client),
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: AppAnim.fast,
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(
           color: _isHovering
@@ -2454,7 +2454,7 @@ class _ClientCardState extends ConsumerState<_ClientCard> {
       barrierDismissible: true,
       barrierLabel: 'Close',
       barrierColor: Colors.black.withValues(alpha: 0.80),
-      transitionDuration: const Duration(milliseconds: 600),
+      transitionDuration: AppAnim.medium,
       transitionBuilder: (ctx, animation, secondaryAnimation, child) {
         final curved = CurvedAnimation(
           parent: animation,
@@ -2634,7 +2634,7 @@ class _ClientCardState extends ConsumerState<_ClientCard> {
       barrierDismissible: true,
       barrierLabel: 'Close',
       barrierColor: Colors.black.withValues(alpha: 0.90),
-      transitionDuration: const Duration(milliseconds: 600),
+      transitionDuration: AppAnim.medium,
       transitionBuilder: (ctx, animation, secondaryAnimation, child) {
         final curved = CurvedAnimation(
           parent: animation,
@@ -3256,7 +3256,7 @@ class _ExerciseDetailSheetState extends ConsumerState<_ExerciseDetailSheet> {
                   children: [
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: type,
+                        initialValue: type,
                         dropdownColor: AppColors.surface,
                         style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
                         decoration: _editInputDecoration('Tipo'),
@@ -3272,7 +3272,7 @@ class _ExerciseDetailSheetState extends ConsumerState<_ExerciseDetailSheet> {
                     const SizedBox(width: 12),
                     Expanded(
                       child: DropdownButtonFormField<String>(
-                        value: difficulty,
+                        initialValue: difficulty,
                         dropdownColor: AppColors.surface,
                         style: const TextStyle(fontSize: 14, color: AppColors.textPrimary),
                         decoration: _editInputDecoration('Difficoltà'),

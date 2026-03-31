@@ -1433,7 +1433,7 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
                 ),
                 AnimatedRotation(
                   turns: _turnstileExpanded ? 0.5 : 0,
-                  duration: const Duration(milliseconds: 200),
+                  duration: AppAnim.fast,
                   child: Icon(Icons.keyboard_arrow_down_rounded, color: Colors.grey[600], size: 22),
                 ),
               ],
@@ -1535,7 +1535,7 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
               ],
             ),
             crossFadeState: _turnstileExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-            duration: const Duration(milliseconds: 200),
+            duration: AppAnim.fast,
           ),
         ],
       ),

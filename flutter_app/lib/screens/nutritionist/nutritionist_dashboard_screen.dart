@@ -232,27 +232,57 @@ class _NutritionistDashboardScreenState
     final atRisk = data['at_risk_clients'] ?? 0;
     final total = clients.length;
     final diets = clients.where((c) => c['calories_target'] != null).length;
+    final isDesktop = MediaQuery.of(context).size.width > _kDesktopBreakpoint;
 
-    return Row(
+    final pills = [
+      _statPill('$active', 'Attivi', AppColors.success, 'active'),
+      const SizedBox(width: 6, height: 6),
+      _statPill('$atRisk', 'A Rischio', AppColors.danger, 'at_risk'),
+      const SizedBox(width: 6, height: 6),
+      _statPill('$total', 'Totali', Colors.white, 'total'),
+      const SizedBox(width: 6, height: 6),
+      _statPill('$diets', 'Diete', AppColors.primary, 'diets'),
+    ];
+
+    if (isDesktop) {
+      return Row(
+        children: [
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Nutrizionista',
+                  style: TextStyle(fontSize: 11, color: Colors.grey[600],
+                      fontWeight: FontWeight.w600, letterSpacing: 1.5)),
+              Text(data['name'] ?? 'Nutrizionista',
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+            ],
+          ),
+          const Spacer(),
+          ...pills,
+        ],
+      );
+    }
+
+    // Mobile: stack name above pills
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+        Text('Nutrizionista',
+            style: TextStyle(fontSize: 11, color: Colors.grey[600],
+                fontWeight: FontWeight.w600, letterSpacing: 1.5)),
+        Text(data['name'] ?? 'Nutrizionista',
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
           children: [
-            Text('Nutrizionista',
-                style: TextStyle(fontSize: 11, color: Colors.grey[600],
-                    fontWeight: FontWeight.w600, letterSpacing: 1.5)),
-            Text(data['name'] ?? 'Nutrizionista',
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+            _statPill('$active', 'Attivi', AppColors.success, 'active'),
+            _statPill('$atRisk', 'A Rischio', AppColors.danger, 'at_risk'),
+            _statPill('$total', 'Totali', Colors.white, 'total'),
+            _statPill('$diets', 'Diete', AppColors.primary, 'diets'),
           ],
         ),
-        const Spacer(),
-        _statPill('$active', 'Attivi', AppColors.success, 'active'),
-        const SizedBox(width: 6),
-        _statPill('$atRisk', 'A Rischio', AppColors.danger, 'at_risk'),
-        const SizedBox(width: 6),
-        _statPill('$total', 'Totali', Colors.white, 'total'),
-        const SizedBox(width: 6),
-        _statPill('$diets', 'Diete', AppColors.primary, 'diets'),
       ],
     );
   }

@@ -318,7 +318,7 @@ class _TrainerDashboardScreenState extends ConsumerState<TrainerDashboardScreen>
 
     return pending.when(
       loading: () => const SizedBox.shrink(),
-      error: (_, __) => const SizedBox.shrink(),
+      error: (_, _) => const SizedBox.shrink(),
       data: (appointments) {
         if (appointments.isEmpty) return const SizedBox.shrink();
 
@@ -533,7 +533,7 @@ class _TrainerDashboardScreenState extends ConsumerState<TrainerDashboardScreen>
       barrierDismissible: true,
       barrierLabel: 'Close',
       barrierColor: Colors.black.withValues(alpha: 0.80),
-      transitionDuration: const Duration(milliseconds: 600),
+      transitionDuration: AppAnim.medium,
       transitionBuilder: (ctx, animation, secondaryAnimation, child) {
         final curved = CurvedAnimation(parent: animation, curve: const Cubic(0.16, 1, 0.3, 1));
         return FadeTransition(
@@ -887,7 +887,7 @@ class _ClientCard extends StatelessWidget {
     };
 
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
+      duration: AppAnim.fast,
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: isSelected

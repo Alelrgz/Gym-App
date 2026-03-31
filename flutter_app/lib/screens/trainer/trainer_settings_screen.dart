@@ -238,7 +238,7 @@ class _TrainerSettingsScreenState extends ConsumerState<TrainerSettingsScreen> {
                             ? ClipRRect(
                                 borderRadius: BorderRadius.circular(24),
                                 child: Image.network(profilePicUrl, width: 80, height: 80, fit: BoxFit.cover,
-                                  errorBuilder: (_, __, ___) => _buildInitial(username)),
+                                  errorBuilder: (_, _, _) => _buildInitial(username)),
                               )
                             : _buildInitial(username),
                   ),
@@ -679,10 +679,14 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
                 final selected = _selected.contains(s);
                 return GestureDetector(
                   onTap: () => setState(() {
-                    if (selected) _selected.remove(s); else _selected.add(s);
+                    if (selected) {
+                      _selected.remove(s);
+                    } else {
+                      _selected.add(s);
+                    }
                   }),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
+                    duration: AppAnim.fast,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                     decoration: BoxDecoration(
                       gradient: selected

@@ -90,22 +90,30 @@ class AppBottomNav extends StatelessWidget {
       barrierDismissible: true,
       barrierLabel: 'Quick Actions',
       barrierColor: Colors.transparent,
-      transitionDuration: const Duration(milliseconds: 400),
-      transitionBuilder: (ctx, anim, _, child) {
-        final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutBack);
-        final fadeCurved = CurvedAnimation(parent: anim, curve: Curves.easeOut);
+      transitionDuration: const Duration(milliseconds: 350),
+      transitionBuilder: (ctx, anim, secondaryAnim, child) {
+        final curved = CurvedAnimation(
+          parent: anim,
+          curve: Curves.easeOutBack,
+          reverseCurve: Curves.easeInCubic,
+        );
+        final fadeCurved = CurvedAnimation(
+          parent: anim,
+          curve: Curves.easeOut,
+          reverseCurve: Curves.easeIn,
+        );
 
         final actions = <_FabActionData>[
           _FabActionData(Icons.camera_alt_rounded, 'Pasto', 'meal_scan'),
           _FabActionData(Icons.photo_camera_front_rounded, 'Fisico', 'physique_photo'),
-          _FabActionData(Icons.login_rounded, 'Accesso', 'qr', glow: true),
+          _FabActionData(Icons.login_rounded, 'Accesso', 'qr'),
           _FabActionData(Icons.monitor_weight_rounded, 'Peso', 'log_weight'),
           _FabActionData(Icons.calendar_month_rounded, 'Prenota', 'book_appointment'),
         ];
 
         // Evenly spaced horizontally, gentle arc upward
         const double itemSize = 56;
-        final double margin = 40.0;
+        final double margin = 20.0;
         final double usableWidth = screenWidth - margin * 2 - itemSize;
         final double spacing = usableWidth / (actions.length - 1);
         // Base height above nav bar top
@@ -120,7 +128,7 @@ class AppBottomNav extends StatelessWidget {
                 onTap: () => Navigator.of(ctx, rootNavigator: true).maybePop(),
                 child: AnimatedBuilder(
                   animation: fadeCurved,
-                  builder: (_, __) => BackdropFilter(
+                  builder: (_, _) => BackdropFilter(
                     filter: ImageFilter.blur(
                       sigmaX: 14 * fadeCurved.value,
                       sigmaY: 14 * fadeCurved.value,
@@ -152,7 +160,7 @@ class AppBottomNav extends StatelessWidget {
                 bottom: (y * itemAnim.value) + bottomPadding,
                 child: AnimatedBuilder(
                   animation: itemAnim,
-                  builder: (_, __) => Opacity(
+                  builder: (_, _) => Opacity(
                     opacity: itemAnim.value.clamp(0.0, 1.0),
                     child: Transform.scale(
                       scale: itemAnim.value,
@@ -167,18 +175,9 @@ class AppBottomNav extends StatelessWidget {
                             Container(
                               width: 56,
                               height: 56,
-                              decoration: BoxDecoration(
+                              decoration: const BoxDecoration(
                                 shape: BoxShape.circle,
                                 color: AppColors.primary,
-                                boxShadow: action.glow
-                                    ? [
-                                        BoxShadow(
-                                          color: AppColors.primary.withValues(alpha: 0.5),
-                                          blurRadius: 16,
-                                          spreadRadius: 2,
-                                        ),
-                                      ]
-                                    : [],
                               ),
                               child: Icon(action.icon, color: Colors.white, size: 24),
                             ),
@@ -223,7 +222,7 @@ class AppBottomNav extends StatelessWidget {
                         _NavItem(icon: Icons.bar_chart_outlined, activeIcon: Icons.bar_chart_rounded, label: 'Stats', isActive: currentIndex == 1, onTap: () { Navigator.of(ctx, rootNavigator: true).maybePop(); onTap(1); }),
                         AnimatedBuilder(
                           animation: curved,
-                          builder: (_, __) => _FabButton(
+                          builder: (_, _) => _FabButton(
                             onTap: () => Navigator.of(ctx, rootNavigator: true).maybePop(),
                             rotation: curved.value,
                           ),
@@ -239,7 +238,7 @@ class AppBottomNav extends StatelessWidget {
           ],
         );
       },
-      pageBuilder: (ctx, _, __) => const SizedBox.shrink(),
+      pageBuilder: (ctx, _, _) => const SizedBox.shrink(),
     ).then((_) {
       // Keep locked for 600ms after close to let the animation fully finish
       Future.delayed(const Duration(milliseconds: 600), () {
@@ -254,8 +253,7 @@ class _FabActionData {
   final IconData icon;
   final String label;
   final String actionId;
-  final bool glow;
-  const _FabActionData(this.icon, this.label, this.actionId, {this.glow = false});
+  const _FabActionData(this.icon, this.label, this.actionId);
 }
 
 class _NavItem extends StatelessWidget {

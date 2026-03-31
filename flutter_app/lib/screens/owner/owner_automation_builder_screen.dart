@@ -705,7 +705,7 @@ class _OwnerAutomationBuilderScreenState extends ConsumerState<OwnerAutomationBu
                   },
                   builder: (ctx, candidateData, rejectedData) {
                     return AnimatedContainer(
-                      duration: const Duration(milliseconds: 150),
+                      duration: AppAnim.fast,
                       decoration: _dragOverMessage
                           ? BoxDecoration(
                               borderRadius: BorderRadius.circular(12),
@@ -827,7 +827,7 @@ class _OwnerAutomationBuilderScreenState extends ConsumerState<OwnerAutomationBu
                             color: _enabled ? const Color(0xFF4ADE80) : Colors.grey[700],
                           ),
                           child: AnimatedAlign(
-                            duration: const Duration(milliseconds: 200),
+                            duration: AppAnim.fast,
                             alignment: _enabled ? Alignment.centerRight : Alignment.centerLeft,
                             child: Container(
                               width: 22, height: 22,

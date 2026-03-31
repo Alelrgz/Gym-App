@@ -168,7 +168,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                     if (!isActive) _switchGym(g.id);
                   },
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
+                    duration: AppAnim.fast,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
                       color: isActive ? AppColors.primary.withValues(alpha: 0.12) : Colors.white.withValues(alpha: 0.03),
@@ -1490,7 +1490,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                 color: enabled ? AppColors.primary : Colors.grey[700],
               ),
               child: AnimatedAlign(
-                duration: const Duration(milliseconds: 200),
+                duration: AppAnim.fast,
                 alignment: enabled ? Alignment.centerRight : Alignment.centerLeft,
                 child: Container(
                   width: 16, height: 16,
@@ -1539,7 +1539,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                 GestureDetector(
                   onTap: () => setState(() => _activityPage = i),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
+                    duration: AppAnim.dialog,
                     curve: Curves.easeOutCubic,
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
                     decoration: BoxDecoration(
@@ -1592,7 +1592,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
               if (details.primaryVelocity! > 100) _swipeActivityPage(-1);   // swipe right → prev
             },
             child: AnimatedSwitcher(
-              duration: const Duration(milliseconds: 300),
+              duration: AppAnim.medium,
               switchInCurve: Curves.easeOutCubic,
               switchOutCurve: Curves.easeInCubic,
               transitionBuilder: (child, animation) {
@@ -1622,7 +1622,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(2, (i) => AnimatedContainer(
-              duration: const Duration(milliseconds: 300),
+              duration: AppAnim.medium,
               curve: Curves.easeOutCubic,
               width: _activityPage == i ? 16 : 6,
               height: 6,

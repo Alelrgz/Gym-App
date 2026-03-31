@@ -247,7 +247,7 @@ class _NutritionistSettingsScreenState
                     width: 80,
                     height: 80,
                     fit: BoxFit.cover,
-                    errorBuilder: (_, __, ___) => Center(
+                    errorBuilder: (_, _, _) => Center(
                       child: Text(initial,
                           style: const TextStyle(
                               fontSize: 30,
@@ -308,7 +308,7 @@ class _NutritionistSettingsScreenState
         });
       },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 150),
+        duration: AppAnim.fast,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
           color: selected

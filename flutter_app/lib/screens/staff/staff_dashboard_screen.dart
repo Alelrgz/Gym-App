@@ -74,7 +74,7 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
       barrierDismissible: true,
       barrierLabel: 'Close',
       barrierColor: Colors.black.withValues(alpha: 0.5),
-      transitionDuration: const Duration(milliseconds: 400),
+      transitionDuration: AppAnim.medium,
       transitionBuilder: (ctx, animation, _, child) {
         return SlideTransition(
           position: Tween<Offset>(begin: const Offset(0, -1), end: Offset.zero)
@@ -3138,7 +3138,7 @@ class _SuccessCredentialsDialogState
     return GestureDetector(
       onTap: enabled ? onTap : null,
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
+        duration: AppAnim.fast,
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
           color: enabled
