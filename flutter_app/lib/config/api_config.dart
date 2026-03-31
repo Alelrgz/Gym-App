@@ -173,6 +173,7 @@ class ApiConfig {
 
   // ── Owner ───────────────────────────────────────────────
   // Dashboard / core
+  static const ownerDashboardBundle = '/api/owner/dashboard-bundle';
   static const ownerData = '/api/owner/data';
   static const ownerGymCode = '/api/owner/gym-code';
   static const ownerGymSettings = '/api/owner/gym-settings';

@@ -211,6 +211,106 @@ async def get_trainer_clients(
     data = service.get_trainer(current_user.id)
     return data.clients
 
+@router.get("/api/owner/dashboard-bundle")
+async def get_owner_dashboard_bundle(
+    service: UserService = Depends(get_user_service),
+    current_user: UserORM = Depends(get_current_user),
+    x_gym_id: Optional[str] = Header(None),
+    db: Session = Depends(get_db)
+):
+    """Single endpoint that returns all data needed for the owner dashboard."""
+    from gym_context import resolve_gym_id
+    from service_modules.subscription_service import SubscriptionService
+    from service_modules.crm_service import CrmService
+    gym_id = resolve_gym_id(current_user, x_gym_id)
+
+    # Core data
+    owner_data = service.get_owner(owner_id=gym_id)
+
+    # Gym settings
+    owner = db.query(UserORM).filter(UserORM.id == gym_id).first()
+    settings = {"gym_name": owner.gym_name if owner else "Gym"}
+
+    # Subscription plans
+    sub_svc = SubscriptionService()
+    try:
+        plans = sub_svc.get_plans(gym_id)
+    except Exception:
+        plans = []
+
+    # Offers
+    try:
+        offers = sub_svc.get_offers(gym_id)
+    except Exception:
+        offers = []
+
+    # Trainers
+    try:
+        trainers = db.query(UserORM).filter(
+            UserORM.gym_owner_id == gym_id,
+            UserORM.role == "trainer",
+            UserORM.is_active == True
+        ).all()
+        trainer_list = [{"id": t.id, "username": t.username, "profile_picture": t.profile_picture} for t in trainers]
+    except Exception:
+        trainer_list = []
+
+    # Pending trainers
+    try:
+        from models_orm import TrainerApplicationORM
+        pending = db.query(TrainerApplicationORM).filter(
+            TrainerApplicationORM.gym_owner_id == gym_id,
+            TrainerApplicationORM.status == "pending"
+        ).all()
+        pending_list = [{"id": p.id, "trainer_id": p.trainer_id, "created_at": p.created_at} for p in pending]
+    except Exception:
+        pending_list = []
+
+    # Activity feed
+    try:
+        crm_svc = CrmService()
+        activity = crm_svc.get_activity_feed(gym_id, limit=20)
+    except Exception:
+        activity = []
+
+    # Automated messages
+    try:
+        from service_modules.message_dispatch_service import MessageDispatchService
+        msg_svc = MessageDispatchService()
+        templates = msg_svc.get_templates(gym_id)
+        msg_log = msg_svc.get_message_log(gym_id, limit=20)
+    except Exception:
+        templates = []
+        msg_log = []
+
+    # Commissions
+    try:
+        commissions = sub_svc.get_commissions(gym_id, period="month")
+    except Exception:
+        commissions = []
+
+    # Onboarding status
+    try:
+        from service_modules.onboarding_service import get_onboarding_status
+        onboarding = get_onboarding_status(gym_id, db)
+    except Exception:
+        onboarding = {"steps": [], "completed": 0, "total": 0}
+
+    return {
+        "owner_data": owner_data,
+        "settings": settings,
+        "plans": plans,
+        "offers": offers,
+        "trainers": trainer_list,
+        "pending_trainers": pending_list,
+        "activity_feed": activity,
+        "templates": templates,
+        "message_log": msg_log,
+        "commissions": commissions,
+        "onboarding": onboarding,
+    }
+
+
 @router.get("/api/owner/data", response_model=OwnerData)
 async def get_owner_data(
     service: UserService = Depends(get_user_service),

@@ -298,17 +298,14 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
   Future<void> _loadAll() async {
     final svc = ref.read(ownerServiceProvider);
     try {
-      // Phase 1: Critical data — show dashboard immediately
-      final critical = await Future.wait([
-        svc.getOwnerData().catchError((_) => <String, dynamic>{}),
-        svc.getGymSettings().catchError((_) => <String, dynamic>{}),
-        svc.getSubscriptionPlans().catchError((_) => <Map<String, dynamic>>[]),
-      ]);
+      // Single API call for all dashboard data
+      final bundle = await svc.getDashboardBundle().catchError((_) => <String, dynamic>{});
 
       if (!mounted) return;
 
-      final data = critical[0] as Map<String, dynamic>;
-      final settings = critical[1] as Map<String, dynamic>;
+      final data = (bundle['owner_data'] as Map<String, dynamic>?) ?? {};
+      final settings = (bundle['settings'] as Map<String, dynamic>?) ?? {};
+      final onboarding = (bundle['onboarding'] as Map<String, dynamic>?) ?? {};
 
       setState(() {
         _monthlyRevenue = (data['monthly_revenue'] as num?)?.toDouble() ?? 0;
@@ -323,39 +320,21 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
         _revenueByPlan = (data['revenue_by_plan'] as List<dynamic>?)
             ?.map((e) => Map<String, dynamic>.from(e as Map))
             .toList() ?? [];
-        _plans = critical[2] as List<Map<String, dynamic>>;
-        _gymName = (settings['gym_name'] as String?) ?? 'La Mia Palestra';
-        _loading = false;
-        _activeSubscriptions = _plans.fold(0, (sum, p) => sum + ((p['active_subscriptions'] as num?)?.toInt() ?? 0));
-      });
-
-      // Phase 2: Secondary data — loads in background after UI is visible
-      final secondary = await Future.wait([
-        svc.getOffers().catchError((_) => <Map<String, dynamic>>[]),
-        svc.getAutomatedMessages().catchError((_) => <Map<String, dynamic>>[]),
-        svc.getAutomatedMessagesLog().catchError((_) => <Map<String, dynamic>>[]),
-        svc.getApprovedTrainers().catchError((_) => <Map<String, dynamic>>[]),
-        svc.getPendingTrainers().catchError((_) => <Map<String, dynamic>>[]),
-        svc.getActivityFeed().catchError((_) => <Map<String, dynamic>>[]),
-        svc.getCommissions(period: 'month').catchError((_) => <Map<String, dynamic>>[]),
-        svc.getOnboardingStatus().catchError((_) => <String, dynamic>{}),
-      ]);
-
-      if (!mounted) return;
-
-      setState(() {
-        _offers = secondary[0] as List<Map<String, dynamic>>;
-        _templates = secondary[1] as List<Map<String, dynamic>>;
-        _messageLog = secondary[2] as List<Map<String, dynamic>>;
-        _trainers = secondary[3] as List<Map<String, dynamic>>;
-        _pendingTrainers = secondary[4] as List<Map<String, dynamic>>;
-        _activityFeed = secondary[5] as List<Map<String, dynamic>>;
-        _commissions = secondary[6] as List<Map<String, dynamic>>;
-        final onboarding = secondary[7] as Map<String, dynamic>;
+        _plans = (bundle['plans'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+        _offers = (bundle['offers'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+        _templates = (bundle['templates'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+        _messageLog = (bundle['message_log'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+        _trainers = (bundle['trainers'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+        _pendingTrainers = (bundle['pending_trainers'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+        _activityFeed = (bundle['activity_feed'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
+        _commissions = (bundle['commissions'] as List<dynamic>?)?.cast<Map<String, dynamic>>() ?? [];
         _onboardingSteps = (onboarding['steps'] as List<dynamic>?)
             ?.map((e) => Map<String, dynamic>.from(e as Map)).toList() ?? [];
         _onboardingCompleted = (onboarding['completed'] as num?)?.toInt() ?? 0;
         _onboardingTotal = (onboarding['total'] as num?)?.toInt() ?? 0;
+        _gymName = (settings['gym_name'] as String?) ?? 'La Mia Palestra';
+        _loading = false;
+        _activeSubscriptions = _plans.fold(0, (sum, p) => sum + ((p['active_subscriptions'] as num?)?.toInt() ?? 0));
       });
     } catch (_) {
       if (mounted) setState(() => _loading = false);
