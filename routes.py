@@ -5,6 +5,7 @@ from models import GymConfig, ClientData, TrainerData, OwnerData, LeaderboardDat
 from services import GymService, UserService, LeaderboardService
 from datetime import timedelta
 from auth import create_access_token, get_current_user
+from sqlalchemy.orm import Session
 from database import get_db
 from models_orm import UserORM
 import logging
