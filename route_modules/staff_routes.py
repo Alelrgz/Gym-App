@@ -53,6 +53,76 @@ async def get_staff_gym_info(
     }
 
 
+@router.get("/search-former-members")
+async def search_former_members(
+    q: str = "",
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Search for inactive/former members by name, email, or phone for re-registration."""
+    if user.role not in ("staff", "owner"):
+        raise HTTPException(status_code=403, detail="Staff access only")
+    if not q or len(q) < 2:
+        return []
+
+    gym_owner_id = user.gym_owner_id or (user.id if user.role == "owner" else None)
+    if not gym_owner_id:
+        return []
+
+    search = f"%{q.lower()}%"
+    members = db.query(UserORM).filter(
+        UserORM.gym_owner_id == gym_owner_id,
+        UserORM.role == "client",
+        UserORM.is_active == False,
+        (UserORM.username.ilike(search) | UserORM.email.ilike(search) | UserORM.phone.ilike(search))
+    ).limit(20).all()
+
+    return [
+        {
+            "id": m.id,
+            "username": m.username,
+            "email": m.email,
+            "phone": getattr(m, 'phone', None),
+            "profile_picture": m.registration_photo or m.profile_picture,
+            "created_at": m.created_at,
+        }
+        for m in members
+    ]
+
+
+@router.post("/reactivate-member")
+async def reactivate_member(
+    data: dict,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Reactivate a former member instead of creating a new account."""
+    if user.role not in ("staff", "owner"):
+        raise HTTPException(status_code=403, detail="Staff access only")
+
+    member_id = data.get("member_id", "")
+    if not member_id:
+        raise HTTPException(status_code=400, detail="member_id required")
+
+    gym_owner_id = user.gym_owner_id or (user.id if user.role == "owner" else None)
+    member = db.query(UserORM).filter(
+        UserORM.id == member_id,
+        UserORM.gym_owner_id == gym_owner_id,
+        UserORM.role == "client",
+    ).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    member.is_active = True
+    db.commit()
+
+    return {
+        "status": "ok",
+        "username": member.username,
+        "message": f"{member.username} è stato riattivato"
+    }
+
+
 @router.get("/members")
 async def get_gym_members(
     user: UserORM = Depends(get_current_user),
@@ -77,7 +147,7 @@ async def get_gym_members(
             "username": m.username,
             "name": m.username,  # Could add a name field later
             "email": m.email,
-            "profile_picture": m.profile_picture
+            "profile_picture": m.registration_photo or m.profile_picture
         }
         for m in members
     ]
@@ -476,6 +546,7 @@ async def get_member_details(
         "name": getattr(member, 'name', None) or member.username,
         "email": member.email,
         "profile_picture": member.profile_picture,
+        "registration_photo": member.registration_photo,
         "member_since": member_since,
         "trainer_name": trainer_name,
         "status": "active" if member.is_active else "inactive",
@@ -1245,6 +1316,46 @@ async def change_member_username(
         raise HTTPException(status_code=400, detail=result["message"])
 
     return result
+
+
+@router.post("/update-registration-photo")
+async def update_registration_photo(
+    data: dict,
+    user: UserORM = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """Staff updates a member's registration photo (for ID verification at check-in)."""
+    if user.role not in ("staff", "owner"):
+        raise HTTPException(status_code=403, detail="Staff or owner access required")
+
+    member_id = data.get("member_id", "")
+    photo_data = data.get("photo_data", "")
+    if not member_id or not photo_data:
+        raise HTTPException(status_code=400, detail="member_id and photo_data required")
+
+    member = db.query(UserORM).filter(UserORM.id == member_id).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    if photo_data.startswith("data:image/"):
+        import base64 as b64
+        from service_modules.upload_helper import save_file as _save_file, _optimize_image
+        try:
+            header, photo_b64 = photo_data.split(",", 1)
+            ext = header.split("/")[1].split(";")[0]
+            if ext not in ("png", "jpg", "jpeg", "webp"):
+                ext = "jpg"
+            photo_bytes = b64.b64decode(photo_b64)
+            optimized, ext = _optimize_image(photo_bytes, max_size=(400, 400), crop_square=True)
+            photo_filename = f"reg_{member_id}.{ext}"
+            url = await _save_file(optimized, "registration_photos", photo_filename)
+            member.registration_photo = url
+            db.commit()
+            return {"status": "ok", "registration_photo": url}
+        except Exception as e:
+            raise HTTPException(status_code=500, detail=f"Failed to save photo: {e}")
+    else:
+        raise HTTPException(status_code=400, detail="Invalid photo data format")
 
 
 @router.post("/onboard-client")

@@ -345,8 +345,6 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
         _onboardingTotal = (onboarding['total'] as num?)?.toInt() ?? 0;
         _gymName = (settings['gym_name'] as String?) ?? 'La Mia Palestra';
         _loading = false;
-
-        // Use subscription counts from plans for accurate per-plan breakdown
         _activeSubscriptions = _plans.fold(0, (sum, p) => sum + ((p['active_subscriptions'] as num?)?.toInt() ?? 0));
       });
     } catch (_) {

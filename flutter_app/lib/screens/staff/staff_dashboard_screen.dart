@@ -774,6 +774,216 @@ class _MemberProfileSheetState extends State<_MemberProfileSheet> {
     }
   }
 
+  Future<void> _updateRegistrationPhoto() async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: AppColors.primary),
+              title: const Text('Scatta foto', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(ctx, 'camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: AppColors.primary),
+              title: const Text('Scegli dalla galleria', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(ctx, 'gallery'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.qr_code, color: AppColors.primary),
+              title: const Text('Scatta da telefono (QR)', style: TextStyle(color: Colors.white)),
+              subtitle: const Text('Scansiona il QR col telefono e scatta una foto', style: TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+              onTap: () => Navigator.pop(ctx, 'qr'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null) return;
+
+    String? dataUrl;
+
+    if (choice == 'qr') {
+      try {
+        final service = widget.ref.read(staffServiceProvider);
+        final session = await service.createPhotoSnapSession();
+        final token = session['token']?.toString() ?? '';
+        final url = session['url']?.toString() ?? '';
+        if (token.isEmpty || !mounted) return;
+
+        dataUrl = await showDialog<String>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => _RemotePhotoSnapDialog(
+            token: token,
+            url: url,
+            service: service,
+          ),
+        );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+            SnackBar(content: Text('Errore: $e')),
+          );
+        }
+        return;
+      }
+    } else {
+      try {
+        final picked = await ImagePicker().pickImage(
+          source: choice == 'camera' ? ImageSource.camera : ImageSource.gallery,
+          maxWidth: 600,
+          maxHeight: 600,
+          imageQuality: 80,
+        );
+        if (picked == null) return;
+        final bytes = await picked.readAsBytes();
+        final b64 = base64Encode(bytes);
+        final ext = picked.path.split('.').last.toLowerCase();
+        final mimeExt = (ext == 'png') ? 'png' : 'jpeg';
+        dataUrl = 'data:image/$mimeExt;base64,$b64';
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+            SnackBar(content: Text('Errore: $e')),
+          );
+        }
+        return;
+      }
+    }
+
+    if (dataUrl == null) return;
+
+    try {
+      final service = widget.ref.read(staffServiceProvider);
+      final result = await service.updateRegistrationPhoto(widget.memberId, dataUrl);
+      if (mounted) {
+        // Clear cached image and force reload with new URL
+        imageCache.clear();
+        imageCache.clearLiveImages();
+        final newUrl = result['registration_photo']?.toString();
+        if (newUrl != null && _profile != null) {
+          _profile!['registration_photo'] = '$newUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+          setState(() {});
+        }
+        ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+          const SnackBar(content: Text('Foto di registrazione aggiornata')),
+        );
+        widget.ref.invalidate(staffMembersProvider);
+        _loadProfile();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+          SnackBar(content: Text('Errore: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _uploadMedicalCert() async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: AppColors.primary),
+              title: const Text('Scatta foto', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(ctx, 'camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: AppColors.primary),
+              title: const Text('Scegli dalla galleria', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(ctx, 'gallery'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.qr_code, color: AppColors.primary),
+              title: const Text('Scatta da telefono (QR)', style: TextStyle(color: Colors.white)),
+              subtitle: const Text('Scansiona il QR col telefono e scatta una foto', style: TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+              onTap: () => Navigator.pop(ctx, 'qr'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null) return;
+
+    String? dataUrl;
+
+    if (choice == 'qr') {
+      try {
+        final service = widget.ref.read(staffServiceProvider);
+        final session = await service.createPhotoSnapSession();
+        final token = session['token']?.toString() ?? '';
+        final url = session['url']?.toString() ?? '';
+        if (token.isEmpty || !mounted) return;
+        dataUrl = await showDialog<String>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => _RemotePhotoSnapDialog(token: token, url: url, service: service),
+        );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(widget.parentContext).showSnackBar(SnackBar(content: Text('Errore: $e')));
+        }
+        return;
+      }
+    } else {
+      try {
+        final picked = await ImagePicker().pickImage(
+          source: choice == 'camera' ? ImageSource.camera : ImageSource.gallery,
+          maxWidth: 1200,
+          maxHeight: 1200,
+          imageQuality: 85,
+        );
+        if (picked == null) return;
+        final bytes = await picked.readAsBytes();
+        final b64 = base64Encode(bytes);
+        final ext = picked.path.split('.').last.toLowerCase();
+        final mimeExt = (ext == 'png') ? 'png' : 'jpeg';
+        dataUrl = 'data:image/$mimeExt;base64,$b64';
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(widget.parentContext).showSnackBar(SnackBar(content: Text('Errore: $e')));
+        }
+        return;
+      }
+    }
+
+    if (dataUrl == null) return;
+
+    try {
+      final service = widget.ref.read(staffServiceProvider);
+      await service.uploadCertificate(
+        widget.memberId,
+        fileData: dataUrl,
+        filename: 'certificato_medico.jpg',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+          const SnackBar(content: Text('Certificato medico caricato')),
+        );
+        _loadProfile();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(widget.parentContext).showSnackBar(SnackBar(content: Text('Errore: $e')));
+      }
+    }
+  }
+
   void _openPlanSelector() async {
     try {
       final service = widget.ref.read(staffServiceProvider);
@@ -851,21 +1061,45 @@ class _MemberProfileSheetState extends State<_MemberProfileSheet> {
             // ── Header ───────────────────────────────
             Row(
               children: [
-                Container(
-                  width: 56, height: 56,
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(colors: [
-                      AppColors.primary,
-                      AppColors.primary.withValues(alpha: 0.6),
-                    ]),
-                    borderRadius: BorderRadius.circular(16),
+                GestureDetector(
+                  onTap: () => _updateRegistrationPhoto(),
+                  child: Stack(
+                    children: [
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: (p['registration_photo'] ?? p['profile_picture']) != null
+                            ? Image.network(
+                                p['registration_photo'] ?? p['profile_picture'],
+                                width: 56, height: 56,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 56, height: 56,
+                                  color: AppColors.primary,
+                                  child: Center(child: Text(initial, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white))),
+                                ),
+                              )
+                            : Container(
+                                width: 56, height: 56,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.6)]),
+                                ),
+                                child: Center(child: Text(initial, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white))),
+                              ),
+                      ),
+                      Positioned(
+                        bottom: -2, right: -2,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            shape: BoxShape.circle,
+                            border: Border.all(color: AppColors.surface, width: 2),
+                          ),
+                          child: const Icon(Icons.camera_alt, size: 12, color: Colors.white),
+                        ),
+                      ),
+                    ],
                   ),
-                  child: Center(
-                      child: Text(initial,
-                          style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white))),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -952,31 +1186,47 @@ class _MemberProfileSheetState extends State<_MemberProfileSheet> {
             const SizedBox(height: 12),
 
             // ── Medical Certificate ──────────────────
-            if (medCert != null)
-              GlassCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.description,
-                            size: 16, color: AppColors.primary),
-                        const SizedBox(width: 8),
-                        const Text('Certificato Medico',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary)),
-                        const Spacer(),
+            GlassCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.description,
+                          size: 16, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      const Text('Certificato Medico',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary)),
+                      const Spacer(),
+                      if (medCert != null)
                         _certStatusBadge(medCert['status']?.toString() ?? ''),
-                      ],
-                    ),
+                    ],
+                  ),
+                  if (medCert != null) ...[
                     const SizedBox(height: 8),
                     _infoRow('File', medCert['filename']?.toString() ?? '-'),
                     _infoRow('Scadenza',
                         medCert['expiration_date']?.toString() ?? '-'),
+                    const SizedBox(height: 8),
                   ],
-                ),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _uploadMedicalCert,
+                      icon: Icon(medCert != null ? Icons.refresh : Icons.upload_file, size: 16),
+                      label: Text(medCert != null ? 'Aggiorna certificato' : 'Carica certificato'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                      ),
+                    ),
+                  ),
+                ],
               ),
+            ),
             const SizedBox(height: 20),
 
             // ── Actions ──────────────────────────────
@@ -1332,6 +1582,25 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
   }
 
 
+  void _showReactivateSearch(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.surface,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => _ReactivateSearchSheet(
+        ref: widget.ref,
+        onReactivated: () {
+          Navigator.pop(ctx); // close search
+          Navigator.pop(context); // close onboarding wizard
+          widget.ref.invalidate(staffMembersProvider);
+        },
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return DraggableScrollableSheet(
@@ -1371,6 +1640,31 @@ class _OnboardingWizardState extends State<_OnboardingWizard> {
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
+                ),
+                const SizedBox(height: 8),
+                // Re-registration banner
+                GestureDetector(
+                  onTap: () => _showReactivateSearch(context),
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
+                    ),
+                    child: const Row(
+                      children: [
+                        Icon(Icons.person_search_rounded, size: 18, color: AppColors.primary),
+                        SizedBox(width: 10),
+                        Expanded(
+                          child: Text('Ex-membro? Cerca e riattiva',
+                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                        ),
+                        Icon(Icons.chevron_right, size: 18, color: AppColors.primary),
+                      ],
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 12),
                 // Progress
@@ -4077,4 +4371,211 @@ class _SignaturePainter extends CustomPainter {
 
   @override
   bool shouldRepaint(covariant _SignaturePainter oldDelegate) => true;
+}
+
+
+class _ReactivateSearchSheet extends StatefulWidget {
+  final WidgetRef ref;
+  final VoidCallback onReactivated;
+
+  const _ReactivateSearchSheet({required this.ref, required this.onReactivated});
+
+  @override
+  State<_ReactivateSearchSheet> createState() => _ReactivateSearchSheetState();
+}
+
+class _ReactivateSearchSheetState extends State<_ReactivateSearchSheet> {
+  final _controller = TextEditingController();
+  List<Map<String, dynamic>> _results = [];
+  bool _searching = false;
+  Timer? _debounce;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _debounce?.cancel();
+    super.dispose();
+  }
+
+  void _onSearchChanged(String query) {
+    _debounce?.cancel();
+    if (query.length < 2) {
+      setState(() => _results = []);
+      return;
+    }
+    _debounce = Timer(const Duration(milliseconds: 400), () => _search(query));
+  }
+
+  Future<void> _search(String query) async {
+    setState(() => _searching = true);
+    try {
+      final service = widget.ref.read(staffServiceProvider);
+      final results = await service.searchFormerMembers(query);
+      if (mounted) setState(() { _results = results; _searching = false; });
+    } catch (e) {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
+  Future<void> _reactivate(Map<String, dynamic> member) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text('Riattiva ${member['username']}?',
+            style: const TextStyle(color: AppColors.textPrimary)),
+        content: const Text(
+          'L\'account verrà riattivato con tutti i dati precedenti.',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Annulla')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: FilledButton.styleFrom(backgroundColor: AppColors.primary),
+            child: const Text('Riattiva'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    try {
+      final service = widget.ref.read(staffServiceProvider);
+      final result = await service.reactivateMember(member['id']);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(result['message'] ?? 'Membro riattivato')),
+        );
+        widget.onReactivated();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore: $e')),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return DraggableScrollableSheet(
+      initialChildSize: 0.7,
+      minChildSize: 0.4,
+      maxChildSize: 0.9,
+      expand: false,
+      builder: (ctx, scrollController) => Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(width: 40, height: 4,
+                  decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+            ),
+            const SizedBox(height: 16),
+            const Text('Cerca Ex-Membro',
+                style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            const SizedBox(height: 4),
+            const Text('Cerca per nome, email o telefono',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _controller,
+              onChanged: _onSearchChanged,
+              autofocus: true,
+              style: const TextStyle(color: AppColors.textPrimary),
+              decoration: InputDecoration(
+                hintText: 'Cerca...',
+                hintStyle: TextStyle(color: Colors.grey[600]),
+                prefixIcon: Icon(Icons.search, color: Colors.grey[600]),
+                suffixIcon: _searching
+                    ? const Padding(
+                        padding: EdgeInsets.all(12),
+                        child: SizedBox(width: 16, height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)),
+                      )
+                    : null,
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.06),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Expanded(
+              child: _results.isEmpty
+                  ? Center(
+                      child: Text(
+                        _controller.text.length < 2
+                            ? 'Digita almeno 2 caratteri'
+                            : 'Nessun ex-membro trovato',
+                        style: TextStyle(color: Colors.grey[600]),
+                      ),
+                    )
+                  : ListView.builder(
+                      controller: scrollController,
+                      itemCount: _results.length,
+                      itemBuilder: (ctx, i) {
+                        final m = _results[i];
+                        return Padding(
+                          padding: const EdgeInsets.only(bottom: 8),
+                          child: GestureDetector(
+                            onTap: () => _reactivate(m),
+                            child: Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withValues(alpha: 0.04),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                              ),
+                              child: Row(
+                                children: [
+                                  CircleAvatar(
+                                    radius: 22,
+                                    backgroundColor: AppColors.primary.withValues(alpha: 0.15),
+                                    backgroundImage: m['profile_picture'] != null
+                                        ? NetworkImage(m['profile_picture'])
+                                        : null,
+                                    child: m['profile_picture'] == null
+                                        ? Text(
+                                            (m['username'] ?? '?')[0].toUpperCase(),
+                                            style: const TextStyle(fontWeight: FontWeight.w700, color: AppColors.primary),
+                                          )
+                                        : null,
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(m['username'] ?? '',
+                                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                                        if (m['email'] != null)
+                                          Text(m['email'], style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.primary.withValues(alpha: 0.1),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text('Riattiva',
+                                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.primary)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

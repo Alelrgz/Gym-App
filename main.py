@@ -1174,6 +1174,50 @@ async def startup_event():
     except Exception as e:
         logger.warning(f"Data retention cleanup setup error (non-fatal): {e}")
 
+    # --- Deactivate clients with expired subscriptions (10+ days overdue) ---
+    try:
+        from database import get_db_session as _get_db
+        from models_orm import ClientSubscriptionORM
+        _exp_db = _get_db()
+        try:
+            _now = datetime.utcnow()
+            _grace_cutoff = (_now - timedelta(days=10)).isoformat()
+
+            # Find clients whose latest subscription ended 10+ days ago
+            expired_subs = _exp_db.query(ClientSubscriptionORM).filter(
+                ClientSubscriptionORM.status.in_(["canceled", "past_due", "incomplete"]),
+                ClientSubscriptionORM.current_period_end < _grace_cutoff,
+                ClientSubscriptionORM.current_period_end != None,
+            ).all()
+
+            deactivated = 0
+            for sub in expired_subs:
+                client = _exp_db.query(UserORM).filter(
+                    UserORM.id == sub.client_id,
+                    UserORM.is_active == True,
+                    UserORM.role == "client",
+                ).first()
+                if client:
+                    # Check they don't have another active subscription
+                    active_sub = _exp_db.query(ClientSubscriptionORM).filter(
+                        ClientSubscriptionORM.client_id == client.id,
+                        ClientSubscriptionORM.status == "active",
+                    ).first()
+                    if not active_sub:
+                        client.is_active = False
+                        deactivated += 1
+
+            if deactivated > 0:
+                _exp_db.commit()
+                logger.info(f"Subscription check: deactivated {deactivated} clients with 10+ day expired subscriptions")
+        except Exception as e:
+            logger.warning(f"Subscription expiry check error (non-fatal): {e}")
+            _exp_db.rollback()
+        finally:
+            _exp_db.close()
+    except Exception as e:
+        logger.warning(f"Subscription expiry setup error (non-fatal): {e}")
+
     # Start background thread for automated message trigger checking
     import threading
     trigger_thread = threading.Thread(target=background_trigger_checker, daemon=True)

@@ -27,6 +27,11 @@ class OwnerService {
   }
 
   // ── Dashboard / Core ────────────────────────────────────
+  Future<Map<String, dynamic>> getDashboardBundle() async {
+    final response = await _api.get(ApiConfig.ownerDashboardBundle);
+    return response.data as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> getOwnerData() async {
     final response = await _api.get(ApiConfig.ownerData);
     return response.data as Map<String, dynamic>;

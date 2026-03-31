@@ -173,6 +173,7 @@ class ApiConfig {
 
   // ── Owner ───────────────────────────────────────────────
   // Dashboard / core
+  static const ownerDashboardBundle = '/api/owner/dashboard-bundle';
   static const ownerData = '/api/owner/data';
   static const ownerGymCode = '/api/owner/gym-code';
   static const ownerGymSettings = '/api/owner/gym-settings';
@@ -286,9 +287,12 @@ class ApiConfig {
   static const staffChangeSubscription = '/api/staff/change-subscription';
   static const staffChangeSubscriptionPreview = '/api/staff/change-subscription/preview';
   static const staffWaiverTemplate = '/api/staff/waiver-template';
+  static const staffSearchFormerMembers = '/api/staff/search-former-members';
+  static const staffReactivateMember = '/api/staff/reactivate-member';
   static const staffOnboardClient = '/api/staff/onboard-client';
   static const staffResetMemberPassword = '/api/staff/reset-member-password';
   static const staffChangeMemberUsername = '/api/staff/change-member-username';
+  static const staffUpdateRegistrationPhoto = '/api/staff/update-registration-photo';
   static const staffCreatePaymentIntent = '/api/staff/create-payment-intent';
   static const staffOnboardingCheckoutSession = '/api/staff/onboarding-checkout-session';
   static const staffSendCredentials = '/api/staff/send-credentials';

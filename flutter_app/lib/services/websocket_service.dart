@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:web_socket_channel/web_socket_channel.dart';
 import '../config/api_config.dart';
 import '../providers/websocket_provider.dart' show checkinNotifier;
@@ -39,45 +38,28 @@ class WebSocketService {
     _intentionalClose = false;
 
     final token = await _storage.getToken();
-    if (token == null) {
-      debugPrint('[WS] No token found — skipping connect');
-      return;
-    }
+    if (token == null) return;
 
     final clientId = DateTime.now().millisecondsSinceEpoch.toString();
     final wsUrl = '${ApiConfig.wsUrl}/ws/$clientId?token=$token';
-    debugPrint('[WS] Connecting to $wsUrl');
 
     try {
       _channel = WebSocketChannel.connect(Uri.parse(wsUrl));
       _channel!.stream.listen(
         (data) {
-          debugPrint('[WS] Received: ${data.toString().substring(0, data.toString().length.clamp(0, 100))}');
           try {
             final msg = jsonDecode(data as String) as Map<String, dynamic>;
             if (msg['type'] == 'pong') return;
-            debugPrint('[WS] Broadcasting message type: ${msg['type']}');
             _messageController.add(msg);
-            // Check-in notification — set global notifier directly
             if (msg['type'] == 'client_checkin') {
-              debugPrint('[WS] Setting checkinNotifier');
               checkinNotifier.value = null;
               checkinNotifier.value = msg;
             }
-          } catch (e) {
-            debugPrint('[WS] Parse error: $e');
-          }
+          } catch (_) {}
         },
-        onDone: () {
-          debugPrint('[WS] Stream done');
-          _onDisconnected();
-        },
-        onError: (e) {
-          debugPrint('[WS] Stream error: $e');
-          _onDisconnected();
-        },
+        onDone: _onDisconnected,
+        onError: (_) => _onDisconnected(),
       );
-      debugPrint('[WS] Connected');
       _startPingTimer();
     } catch (e) {
       _scheduleReconnect();
