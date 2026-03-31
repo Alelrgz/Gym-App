@@ -77,7 +77,7 @@ async def get_gym_members(
             "username": m.username,
             "name": m.username,  # Could add a name field later
             "email": m.email,
-            "profile_picture": m.profile_picture
+            "profile_picture": m.registration_photo or m.profile_picture
         }
         for m in members
     ]
