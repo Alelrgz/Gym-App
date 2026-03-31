@@ -43,3 +43,4 @@ flutter:
   uses-material-design: true
   assets:
     - assets/heavens-fit-logo.svg
+    - assets/heavens-hand.png

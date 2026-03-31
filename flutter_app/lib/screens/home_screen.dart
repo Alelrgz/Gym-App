@@ -414,7 +414,7 @@ class _DesktopSidebar extends ConsumerWidget {
           children: [
             const SizedBox(height: 16),
             // Logo
-            SvgPicture.asset('assets/heavens-fit-logo.svg', height: 22),
+            Image.asset('assets/heavens-hand.png', height: 26),
             const SizedBox(height: 32),
             // Nav items
             _SidebarIcon(icon: Icons.home_rounded, label: 'Home',
@@ -514,7 +514,7 @@ class _PersistentTopBar extends ConsumerWidget {
         height: 48,
         child: Row(
           children: [
-            SvgPicture.asset('assets/heavens-fit-logo.svg', height: isDesktop ? 22 : 24),
+            Image.asset('assets/heavens-hand.png', height: isDesktop ? 28 : 30),
             const Spacer(),
             if (!isDesktop)
               _TopIcon(

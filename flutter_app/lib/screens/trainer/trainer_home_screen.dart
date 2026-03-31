@@ -337,7 +337,7 @@ class _ProfessionalTopBar extends ConsumerWidget {
         height: 48,
         child: Row(
           children: [
-            SvgPicture.asset('assets/heavens-fit-logo.svg', height: 24),
+            Image.asset('assets/heavens-hand.png', height: 30),
             const Spacer(),
             _TopBarIcon(
               icon: Icons.notifications_none_rounded,
