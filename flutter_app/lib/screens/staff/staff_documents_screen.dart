@@ -3,10 +3,12 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:qr_flutter/qr_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../config/api_config.dart';
 import '../../config/theme.dart';
 import '../../providers/staff_provider.dart';
+import '../../services/staff_service.dart';
 import '../../widgets/glass_card.dart';
 import '../../widgets/stat_card.dart';
 
@@ -621,15 +623,76 @@ class _CertificateDetailSheetState extends State<_CertificateDetailSheet> {
 
   // ── Upload new certificate ──────────────────────────────
   Future<void> _uploadCertificate() async {
-    // Pick file first
-    final picker = ImagePicker();
-    final picked = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 2000,
-      maxHeight: 2800,
-      imageQuality: 85,
+    // Pick source
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: AppColors.primary),
+              title: const Text('Scatta foto', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(ctx, 'camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: AppColors.primary),
+              title: const Text('Scegli dalla galleria', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(ctx, 'gallery'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.qr_code, color: AppColors.primary),
+              title: const Text('Scatta da telefono (QR)', style: TextStyle(color: Colors.white)),
+              subtitle: const Text('Scansiona il QR col telefono e scatta una foto', style: TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+              onTap: () => Navigator.pop(ctx, 'qr'),
+            ),
+          ],
+        ),
+      ),
     );
-    if (picked == null || !mounted) return;
+    if (choice == null || !mounted) return;
+
+    String? dataUrl;
+    String ext = 'jpg';
+
+    if (choice == 'qr') {
+      try {
+        final service = widget.ref.read(staffServiceProvider);
+        final session = await service.createPhotoSnapSession();
+        final token = session['token']?.toString() ?? '';
+        final url = session['url']?.toString() ?? '';
+        if (token.isEmpty || !mounted) return;
+        dataUrl = await showDialog<String>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => _QrPhotoDialog(token: token, url: url, service: service),
+        );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Errore: $e')));
+        }
+        return;
+      }
+    } else {
+      final picked = await ImagePicker().pickImage(
+        source: choice == 'camera' ? ImageSource.camera : ImageSource.gallery,
+        maxWidth: 2000,
+        maxHeight: 2800,
+        imageQuality: 85,
+      );
+      if (picked == null || !mounted) return;
+      final bytes = await picked.readAsBytes();
+      final b64 = base64Encode(bytes);
+      ext = picked.path.split('.').last.toLowerCase();
+      final mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
+      dataUrl = 'data:$mimeType;base64,$b64';
+    }
+
+    if (dataUrl == null || !mounted) return;
 
     // Then pick expiration date
     final expDate = await showDatePicker(
@@ -656,11 +719,6 @@ class _CertificateDetailSheetState extends State<_CertificateDetailSheet> {
     setState(() => _busy = true);
 
     try {
-      final bytes = await picked.readAsBytes();
-      final b64 = base64Encode(bytes);
-      final ext = picked.path.split('.').last.toLowerCase();
-      final mimeType = ext == 'png' ? 'image/png' : 'image/jpeg';
-      final dataUrl = 'data:$mimeType;base64,$b64';
       final filename =
           'certificato_medico_${widget.memberName.toLowerCase().replaceAll(' ', '_')}.$ext';
 
@@ -1166,6 +1224,85 @@ class _CertificateDetailSheetState extends State<_CertificateDetailSheet> {
               overflow: TextOverflow.ellipsis),
         ),
       ],
+    );
+  }
+}
+
+class _QrPhotoDialog extends StatefulWidget {
+  final String token;
+  final String url;
+  final StaffService service;
+
+  const _QrPhotoDialog({required this.token, required this.url, required this.service});
+
+  @override
+  State<_QrPhotoDialog> createState() => _QrPhotoDialogState();
+}
+
+class _QrPhotoDialogState extends State<_QrPhotoDialog> {
+  bool _polling = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _poll();
+  }
+
+  @override
+  void dispose() {
+    _polling = false;
+    super.dispose();
+  }
+
+  Future<void> _poll() async {
+    while (_polling && mounted) {
+      await Future.delayed(const Duration(seconds: 2));
+      if (!_polling || !mounted) return;
+      try {
+        final result = await widget.service.pollPhotoSnapSession(widget.token);
+        if (result['status'] == 'uploaded' && result['photo_data'] != null) {
+          if (mounted) Navigator.pop(context, result['photo_data'] as String);
+          return;
+        }
+      } catch (_) {}
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.camera_alt, size: 32, color: AppColors.primary),
+            const SizedBox(height: 12),
+            const Text('Foto dal Telefono', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+            const SizedBox(height: 8),
+            const Text('Scansiona il QR code con il telefono per scattare una foto.', textAlign: TextAlign.center, style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            const SizedBox(height: 20),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12)),
+              child: QrImageView(data: widget.url, size: 200, backgroundColor: Colors.white),
+            ),
+            const SizedBox(height: 16),
+            const Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary)),
+                SizedBox(width: 10),
+                Text('In attesa della foto...', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+              ],
+            ),
+            const SizedBox(height: 16),
+            TextButton(onPressed: () => Navigator.pop(context), child: const Text('Annulla')),
+          ],
+        ),
+      ),
     );
   }
 }

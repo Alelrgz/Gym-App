@@ -775,7 +775,7 @@ class _MemberProfileSheetState extends State<_MemberProfileSheet> {
   }
 
   Future<void> _updateRegistrationPhoto() async {
-    final choice = await showModalBottomSheet<ImageSource>(
+    final choice = await showModalBottomSheet<String>(
       context: context,
       backgroundColor: AppColors.surface,
       shape: const RoundedRectangleBorder(
@@ -788,12 +788,18 @@ class _MemberProfileSheetState extends State<_MemberProfileSheet> {
             ListTile(
               leading: const Icon(Icons.camera_alt, color: AppColors.primary),
               title: const Text('Scatta foto', style: TextStyle(color: Colors.white)),
-              onTap: () => Navigator.pop(ctx, ImageSource.camera),
+              onTap: () => Navigator.pop(ctx, 'camera'),
             ),
             ListTile(
               leading: const Icon(Icons.photo_library, color: AppColors.primary),
               title: const Text('Scegli dalla galleria', style: TextStyle(color: Colors.white)),
-              onTap: () => Navigator.pop(ctx, ImageSource.gallery),
+              onTap: () => Navigator.pop(ctx, 'gallery'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.qr_code, color: AppColors.primary),
+              title: const Text('Scatta da telefono (QR)', style: TextStyle(color: Colors.white)),
+              subtitle: const Text('Scansiona il QR col telefono e scatta una foto', style: TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+              onTap: () => Navigator.pop(ctx, 'qr'),
             ),
           ],
         ),
@@ -801,28 +807,75 @@ class _MemberProfileSheetState extends State<_MemberProfileSheet> {
     );
     if (choice == null) return;
 
+    String? dataUrl;
+
+    if (choice == 'qr') {
+      try {
+        final service = widget.ref.read(staffServiceProvider);
+        final session = await service.createPhotoSnapSession();
+        final token = session['token']?.toString() ?? '';
+        final url = session['url']?.toString() ?? '';
+        if (token.isEmpty || !mounted) return;
+
+        dataUrl = await showDialog<String>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => _RemotePhotoSnapDialog(
+            token: token,
+            url: url,
+            service: service,
+          ),
+        );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+            SnackBar(content: Text('Errore: $e')),
+          );
+        }
+        return;
+      }
+    } else {
+      try {
+        final picked = await ImagePicker().pickImage(
+          source: choice == 'camera' ? ImageSource.camera : ImageSource.gallery,
+          maxWidth: 600,
+          maxHeight: 600,
+          imageQuality: 80,
+        );
+        if (picked == null) return;
+        final bytes = await picked.readAsBytes();
+        final b64 = base64Encode(bytes);
+        final ext = picked.path.split('.').last.toLowerCase();
+        final mimeExt = (ext == 'png') ? 'png' : 'jpeg';
+        dataUrl = 'data:image/$mimeExt;base64,$b64';
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+            SnackBar(content: Text('Errore: $e')),
+          );
+        }
+        return;
+      }
+    }
+
+    if (dataUrl == null) return;
+
     try {
-      final picked = await ImagePicker().pickImage(
-        source: choice,
-        maxWidth: 600,
-        maxHeight: 600,
-        imageQuality: 80,
-      );
-      if (picked == null) return;
-
-      final bytes = await picked.readAsBytes();
-      final b64 = base64Encode(bytes);
-      final ext = picked.path.split('.').last.toLowerCase();
-      final mimeExt = (ext == 'png') ? 'png' : 'jpeg';
-      final dataUrl = 'data:image/$mimeExt;base64,$b64';
-
       final service = widget.ref.read(staffServiceProvider);
-      await service.updateRegistrationPhoto(widget.memberId, dataUrl);
-
+      final result = await service.updateRegistrationPhoto(widget.memberId, dataUrl);
       if (mounted) {
+        // Clear cached image and force reload with new URL
+        imageCache.clear();
+        imageCache.clearLiveImages();
+        final newUrl = result['registration_photo']?.toString();
+        if (newUrl != null && _profile != null) {
+          _profile!['registration_photo'] = '$newUrl?t=${DateTime.now().millisecondsSinceEpoch}';
+          setState(() {});
+        }
         ScaffoldMessenger.of(widget.parentContext).showSnackBar(
           const SnackBar(content: Text('Foto di registrazione aggiornata')),
         );
+        widget.ref.invalidate(staffMembersProvider);
         _loadProfile();
       }
     } catch (e) {
@@ -830,6 +883,103 @@ class _MemberProfileSheetState extends State<_MemberProfileSheet> {
         ScaffoldMessenger.of(widget.parentContext).showSnackBar(
           SnackBar(content: Text('Errore: $e')),
         );
+      }
+    }
+  }
+
+  Future<void> _uploadMedicalCert() async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.camera_alt, color: AppColors.primary),
+              title: const Text('Scatta foto', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(ctx, 'camera'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.photo_library, color: AppColors.primary),
+              title: const Text('Scegli dalla galleria', style: TextStyle(color: Colors.white)),
+              onTap: () => Navigator.pop(ctx, 'gallery'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.qr_code, color: AppColors.primary),
+              title: const Text('Scatta da telefono (QR)', style: TextStyle(color: Colors.white)),
+              subtitle: const Text('Scansiona il QR col telefono e scatta una foto', style: TextStyle(fontSize: 11, color: AppColors.textTertiary)),
+              onTap: () => Navigator.pop(ctx, 'qr'),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null) return;
+
+    String? dataUrl;
+
+    if (choice == 'qr') {
+      try {
+        final service = widget.ref.read(staffServiceProvider);
+        final session = await service.createPhotoSnapSession();
+        final token = session['token']?.toString() ?? '';
+        final url = session['url']?.toString() ?? '';
+        if (token.isEmpty || !mounted) return;
+        dataUrl = await showDialog<String>(
+          context: context,
+          barrierDismissible: false,
+          builder: (ctx) => _RemotePhotoSnapDialog(token: token, url: url, service: service),
+        );
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(widget.parentContext).showSnackBar(SnackBar(content: Text('Errore: $e')));
+        }
+        return;
+      }
+    } else {
+      try {
+        final picked = await ImagePicker().pickImage(
+          source: choice == 'camera' ? ImageSource.camera : ImageSource.gallery,
+          maxWidth: 1200,
+          maxHeight: 1200,
+          imageQuality: 85,
+        );
+        if (picked == null) return;
+        final bytes = await picked.readAsBytes();
+        final b64 = base64Encode(bytes);
+        final ext = picked.path.split('.').last.toLowerCase();
+        final mimeExt = (ext == 'png') ? 'png' : 'jpeg';
+        dataUrl = 'data:image/$mimeExt;base64,$b64';
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(widget.parentContext).showSnackBar(SnackBar(content: Text('Errore: $e')));
+        }
+        return;
+      }
+    }
+
+    if (dataUrl == null) return;
+
+    try {
+      final service = widget.ref.read(staffServiceProvider);
+      await service.uploadCertificate(
+        widget.memberId,
+        fileData: dataUrl,
+        filename: 'certificato_medico.jpg',
+      );
+      if (mounted) {
+        ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+          const SnackBar(content: Text('Certificato medico caricato')),
+        );
+        _loadProfile();
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(widget.parentContext).showSnackBar(SnackBar(content: Text('Errore: $e')));
       }
     }
   }
@@ -915,29 +1065,26 @@ class _MemberProfileSheetState extends State<_MemberProfileSheet> {
                   onTap: () => _updateRegistrationPhoto(),
                   child: Stack(
                     children: [
-                      Container(
-                        width: 56, height: 56,
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(colors: [
-                            AppColors.primary,
-                            AppColors.primary.withValues(alpha: 0.6),
-                          ]),
-                          borderRadius: BorderRadius.circular(16),
-                          image: (p['registration_photo'] ?? p['profile_picture']) != null
-                              ? DecorationImage(
-                                  image: NetworkImage(p['registration_photo'] ?? p['profile_picture']),
-                                  fit: BoxFit.cover,
-                                )
-                              : null,
-                        ),
-                        child: (p['registration_photo'] ?? p['profile_picture']) == null
-                            ? Center(
-                                child: Text(initial,
-                                    style: const TextStyle(
-                                        fontSize: 24,
-                                        fontWeight: FontWeight.w800,
-                                        color: Colors.white)))
-                            : null,
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: (p['registration_photo'] ?? p['profile_picture']) != null
+                            ? Image.network(
+                                p['registration_photo'] ?? p['profile_picture'],
+                                width: 56, height: 56,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, __, ___) => Container(
+                                  width: 56, height: 56,
+                                  color: AppColors.primary,
+                                  child: Center(child: Text(initial, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white))),
+                                ),
+                              )
+                            : Container(
+                                width: 56, height: 56,
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(colors: [AppColors.primary, AppColors.primary.withValues(alpha: 0.6)]),
+                                ),
+                                child: Center(child: Text(initial, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white))),
+                              ),
                       ),
                       Positioned(
                         bottom: -2, right: -2,
@@ -1039,31 +1186,47 @@ class _MemberProfileSheetState extends State<_MemberProfileSheet> {
             const SizedBox(height: 12),
 
             // ── Medical Certificate ──────────────────
-            if (medCert != null)
-              GlassCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.description,
-                            size: 16, color: AppColors.primary),
-                        const SizedBox(width: 8),
-                        const Text('Certificato Medico',
-                            style: TextStyle(
-                                fontWeight: FontWeight.w600,
-                                color: AppColors.textPrimary)),
-                        const Spacer(),
+            GlassCard(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.description,
+                          size: 16, color: AppColors.primary),
+                      const SizedBox(width: 8),
+                      const Text('Certificato Medico',
+                          style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.textPrimary)),
+                      const Spacer(),
+                      if (medCert != null)
                         _certStatusBadge(medCert['status']?.toString() ?? ''),
-                      ],
-                    ),
+                    ],
+                  ),
+                  if (medCert != null) ...[
                     const SizedBox(height: 8),
                     _infoRow('File', medCert['filename']?.toString() ?? '-'),
                     _infoRow('Scadenza',
                         medCert['expiration_date']?.toString() ?? '-'),
+                    const SizedBox(height: 8),
                   ],
-                ),
+                  const SizedBox(height: 4),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: _uploadMedicalCert,
+                      icon: Icon(medCert != null ? Icons.refresh : Icons.upload_file, size: 16),
+                      label: Text(medCert != null ? 'Aggiorna certificato' : 'Carica certificato'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                      ),
+                    ),
+                  ),
+                ],
               ),
+            ),
             const SizedBox(height: 20),
 
             // ── Actions ──────────────────────────────
