@@ -66,7 +66,7 @@ class DashboardScreen extends ConsumerWidget {
                     // 1. Streak + Gems (tap to open streak page)
                     GestureDetector(
                       onTap: () => Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => _StreakPage(streak: profile.streak, gems: profile.gems)),
+                        AppAnim.pageRoute(_StreakPage(streak: profile.streak, gems: profile.gems)),
                       ),
                       child: _StreakGemsCard(streak: profile.streak, gems: profile.gems),
                     ),
@@ -125,8 +125,7 @@ class _WorkoutCard extends ConsumerWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.03),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+        borderRadius: BorderRadius.circular(AppRadius.card),
       ),
       clipBehavior: Clip.antiAlias,
       child: Column(
@@ -194,15 +193,13 @@ class _WorkoutCard extends ConsumerWidget {
                     if (hasWorkout)
                       GestureDetector(
                         onTap: () {
-                          Navigator.of(context).push(MaterialPageRoute(
-                            builder: (_) => WorkoutBuilderPage(
-                              existingWorkout: workout,
-                              onSaved: () {
-                                ref.invalidate(clientDataProvider);
-                                Navigator.of(context).pop();
-                              },
-                            ),
-                          ));
+                          Navigator.of(context).push(AppAnim.pageRoute(WorkoutBuilderPage(
+                            existingWorkout: workout,
+                            onSaved: () {
+                              ref.invalidate(clientDataProvider);
+                              Navigator.of(context).pop();
+                            },
+                          )));
                         },
                         child: Container(
                           width: 36,
@@ -210,7 +207,7 @@ class _WorkoutCard extends ConsumerWidget {
                           decoration: BoxDecoration(
                             color: AppColors.elevated,
                             borderRadius: BorderRadius.circular(10),
-                            border: Border.all(color: AppColors.borderLight),
+                            // no border
                           ),
                           child: const Icon(Icons.edit_rounded, size: 16, color: AppColors.textSecondary),
                         ),
@@ -256,7 +253,7 @@ class _WorkoutCard extends ConsumerWidget {
                               barrierDismissible: true,
                               barrierLabel: '',
                               barrierColor: Colors.black54,
-                              transitionDuration: const Duration(milliseconds: 250),
+                              transitionDuration: AppAnim.dialog,
                               transitionBuilder: (ctx, anim, anim2, child) {
                                 final curve = CurvedAnimation(parent: anim, curve: Curves.easeOutBack);
                                 return ScaleTransition(
@@ -286,8 +283,8 @@ class _WorkoutCard extends ConsumerWidget {
                                             child: GestureDetector(
                                               onTap: () {
                                                 Navigator.of(ctx).pop();
-                                                Navigator.of(context).push(MaterialPageRoute(
-                                                  builder: (_) => WorkoutScreen(initialWorkout: workout),
+                                                Navigator.of(context).push(AppAnim.pageRoute(
+                                                  WorkoutScreen(initialWorkout: workout),
                                                 ));
                                               },
                                               child: Container(
@@ -315,7 +312,7 @@ class _WorkoutCard extends ConsumerWidget {
                                                 decoration: BoxDecoration(
                                                   color: AppColors.elevated,
                                                   borderRadius: BorderRadius.circular(14),
-                                                  border: Border.all(color: AppColors.borderLight),
+                                                  // no border
                                                 ),
                                                 child: const Center(
                                                   child: Text('Cambia', style: TextStyle(color: AppColors.textPrimary, fontWeight: FontWeight.w700, fontSize: 14)),
@@ -369,7 +366,7 @@ class _WorkoutCard extends ConsumerWidget {
                         padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 15),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.04),
-                          border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+                          // no border
                           borderRadius: BorderRadius.circular(16),
                         ),
                         child: Row(
@@ -404,7 +401,7 @@ class _MetadataChip extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+        // no border
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -680,7 +677,7 @@ class _StreakPageState extends ConsumerState<_StreakPage> with SingleTickerProvi
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        // no border
       ),
       child: Column(
         children: [
@@ -750,7 +747,7 @@ class _StreakPageState extends ConsumerState<_StreakPage> with SingleTickerProvi
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        // no border
       ),
       child: Column(
         children: [
@@ -917,7 +914,7 @@ class _StreakPageState extends ConsumerState<_StreakPage> with SingleTickerProvi
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.04),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                  // no border
                 ),
                 child: Row(
                   children: [
@@ -1034,7 +1031,7 @@ class _StreakPageState extends ConsumerState<_StreakPage> with SingleTickerProvi
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.04),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                // no border
               ),
               child: Column(
                 children: [
@@ -1071,7 +1068,7 @@ class _StreakPageState extends ConsumerState<_StreakPage> with SingleTickerProvi
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.04),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                // no border
               ),
               child: Row(
                 children: [
@@ -1137,7 +1134,7 @@ class _PhotoMealsGrid extends ConsumerWidget {
                   return Container(
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.04),
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(AppRadius.card),
                       border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
                     ),
                     child: Stack(
@@ -1145,7 +1142,7 @@ class _PhotoMealsGrid extends ConsumerWidget {
                       children: [
                         if (latestUrl != null && latestUrl.isNotEmpty)
                           ClipRRect(
-                            borderRadius: BorderRadius.circular(24),
+                            borderRadius: BorderRadius.circular(AppRadius.card),
                             child: Image.network(latestUrl, fit: BoxFit.cover,
                               errorBuilder: (_, _, _) => const Center(child: Icon(Icons.camera_alt_rounded, size: 32, color: AppColors.textTertiary))),
                           )
@@ -1333,7 +1330,7 @@ class _TodayMealsCardState extends State<_TodayMealsCard> {
             padding: const EdgeInsets.symmetric(vertical: 10),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.04),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+              // no border
               borderRadius: BorderRadius.circular(12),
             ),
             child: const Text(
@@ -1438,7 +1435,7 @@ class _CircleButton extends StatelessWidget {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(12),
           color: Colors.white.withValues(alpha: 0.05),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+          // no border
         ),
         child: Icon(icon, size: 18, color: AppColors.textSecondary),
       ),

@@ -126,8 +126,8 @@ class _CommunityScreenState extends ConsumerState<CommunityScreen> with SingleTi
         opaque: false,
         barrierColor: Colors.black54,
         barrierDismissible: true,
-        transitionDuration: const Duration(milliseconds: 350),
-        reverseTransitionDuration: const Duration(milliseconds: 280),
+        transitionDuration: AppAnim.medium,
+        reverseTransitionDuration: AppAnim.medium,
         pageBuilder: (context, animation, _) {
           final curved = CurvedAnimation(parent: animation, curve: Curves.easeOutCubic);
           return FadeTransition(
@@ -265,7 +265,7 @@ class _FeedTabState extends ConsumerState<_FeedTab> with AutomaticKeepAliveClien
           final postId = postData['id'] as String;
           return GestureDetector(
             onTap: () => Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => _PostDetailPage(
+              AppAnim.pageRoute(_PostDetailPage(
                 post: postData,
                 ref: ref,
                 onDelete: () => _deletePost(postId),
@@ -687,7 +687,7 @@ class _EventQuestCard extends StatelessWidget {
                 GestureDetector(
                   onTap: isFull ? null : onParticipate,
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
+                    duration: AppAnim.fast,
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
                     decoration: BoxDecoration(
                       color: isFull
@@ -932,7 +932,7 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
                   GestureDetector(
                     onTap: (_posting || !_canPost) ? null : _submit,
                     child: AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 200),
+                      duration: AppAnim.fast,
                       style: TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.w600,

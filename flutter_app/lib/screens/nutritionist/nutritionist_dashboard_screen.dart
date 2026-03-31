@@ -110,7 +110,7 @@ class _NutritionistDashboardScreenState
                 children: [
                   // LEFT: Collapsible client sidebar
                   AnimatedContainer(
-                    duration: const Duration(milliseconds: 250),
+                    duration: AppAnim.dialog,
                     curve: Curves.easeInOut,
                     width: _sidebarCollapsed ? 56 : 300,
                     clipBehavior: Clip.hardEdge,
@@ -509,7 +509,7 @@ class _NutritionistDashboardScreenState
             const Spacer(),
             AnimatedRotation(
               turns: isExpanded ? 0.5 : 0,
-              duration: const Duration(milliseconds: 200),
+              duration: AppAnim.fast,
               child: Icon(Icons.keyboard_arrow_down_rounded, size: 20, color: Colors.grey[500]),
             ),
           ],
@@ -520,7 +520,7 @@ class _NutritionistDashboardScreenState
 
   Widget _buildExpandableContent(String sectionKey, Widget child) {
     return AnimatedSize(
-      duration: const Duration(milliseconds: 250),
+      duration: AppAnim.dialog,
       curve: Curves.easeInOut,
       alignment: Alignment.topCenter,
       child: _expandedSections.contains(sectionKey)
@@ -1158,7 +1158,7 @@ class _NutritionistDashboardScreenState
 
           // Expanded detail
           AnimatedSize(
-            duration: const Duration(milliseconds: 200),
+            duration: AppAnim.fast,
             curve: Curves.easeInOut,
             alignment: Alignment.topCenter,
             child: isExpanded

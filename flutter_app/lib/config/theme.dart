@@ -17,6 +17,75 @@ class AppColors {
   static const warning = Color(0xFFFACC15);
 }
 
+/// Standard design tokens — use these for consistent styling across the app.
+class AppRadius {
+  static const double card = 20;      // Main cards, sections
+  static const double button = 14;    // Buttons, inputs
+  static const double chip = 10;      // Chips, badges, small elements
+  static const double pill = 50;      // Fully rounded pills
+}
+
+/// Standard animation durations and curves.
+class AppAnim {
+  // Durations
+  static const fast = Duration(milliseconds: 200);     // toggles, expand/collapse, highlights
+  static const medium = Duration(milliseconds: 300);   // page transitions, tab switches
+  static const dialog = Duration(milliseconds: 250);   // dialogs, popups, zoom overlays
+
+  // Curves
+  static const curve = Curves.easeInOut;               // default for fast animations
+  static const pageCurve = Curves.easeOutCubic;        // page transitions, swipes
+
+  /// Standard page transition (slide from bottom)
+  static Route<T> pageRoute<T>(Widget page) {
+    return PageRouteBuilder<T>(
+      pageBuilder: (_, __, ___) => page,
+      transitionDuration: medium,
+      reverseTransitionDuration: medium,
+      transitionsBuilder: (_, anim, __, child) {
+        return SlideTransition(
+          position: Tween<Offset>(begin: const Offset(0, 1), end: Offset.zero)
+              .animate(CurvedAnimation(parent: anim, curve: pageCurve)),
+          child: child,
+        );
+      },
+    );
+  }
+
+  /// Standard dialog/overlay transition (scale + fade zoom)
+  static Route<T> dialogRoute<T>(Widget page) {
+    return PageRouteBuilder<T>(
+      opaque: false,
+      barrierDismissible: true,
+      barrierColor: Colors.black54,
+      pageBuilder: (_, __, ___) => page,
+      transitionDuration: dialog,
+      reverseTransitionDuration: dialog,
+      transitionsBuilder: (_, anim, __, child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+          child: FadeTransition(opacity: anim, child: child),
+        );
+      },
+    );
+  }
+}
+
+class AppCard {
+  /// Standard card decoration — no border
+  static BoxDecoration decoration({Color? color, double? radius}) => BoxDecoration(
+    color: color ?? Colors.white.withValues(alpha: 0.04),
+    borderRadius: BorderRadius.circular(radius ?? AppRadius.card),
+  );
+
+  /// Card with subtle border
+  static BoxDecoration bordered({Color? color, double? radius}) => BoxDecoration(
+    color: color ?? Colors.white.withValues(alpha: 0.04),
+    borderRadius: BorderRadius.circular(radius ?? AppRadius.card),
+    border: Border.all(color: AppColors.borderLight),
+  );
+}
+
 class AppTheme {
   static ThemeData get darkTheme {
     return ThemeData(
@@ -99,15 +168,14 @@ class AppTheme {
 
 /// Glass-morphism decoration for containers
 class GlassDecoration {
-  static BoxDecoration card({double opacity = 0.03, double borderRadius = 24}) {
+  static BoxDecoration card({double opacity = 0.03, double borderRadius = 20}) {
     return BoxDecoration(
       color: Colors.white.withValues(alpha: opacity),
       borderRadius: BorderRadius.circular(borderRadius),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
     );
   }
 
-  static BoxDecoration primary({double borderRadius = 24}) {
+  static BoxDecoration primary({double borderRadius = 20}) {
     return BoxDecoration(
       gradient: LinearGradient(
         begin: Alignment.topLeft,
@@ -118,11 +186,10 @@ class GlassDecoration {
         ],
       ),
       borderRadius: BorderRadius.circular(borderRadius),
-      border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
     );
   }
 
-  static BoxDecoration accent({double borderRadius = 24}) {
+  static BoxDecoration accent({double borderRadius = 20}) {
     return BoxDecoration(
       gradient: LinearGradient(
         begin: Alignment.topLeft,
@@ -133,7 +200,6 @@ class GlassDecoration {
         ],
       ),
       borderRadius: BorderRadius.circular(borderRadius),
-      border: Border.all(color: AppColors.primary.withValues(alpha: 0.2), width: 0.5),
     );
   }
 }

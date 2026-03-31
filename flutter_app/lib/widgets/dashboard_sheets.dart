@@ -436,12 +436,10 @@ class _ConversationsPageState extends State<_ConversationsPage> {
                 // ── Search bar ──
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 12),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
-                    ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(14),
+                    child: Container(
+                    color: Colors.white.withValues(alpha: 0.05),
                     child: TextField(
                       controller: _searchController,
                       onChanged: (v) => setState(() => _searchQuery = v.toLowerCase()),
@@ -465,6 +463,7 @@ class _ConversationsPageState extends State<_ConversationsPage> {
                         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                       ),
                     ),
+                  ),
                   ),
                 ),
                 // ── Conversations list ──
@@ -641,7 +640,7 @@ class _NewChatSheetState extends State<_NewChatSheet> {
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.05),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+                  // no border
                 ),
                 child: TextField(
                   onChanged: (v) => setState(() => _filter = v.toLowerCase()),
@@ -1988,7 +1987,7 @@ class _MemberProfileContentState extends State<_MemberProfileContent> {
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+              // no border
             ),
             child: Row(
               children: [
@@ -5643,7 +5642,7 @@ class _CoopModalContentState extends State<_CoopModalContent> {
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+          // no border
         ),
         child: Row(
           children: [

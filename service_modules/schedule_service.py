@@ -538,7 +538,16 @@ class ScheduleService:
                 ).first()
 
             if not item:
-                raise HTTPException(status_code=404, detail="Schedule item not found")
+                # No schedule entry — create one for ad-hoc workout completion
+                item = ClientScheduleORM(
+                    client_id=client_id,
+                    date=date_str,
+                    title="Allenamento",
+                    type="workout",
+                    completed=False,
+                )
+                db.add(item)
+                db.flush()
 
             item.completed = True
 

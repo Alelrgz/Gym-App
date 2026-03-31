@@ -109,8 +109,7 @@ class _WorkoutListViewState extends ConsumerState<_WorkoutListView> with SingleT
 
   void _openBuilder({Map<String, dynamic>? existing}) {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => WorkoutBuilderPage(
+      AppAnim.pageRoute(WorkoutBuilderPage(
           existingWorkout: existing,
           onSaved: () {
             ref.invalidate(clientWorkoutsProvider);
@@ -124,26 +123,22 @@ class _WorkoutListViewState extends ConsumerState<_WorkoutListView> with SingleT
 
   void _startWorkout(Map<String, dynamic> workout) {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => _WorkoutView(
-          workout: workout,
-          coopPartnerId: widget.coopPartnerId,
-          coopPartnerName: widget.coopPartnerName,
-          coopPartnerPicture: widget.coopPartnerPicture,
-        ),
-      ),
+      AppAnim.pageRoute(_WorkoutView(
+        workout: workout,
+        coopPartnerId: widget.coopPartnerId,
+        coopPartnerName: widget.coopPartnerName,
+        coopPartnerPicture: widget.coopPartnerPicture,
+      )),
     );
   }
 
   void _previewWorkout(Map<String, dynamic> workout) {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => _WorkoutPreviewPage(
+      AppAnim.pageRoute(_WorkoutPreviewPage(
           workout: workout,
           onStart: () => _startWorkout(workout),
           onEdit: () => _openBuilder(existing: workout),
-        ),
-      ),
+        )),
     );
   }
 
@@ -421,17 +416,15 @@ class _WorkoutListViewState extends ConsumerState<_WorkoutListView> with SingleT
 
   void _openSplitEditor({required List<Map<String, dynamic>> workouts, Map<String, dynamic>? existing}) {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => _SplitEditorPage(
-          workouts: workouts,
-          existing: existing,
-          onSaved: () {
-            ref.invalidate(clientWorkoutsProvider);
-            Navigator.of(context).pop();
-          },
-          clientService: ref.read(clientServiceProvider),
-        ),
-      ),
+      AppAnim.pageRoute(_SplitEditorPage(
+        workouts: workouts,
+        existing: existing,
+        onSaved: () {
+          ref.invalidate(clientWorkoutsProvider);
+          Navigator.of(context).pop();
+        },
+        clientService: ref.read(clientServiceProvider),
+      )),
     );
   }
 
@@ -518,86 +511,72 @@ class _WorkoutListViewState extends ConsumerState<_WorkoutListView> with SingleT
     final duration = w['duration'] ?? '';
     final difficulty = w['difficulty'] ?? '';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: isToday ? Border.all(color: AppColors.primary, width: 1.5) : null,
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () => _previewWorkout(w),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    if (isToday) ...[
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary,
-                          borderRadius: BorderRadius.circular(6),
+    return GestureDetector(
+      onTap: () => _previewWorkout(w),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 10),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(AppRadius.card),
+        ),
+        child: Row(
+          children: [
+            // Left content
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      if (isToday) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text('OGGI', style: TextStyle(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
                         ),
-                        child: const Text('OGGI', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white)),
+                        const SizedBox(width: 8),
+                      ],
+                      Expanded(
+                        child: Text(title,
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+                          overflow: TextOverflow.ellipsis),
                       ),
-                      const SizedBox(width: 8),
                     ],
-                    Expanded(
-                      child: Text(
-                        title,
-                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 18, color: AppColors.textTertiary),
-                      onPressed: () => _openBuilder(existing: w),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.textTertiary),
-                      onPressed: () => _deleteWorkout(w['id'].toString()),
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    if (duration.isNotEmpty) _chip(duration, Icons.timer_outlined),
-                    if (difficulty.isNotEmpty) ...[
-                      const SizedBox(width: 8),
-                      _chip(difficulty, Icons.speed_rounded),
-                    ],
-                    const SizedBox(width: 8),
-                    _chip('${exercises.length} esercizi', Icons.fitness_center_rounded),
-                  ],
-                ),
-                const SizedBox(height: 12),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => _previewWorkout(w),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: isToday ? AppColors.primary : Colors.white.withValues(alpha: 0.06),
-                      foregroundColor: isToday ? Colors.white : AppColors.textPrimary,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                      elevation: 0,
-                    ),
-                    child: Text(isToday ? 'Inizia Allenamento' : 'Inizia', style: const TextStyle(fontWeight: FontWeight.w600)),
                   ),
+                  const SizedBox(height: 6),
+                  Text(
+                    [
+                      if (duration.toString().isNotEmpty) '$duration min',
+                      if (difficulty.toString().isNotEmpty) difficulty.toString(),
+                      '${exercises.length} esercizi',
+                    ].join('  ·  '),
+                    style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                  ),
+                ],
+              ),
+            ),
+            // Right actions
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                GestureDetector(
+                  onTap: () => _openBuilder(existing: w),
+                  child: Icon(Icons.edit_outlined, size: 18, color: Colors.grey[600]),
                 ),
+                const SizedBox(width: 12),
+                GestureDetector(
+                  onTap: () => _deleteWorkout(w['id'].toString()),
+                  child: Icon(Icons.delete_outline, size: 18, color: Colors.grey[600]),
+                ),
+                const SizedBox(width: 8),
+                Icon(Icons.chevron_right_rounded, size: 20, color: Colors.grey[700]),
               ],
             ),
-          ),
+          ],
         ),
       ),
     );
@@ -703,14 +682,12 @@ class _NoWorkoutView extends ConsumerWidget {
 
   void _showWorkoutBuilder(BuildContext context, WidgetRef ref) {
     Navigator.of(context).push(
-      MaterialPageRoute(
-        builder: (_) => WorkoutBuilderPage(
-          onSaved: () {
-            ref.invalidate(clientDataProvider);
-            Navigator.of(context).pop();
-          },
-        ),
-      ),
+      AppAnim.pageRoute(WorkoutBuilderPage(
+        onSaved: () {
+          ref.invalidate(clientDataProvider);
+          Navigator.of(context).pop();
+        },
+      )),
     );
   }
 }
@@ -973,6 +950,183 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
       }
       _syncReps();
     });
+  }
+
+  void _showSwapDialog(int exerciseIdx) async {
+    final exList = isCoopMode ? activeExercises : exercises;
+    final currentEx = exList[exerciseIdx];
+    final currentName = currentEx['name'] ?? '';
+    final currentMuscle = currentEx['muscle_group'] ?? '';
+
+    // Fetch exercise library
+    List<Map<String, dynamic>> library;
+    try {
+      library = await ref.read(clientServiceProvider).getExerciseLibrary();
+    } catch (_) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Impossibile caricare gli esercizi')),
+      );
+      return;
+    }
+
+    // Filter: same muscle group first, exclude current
+    final sameMuscle = library.where((e) =>
+        e['name'] != currentName &&
+        (e['muscle_group'] ?? '') == currentMuscle
+    ).toList();
+    final otherMuscle = library.where((e) =>
+        e['name'] != currentName &&
+        (e['muscle_group'] ?? '') != currentMuscle
+    ).toList();
+
+    if (!mounted) return;
+
+    final searchCtrl = TextEditingController();
+    String searchQuery = '';
+
+    await showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: 'Swap Exercise',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 250),
+      transitionBuilder: (ctx, anim, _, child) => ScaleTransition(
+        scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
+        child: FadeTransition(opacity: anim, child: child),
+      ),
+      pageBuilder: (ctx, _, __) => StatefulBuilder(
+        builder: (ctx, setDialogState) {
+          final filtered = [...sameMuscle, ...otherMuscle].where((e) {
+            if (searchQuery.isEmpty) return true;
+            return (e['name'] ?? '').toString().toLowerCase().contains(searchQuery);
+          }).toList();
+
+          return Center(
+            child: Material(
+              color: Colors.transparent,
+              child: Container(
+                width: 360,
+                constraints: const BoxConstraints(maxHeight: 500),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 12, 0),
+                      child: Row(
+                        children: [
+                          const Icon(Icons.swap_horiz_rounded, color: AppColors.primary, size: 20),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text('Sostituisci "$currentName"',
+                              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                              overflow: TextOverflow.ellipsis),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close, color: Colors.grey, size: 20),
+                            onPressed: () => Navigator.pop(ctx),
+                          ),
+                        ],
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                      child: TextField(
+                        controller: searchCtrl,
+                        onChanged: (v) => setDialogState(() => searchQuery = v.toLowerCase()),
+                        style: const TextStyle(color: Colors.white, fontSize: 14),
+                        decoration: InputDecoration(
+                          hintText: 'Cerca esercizio...',
+                          hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+                          prefixIcon: Icon(Icons.search, size: 18, color: Colors.grey[600]),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.06),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                          contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                    if (currentMuscle.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 16, bottom: 4),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: Text('Stesso muscolo: $currentMuscle',
+                            style: TextStyle(fontSize: 10, color: Colors.grey[500], fontWeight: FontWeight.w600)),
+                        ),
+                      ),
+                    Flexible(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        shrinkWrap: true,
+                        itemCount: filtered.length,
+                        itemBuilder: (_, i) {
+                          final ex = filtered[i];
+                          final isSameMuscle = (ex['muscle_group'] ?? '') == currentMuscle;
+                          return GestureDetector(
+                            onTap: () {
+                              setState(() {
+                                final sets = (currentEx['sets'] as num?)?.toInt() ?? 3;
+                                exList[exerciseIdx] = {
+                                  ...currentEx,
+                                  'name': ex['name'],
+                                  'exercise_name': ex['name'],
+                                  'muscle_group': ex['muscle_group'] ?? '',
+                                  'exercise_id': ex['id'],
+                                  'performance': List.generate(sets, (_) => {
+                                    'reps': '', 'weight': '', 'duration': '', 'distance': '', 'completed': false,
+                                  }),
+                                };
+                                _syncReps();
+                              });
+                              Navigator.pop(ctx);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('${ex['name']} sostituito!')),
+                                );
+                              }
+                            },
+                            child: Container(
+                              margin: const EdgeInsets.only(bottom: 4),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              decoration: BoxDecoration(
+                                color: isSameMuscle ? AppColors.primary.withValues(alpha: 0.06) : Colors.transparent,
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(ex['name'] ?? '', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.white)),
+                                        if ((ex['muscle_group'] ?? '').toString().isNotEmpty)
+                                          Text(ex['muscle_group'], style: TextStyle(fontSize: 10, color: Colors.grey[500])),
+                                      ],
+                                    ),
+                                  ),
+                                  if (isSameMuscle)
+                                    Icon(Icons.check_circle_outline, size: 16, color: AppColors.primary.withValues(alpha: 0.5)),
+                                ],
+                              ),
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
   }
 
   bool _allCompleteFor(List<Map<String, dynamic>> exList) {
@@ -1307,9 +1461,9 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
                 GestureDetector(
                   onTap: () => setState(() => videoExpanded = !videoExpanded),
                   child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 300),
+                    duration: AppAnim.medium,
                     curve: Curves.easeInOut,
-                    height: videoExpanded ? 400 : 220,
+                    height: videoExpanded ? 300 : 120,
                     child: Stack(
                       fit: StackFit.expand,
                       children: [
@@ -1390,7 +1544,7 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
                           child: Center(
                             child: AnimatedRotation(
                               turns: videoExpanded ? 0.5 : 0,
-                              duration: const Duration(milliseconds: 300),
+                              duration: AppAnim.medium,
                               child: Icon(
                                 Icons.keyboard_arrow_down_rounded,
                                 color: Colors.white.withValues(alpha: 0.5),
@@ -1404,129 +1558,12 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
                   ),
                 ),
 
-              // ─── Active Exercise Card ──────────────────────
+              // ─── Active Exercise Info ──────────────────────
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 20),
                 child: Column(
                   children: [
-                    // Exercise name
-                    Text(
-                      currentName,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.w900,
-                        color: AppColors.textPrimary,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 4),
-                    // Set X/Y • Target
-                    Text(
-                      isCardio
-                          ? 'Sessione ${activeSet + 1}/$totalSetsForEx'
-                          : 'Serie ${activeSet + 1}/$totalSetsForEx  •  Obiettivo: $targetReps Ripetizioni',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: AppColors.primary,
-                        fontWeight: FontWeight.w600,
-                      ),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 20),
-
-                    // ─── Circular Rep Counter ────────────────
-                    if (!isCardio && !isCompleted)
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          // Minus button
-                          GestureDetector(
-                            onTap: () => _adjustReps(-1),
-                            child: Container(
-                              width: 56, height: 56,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.06),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                              ),
-                              child: const Icon(Icons.remove_rounded, color: Colors.white, size: 28),
-                            ),
-                          ),
-                          const SizedBox(width: 24),
-                          // Counter circle
-                          Stack(
-                            alignment: Alignment.center,
-                            children: [
-                              // Outer glow
-                              Container(
-                                width: 120, height: 120,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: AppColors.primary.withValues(alpha: 0.2),
-                                      blurRadius: 30,
-                                      spreadRadius: 5,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // Main circle
-                              Container(
-                                width: 112, height: 112,
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.white.withValues(alpha: 0.05),
-                                  border: Border.all(
-                                    color: AppColors.primary,
-                                    width: 4,
-                                  ),
-                                ),
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Text(
-                                      '$activeReps',
-                                      style: const TextStyle(
-                                        fontSize: 36,
-                                        fontWeight: FontWeight.w900,
-                                        color: Colors.white,
-                                        height: 1,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 2),
-                                    Text(
-                                      'RIPETIZIONI',
-                                      style: TextStyle(
-                                        fontSize: 9,
-                                        fontWeight: FontWeight.w600,
-                                        color: AppColors.primary,
-                                        letterSpacing: 1.5,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(width: 24),
-                          // Plus button
-                          GestureDetector(
-                            onTap: () => _adjustReps(1),
-                            child: Container(
-                              width: 56, height: 56,
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.06),
-                                borderRadius: BorderRadius.circular(16),
-                                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                              ),
-                              child: const Icon(Icons.add_rounded, color: Colors.white, size: 28),
-                            ),
-                          ),
-                        ],
-                      ),
-
-                    // Cardio inputs (inline for active set)
+                    // Cardio inputs (only for cardio exercises)
                     if (isCardio && !isCompleted) ...[
                       Row(
                         children: [
@@ -1551,69 +1588,14 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 12),
                     ],
 
-                    const SizedBox(height: 16),
-
-                    // ─── Completa Serie button ───────────────
-                    if (!isCompleted)
-                      GestureDetector(
-                        onTap: _completeSet,
-                        child: Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          decoration: BoxDecoration(
-                            gradient: const LinearGradient(
-                              colors: [AppColors.primary, AppColors.primaryHover],
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                            boxShadow: [
-                              BoxShadow(
-                                color: AppColors.primary.withValues(alpha: 0.3),
-                                blurRadius: 12,
-                                offset: const Offset(0, 4),
-                              ),
-                            ],
-                          ),
-                          child: const Text(
-                            'Completa Serie',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              fontSize: 17,
-                              fontWeight: FontWeight.w800,
-                              color: Colors.white,
-                            ),
-                          ),
-                        ),
-                      ),
-
-                    // Complete workout button
-                    if (!isCompleted && _allComplete)
-                      Padding(
-                        padding: const EdgeInsets.only(top: 12),
-                        child: GestureDetector(
-                          onTap: _finishWorkout,
-                          child: Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            decoration: BoxDecoration(
-                              gradient: const LinearGradient(colors: [Color(0xFF4ADE80), Color(0xFF22C55E)]),
-                              borderRadius: BorderRadius.circular(16),
-                              boxShadow: [BoxShadow(color: const Color(0xFF4ADE80).withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 4))],
-                            ),
-                            child: const Text(
-                              'COMPLETA ALLENAMENTO',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.5),
-                            ),
-                          ),
-                        ),
-                      ),
                   ],
                 ),
               ),
 
-              const SizedBox(height: 16),
+              const SizedBox(height: 8),
 
               // ─── Routine Header ────────────────────────────
               Padding(
@@ -1621,12 +1603,11 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
                 child: Row(
                   children: [
                     Text(
-                      'ROUTINE DI ALLENAMENTO',
+                      'Routine',
                       style: TextStyle(
-                        fontSize: 11,
+                        fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: Colors.white.withValues(alpha: 0.4),
-                        letterSpacing: 1,
+                        color: Colors.white,
                       ),
                     ),
                     const Spacer(),
@@ -1647,8 +1628,32 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
               Expanded(
                 child: ListView.builder(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: exList.length,
+                  itemCount: exList.length + 1, // +1 for complete button
                   itemBuilder: (context, index) {
+                    // Last item: complete workout button
+                    if (index == exList.length) {
+                      if (isCompleted || !_allComplete) return const SizedBox(height: 80);
+                      return Padding(
+                        padding: const EdgeInsets.fromLTRB(4, 12, 4, 80),
+                        child: GestureDetector(
+                          onTap: _finishWorkout,
+                          child: Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(colors: [Color(0xFF4ADE80), Color(0xFF22C55E)]),
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            child: const Text(
+                              'COMPLETA ALLENAMENTO',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 0.5),
+                            ),
+                          ),
+                        ),
+                      );
+                    }
+
                     final ex = exList[index];
                     final perf = ex['performance'] as List;
                     final completedCount = perf.where((p) => (p as Map)['completed'] == true).length;
@@ -1662,7 +1667,7 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
                     return GestureDetector(
                       onTap: () => _switchExercise(index),
                       child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 200),
+                        duration: AppAnim.fast,
                         margin: const EdgeInsets.only(bottom: 8),
                         padding: EdgeInsets.all(isActive ? 16 : 12),
                         decoration: BoxDecoration(
@@ -1672,14 +1677,6 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
                                   ? const Color(0xFF4ADE80).withValues(alpha: 0.04)
                                   : Colors.white.withValues(alpha: 0.03),
                           borderRadius: BorderRadius.circular(16),
-                          border: Border.all(
-                            color: isActive
-                                ? AppColors.primary.withValues(alpha: 0.3)
-                                : allDone
-                                    ? const Color(0xFF4ADE80).withValues(alpha: 0.15)
-                                    : Colors.white.withValues(alpha: 0.06),
-                            width: isActive ? 1.5 : 1,
-                          ),
                         ),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
@@ -1729,6 +1726,20 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
                                     ],
                                   ),
                                 ),
+                                // Swap button
+                                if (!allDone && !isCompleted)
+                                  GestureDetector(
+                                    onTap: () => _showSwapDialog(index),
+                                    child: Container(
+                                      width: 32, height: 32,
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.06),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Icon(Icons.swap_horiz_rounded, size: 16, color: Colors.grey[500]),
+                                    ),
+                                  ),
+                                const SizedBox(width: 6),
                                 // Badge
                                 if (isActive && !allDone)
                                   Container(
@@ -1831,13 +1842,6 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
                                             ? AppColors.primary.withValues(alpha: 0.05)
                                             : Colors.white.withValues(alpha: 0.02),
                                     borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: isDone
-                                          ? const Color(0xFF4ADE80).withValues(alpha: 0.1)
-                                          : isCurrent
-                                              ? AppColors.primary.withValues(alpha: 0.2)
-                                              : Colors.white.withValues(alpha: 0.05),
-                                    ),
                                   ),
                                   child: Row(
                                     children: [
@@ -1892,12 +1896,60 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
                                         )),
                                       ],
                                       const SizedBox(width: 4),
-                                      // Status icon
-                                      SizedBox(
-                                        width: 28,
-                                        child: isDone
-                                            ? const Icon(Icons.check_circle_rounded, size: 18, color: Color(0xFF4ADE80))
-                                            : Icon(Icons.radio_button_unchecked_rounded, size: 18, color: Colors.grey[700]),
+                                      // Status icon — tappable to complete/uncomplete
+                                      GestureDetector(
+                                        onTap: () {
+                                          setState(() {
+                                            if (isDone) {
+                                              (exList[index]['performance'] as List)[setIdx]['completed'] = false;
+                                            } else {
+                                              final currentPerf = (exList[index]['performance'] as List)[setIdx] as Map<String, dynamic>;
+                                              // Auto-fill from previous completed set if empty
+                                              if (setIdx > 0) {
+                                                for (int prev = setIdx - 1; prev >= 0; prev--) {
+                                                  final prevPerf = (exList[index]['performance'] as List)[prev] as Map<String, dynamic>;
+                                                  if (prevPerf['completed'] == true) {
+                                                    if ((currentPerf['reps']?.toString() ?? '').isEmpty) {
+                                                      currentPerf['reps'] = prevPerf['reps'];
+                                                    }
+                                                    if ((currentPerf['weight']?.toString() ?? '').isEmpty || currentPerf['weight']?.toString() == '') {
+                                                      currentPerf['weight'] = prevPerf['weight'];
+                                                    }
+                                                    if ((currentPerf['duration']?.toString() ?? '').isEmpty) {
+                                                      currentPerf['duration'] = prevPerf['duration'];
+                                                    }
+                                                    if ((currentPerf['distance']?.toString() ?? '').isEmpty) {
+                                                      currentPerf['distance'] = prevPerf['distance'];
+                                                    }
+                                                    break;
+                                                  }
+                                                }
+                                              }
+                                              // Also fill reps from target if still empty
+                                              if ((currentPerf['reps']?.toString() ?? '').isEmpty) {
+                                                currentPerf['reps'] = exList[index]['reps']?.toString() ?? '10';
+                                              }
+                                              currentPerf['completed'] = true;
+                                              // Auto-advance to next incomplete set
+                                              if (setIdx == activeSet) {
+                                                final nextSet = perf.indexWhere((p) => p['completed'] != true);
+                                                if (nextSet >= 0) {
+                                                  if (isCoopMode && coopTab == 1) {
+                                                    partnerSet = nextSet;
+                                                  } else {
+                                                    currentSet = nextSet;
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          });
+                                        },
+                                        child: SizedBox(
+                                          width: 28,
+                                          child: isDone
+                                              ? const Icon(Icons.check_circle_rounded, size: 20, color: Color(0xFF4ADE80))
+                                              : Icon(Icons.radio_button_unchecked_rounded, size: 20, color: Colors.grey[600]),
+                                        ),
                                       ),
                                     ],
                                   ),
@@ -2322,7 +2374,7 @@ class _WorkoutBuilderPageState extends ConsumerState<WorkoutBuilderPage>
             // Step content
             Expanded(
               child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 250),
+                duration: AppAnim.dialog,
                 child: _step == 0
                     ? _buildStep1()
                     : _step == 1
@@ -2395,7 +2447,7 @@ class _WorkoutBuilderPageState extends ConsumerState<WorkoutBuilderPage>
     final isActive = i == _step;
     final isCompleted = i < _step;
     return AnimatedContainer(
-      duration: const Duration(milliseconds: 300),
+      duration: AppAnim.medium,
       width: isActive ? 24 : 8,
       height: 8,
       margin: const EdgeInsets.symmetric(horizontal: 3),
@@ -2955,22 +3007,21 @@ class _WorkoutPreviewPage extends StatelessWidget {
             // Start button
             Padding(
               padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pop(context);
-                    onStart();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(vertical: 16),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                    elevation: 0,
+              child: GestureDetector(
+                onTap: () {
+                  Navigator.pop(context);
+                  onStart();
+                },
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary,
+                    borderRadius: BorderRadius.circular(AppRadius.button),
                   ),
                   child: const Text('Inizia Allenamento',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
                 ),
               ),
             ),

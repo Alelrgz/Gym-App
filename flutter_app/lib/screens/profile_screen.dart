@@ -285,7 +285,7 @@ class ProfileScreen extends ConsumerWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        // no border
       ),
       child: Column(
         children: [
@@ -377,14 +377,14 @@ class ProfileScreen extends ConsumerWidget {
       barrierDismissible: true,
       barrierLabel: 'Health Profile',
       barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 250),
+      transitionDuration: AppAnim.dialog,
       transitionBuilder: (context, anim, secondAnim, child) {
         return ScaleTransition(
           scale: CurvedAnimation(parent: anim, curve: Curves.easeOutBack),
           child: FadeTransition(opacity: anim, child: child),
         );
       },
-      pageBuilder: (context, _, __) => Material(
+      pageBuilder: (context, _, _) => Material(
         color: Colors.transparent,
         child: _HealthProfileSheet(clientService: clientService),
       ),
@@ -434,7 +434,7 @@ class _StatCard extends StatelessWidget {
         decoration: BoxDecoration(
           color: Colors.white.withValues(alpha: 0.04),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          // no border
         ),
         child: Column(
           children: [
@@ -1335,7 +1335,7 @@ class _HealthProfileSheetState extends State<_HealthProfileSheet> {
               child: SingleChildScrollView(
                 padding: const EdgeInsets.fromLTRB(20, 4, 20, 0),
                 child: AnimatedSwitcher(
-                  duration: const Duration(milliseconds: 200),
+                  duration: AppAnim.fast,
                   child: _buildStep(),
                 ),
               ),

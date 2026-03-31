@@ -1,0 +1,620 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Heaven's Fit — Test Checklist</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0a0a0a; color: #e5e5e5; min-height: 100vh; }
+
+  .header { background: #111; border-bottom: 1px solid #222; padding: 20px 32px; position: sticky; top: 0; z-index: 100; display: flex; align-items: center; gap: 16px; }
+  .header h1 { font-size: 20px; font-weight: 800; color: #f97316; }
+  .header .subtitle { font-size: 12px; color: #666; }
+  .progress-bar { flex: 1; max-width: 300px; height: 6px; background: #222; border-radius: 3px; overflow: hidden; margin-left: auto; }
+  .progress-fill { height: 100%; background: #f97316; border-radius: 3px; transition: width 0.3s; }
+  .progress-text { font-size: 12px; color: #888; font-weight: 600; min-width: 50px; text-align: right; }
+  .btn-reset { background: #222; color: #888; border: 1px solid #333; padding: 6px 14px; border-radius: 8px; font-size: 11px; cursor: pointer; font-weight: 600; }
+  .btn-reset:hover { background: #333; color: #ccc; }
+
+  .container { max-width: 900px; margin: 0 auto; padding: 24px; }
+
+  .tabs { display: flex; gap: 4px; margin-bottom: 24px; flex-wrap: wrap; }
+  .tab { padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; background: #161616; color: #666; border: 1px solid #222; transition: all 0.2s; }
+  .tab:hover { background: #1a1a1a; color: #999; }
+  .tab.active { background: #f97316; color: #fff; border-color: #f97316; }
+  .tab .count { font-size: 10px; opacity: 0.7; margin-left: 4px; }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  .role-group { margin-bottom: 32px; }
+  .role-title { font-size: 16px; font-weight: 700; color: #f97316; margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .role-subtitle { font-size: 11px; color: #555; margin-bottom: 16px; }
+
+  .category { margin-bottom: 20px; }
+  .category-header { font-size: 13px; font-weight: 700; color: #999; letter-spacing: 0.5px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid #1a1a1a; cursor: pointer; display: flex; align-items: center; gap: 6px; }
+  .category-header .arrow { transition: transform 0.2s; font-size: 10px; color: #555; }
+  .category-header .arrow.collapsed { transform: rotate(-90deg); }
+  .category-header .cat-progress { margin-left: auto; font-size: 10px; color: #555; font-weight: 500; }
+
+  .checklist { list-style: none; }
+  .checklist.collapsed { display: none; }
+  .check-item { display: flex; align-items: flex-start; gap: 10px; padding: 7px 8px; border-radius: 8px; transition: background 0.15s; }
+  .check-item:hover { background: #161616; }
+  .check-item input[type="checkbox"] { appearance: none; width: 18px; height: 18px; border: 2px solid #333; border-radius: 5px; cursor: pointer; flex-shrink: 0; margin-top: 1px; position: relative; transition: all 0.15s; }
+  .check-item input[type="checkbox"]:checked { background: #f97316; border-color: #f97316; }
+  .check-item input[type="checkbox"]:checked::after { content: '✓'; position: absolute; top: -1px; left: 2px; font-size: 12px; color: #fff; font-weight: 700; }
+  .check-item label { font-size: 13px; color: #ccc; cursor: pointer; line-height: 1.4; }
+  .check-item.checked label { color: #555; text-decoration: line-through; }
+  .badge { display: inline-block; padding: 1px 6px; border-radius: 4px; font-size: 9px; font-weight: 700; margin-left: 6px; vertical-align: middle; }
+  .badge.mobile { background: #3b82f620; color: #60a5fa; }
+  .badge.desktop { background: #8b5cf620; color: #a78bfa; }
+  .badge.both { background: #f9731620; color: #f97316; }
+
+  .platform-filter { display: flex; gap: 6px; margin-left: 16px; }
+  .platform-btn { padding: 4px 10px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; background: #161616; color: #666; border: 1px solid #222; }
+  .platform-btn.active { background: #222; color: #ccc; border-color: #444; }
+
+  @media (max-width: 640px) {
+    .header { padding: 16px; flex-wrap: wrap; gap: 8px; }
+    .container { padding: 16px; }
+    .tabs { gap: 4px; }
+    .tab { padding: 6px 12px; font-size: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>Heaven's Fit</h1>
+    <div class="subtitle">Test Checklist — v1.0</div>
+  </div>
+  <div class="progress-bar"><div class="progress-fill" id="globalProgress"></div></div>
+  <div class="progress-text" id="globalProgressText">0%</div>
+  <button class="btn-reset" onclick="resetAll()">Reset All</button>
+</div>
+
+<div class="container">
+  <div class="tabs" id="tabs"></div>
+  <div id="sections"></div>
+</div>
+
+<script>
+const DATA = {
+  "Client": {
+    icon: "👤",
+    subtitle: "Login: Alberto / Alberto — Tests for gym members",
+    categories: {
+      "Authentication": {
+        items: [
+          ["Login with valid credentials", "both"],
+          ["Login with wrong password — error message shown", "both"],
+          ["Login with non-existent user — error message shown", "both"],
+          ["Session persists after app restart", "both"],
+          ["Logout from profile page", "both"],
+        ]
+      },
+      "Dashboard (Home)": {
+        items: [
+          ["Page loads without errors", "both"],
+          ["Streak card shows correct week count", "both"],
+          ["Gems counter displays", "both"],
+          ["Workout card shows today's workout or 'I Miei Allenamenti'", "both"],
+          ["Tap 'Inizia' shows confirmation dialog", "both"],
+          ["Tap 'Cambia Allenamento' opens workout list", "both"],
+          ["Diet card shows consumed calories (not percentage)", "both"],
+          ["Diet card shows goal calories below", "both"],
+          ["Macro rings show carbs/fat/protein", "both"],
+          ["Tap 'Vedi Piano Completo' opens diet page", "both"],
+          ["Trainer card shows trainer name and picture", "both"],
+          ["Top bar: calendar icon opens calendar", "both"],
+          ["Top bar: notification icon opens notifications", "both"],
+          ["Top bar: message icon opens conversations", "both"],
+          ["Top bar: access icon opens QR dialog", "mobile"],
+          ["Desktop sidebar shows nav items", "desktop"],
+          ["Desktop content is centered at 640px with border lines", "desktop"],
+          ["Desktop sidebar has no access button", "desktop"],
+        ]
+      },
+      "Quick Actions (FAB)": {
+        items: [
+          ["FAB opens quick actions menu", "mobile"],
+          ["Only 'Accesso' button glows", "mobile"],
+          ["Pasto opens meal scan", "mobile"],
+          ["Fisico opens photo picker", "mobile"],
+          ["Peso opens weight log dialog", "mobile"],
+          ["Prenota opens booking page (full screen)", "both"],
+          ["Menu closes before booking page opens", "mobile"],
+          ["Haptic feedback on FAB tap", "mobile"],
+        ]
+      },
+      "Workouts": {
+        items: [
+          ["Workout list loads", "both"],
+          ["Workout/Split tabs with animated underline", "both"],
+          ["Tap workout opens preview (exercise list)", "both"],
+          ["Preview shows exercise details (sets, reps, rest)", "both"],
+          ["Tap 'Inizia Allenamento' starts workout", "both"],
+          ["Create new workout via '+' button", "both"],
+          ["Edit workout via pencil icon", "both"],
+          ["Delete workout with confirmation dialog", "both"],
+          ["Today's workout highlighted with orange border", "both"],
+          ["X button closes active workout", "both"],
+          ["Split tab: create new split", "both"],
+          ["Split tab: assign workouts to days", "both"],
+          ["Split tab: edit existing split", "both"],
+          ["Split tab: delete split with confirmation", "both"],
+        ]
+      },
+      "Diet": {
+        items: [
+          ["Diet page loads with meal plan", "both"],
+          ["Day selector (week view) works", "both"],
+          ["Tap meal to check/uncheck", "both"],
+          ["Meal cards show name, macros, calories", "both"],
+          ["Meal cards have rounded-square icons", "both"],
+          ["Water intake tracking", "both"],
+          ["Weight logging", "both"],
+          ["Barcode scanner", "mobile"],
+          ["AI meal scan (camera)", "mobile"],
+          ["Manual meal entry", "both"],
+        ]
+      },
+      "Calendar & Appointments": {
+        items: [
+          ["Calendar opens from top bar icon", "both"],
+          ["Calendar shows days with events (colored dots)", "both"],
+          ["Tap day shows events for that day", "both"],
+          ["Appointment cards show cancel (X) button", "both"],
+          ["Cancel appointment shows confirmation dialog", "both"],
+          ["Booking: type selector (Training/Nutritionist/Course)", "both"],
+          ["Booking: professional list filtered by type", "both"],
+          ["Booking: date picker works", "both"],
+          ["Booking: time slot picker works", "both"],
+          ["Booking: submit creates appointment", "both"],
+        ]
+      },
+      "Community": {
+        items: [
+          ["Feed loads (Palestra/Globale tabs)", "both"],
+          ["Create text post", "both"],
+          ["Create post with image", "both"],
+          ["Like/unlike a post", "both"],
+          ["Comment on a post", "both"],
+          ["View post full screen", "both"],
+          ["Event post shows 'Partecipa' button", "both"],
+          ["Desktop: feed constrained to 600px", "desktop"],
+          ["Desktop: no mobile top bar", "desktop"],
+          ["Post time labels show correct format (5min, 3h, 2g)", "both"],
+        ]
+      },
+      "Profile": {
+        items: [
+          ["Profile page loads with user data", "both"],
+          ["Change profile picture", "both"],
+          ["Profile picture updates immediately after upload", "both"],
+          ["Edit profile (name, email, password)", "both"],
+          ["Health profile wizard (3 steps)", "both"],
+          ["Health profile: step dots indicator", "both"],
+          ["Health profile: zoom-in animation", "both"],
+          ["Health profile: gender has only M/F", "both"],
+          ["Upload medical certificate", "both"],
+          ["View physique photos", "both"],
+          ["Consent management (grant/revoke)", "both"],
+          ["GDPR data export", "both"],
+          ["GDPR account deletion", "both"],
+        ]
+      },
+      "Chat": {
+        items: [
+          ["Conversations list loads", "both"],
+          ["Send text message", "both"],
+          ["Send image (compressed, aspect ratio preserved)", "both"],
+          ["Messages show read receipts", "both"],
+          ["Unread badge count in top bar", "both"],
+        ]
+      },
+      "Notifications": {
+        items: [
+          ["Notifications list loads", "both"],
+          ["Mark single as read", "both"],
+          ["Mark all as read", "both"],
+          ["Notification count badge in top bar", "both"],
+        ]
+      },
+    }
+  },
+  "Trainer": {
+    icon: "🏋️",
+    subtitle: "Login: trainer_754d6d / 123456 — Tests for personal trainers",
+    categories: {
+      "Dashboard (Utenti)": {
+        items: [
+          ["Client list loads", "both"],
+          ["Search clients by name", "both"],
+          ["Filter clients (all/with plan/without plan)", "both"],
+          ["Select client shows details", "both"],
+          ["Double-tap client opens action modal", "both"],
+        ]
+      },
+      "Allenamenti": {
+        items: [
+          ["Exercise list loads with categories", "both"],
+          ["Search exercises", "both"],
+          ["Filter by muscle group", "both"],
+          ["Create new exercise", "both"],
+          ["Create new workout", "both"],
+          ["Add exercises to workout", "both"],
+          ["Create split (weekly schedule)", "both"],
+          ["Assign workout to client", "both"],
+          ["Assign split to client", "both"],
+        ]
+      },
+      "Corsi (Courses)": {
+        items: [
+          ["Course list loads", "both"],
+          ["Create new course", "both"],
+          ["Schedule course lesson", "both"],
+          ["Exercise library with category filter", "both"],
+          ["View participants", "both"],
+        ]
+      },
+      "Agenda": {
+        items: [
+          ["Calendar/schedule loads", "both"],
+          ["Week navigation works", "both"],
+          ["View daily events", "both"],
+          ["Commission data loads by period", "both"],
+          ["Notes: create, edit, delete", "both"],
+          ["Appointments display correctly", "both"],
+        ]
+      },
+      "Community": {
+        items: [
+          ["Community tab visible in sidebar/nav", "both"],
+          ["Can create posts", "both"],
+          ["Can interact with posts (like, comment)", "both"],
+        ]
+      },
+      "Settings": {
+        items: [
+          ["Settings page loads", "both"],
+          ["Profile picture upload", "both"],
+          ["Bio editing", "both"],
+          ["Specialties selection", "both"],
+          ["Availability/schedule setup", "both"],
+          ["Session rate configuration", "both"],
+          ["Spotify integration status", "both"],
+        ]
+      },
+    }
+  },
+  "Nutritionist": {
+    icon: "🥗",
+    subtitle: "Login: nutri / 123456 — Tests for nutritionists",
+    categories: {
+      "Dashboard": {
+        items: [
+          ["Dashboard loads with client list", "both"],
+          ["Stat pills in header (Attivi, A Rischio, Totali, Diete)", "desktop"],
+          ["Stat pills filter clients on tap", "desktop"],
+          ["Collapsible sidebar toggle", "desktop"],
+          ["Collapsed sidebar shows avatar-only", "desktop"],
+          ["Client search works", "both"],
+          ["Select client loads detail panel", "both"],
+          ["Detail panel constrained to 720px", "desktop"],
+          ["Grouped card sections (At a Glance, Body & Goals, etc.)", "desktop"],
+          ["Overview metrics grid with dividers", "both"],
+          ["Health Profile button opens modal", "both"],
+        ]
+      },
+      "Body Composition": {
+        items: [
+          ["Expandable section works", "both"],
+          ["Form fields use fixed width (not ultra-wide)", "desktop"],
+          ["Register body composition measurement", "both"],
+          ["Weight goal setting", "both"],
+        ]
+      },
+      "Diet Management": {
+        items: [
+          ["Diet targets assignment (cal/pro/carb/fat)", "both"],
+          ["Meal plan editor: day tabs", "both"],
+          ["Compact meal rows (tap to expand)", "both"],
+          ["Expanded meal detail: name, description, macros", "both"],
+          ["Add meal entry", "both"],
+          ["Add alternative meal", "both"],
+          ["Delete meal entry", "both"],
+          ["Daily totals row shows sum", "both"],
+          ["Save meal plan", "both"],
+        ]
+      },
+      "Charts & Notes": {
+        items: [
+          ["Weight chart loads (Week/Month/Year toggle)", "both"],
+          ["Weight/Body Fat/Composition tab toggle", "both"],
+          ["Diet consistency chart loads", "both"],
+          ["Notes: create note", "both"],
+          ["Notes: delete note", "both"],
+        ]
+      },
+      "Schedule": {
+        items: [
+          ["Availability setup (7 days)", "both"],
+          ["Time slot toggles work", "both"],
+          ["Session rate setting", "both"],
+          ["Save availability", "both"],
+          ["Upcoming appointments display", "both"],
+        ]
+      },
+      "Settings": {
+        items: [
+          ["Settings page loads", "both"],
+          ["Profile picture upload", "both"],
+          ["Bio editing and save", "both"],
+          ["Specialties selection (6 options)", "both"],
+        ]
+      },
+    }
+  },
+  "Owner": {
+    icon: "🏢",
+    subtitle: "Login: [owner account] — Tests for gym owners",
+    categories: {
+      "Dashboard": {
+        items: [
+          ["Revenue overview loads (monthly/subscription/appointment)", "both"],
+          ["Member stats display", "both"],
+          ["Activity feed loads", "both"],
+          ["Onboarding checklist", "both"],
+          ["Plans management (create/edit/delete)", "both"],
+          ["Offers management", "both"],
+        ]
+      },
+      "CRM": {
+        items: [
+          ["Pipeline visualization loads", "both"],
+          ["At-risk clients list", "both"],
+          ["Engagement metrics display", "both"],
+          ["Client interactions log", "both"],
+          ["Ex-clients list", "both"],
+          ["WhatsApp link generation", "both"],
+        ]
+      },
+      "Facilities": {
+        items: [
+          ["Activity types management", "both"],
+          ["Facilities CRUD", "both"],
+          ["Availability scheduling (7 days)", "both"],
+          ["Bookings overview", "both"],
+        ]
+      },
+      "Settings": {
+        items: [
+          ["Gym info editing (name, code, logo)", "both"],
+          ["Stripe Connect status", "both"],
+          ["POS terminal configuration", "both"],
+          ["Shower timer/limit settings", "both"],
+          ["Turnstile gate settings", "both"],
+          ["Commission rates for trainers", "both"],
+          ["SMTP email configuration", "both"],
+          ["Automated messages management", "both"],
+        ]
+      },
+    }
+  },
+  "Staff": {
+    icon: "🎫",
+    subtitle: "Login: [staff account] — Tests for reception/admin staff",
+    categories: {
+      "Check-in": {
+        items: [
+          ["Member search works", "both"],
+          ["Quick check-in via QR", "both"],
+          ["Real-time check-in notifications (WebSocket)", "both"],
+          ["Today's check-ins list", "both"],
+          ["Today's appointments list", "both"],
+        ]
+      },
+      "Members": {
+        items: [
+          ["Member list loads", "both"],
+          ["Member details panel", "both"],
+          ["Onboard new client", "both"],
+          ["Reset member password", "both"],
+          ["Change member username", "both"],
+          ["Subscribe client to plan", "both"],
+          ["Cancel client subscription", "both"],
+          ["NFC tag registration", "both"],
+        ]
+      },
+      "Documents": {
+        items: [
+          ["Document list loads", "both"],
+          ["Filter by status (valid/expiring/expired/pending)", "both"],
+          ["Upload certificate for member", "both"],
+          ["Approve/reject pending certificates", "both"],
+        ]
+      },
+      "Settings": {
+        items: [
+          ["Gym info displays correctly", "both"],
+          ["Staff profile info", "both"],
+        ]
+      },
+    }
+  },
+  "Cross-Role": {
+    icon: "🔄",
+    subtitle: "Tests that apply across multiple roles",
+    categories: {
+      "Security & Privacy": {
+        items: [
+          ["Password minimum 6 characters enforced", "both"],
+          ["Session invalidated on password change", "both"],
+          ["Rate limiting on login (10/min)", "both"],
+          ["Rate limiting on register (5/min)", "both"],
+          ["Trainer can't see other gym's clients", "both"],
+          ["Trainer needs consent to access sensitive data", "both"],
+          ["Staff can't access health data", "both"],
+          ["Audit log records data access", "both"],
+        ]
+      },
+      "File Uploads": {
+        items: [
+          ["Profile picture upload works (Supabase)", "both"],
+          ["Profile picture updates immediately", "both"],
+          ["Community post image upload", "both"],
+          ["Chat image upload (compressed, aspect preserved)", "both"],
+          ["Certificate upload (not compressed)", "both"],
+          ["Exercise video upload", "both"],
+        ]
+      },
+      "Responsive Layout": {
+        items: [
+          ["Mobile: bottom nav bar visible", "mobile"],
+          ["Desktop: left sidebar visible", "desktop"],
+          ["Desktop: content centered with border lines", "desktop"],
+          ["Desktop: no bottom nav bar", "desktop"],
+          ["Full-screen sheets constrained to content width", "desktop"],
+          ["Window resize switches layout smoothly", "desktop"],
+        ]
+      },
+      "Error Handling": {
+        items: [
+          ["Network error shows message", "both"],
+          ["Server error (500) shows appropriate message", "both"],
+          ["Loading spinners display during API calls", "both"],
+          ["Empty states show helpful messages", "both"],
+        ]
+      },
+      "Performance": {
+        items: [
+          ["App starts without delay", "both"],
+          ["Page transitions smooth (300ms)", "both"],
+          ["Image loading doesn't block UI", "both"],
+          ["WebSocket reconnects on disconnect", "both"],
+        ]
+      },
+    }
+  }
+};
+
+// State
+let activeTab = 'Client';
+let checkedItems = JSON.parse(localStorage.getItem('hf-checklist') || '{}');
+
+function save() {
+  localStorage.setItem('hf-checklist', JSON.stringify(checkedItems));
+}
+
+function getKey(role, cat, idx) {
+  return `${role}::${cat}::${idx}`;
+}
+
+function renderTabs() {
+  const tabsEl = document.getElementById('tabs');
+  tabsEl.innerHTML = '';
+  for (const [role, data] of Object.entries(DATA)) {
+    const totalItems = Object.values(data.categories).reduce((sum, cat) => sum + cat.items.length, 0);
+    const checkedCount = Object.values(data.categories).reduce((sum, cat) => {
+      return sum + cat.items.filter((_, i) => checkedItems[getKey(role, Object.keys(data.categories)[Object.values(data.categories).indexOf(cat)], i)]).length;
+    }, 0);
+
+    let checked = 0;
+    for (const [catName, cat] of Object.entries(data.categories)) {
+      cat.items.forEach((_, i) => { if (checkedItems[getKey(role, catName, i)]) checked++; });
+    }
+
+    const tab = document.createElement('div');
+    tab.className = `tab ${role === activeTab ? 'active' : ''}`;
+    tab.innerHTML = `${data.icon} ${role} <span class="count">${checked}/${totalItems}</span>`;
+    tab.onclick = () => { activeTab = role; render(); };
+    tabsEl.appendChild(tab);
+  }
+}
+
+function render() {
+  renderTabs();
+  const sectionsEl = document.getElementById('sections');
+  sectionsEl.innerHTML = '';
+
+  for (const [role, data] of Object.entries(DATA)) {
+    const section = document.createElement('div');
+    section.className = `section ${role === activeTab ? 'active' : ''}`;
+
+    let html = `<div class="role-group">
+      <div class="role-title">${data.icon} ${role}</div>
+      <div class="role-subtitle">${data.subtitle}</div>`;
+
+    for (const [catName, cat] of Object.entries(data.categories)) {
+      const catChecked = cat.items.filter((_, i) => checkedItems[getKey(role, catName, i)]).length;
+      html += `<div class="category">
+        <div class="category-header" onclick="toggleCategory(this)">
+          <span class="arrow">▼</span> ${catName}
+          <span class="cat-progress">${catChecked}/${cat.items.length}</span>
+        </div>
+        <ul class="checklist">`;
+
+      cat.items.forEach(([label, platform], i) => {
+        const key = getKey(role, catName, i);
+        const isChecked = !!checkedItems[key];
+        const badgeClass = platform === 'mobile' ? 'mobile' : platform === 'desktop' ? 'desktop' : 'both';
+        const badgeLabel = platform === 'mobile' ? 'MOB' : platform === 'desktop' ? 'DSK' : 'ALL';
+        html += `<li class="check-item ${isChecked ? 'checked' : ''}">
+          <input type="checkbox" id="${key}" ${isChecked ? 'checked' : ''} onchange="toggle('${key}')">
+          <label for="${key}">${label} <span class="badge ${badgeClass}">${badgeLabel}</span></label>
+        </li>`;
+      });
+
+      html += `</ul></div>`;
+    }
+
+    html += `</div>`;
+    section.innerHTML = html;
+    sectionsEl.appendChild(section);
+  }
+
+  updateGlobalProgress();
+}
+
+function toggle(key) {
+  checkedItems[key] = !checkedItems[key];
+  if (!checkedItems[key]) delete checkedItems[key];
+  save();
+  render();
+}
+
+function toggleCategory(el) {
+  const arrow = el.querySelector('.arrow');
+  const list = el.nextElementSibling;
+  arrow.classList.toggle('collapsed');
+  list.classList.toggle('collapsed');
+}
+
+function updateGlobalProgress() {
+  let total = 0, checked = 0;
+  for (const [role, data] of Object.entries(DATA)) {
+    for (const [catName, cat] of Object.entries(data.categories)) {
+      total += cat.items.length;
+      cat.items.forEach((_, i) => { if (checkedItems[getKey(role, catName, i)]) checked++; });
+    }
+  }
+  const pct = total > 0 ? Math.round((checked / total) * 100) : 0;
+  document.getElementById('globalProgress').style.width = pct + '%';
+  document.getElementById('globalProgressText').textContent = `${checked}/${total}`;
+}
+
+function resetAll() {
+  if (!confirm('Reset all checkboxes? This cannot be undone.')) return;
+  checkedItems = {};
+  save();
+  render();
+}
+
+render();
+</script>
+</body>
+</html>

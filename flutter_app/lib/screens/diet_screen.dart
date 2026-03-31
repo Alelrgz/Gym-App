@@ -477,128 +477,78 @@ class _DietHeroCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final motivation = score >= 90 ? 'Eccellente!' : score >= 75 ? 'Ottimi progressi!' : score >= 50 ? 'Continua così!' : score >= 25 ? 'Buon inizio!' : 'Iniziamo!';
-    final motivColor = score >= 75 ? const Color(0xFF4ADE80) : score >= 50 ? const Color(0xFFFBBF24) : score >= 25 ? AppColors.primary : const Color(0xFFEF4444);
+    final pct = calsTarget > 0 ? (calsCurrent / calsTarget).clamp(0.0, 1.0) : 0.0;
+    final carbsCur = diet?.carbs.current.toInt() ?? 0;
+    final fatCur = diet?.fat.current.toInt() ?? 0;
+    final proCur = diet?.protein.current.toInt() ?? 0;
+    final carbsTarget = diet?.carbs.target.toInt() ?? 0;
+    final fatTarget = diet?.fat.target.toInt() ?? 0;
+    final proTarget = diet?.protein.target.toInt() ?? 0;
 
-    return Container(
-      clipBehavior: Clip.antiAlias,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-      ),
-      child: Stack(
-        children: [
-          // Orange glow (top-right, like web: bg-orange-500/10 blur-3xl = blur(64px))
-          Positioned(
-            top: -40, right: -40,
-            child: Container(
-              width: 128, height: 128,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.08),
-                    blurRadius: 64,
-                    spreadRadius: 20,
-                  ),
+    return GestureDetector(
+      onTap: onGoToDiet,
+      child: Container(
+        clipBehavior: Clip.antiAlias,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(24),
+        ),
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            // Progress ring with calories inside
+            _AnimatedRing(
+              size: 88,
+              progress: pct,
+              color: AppColors.primary,
+              trackColor: Colors.white.withValues(alpha: 0.08),
+              strokeWidth: 6,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text('$calsCurrent',
+                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Colors.white, height: 1)),
+                  Text('/ $calsTarget',
+                    style: TextStyle(fontSize: 9, fontWeight: FontWeight.w500, color: Colors.grey[500])),
+                  Text('kcal',
+                    style: TextStyle(fontSize: 8, fontWeight: FontWeight.w600, color: Colors.grey[600])),
                 ],
               ),
             ),
-          ),
-          // Content
-          Padding(
-            padding: const EdgeInsets.all(14),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+            const SizedBox(height: 12),
+            // Macro row — simple text
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
               children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    // Left: Ring + stats
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        // Diet progress ring (64x64 — compact to give macros more room)
-                        _AnimatedRing(
-                          size: 64,
-                          progress: (score / 100).clamp(0.0, 1.0),
-                          color: AppColors.primary,
-                          trackColor: Colors.white.withValues(alpha: 0.1),
-                          strokeWidth: 6,
-                          child: Icon(Icons.restaurant_rounded, size: 20, color: const Color(0xFFFB923C)),
-                        ),
-                        const SizedBox(width: 10),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text('DIETA', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.grey[400], letterSpacing: 1.2)),
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.baseline,
-                              textBaseline: TextBaseline.alphabetic,
-                              children: [
-                                Text('$score', style: const TextStyle(fontSize: 30, fontWeight: FontWeight.w900, color: AppColors.textPrimary, height: 1.1)),
-                                Text('%', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: AppColors.primary)),
-                              ],
-                            ),
-                            Text(motivation, style: TextStyle(fontSize: 10, fontWeight: FontWeight.w700, color: motivColor)),
-                            const SizedBox(height: 4),
-                            // Kcal pill badge (like web: bg-white/10 rounded-full)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text('$calsCurrent', style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
-                                  Text(' / ', style: TextStyle(fontSize: 9, color: Colors.grey[500])),
-                                  Text('$calsTarget', style: TextStyle(fontSize: 9, color: Colors.grey[400])),
-                                  Text(' kcal', style: TextStyle(fontSize: 9, color: Colors.grey[400])),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                    const SizedBox(width: 8),
-                    // Vertical divider (like web: w-px h-16 bg-white/10)
-                    Container(width: 1, height: 56, color: Colors.white.withValues(alpha: 0.1)),
-                    const SizedBox(width: 10),
-                    // Macro rings (like web: conic gradient circles)
-                    Expanded(
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _MacroRingSmall(label: 'Carbs', value: '${diet?.carbs.current.toInt() ?? 0}g', color: const Color(0xFFF97316), progress: diet?.carbs.percentage ?? 0),
-                          _MacroRingSmall(label: 'Grassi', value: '${diet?.fat.current.toInt() ?? 0}g', color: const Color(0xFF60A5FA), progress: diet?.fat.percentage ?? 0),
-                          _MacroRingSmall(label: 'Pro', value: '${diet?.protein.current.toInt() ?? 0}g', color: const Color(0xFFF472B6), progress: diet?.protein.percentage ?? 0),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-                // Subtle text link
-                GestureDetector(
-                  onTap: onGoToDiet,
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text('Vedi Piano Completo', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary)),
-                      const SizedBox(width: 4),
-                      Icon(Icons.arrow_forward_ios_rounded, size: 12, color: AppColors.primary),
-                    ],
-                  ),
-                ),
+                _macroText('Proteine', proCur, proTarget, const Color(0xFFF472B6)),
+                Container(width: 1, height: 28, color: Colors.white.withValues(alpha: 0.06)),
+                _macroText('Carbs', carbsCur, carbsTarget, const Color(0xFFF97316)),
+                Container(width: 1, height: 28, color: Colors.white.withValues(alpha: 0.06)),
+                _macroText('Grassi', fatCur, fatTarget, const Color(0xFF60A5FA)),
               ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _macroText(String label, int current, int target, Color color) {
+    return Column(
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.baseline,
+          textBaseline: TextBaseline.alphabetic,
+          children: [
+            Text('$current', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: color)),
+            Text('g', style: TextStyle(fontSize: 10, color: color.withValues(alpha: 0.6))),
+          ],
+        ),
+        const SizedBox(height: 1),
+        Text(label, style: TextStyle(fontSize: 9, color: Colors.grey[600], fontWeight: FontWeight.w500)),
+      ],
     );
   }
 }
@@ -660,7 +610,7 @@ class _WeightHeroCard extends ConsumerWidget {
           decoration: BoxDecoration(
             color: Colors.white.withValues(alpha: 0.04),
             borderRadius: BorderRadius.circular(24),
-            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+            // no border
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -784,8 +734,7 @@ class _ConsistencyHeroCard extends StatelessWidget {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.04),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        borderRadius: BorderRadius.circular(AppRadius.card),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -921,7 +870,7 @@ class _MealPlanContainer extends StatelessWidget {
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+        // no border
       ),
       clipBehavior: Clip.antiAlias,
       child: _CalendarMealPlanCard(selectedDay: selectedDay, onDaySelected: onDaySelected, planMode: planMode, canEdit: canEdit),
@@ -1089,7 +1038,7 @@ class _CalendarMealPlanCardState extends ConsumerState<_CalendarMealPlanCard> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.white.withValues(alpha: 0.04),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+                    // no border
                   ),
                   child: const Icon(Icons.chevron_left_rounded, size: 18, color: AppColors.textSecondary),
                 ),
@@ -1110,7 +1059,7 @@ class _CalendarMealPlanCardState extends ConsumerState<_CalendarMealPlanCard> {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: Colors.white.withValues(alpha: 0.04),
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.06), width: 0.5),
+                    // no border
                   ),
                   child: const Icon(Icons.chevron_right_rounded, size: 18, color: AppColors.textSecondary),
                 ),
@@ -1576,7 +1525,7 @@ class _MealSlotCardState extends State<_MealSlotCard> {
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.03),
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.05), width: 0.5),
+                  // no border
                 ),
                 child: Text(
                   desc,
@@ -2296,7 +2245,7 @@ class _DietPlanPageState extends ConsumerState<DietPlanPage> {
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.04),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+              // no border
             ),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,

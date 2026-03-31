@@ -215,7 +215,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   Widget build(BuildContext context) {
     void onNavTap(int navIdx) {
       const navToPage = [0, 1, 2, 4];
-      _pageController.animateToPage(navToPage[navIdx], duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
+      _pageController.animateToPage(navToPage[navIdx], duration: AppAnim.medium, curve: AppAnim.pageCurve);
     }
 
     void onFabAction(String action) {
@@ -245,7 +245,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
         if (didPop) return;
         // If not on first page, go to first page
         if (_currentPage != 0) {
-          _pageController.animateToPage(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
+          _pageController.animateToPage(0, duration: AppAnim.medium, curve: AppAnim.pageCurve);
           return;
         }
         // On first tab: show exit confirmation
@@ -272,38 +272,97 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           ),
         );
       },
-      child: Scaffold(
-        backgroundColor: AppColors.background,
-        body: Column(
-          children: [
-            // ── Persistent top bar ──
-            _PersistentTopBar(pageController: _pageController),
-            // ── Page content ──
-            Expanded(
-              child: PageView(
-                controller: _pageController,
-                allowImplicitScrolling: true,
-                onPageChanged: (index) {
-                  setState(() {});
-                  widget.navigationShell.goBranch(index, initialLocation: index == widget.navigationShell.currentIndex);
-                },
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final isDesktop = constraints.maxWidth > 1024;
+
+          if (isDesktop) {
+            return Scaffold(
+              backgroundColor: AppColors.background,
+              body: Row(
                 children: [
-                  _KeepAlivePage(child: const DashboardScreen()),
-                  _KeepAlivePage(child: const DietScreen()),
-                  _KeepAlivePage(child: const CommunityScreen()),
-                  _KeepAlivePage(child: const ProfileScreen()),
+                  // Left sidebar
+                  _DesktopSidebar(
+                    currentIndex: _currentPage.clamp(0, 3),
+                    onTap: (idx) {
+                      _pageController.animateToPage(idx, duration: AppAnim.medium, curve: AppAnim.pageCurve);
+                    },
+                    onFabAction: onFabAction,
+                  ),
+                  // Main content
+                  Expanded(
+                    child: Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(width: 1, color: Colors.white.withValues(alpha: 0.04)),
+                          SizedBox(
+                            width: 640,
+                            child: Column(
+                              children: [
+                                _PersistentTopBar(pageController: _pageController),
+                                Expanded(
+                                  child: PageView(
+                                    controller: _pageController,
+                                    allowImplicitScrolling: true,
+                                    onPageChanged: (index) {
+                                      setState(() {});
+                                      widget.navigationShell.goBranch(index, initialLocation: index == widget.navigationShell.currentIndex);
+                                    },
+                                    children: [
+                                      _KeepAlivePage(child: const DashboardScreen()),
+                                      _KeepAlivePage(child: const DietScreen()),
+                                      _KeepAlivePage(child: const CommunityScreen()),
+                                      _KeepAlivePage(child: const ProfileScreen()),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Container(width: 1, color: Colors.white.withValues(alpha: 0.04)),
+                        ],
+                      ),
+                    ),
+                  ),
                 ],
               ),
+            );
+          }
+
+          // Mobile layout (unchanged)
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            body: Column(
+              children: [
+                _PersistentTopBar(pageController: _pageController),
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    allowImplicitScrolling: true,
+                    onPageChanged: (index) {
+                      setState(() {});
+                      widget.navigationShell.goBranch(index, initialLocation: index == widget.navigationShell.currentIndex);
+                    },
+                    children: [
+                      _KeepAlivePage(child: const DashboardScreen()),
+                      _KeepAlivePage(child: const DietScreen()),
+                      _KeepAlivePage(child: const CommunityScreen()),
+                      _KeepAlivePage(child: const ProfileScreen()),
+                    ],
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
-        bottomNavigationBar: AppBottomNav(
-          currentIndex: _currentPage.clamp(0, 3),
-          onTap: (navIdx) {
-            _pageController.animateToPage(navIdx, duration: const Duration(milliseconds: 300), curve: Curves.easeOutCubic);
-          },
-          onFabAction: onFabAction,
-        ),
+            bottomNavigationBar: AppBottomNav(
+              currentIndex: _currentPage.clamp(0, 3),
+              onTap: (navIdx) {
+                _pageController.animateToPage(navIdx, duration: AppAnim.medium, curve: AppAnim.pageCurve);
+              },
+              onFabAction: onFabAction,
+            ),
+          );
+        },
       ),
     );
   }
@@ -329,6 +388,106 @@ class _KeepAlivePageState extends State<_KeepAlivePage> with AutomaticKeepAliveC
   }
 }
 
+// ─── DESKTOP SIDEBAR ────────────────────────────────────────────
+
+class _DesktopSidebar extends ConsumerWidget {
+  final int currentIndex;
+  final ValueChanged<int> onTap;
+  final ValueChanged<String>? onFabAction;
+
+  const _DesktopSidebar({
+    required this.currentIndex,
+    required this.onTap,
+    this.onFabAction,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return Container(
+      width: 72,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.02),
+        border: Border(right: BorderSide(color: Colors.white.withValues(alpha: 0.04))),
+      ),
+      child: SafeArea(
+        child: Column(
+          children: [
+            const SizedBox(height: 16),
+            // Logo
+            SvgPicture.asset('assets/heavens-fit-logo.svg', height: 22),
+            const SizedBox(height: 32),
+            // Nav items
+            _SidebarIcon(icon: Icons.home_rounded, label: 'Home',
+                isActive: currentIndex == 0, onTap: () => onTap(0)),
+            const SizedBox(height: 4),
+            _SidebarIcon(icon: Icons.restaurant_rounded, label: 'Dieta',
+                isActive: currentIndex == 1, onTap: () => onTap(1)),
+            const SizedBox(height: 4),
+            _SidebarIcon(icon: Icons.forum_rounded, label: 'Community',
+                isActive: currentIndex == 2, onTap: () => onTap(2)),
+            const SizedBox(height: 4),
+            _SidebarIcon(icon: Icons.person_rounded, label: 'Profilo',
+                isActive: currentIndex == 3, onTap: () => onTap(3)),
+            const Spacer(),
+            // Quick actions (no access button on desktop)
+            _SidebarIcon(icon: Icons.calendar_month_rounded, label: 'Prenota',
+                isActive: false, isAction: true,
+                onTap: () => onFabAction?.call('book_appointment')),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarIcon extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final bool isActive;
+  final bool isAction;
+  final VoidCallback onTap;
+
+  const _SidebarIcon({
+    required this.icon,
+    required this.label,
+    required this.isActive,
+    this.isAction = false,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 56,
+        padding: const EdgeInsets.symmetric(vertical: 8),
+        decoration: BoxDecoration(
+          color: isActive ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
+          borderRadius: BorderRadius.circular(14),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 22,
+                color: isActive ? AppColors.primary
+                    : isAction ? Colors.grey[500]
+                    : Colors.grey[600]),
+            const SizedBox(height: 4),
+            Text(label,
+                style: TextStyle(
+                  fontSize: 9,
+                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                  color: isActive ? AppColors.primary : Colors.grey[600],
+                )),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ─── PERSISTENT TOP BAR ─────────────────────────────────────────
 
 class _PersistentTopBar extends ConsumerWidget {
@@ -346,25 +505,23 @@ class _PersistentTopBar extends ConsumerWidget {
     final unreadNotifications = ref.watch(unreadNotificationsProvider);
     final top = MediaQuery.of(context).padding.top;
 
+    final isDesktop = MediaQuery.of(context).size.width > 1024;
+
     return Container(
       color: AppColors.background,
-      padding: EdgeInsets.only(top: top + 10, left: 24, right: 24, bottom: 6),
+      padding: EdgeInsets.only(top: isDesktop ? 10 : top + 10, left: 20, right: 20, bottom: 6),
       child: SizedBox(
         height: 48,
         child: Row(
           children: [
-            SvgPicture.asset('assets/heavens-fit-logo.svg', height: 26),
+            SvgPicture.asset('assets/heavens-fit-logo.svg', height: isDesktop ? 22 : 24),
             const Spacer(),
-            _TopIcon(
-              icon: Icons.login_rounded,
-              onTap: () => showQrAccessDialog(context, ref),
-            ),
-            const SizedBox(width: 8),
-            _TopIcon(
-              icon: Icons.calendar_today_rounded,
-              onTap: () => showCalendarSheet(context, ref),
-            ),
-            const SizedBox(width: 8),
+            if (!isDesktop)
+              _TopIcon(
+                icon: Icons.login_rounded,
+                onTap: () => showQrAccessDialog(context, ref),
+              ),
+            if (!isDesktop) const SizedBox(width: 8),
             _TopIconBadge(
               icon: Icons.notifications_none_rounded,
               count: unreadNotifications.valueOrNull ?? 0,
@@ -393,8 +550,8 @@ class _TopIcon extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Container(
-        width: 38,
-        height: 38,
+        width: 36,
+        height: 36,
         decoration: BoxDecoration(
           shape: BoxShape.circle,
           color: Colors.white.withValues(alpha: 0.04),
