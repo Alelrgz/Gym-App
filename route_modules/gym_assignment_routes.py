@@ -11,6 +11,7 @@ from database import get_db_session
 from pydantic import BaseModel
 from typing import Optional
 import os
+import urllib.parse
 from datetime import datetime
 
 router = APIRouter()
@@ -251,6 +252,7 @@ async def get_approved_trainers(
 
 class GymSettingsUpdate(BaseModel):
     gym_name: Optional[str] = None
+    gym_address: Optional[str] = None
     password: Optional[str] = None
     auto_approve_trainers: Optional[bool] = None
     auto_approve_staff: Optional[bool] = None
@@ -273,6 +275,7 @@ async def get_gym_settings(
         return {
             "gym_name": gym.name if gym else (user.gym_name or ""),
             "gym_logo": gym.logo if gym else (user.gym_logo or ""),
+            "gym_address": gym.address if gym else "",
             "gym_code": gym.gym_code if gym else "",
             "device_api_key": user.device_api_key or "",
             "gate_duration": getattr(user, 'gate_duration', 5) or 5,
@@ -316,6 +319,24 @@ async def update_gym_settings(
             gym.auto_approve_staff = request.auto_approve_staff
         if gym and request.welcome_message_template is not None:
             gym.welcome_message_template = request.welcome_message_template.strip() or None
+        if gym and request.gym_address is not None:
+            gym.address = request.gym_address.strip()
+            # Extract city from address (last meaningful part)
+            parts = [p.strip() for p in request.gym_address.split(',') if p.strip()]
+            gym.city = parts[-1] if parts else None
+            # Geocode address to lat/lng
+            try:
+                import urllib.request, json as _json
+                encoded = urllib.parse.quote(request.gym_address.strip())
+                url = f"https://nominatim.openstreetmap.org/search?format=json&limit=1&q={encoded}"
+                req = urllib.request.Request(url, headers={"User-Agent": "FitOS/1.0"})
+                with urllib.request.urlopen(req, timeout=5) as resp:
+                    data = _json.loads(resp.read())
+                    if data:
+                        gym.latitude = float(data[0]['lat'])
+                        gym.longitude = float(data[0]['lon'])
+            except Exception:
+                pass  # Geocoding is best-effort
         # Also update legacy UserORM field if this is the primary gym
         if gym_id == user.id:
             db_user = db.query(UserORM).filter(UserORM.id == user.id).first()

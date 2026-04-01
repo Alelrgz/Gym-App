@@ -23,6 +23,7 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
   String _gymName = '';
   String _gymCode = '';
   String? _gymLogo;
+  String _gymAddress = '';
 
   // Stripe
   String _stripeStatus = 'checking'; // checking, not_connected, pending, connected
@@ -94,6 +95,7 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
       setState(() {
         _gymName = settings['gym_name'] as String? ?? '';
         _gymLogo = settings['gym_logo'] as String?;
+        _gymAddress = settings['gym_address'] as String? ?? '';
         _gymCode = results[1] as String;
         _deviceApiKey = settings['device_api_key'] as String? ?? '';
         _gateDuration = (settings['gate_duration'] as num?)?.toInt() ?? 5;
@@ -409,6 +411,33 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
             ],
           ),
           const SizedBox(height: 12),
+          _fieldLabel('Indirizzo'),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  ),
+                  child: Text(
+                    _gymAddress.isNotEmpty ? _gymAddress : 'Non impostato',
+                    style: TextStyle(fontSize: 14, color: Colors.white.withValues(alpha: _gymAddress.isNotEmpty ? 0.6 : 0.3)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              _iconBtn(Icons.edit_rounded, onTap: _showAddressModal),
+            ],
+          ),
+          if (_gymAddress.isEmpty)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: Text('Aggiungi l\'indirizzo per comparire nella ricerca', style: TextStyle(fontSize: 11, color: AppColors.warning)),
+            ),
+          const SizedBox(height: 12),
           _fieldLabel('Codice Palestra'),
           Row(
             children: [
@@ -540,6 +569,44 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
                 await ref.read(ownerServiceProvider).updateGymName(nameCtrl.text, passCtrl.text);
                 if (ctx.mounted) Navigator.pop(ctx);
                 setState(() => _gymName = nameCtrl.text);
+              } catch (e) {
+                if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Errore: $e')));
+              }
+            },
+            child: const Text('Salva'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAddressModal() {
+    final ctrl = TextEditingController(text: _gymAddress);
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Indirizzo Palestra'),
+        content: TextField(
+          controller: ctrl,
+          decoration: const InputDecoration(hintText: 'Via Roma 1, Milano'),
+          textCapitalization: TextCapitalization.words,
+          autofocus: true,
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annulla')),
+          ElevatedButton(
+            onPressed: () async {
+              try {
+                await ref.read(ownerServiceProvider).updateGymSettings({'gym_address': ctrl.text.trim()});
+                if (ctx.mounted) Navigator.pop(ctx);
+                setState(() => _gymAddress = ctrl.text.trim());
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Indirizzo salvato!'), backgroundColor: AppColors.primary),
+                  );
+                }
               } catch (e) {
                 if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Errore: $e')));
               }
