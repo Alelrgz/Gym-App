@@ -591,7 +591,8 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
         initialAddress: _gymAddress,
         onSearch: (query) async {
           final response = await ref.read(apiClientProvider).get(
-            '${ApiConfig.geocodeAddress}?q=${Uri.encodeComponent(query)}',
+            ApiConfig.geocodeAddress,
+            queryParameters: {'q': query},
           );
           return (response.data as List).cast<Map<String, dynamic>>();
         },
