@@ -2018,13 +2018,17 @@ class _AddressPickerSheetState extends State<_AddressPickerSheet> {
     if (q.length < 3) return;
     setState(() { _searching = true; _suggestions = []; });
     try {
-      final url = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.geocodeAddress}?q=${Uri.encodeComponent(q)}');
-      final resp = await http.get(url);
+      final url = Uri.parse('https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${Uri.encodeComponent(q)}');
+      final resp = await http.get(url, headers: {'User-Agent': 'FitOS/1.0'});
       if (resp.statusCode == 200) {
         final data = jsonDecode(resp.body) as List;
         if (mounted) {
           setState(() {
-            _suggestions = data.cast<Map<String, dynamic>>();
+            _suggestions = data.map((r) => {
+              'display_name': r['display_name'] as String,
+              'lat': double.parse(r['lat'] as String),
+              'lng': double.parse(r['lon'] as String),
+            }).toList();
             _searching = false;
           });
         }
