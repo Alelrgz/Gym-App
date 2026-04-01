@@ -414,7 +414,14 @@ class _DesktopSidebar extends ConsumerWidget {
           children: [
             const SizedBox(height: 16),
             // Logo
-            Image.asset('assets/heavens-hand.png', height: 26),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SvgPicture.asset('assets/heavens-hand.svg', height: 11, colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
+                const SizedBox(height: 2),
+                SvgPicture.asset('assets/heavens-fit-logo.svg', height: 12),
+              ],
+            ),
             const SizedBox(height: 32),
             // Nav items
             _SidebarIcon(icon: Icons.home_rounded, label: 'Home',
@@ -510,11 +517,15 @@ class _PersistentTopBar extends ConsumerWidget {
     return Container(
       color: AppColors.background,
       padding: EdgeInsets.only(top: isDesktop ? 10 : top + 10, left: 20, right: 20, bottom: 6),
-      child: SizedBox(
-        height: 48,
-        child: Row(
+      child: Row(
           children: [
-            Image.asset('assets/heavens-hand.png', height: isDesktop ? 28 : 30),
+            Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                SvgPicture.asset('assets/heavens-hand.svg', height: isDesktop ? 10 : 11, colorFilter: const ColorFilter.mode(Colors.white, BlendMode.srcIn)),
+                SvgPicture.asset('assets/heavens-fit-logo.svg', height: isDesktop ? 12 : 14),
+              ],
+            ),
             const Spacer(),
             if (!isDesktop)
               _TopIcon(
@@ -535,7 +546,6 @@ class _PersistentTopBar extends ConsumerWidget {
             ),
           ],
         ),
-      ),
     );
   }
 }
