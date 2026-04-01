@@ -102,24 +102,42 @@ async def discover_gyms(
 
 @router.get("/api/public/geocode")
 async def geocode_address(q: str):
-    """Geocode an address string to lat/lng using OpenStreetMap Nominatim."""
+    """Geocode an address string to lat/lng using OpenStreetMap Nominatim.
+    Falls back to city-level search if exact address not found."""
     if not q or len(q.strip()) < 3:
         raise HTTPException(status_code=400, detail="Address too short")
-    try:
-        import urllib.request, json as _json
-        encoded = urllib.parse.quote(q.strip())
-        url = f"https://nominatim.openstreetmap.org/search?format=json&limit=5&q={encoded}"
+
+    import urllib.request, json as _json
+
+    def _nominatim_search(query: str) -> list:
+        encoded = urllib.parse.quote(query)
+        url = f"https://nominatim.openstreetmap.org/search?format=json&limit=5&q={encoded}&addressdetails=1"
         req = urllib.request.Request(url, headers={"User-Agent": "FitOS/1.0"})
         with urllib.request.urlopen(req, timeout=5) as resp:
-            data = _json.loads(resp.read())
-            return [
-                {
-                    "display_name": r.get("display_name", ""),
-                    "lat": float(r["lat"]),
-                    "lng": float(r["lon"]),
-                }
-                for r in data
-            ]
+            return _json.loads(resp.read())
+
+    try:
+        # Try exact query first
+        data = _nominatim_search(q.strip())
+
+        # If no results, try progressively broader queries
+        if not data:
+            # Remove house number (first word if it's a number or "Via X 123" pattern)
+            parts = [p.strip() for p in q.split(',') if p.strip()]
+            if len(parts) > 1:
+                # Try just city + country
+                data = _nominatim_search(f"{parts[-1].strip()}, Italy")
+            if not data and len(parts) >= 1:
+                data = _nominatim_search(parts[-1].strip())
+
+        return [
+            {
+                "display_name": r.get("display_name", ""),
+                "lat": float(r["lat"]),
+                "lng": float(r["lon"]),
+            }
+            for r in data
+        ]
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"Geocoding failed: {str(e)}")
 
