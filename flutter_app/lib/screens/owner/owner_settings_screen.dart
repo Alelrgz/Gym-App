@@ -1,9 +1,7 @@
-import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../config/api_config.dart';
@@ -591,6 +589,12 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
       backgroundColor: Colors.transparent,
       builder: (_) => _AddressPickerSheet(
         initialAddress: _gymAddress,
+        onSearch: (query) async {
+          final response = await ref.read(apiClientProvider).get(
+            '${ApiConfig.geocodeAddress}?q=${Uri.encodeComponent(query)}',
+          );
+          return (response.data as List).cast<Map<String, dynamic>>();
+        },
         onSave: (address, lat, lng) async {
           await ref.read(ownerServiceProvider).updateGymSettings({
             'gym_address': address,
@@ -1983,8 +1987,9 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
 class _AddressPickerSheet extends StatefulWidget {
   final String initialAddress;
   final Future<void> Function(String address, double lat, double lng) onSave;
+  final Future<List<Map<String, dynamic>>> Function(String query) onSearch;
 
-  const _AddressPickerSheet({required this.initialAddress, required this.onSave});
+  const _AddressPickerSheet({required this.initialAddress, required this.onSave, required this.onSearch});
 
   @override
   State<_AddressPickerSheet> createState() => _AddressPickerSheetState();
@@ -2018,22 +2023,12 @@ class _AddressPickerSheetState extends State<_AddressPickerSheet> {
     if (q.length < 3) return;
     setState(() { _searching = true; _suggestions = []; });
     try {
-      final url = Uri.parse('https://nominatim.openstreetmap.org/search?format=json&limit=5&q=${Uri.encodeComponent(q)}');
-      final resp = await http.get(url, headers: {'User-Agent': 'FitOS/1.0'});
-      if (resp.statusCode == 200) {
-        final data = jsonDecode(resp.body) as List;
-        if (mounted) {
-          setState(() {
-            _suggestions = data.map((r) => {
-              'display_name': r['display_name'] as String,
-              'lat': double.parse(r['lat'] as String),
-              'lng': double.parse(r['lon'] as String),
-            }).toList();
-            _searching = false;
-          });
-        }
-      } else {
-        if (mounted) setState(() => _searching = false);
+      final results = await widget.onSearch(q);
+      if (mounted) {
+        setState(() {
+          _suggestions = results;
+          _searching = false;
+        });
       }
     } catch (_) {
       if (mounted) setState(() => _searching = false);
