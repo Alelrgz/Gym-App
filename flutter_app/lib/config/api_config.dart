@@ -39,6 +39,7 @@ class ApiConfig {
 
   // Public
   static const discoverGyms = '/api/public/gyms';
+  static const geocodeAddress = '/api/public/geocode';
 
   // Client
   static const clientData = '/api/client/data';

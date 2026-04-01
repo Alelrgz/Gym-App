@@ -100,6 +100,30 @@ async def discover_gyms(
         db.close()
 
 
+@router.get("/api/public/geocode")
+async def geocode_address(q: str):
+    """Geocode an address string to lat/lng using OpenStreetMap Nominatim."""
+    if not q or len(q.strip()) < 3:
+        raise HTTPException(status_code=400, detail="Address too short")
+    try:
+        import urllib.request, json as _json
+        encoded = urllib.parse.quote(q.strip())
+        url = f"https://nominatim.openstreetmap.org/search?format=json&limit=5&q={encoded}"
+        req = urllib.request.Request(url, headers={"User-Agent": "FitOS/1.0"})
+        with urllib.request.urlopen(req, timeout=5) as resp:
+            data = _json.loads(resp.read())
+            return [
+                {
+                    "display_name": r.get("display_name", ""),
+                    "lat": float(r["lat"]),
+                    "lng": float(r["lon"]),
+                }
+                for r in data
+            ]
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"Geocoding failed: {str(e)}")
+
+
 # --- CLIENT ENDPOINTS ---
 
 @router.post("/api/client/join-gym")

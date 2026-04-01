@@ -1,6 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_map/flutter_map.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
 import '../../config/api_config.dart';
 import '../../config/theme.dart';
@@ -581,39 +585,23 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
   }
 
   void _showAddressModal() {
-    final ctrl = TextEditingController(text: _gymAddress);
-
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: const Text('Indirizzo Palestra'),
-        content: TextField(
-          controller: ctrl,
-          decoration: const InputDecoration(hintText: 'Via Roma 1, Milano'),
-          textCapitalization: TextCapitalization.words,
-          autofocus: true,
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Annulla')),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                await ref.read(ownerServiceProvider).updateGymSettings({'gym_address': ctrl.text.trim()});
-                if (ctx.mounted) Navigator.pop(ctx);
-                setState(() => _gymAddress = ctrl.text.trim());
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Indirizzo salvato!'), backgroundColor: AppColors.primary),
-                  );
-                }
-              } catch (e) {
-                if (ctx.mounted) ScaffoldMessenger.of(ctx).showSnackBar(SnackBar(content: Text('Errore: $e')));
-              }
-            },
-            child: const Text('Salva'),
-          ),
-        ],
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _AddressPickerSheet(
+        initialAddress: _gymAddress,
+        onSave: (address, lat, lng) async {
+          await ref.read(ownerServiceProvider).updateGymSettings({
+            'gym_address': address,
+          });
+          setState(() => _gymAddress = address);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Indirizzo salvato!'), backgroundColor: AppColors.primary),
+            );
+          }
+        },
       ),
     );
   }
@@ -1983,6 +1971,304 @@ class _OwnerSettingsScreenState extends ConsumerState<OwnerSettingsScreen> {
         enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
         focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: const BorderSide(color: AppColors.primary)),
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      ),
+    );
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════
+//  ADDRESS PICKER WITH MAP
+// ═══════════════════════════════════════════════════════════════
+
+class _AddressPickerSheet extends StatefulWidget {
+  final String initialAddress;
+  final Future<void> Function(String address, double lat, double lng) onSave;
+
+  const _AddressPickerSheet({required this.initialAddress, required this.onSave});
+
+  @override
+  State<_AddressPickerSheet> createState() => _AddressPickerSheetState();
+}
+
+class _AddressPickerSheetState extends State<_AddressPickerSheet> {
+  final _controller = TextEditingController();
+  final _mapController = MapController();
+  bool _searching = false;
+  bool _saving = false;
+  bool _mapReady = false;
+  LatLng? _pinLocation;
+  String? _resolvedAddress;
+  List<Map<String, dynamic>> _suggestions = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _controller.text = widget.initialAddress;
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    _mapController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _search() async {
+    final q = _controller.text.trim();
+    if (q.length < 3) return;
+    setState(() { _searching = true; _suggestions = []; });
+    try {
+      final url = Uri.parse('${ApiConfig.baseUrl}${ApiConfig.geocodeAddress}?q=${Uri.encodeComponent(q)}');
+      final resp = await http.get(url);
+      if (resp.statusCode == 200) {
+        final data = jsonDecode(resp.body) as List;
+        if (mounted) {
+          setState(() {
+            _suggestions = data.cast<Map<String, dynamic>>();
+            _searching = false;
+          });
+        }
+      } else {
+        if (mounted) setState(() => _searching = false);
+      }
+    } catch (_) {
+      if (mounted) setState(() => _searching = false);
+    }
+  }
+
+  void _selectSuggestion(Map<String, dynamic> suggestion) {
+    final lat = suggestion['lat'] as double;
+    final lng = suggestion['lng'] as double;
+    setState(() {
+      _pinLocation = LatLng(lat, lng);
+      _resolvedAddress = suggestion['display_name'] as String;
+      _suggestions = [];
+    });
+    if (_mapReady) {
+      _mapController.move(_pinLocation!, 16);
+    }
+  }
+
+  Future<void> _save() async {
+    if (_pinLocation == null || _resolvedAddress == null) return;
+    setState(() => _saving = true);
+    try {
+      await widget.onSave(_resolvedAddress!, _pinLocation!.latitude, _pinLocation!.longitude);
+      if (mounted) Navigator.pop(context);
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Errore: $e'), backgroundColor: AppColors.danger),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomPadding = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.85,
+      decoration: const BoxDecoration(
+        color: Color(0xFF1A1A2E),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      child: Column(
+        children: [
+          // Handle
+          Container(
+            margin: const EdgeInsets.only(top: 10, bottom: 6),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+
+          // Title
+          const Padding(
+            padding: EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            child: Text(
+              'Posizione Palestra',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+            ),
+          ),
+
+          // Search bar
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: 'Via Roma 1, Milano',
+                      hintStyle: TextStyle(color: Colors.grey[600], fontSize: 13),
+                      prefixIcon: const Icon(Icons.search, size: 20, color: AppColors.textTertiary),
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.06),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    textInputAction: TextInputAction.search,
+                    onSubmitted: (_) => _search(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  height: 46,
+                  child: ElevatedButton(
+                    onPressed: _searching ? null : _search,
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                    ),
+                    child: _searching
+                        ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Cerca'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // Suggestions list (overlays map area)
+          if (_suggestions.isNotEmpty)
+            Container(
+              margin: const EdgeInsets.fromLTRB(16, 4, 16, 0),
+              constraints: const BoxConstraints(maxHeight: 160),
+              decoration: BoxDecoration(
+                color: const Color(0xFF252540),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              ),
+              child: ListView.separated(
+                shrinkWrap: true,
+                padding: EdgeInsets.zero,
+                itemCount: _suggestions.length,
+                separatorBuilder: (_, __) => Divider(height: 1, color: Colors.white.withValues(alpha: 0.06)),
+                itemBuilder: (ctx, i) {
+                  final s = _suggestions[i];
+                  return ListTile(
+                    dense: true,
+                    leading: const Icon(Icons.location_on_outlined, size: 18, color: AppColors.primary),
+                    title: Text(
+                      s['display_name'] ?? '',
+                      style: const TextStyle(fontSize: 12, color: AppColors.textPrimary),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    onTap: () => _selectSuggestion(s),
+                  );
+                },
+              ),
+            ),
+
+          const SizedBox(height: 8),
+
+          // Map
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.symmetric(horizontal: 16),
+              clipBehavior: Clip.antiAlias,
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              ),
+              child: _pinLocation != null
+                  ? FlutterMap(
+                      mapController: _mapController,
+                      options: MapOptions(
+                        initialCenter: _pinLocation!,
+                        initialZoom: 16,
+                        onMapReady: () => _mapReady = true,
+                        onTap: (_, point) {
+                          setState(() => _pinLocation = point);
+                        },
+                      ),
+                      children: [
+                        TileLayer(
+                          urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                          userAgentPackageName: 'com.fitos.app',
+                        ),
+                        MarkerLayer(
+                          markers: [
+                            Marker(
+                              point: _pinLocation!,
+                              width: 40,
+                              height: 40,
+                              child: const Icon(Icons.location_pin, color: AppColors.primary, size: 40),
+                            ),
+                          ],
+                        ),
+                      ],
+                    )
+                  : Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.map_outlined, size: 48, color: Colors.grey[700]),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Cerca un indirizzo per vedere la mappa',
+                            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    ),
+            ),
+          ),
+
+          // Resolved address + confirm
+          if (_pinLocation != null) ...[
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 10, 16, 0),
+              child: Row(
+                children: [
+                  const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _resolvedAddress ?? '',
+                      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Padding(
+              padding: EdgeInsets.fromLTRB(16, 8, 16, 12 + bottomPadding),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      'Tocca la mappa per spostare il pin',
+                      style: TextStyle(fontSize: 11, color: Colors.grey[600]),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  ElevatedButton.icon(
+                    onPressed: _saving ? null : _save,
+                    icon: _saving
+                        ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Icon(Icons.check_rounded, size: 18),
+                    label: const Text('Conferma'),
+                  ),
+                ],
+              ),
+            ),
+          ] else
+            SizedBox(height: 12 + bottomPadding),
+        ],
       ),
     );
   }
