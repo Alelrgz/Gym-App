@@ -11,7 +11,6 @@ import '../models/client_profile.dart';
 import '../providers/client_provider.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/dashboard_sheets.dart';
-import 'gym_discovery_screen.dart';
 import 'workout_screen.dart';
 
 class DashboardScreen extends ConsumerStatefulWidget {
@@ -145,10 +144,6 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           ),
         ),
         data: (profile) {
-          // No gym yet — show discovery screen
-          if (profile.gymId == null) {
-            return const GymDiscoveryScreen();
-          }
           _checkWelcome(context, profile);
           return RefreshIndicator(
           color: AppColors.primary,
@@ -200,7 +195,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     _LeaderboardLinkCard(),
                     const SizedBox(height: 16),
 
-                    // (gym discovery screen handles no-gym state now)
+                    // No gym prompt
+                    if (profile.gymId == null) _NoGymCard(onJoin: () => showJoinGymDialog(context, ref)),
                   ]),
                 ),
               ),
@@ -1597,6 +1593,41 @@ class _LeaderboardLinkCard extends StatelessWidget {
             ),
           ),
           Icon(Icons.chevron_right_rounded, size: 16, color: Colors.grey[600]),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── NO GYM PROMPT ───────────────────────────────────────────────
+
+class _NoGymCard extends StatelessWidget {
+  final VoidCallback? onJoin;
+  const _NoGymCard({this.onJoin});
+
+  @override
+  Widget build(BuildContext context) {
+    return GlassCard(
+      variant: GlassVariant.accent,
+      child: Column(
+        children: [
+          const Icon(Icons.fitness_center_rounded, color: AppColors.primary, size: 40),
+          const SizedBox(height: 12),
+          const Text(
+            'Unisciti a una palestra',
+            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Inserisci il codice della tua palestra per iniziare',
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 16),
+          ElevatedButton(
+            onPressed: onJoin,
+            child: const Text('Inserisci Codice'),
+          ),
         ],
       ),
     );
