@@ -38,8 +38,8 @@ def get_password_hash(password):
 def validate_password(password: str):
     """Validate password strength. Raises HTTPException(400) if too weak."""
     from fastapi import HTTPException
-    if not password or len(password) < 6:
-        raise HTTPException(status_code=400, detail="Password must be at least 6 characters.")
+    if not password or len(password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters.")
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):

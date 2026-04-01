@@ -431,6 +431,9 @@ app.include_router(simple_auth_router, prefix="/auth")
 from route_modules.gym_assignment_routes import router as gym_assignment_router
 app.include_router(gym_assignment_router)
 
+from route_modules.gym_transfer_routes import router as gym_transfer_router
+app.include_router(gym_transfer_router)
+
 # Register FCM push listener (fires on every NotificationORM insert)
 import service_modules.notification_service  # noqa: F401
 

@@ -11,6 +11,7 @@ import 'services/local_notification_service.dart';
 import 'services/fcm_service.dart';
 import 'providers/auth_provider.dart';
 import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/diet_screen.dart';
@@ -94,7 +95,7 @@ class GymApp extends ConsumerWidget {
           : '/login',
       redirect: (context, state) {
         final isAuth = authState.status == AuthStatus.authenticated;
-        final isAuthRoute = state.matchedLocation == '/login';
+        final isAuthRoute = state.matchedLocation == '/login' || state.matchedLocation == '/register';
 
         if (!isAuth && !isAuthRoute) return '/login';
 
@@ -112,6 +113,10 @@ class GymApp extends ConsumerWidget {
         GoRoute(
           path: '/login',
           builder: (context, state) => const LoginScreen(),
+        ),
+        GoRoute(
+          path: '/register',
+          builder: (context, state) => const RegisterScreen(),
         ),
         GoRoute(
           path: '/leaderboard',

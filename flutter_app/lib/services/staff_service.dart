@@ -332,4 +332,33 @@ class StaffService {
       data: {'reason': reason ?? ''},
     );
   }
+
+  Future<List<Map<String, dynamic>>> searchClientsSystemWide(String query) async {
+    final response = await _api.get('${ApiConfig.staffSearchClients}?q=$query');
+    return (response.data as List).cast<Map<String, dynamic>>();
+  }
+
+  Future<Map<String, dynamic>> transferClient(String clientId) async {
+    final response = await _api.post(
+      ApiConfig.staffTransferClient,
+      data: {'client_id': clientId},
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  Future<List<Map<String, dynamic>>> getPendingTransfers() async {
+    final response = await _api.get(ApiConfig.staffPendingTransfers);
+    return (response.data as List).cast<Map<String, dynamic>>();
+  }
+
+  Future<void> approveTransfer(String transferId) async {
+    await _api.post(ApiConfig.staffApproveTransfer(transferId));
+  }
+
+  Future<void> rejectTransfer(String transferId, {String? note}) async {
+    await _api.post(
+      ApiConfig.staffRejectTransfer(transferId),
+      data: {'note': note ?? ''},
+    );
+  }
 }

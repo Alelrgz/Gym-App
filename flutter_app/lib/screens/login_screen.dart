@@ -219,13 +219,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
 
                   const SizedBox(height: 16),
 
-                  // Info text — no self-registration
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8),
-                    child: Text(
-                      'Chiedi le credenziali alla tua palestra',
-                      style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
-                      textAlign: TextAlign.center,
+                  TextButton(
+                    onPressed: () => context.go('/register'),
+                    child: const Text.rich(
+                      TextSpan(
+                        text: 'Non hai un account? ',
+                        style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                        children: [
+                          TextSpan(
+                            text: 'Registrati',
+                            style: TextStyle(color: AppColors.primary),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ],

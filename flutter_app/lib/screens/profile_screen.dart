@@ -182,6 +182,14 @@ class ProfileScreen extends ConsumerWidget {
                 subtitle: 'Chi può contattarti',
                 onTap: () => _showPrivacySettings(context, ref),
               ),
+              if (ref.watch(clientDataProvider).valueOrNull?.gymId != null)
+                _TileData(
+                  icon: Icons.swap_horiz_rounded,
+                  iconColor: AppColors.warning,
+                  label: 'Cambia Palestra',
+                  subtitle: 'Passa a un\'altra palestra',
+                  onTap: () => showSwitchGymDialog(context, ref),
+                ),
             ]),
             const SizedBox(height: 24),
 

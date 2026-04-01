@@ -54,10 +54,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
       return;
     }
 
-    if (password.length < 12) {
+    if (password.length < 8) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('La password deve avere almeno 12 caratteri'),
+          content: Text('La password deve avere almeno 8 caratteri'),
           backgroundColor: AppColors.danger,
         ),
       );
@@ -145,7 +145,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     controller: _passwordController,
                     obscureText: _obscurePassword,
                     decoration: InputDecoration(
-                      hintText: 'Password',
+                      hintText: 'Password (minimo 8 caratteri)',
                       prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textTertiary),
                       suffixIcon: IconButton(
                         icon: Icon(

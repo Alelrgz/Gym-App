@@ -53,6 +53,8 @@
 	<string>FitOS ha bisogno del microfono per registrare messaggi vocali</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>FitOS ha bisogno di accedere alla galleria per condividere foto</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>FitOS usa la tua posizione per mostrarti le palestre più vicine</string>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 	<key>UILaunchStoryboardName</key>

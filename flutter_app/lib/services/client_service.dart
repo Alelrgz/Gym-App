@@ -75,12 +75,49 @@ class ClientService {
     return response.data as Map<String, dynamic>;
   }
 
+  /// Discover nearby gyms (public, no auth needed).
+  Future<List<Map<String, dynamic>>> discoverGyms({double? lat, double? lng, String? query}) async {
+    final params = <String, dynamic>{};
+    if (lat != null) params['lat'] = lat;
+    if (lng != null) params['lng'] = lng;
+    if (query != null && query.isNotEmpty) params['q'] = query;
+    final response = await _api.get(ApiConfig.discoverGyms, queryParameters: params);
+    return (response.data as List).cast<Map<String, dynamic>>();
+  }
+
   /// Join a gym by code.
   Future<Map<String, dynamic>> joinGym(String gymCode) async {
     final response = await _api.post(
       ApiConfig.clientJoinGym,
       data: {'gym_code': gymCode},
     );
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Leave current gym.
+  Future<Map<String, dynamic>> leaveGym() async {
+    final response = await _api.post(ApiConfig.clientLeaveGym);
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Request gym transfer (flag only, no target gym needed).
+  Future<Map<String, dynamic>> requestGymTransfer({String? note}) async {
+    final response = await _api.post(
+      ApiConfig.clientRequestTransfer,
+      data: {if (note != null) 'note': note},
+    );
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Get pending transfer status.
+  Future<Map<String, dynamic>> getTransferStatus() async {
+    final response = await _api.get(ApiConfig.clientTransferStatus);
+    return response.data as Map<String, dynamic>;
+  }
+
+  /// Cancel pending transfer.
+  Future<Map<String, dynamic>> cancelTransfer() async {
+    final response = await _api.post(ApiConfig.clientCancelTransfer);
     return response.data as Map<String, dynamic>;
   }
 

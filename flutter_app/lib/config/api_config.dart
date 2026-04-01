@@ -37,6 +37,9 @@ class ApiConfig {
   static const login = '/api/auth/login';
   static const register = '/api/auth/register';
 
+  // Public
+  static const discoverGyms = '/api/public/gyms';
+
   // Client
   static const clientData = '/api/client/data';
   static const clientProfile = '/api/client/profile';
@@ -52,6 +55,9 @@ class ApiConfig {
   static const clientSubscriptionPlans = '/api/client/subscription-plans';
   static const clientJoinGym = '/api/client/join-gym';
   static const clientLeaveGym = '/api/client/leave-gym';
+  static const clientRequestTransfer = '/api/client/request-gym-transfer';
+  static const clientTransferStatus = '/api/client/transfer-status';
+  static const clientCancelTransfer = '/api/client/cancel-transfer';
   static const clientSelectTrainer = '/api/client/select-trainer';
   static const clientQuestToggle = '/api/client/quest/toggle';
 
@@ -312,6 +318,11 @@ class ApiConfig {
   static String staffApproveCertificate(int id) => '/api/staff/approve-certificate/$id';
   static String staffRejectCertificate(int id) => '/api/staff/reject-certificate/$id';
   static const staffPendingCertificates = '/api/staff/pending-certificates';
+  static const staffPendingTransfers = '/api/staff/pending-transfers';
+  static const staffSearchClients = '/api/staff/search-clients';
+  static const staffTransferClient = '/api/staff/transfer-client';
+  static String staffApproveTransfer(String id) => '/api/staff/approve-transfer/$id';
+  static String staffRejectTransfer(String id) => '/api/staff/reject-transfer/$id';
   static const medicalCertificateUpload = '/api/medical/certificate';
   static const medicalCertificateGet = '/api/medical/certificate';
   static String medicalCertificate(String clientId) => '/api/medical/certificate?client_id=$clientId';

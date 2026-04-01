@@ -168,10 +168,7 @@ async def register(
     user_data: dict,
     service: UserService = Depends(get_user_service)
 ):
-    # Block client self-registration — clients are created by staff/owner only
     role = user_data.get("role", "client")
-    if role == "client":
-        raise HTTPException(status_code=403, detail="La registrazione clienti è disabilitata. Contatta la tua palestra.")
 
     # Validate password strength
     from auth import validate_password

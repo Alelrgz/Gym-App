@@ -4,19 +4,115 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../config/api_config.dart';
 import '../config/theme.dart';
 import '../models/client_profile.dart';
 import '../providers/client_provider.dart';
 import '../widgets/glass_card.dart';
 import '../widgets/dashboard_sheets.dart';
+import 'gym_discovery_screen.dart';
 import 'workout_screen.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  bool _welcomeChecked = false;
+
+  void _checkWelcome(BuildContext context, ClientProfile profile) {
+    if (_welcomeChecked) return;
+    _welcomeChecked = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final prefs = await SharedPreferences.getInstance();
+      final seen = prefs.getBool('welcome_seen') ?? false;
+      if (!seen && context.mounted) {
+        await prefs.setBool('welcome_seen', true);
+        if (context.mounted) _showWelcomeModal(context, profile);
+      }
+    });
+  }
+
+  void _showWelcomeModal(BuildContext context, ClientProfile profile) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (ctx, anim1, anim2) => const SizedBox(),
+      transitionBuilder: (ctx, anim1, anim2, child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(parent: anim1, curve: Curves.easeOutBack),
+          child: AlertDialog(
+            backgroundColor: const Color(0xFF1A1A2E),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [AppColors.primary, Color(0xFF16A34A)]),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.fitness_center_rounded, color: Colors.white, size: 32),
+                ),
+                const SizedBox(height: 20),
+                Text(
+                  'Benvenuto su FitOS!',
+                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Ecco come iniziare:',
+                  style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 20),
+                _WelcomeStep(
+                  icon: Icons.fitness_center_rounded,
+                  title: profile.gymId != null ? 'Palestra connessa' : 'Unisciti a una palestra',
+                  subtitle: profile.gymId != null ? 'Sei già iscritto!' : 'Inserisci il codice della tua palestra',
+                  done: profile.gymId != null,
+                ),
+                const SizedBox(height: 10),
+                _WelcomeStep(
+                  icon: Icons.calendar_today_rounded,
+                  title: 'Prenota un appuntamento',
+                  subtitle: 'Conosci il tuo trainer',
+                  done: profile.trainerName != null,
+                ),
+                const SizedBox(height: 10),
+                _WelcomeStep(
+                  icon: Icons.directions_run_rounded,
+                  title: 'Inizia ad allenarti',
+                  subtitle: 'Completa il tuo primo workout',
+                  done: false,
+                ),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () => Navigator.of(ctx).pop(),
+                    child: const Text('Iniziamo!'),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ref = this.ref;
     final clientData = ref.watch(clientDataProvider);
 
     return Scaffold(
@@ -48,7 +144,13 @@ class DashboardScreen extends ConsumerWidget {
             ],
           ),
         ),
-        data: (profile) => RefreshIndicator(
+        data: (profile) {
+          // No gym yet — show discovery screen
+          if (profile.gymId == null) {
+            return const GymDiscoveryScreen();
+          }
+          _checkWelcome(context, profile);
+          return RefreshIndicator(
           color: AppColors.primary,
           backgroundColor: AppColors.surface,
           onRefresh: () async {
@@ -88,6 +190,9 @@ class DashboardScreen extends ConsumerWidget {
                         onCalendar: () => showAppointmentsSheet(context, ref),
                       ),
                       const SizedBox(height: 16),
+                    ] else if (profile.gymId != null) ...[
+                      _NoTrainerCard(onBook: () => showBookAppointmentSheet(context, ref)),
+                      const SizedBox(height: 16),
                     ],
 
 
@@ -95,14 +200,13 @@ class DashboardScreen extends ConsumerWidget {
                     _LeaderboardLinkCard(),
                     const SizedBox(height: 16),
 
-                    // No gym prompt
-                    if (profile.gymId == null) _NoGymCard(onJoin: () => showJoinGymDialog(context, ref)),
+                    // (gym discovery screen handles no-gym state now)
                   ]),
                 ),
               ),
             ],
           ),
-        ),
+        );},
       ),
     );
   }
@@ -234,8 +338,22 @@ class _WorkoutCard extends ConsumerWidget {
                 ] else ...[
                   const SizedBox(height: 8),
                   Text(
-                    'Nessun allenamento assegnato per oggi.\nCrea o scegli un allenamento.',
+                    'Nessun allenamento assegnato per oggi.',
                     style: TextStyle(fontSize: 14, color: AppColors.textTertiary),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      onPressed: () => context.go('/workouts'),
+                      icon: const Icon(Icons.add_rounded, size: 18),
+                      label: const Text('Crea il tuo allenamento'),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: AppColors.primary,
+                        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                      ),
+                    ),
                   ),
                 ],
 
@@ -1485,37 +1603,94 @@ class _LeaderboardLinkCard extends StatelessWidget {
   }
 }
 
-// ─── NO GYM PROMPT ───────────────────────────────────────────────
+// ─── NO TRAINER PROMPT ──────────────────────────────────────────
 
-class _NoGymCard extends StatelessWidget {
-  final VoidCallback? onJoin;
-  const _NoGymCard({this.onJoin});
+class _NoTrainerCard extends StatelessWidget {
+  final VoidCallback? onBook;
+  const _NoTrainerCard({this.onBook});
 
   @override
   Widget build(BuildContext context) {
     return GlassCard(
-      variant: GlassVariant.accent,
       child: Column(
         children: [
-          const Icon(Icons.fitness_center_rounded, color: AppColors.primary, size: 40),
-          const SizedBox(height: 12),
+          const Icon(Icons.person_search_rounded, color: AppColors.primary, size: 36),
+          const SizedBox(height: 10),
           const Text(
-            'Unisciti a una palestra',
-            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+            'Prenota il tuo primo appuntamento',
+            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.textPrimary),
           ),
           const SizedBox(height: 4),
           const Text(
-            'Inserisci il codice della tua palestra per iniziare',
+            'Conosci un trainer e inizia il tuo percorso',
             style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
             textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: onJoin,
-            child: const Text('Inserisci Codice'),
+          const SizedBox(height: 14),
+          ElevatedButton.icon(
+            onPressed: onBook,
+            icon: const Icon(Icons.calendar_today_rounded, size: 16),
+            label: const Text('Prenota'),
           ),
         ],
       ),
+    );
+  }
+}
+
+// ─── WELCOME STEP ───────────────────────────────────────────────
+
+class _WelcomeStep extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final bool done;
+
+  const _WelcomeStep({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.done,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 36,
+          height: 36,
+          decoration: BoxDecoration(
+            color: done ? AppColors.primary.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.06),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(
+            done ? Icons.check_rounded : icon,
+            size: 18,
+            color: done ? AppColors.primary : AppColors.textTertiary,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: done ? AppColors.primary : AppColors.textPrimary,
+                ),
+              ),
+              Text(
+                subtitle,
+                style: const TextStyle(fontSize: 12, color: AppColors.textTertiary),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

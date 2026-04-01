@@ -242,10 +242,10 @@ async def _do_register(request, username, password, email, role, sub_role, secre
         })
 
     # Validate password length
-    if not password or len(password) < 6:
+    if not password or len(password) < 8:
         return templates.TemplateResponse("register.html", {
             "request": request,
-            "error": "Password must be at least 6 characters",
+            "error": "Password must be at least 8 characters",
             "gym_id": "iron_gym",
             "role": "client",
             "mode": "auth"
@@ -533,9 +533,9 @@ async def do_reset_password(request: Request):
     new_password = form.get("new_password", "").strip()
     confirm_password = form.get("confirm_password", "").strip()
 
-    if not new_password or len(new_password) < 6:
+    if not new_password or len(new_password) < 8:
         return templates.TemplateResponse("reset_password.html", {
-            "request": request, "error": "Password must be at least 6 characters.", "token": token
+            "request": request, "error": "Password must be at least 8 characters.", "token": token
         })
 
     if new_password != confirm_password:
@@ -654,8 +654,8 @@ async def do_setup_account(request: Request, db: Session = Depends(get_db)):
 
         if not new_password:
             errors.append("Password is required")
-        elif len(new_password) < 6:
-            errors.append("Password must be at least 6 characters")
+        elif len(new_password) < 8:
+            errors.append("Password must be at least 8 characters")
         elif new_password != confirm_password:
             errors.append("Passwords do not match")
 

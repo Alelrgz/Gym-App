@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:ui' as ui;
+import 'package:dio/dio.dart';
 import '../../providers/websocket_provider.dart' show checkinNotifier;
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
@@ -288,6 +289,9 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
                       error: (_, __) => const SizedBox.shrink(),
                     ),
                     const SizedBox(height: 16),
+
+                    // ── Pending Transfers ─────────────────
+                    _PendingTransfersBanner(),
 
                     // ── Search ────────────────────────────
                     TextField(
@@ -4572,6 +4576,411 @@ class _ReactivateSearchSheetState extends State<_ReactivateSearchSheet> {
                         );
                       },
                     ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── PENDING TRANSFERS BANNER ──────────────────────────────────
+
+class _PendingTransfersBanner extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final transfersAsync = ref.watch(staffPendingTransfersProvider);
+
+    return transfersAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (transfers) {
+        return Column(
+          children: [
+            // Staff-initiated search button
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _showTransferSearchDialog(context, ref),
+                icon: const Icon(Icons.person_search_rounded, size: 18),
+                label: const Text('Trasferisci un cliente da un\'altra palestra'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: AppColors.primary,
+                  side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+              ),
+            ),
+            if (transfers.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              for (final t in transfers) _TransferRequestCard(transfer: t),
+            ],
+            const SizedBox(height: 16),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _TransferRequestCard extends ConsumerStatefulWidget {
+  final Map<String, dynamic> transfer;
+  const _TransferRequestCard({required this.transfer});
+
+  @override
+  ConsumerState<_TransferRequestCard> createState() => _TransferRequestCardState();
+}
+
+class _TransferRequestCardState extends ConsumerState<_TransferRequestCard> {
+  bool _loading = false;
+
+  Future<void> _approve() async {
+    setState(() => _loading = true);
+    try {
+      final service = ref.read(staffServiceProvider);
+      await service.approveTransfer(widget.transfer['id']);
+      ref.invalidate(staffPendingTransfersProvider);
+      ref.invalidate(staffMembersProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Trasferimento di ${widget.transfer['client_name']} approvato'),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Errore nell\'approvazione'), backgroundColor: AppColors.danger),
+        );
+      }
+    }
+  }
+
+  Future<void> _reject() async {
+    setState(() => _loading = true);
+    try {
+      final service = ref.read(staffServiceProvider);
+      await service.rejectTransfer(widget.transfer['id']);
+      ref.invalidate(staffPendingTransfersProvider);
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Trasferimento rifiutato')),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Errore nel rifiuto'), backgroundColor: AppColors.danger),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final t = widget.transfer;
+    return GlassCard(
+      variant: GlassVariant.accent,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.swap_horiz_rounded, color: AppColors.primary, size: 20),
+              const SizedBox(width: 8),
+              const Expanded(
+                child: Text(
+                  'Richiesta di trasferimento',
+                  style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              // Avatar
+              CircleAvatar(
+                radius: 18,
+                backgroundColor: Colors.white.withValues(alpha: 0.1),
+                backgroundImage: t['client_profile_picture'] != null
+                    ? NetworkImage(t['client_profile_picture'])
+                    : null,
+                child: t['client_profile_picture'] == null
+                    ? const Icon(Icons.person, size: 18, color: AppColors.textTertiary)
+                    : null,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      t['client_name'] ?? 'Cliente',
+                      style: const TextStyle(fontWeight: FontWeight.w600, color: AppColors.textPrimary),
+                    ),
+                    if (t['from_gym'] != null)
+                      Text(
+                        'Da: ${t['from_gym']}',
+                        style: TextStyle(fontSize: 12, color: AppColors.textTertiary),
+                      ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          if (t['note'] != null && (t['note'] as String).isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '"${t['note']}"',
+                style: TextStyle(fontSize: 12, color: AppColors.textSecondary, fontStyle: FontStyle.italic),
+              ),
+            ),
+          ],
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _loading ? null : _reject,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.danger,
+                    side: BorderSide(color: AppColors.danger.withValues(alpha: 0.3)),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                  ),
+                  child: const Text('Rifiuta', style: TextStyle(fontSize: 13)),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _loading ? null : _approve,
+                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 8)),
+                  child: _loading
+                      ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                      : const Text('Approva', style: TextStyle(fontSize: 13)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── TRANSFER SEARCH DIALOG ───────────────────────────────────
+
+void _showTransferSearchDialog(BuildContext context, WidgetRef ref) {
+  showDialog(
+    context: context,
+    builder: (ctx) => _TransferSearchDialog(ref: ref, parentContext: context),
+  );
+}
+
+class _TransferSearchDialog extends StatefulWidget {
+  final WidgetRef ref;
+  final BuildContext parentContext;
+  const _TransferSearchDialog({required this.ref, required this.parentContext});
+
+  @override
+  State<_TransferSearchDialog> createState() => _TransferSearchDialogState();
+}
+
+class _TransferSearchDialogState extends State<_TransferSearchDialog> {
+  final _controller = TextEditingController();
+  List<Map<String, dynamic>>? _results;
+  bool _searching = false;
+  String? _transferringId;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Future<void> _search() async {
+    final q = _controller.text.trim();
+    if (q.length < 2) return;
+    setState(() => _searching = true);
+    try {
+      final service = widget.ref.read(staffServiceProvider);
+      final results = await service.searchClientsSystemWide(q);
+      if (mounted) setState(() { _results = results; _searching = false; });
+    } catch (e) {
+      if (mounted) setState(() { _results = []; _searching = false; });
+    }
+  }
+
+  Future<void> _transfer(Map<String, dynamic> client) async {
+    setState(() => _transferringId = client['id']);
+    try {
+      final service = widget.ref.read(staffServiceProvider);
+      await service.transferClient(client['id']);
+      widget.ref.invalidate(staffPendingTransfersProvider);
+      widget.ref.invalidate(staffMembersProvider);
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(widget.parentContext).showSnackBar(
+          SnackBar(
+            content: Text('${client['name']} trasferito con successo!'),
+            backgroundColor: AppColors.primary,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _transferringId = null);
+        String msg = 'Errore nel trasferimento';
+        if (e is DioException && e.response?.data is Map) {
+          msg = (e.response!.data as Map)['detail']?.toString() ?? msg;
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(msg), backgroundColor: AppColors.danger),
+        );
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 40),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Cerca Cliente',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Cerca un cliente nel sistema per trasferirlo nella tua palestra',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 12),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextField(
+                    controller: _controller,
+                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+                    decoration: InputDecoration(
+                      hintText: 'Nome o username...',
+                      hintStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 13),
+                      prefixIcon: const Icon(Icons.search, size: 20),
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.05),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: AppColors.border),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                    ),
+                    onSubmitted: (_) => _search(),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                IconButton(
+                  onPressed: _searching ? null : _search,
+                  icon: _searching
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary))
+                      : const Icon(Icons.search, color: AppColors.primary),
+                ),
+              ],
+            ),
+            if (_results != null) ...[
+              const SizedBox(height: 12),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 300),
+                child: _results!.isEmpty
+                    ? const Padding(
+                        padding: EdgeInsets.all(20),
+                        child: Text('Nessun risultato', style: TextStyle(color: AppColors.textTertiary)),
+                      )
+                    : ListView.separated(
+                        shrinkWrap: true,
+                        itemCount: _results!.length,
+                        separatorBuilder: (_, __) => Divider(color: Colors.white.withValues(alpha: 0.06), height: 1),
+                        itemBuilder: (ctx, i) {
+                          final c = _results![i];
+                          final isOwn = c['is_own_member'] == true;
+                          final wantsTransfer = c['wants_transfer'] == true;
+                          return ListTile(
+                            dense: true,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                            leading: CircleAvatar(
+                              radius: 18,
+                              backgroundColor: Colors.white.withValues(alpha: 0.1),
+                              backgroundImage: c['profile_picture'] != null ? NetworkImage(c['profile_picture']) : null,
+                              child: c['profile_picture'] == null ? const Icon(Icons.person, size: 18, color: AppColors.textTertiary) : null,
+                            ),
+                            title: Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    c['name'] ?? c['username'],
+                                    style: const TextStyle(color: AppColors.textPrimary, fontSize: 14, fontWeight: FontWeight.w600),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                if (wantsTransfer) ...[
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                                    decoration: BoxDecoration(
+                                      color: AppColors.warning.withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: const Text('Vuole trasferirsi', style: TextStyle(fontSize: 9, color: AppColors.warning, fontWeight: FontWeight.w600)),
+                                  ),
+                                ],
+                              ],
+                            ),
+                            subtitle: Text(
+                              isOwn ? 'Già nella tua palestra' : (c['current_gym'] ?? 'Nessuna palestra'),
+                              style: TextStyle(fontSize: 11, color: isOwn ? AppColors.primary : AppColors.textTertiary),
+                            ),
+                            trailing: isOwn
+                                ? null
+                                : SizedBox(
+                                    width: 80,
+                                    height: 30,
+                                    child: ElevatedButton(
+                                      onPressed: _transferringId != null ? null : () => _transfer(c),
+                                      style: ElevatedButton.styleFrom(
+                                        padding: EdgeInsets.zero,
+                                        textStyle: const TextStyle(fontSize: 11),
+                                      ),
+                                      child: _transferringId == c['id']
+                                          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                                          : const Text('Trasferisci'),
+                                    ),
+                                  ),
+                          );
+                        },
+                      ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Chiudi', style: TextStyle(color: AppColors.textSecondary)),
             ),
           ],
         ),

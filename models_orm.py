@@ -120,6 +120,12 @@ class GymORM(Base):
     # Push notifications
     fcm_server_key = Column(String, nullable=True)
 
+    # Location
+    address = Column(String, nullable=True)
+    city = Column(String, nullable=True)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+
     # Onboarding settings
     auto_approve_trainers = Column(Boolean, default=False)
     auto_approve_staff = Column(Boolean, default=False)
@@ -1328,3 +1334,20 @@ class SensitiveDataAccessLogORM(Base):
     user_agent = Column(String, nullable=True)
 
     accessed_at = Column(String, default=lambda: datetime.utcnow().isoformat(), index=True)
+
+
+# --- GYM TRANSFER REQUEST ---
+
+class GymTransferRequestORM(Base):
+    __tablename__ = "gym_transfer_requests"
+
+    id = Column(String, primary_key=True)
+    client_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    from_gym_id = Column(String, nullable=True)  # Current gym (null if no gym)
+    to_gym_id = Column(String, ForeignKey("gyms.id", ondelete="CASCADE"), nullable=True, index=True)  # null = client flagged, no target yet
+    status = Column(String, default="pending", index=True)  # pending, approved, rejected, cancelled
+    client_note = Column(Text, nullable=True)  # Optional message from client
+    staff_note = Column(Text, nullable=True)  # Optional note from staff on reject
+    reviewed_by = Column(String, ForeignKey("users.id"), nullable=True)  # Staff who reviewed
+    created_at = Column(String, default=lambda: datetime.utcnow().isoformat())
+    reviewed_at = Column(String, nullable=True)

@@ -3302,6 +3302,192 @@ class _JoinGymDialogState extends State<_JoinGymDialog> {
   }
 }
 
+// ─── TRANSFER GYM DIALOG ──────────────────────────────────────
+
+Future<void> showSwitchGymDialog(BuildContext context, WidgetRef ref) {
+  return showDialog(
+    context: context,
+    builder: (ctx) => _TransferGymDialog(ref: ref, parentContext: context),
+  );
+}
+
+class _TransferGymDialog extends StatefulWidget {
+  final WidgetRef ref;
+  final BuildContext parentContext;
+  const _TransferGymDialog({required this.ref, required this.parentContext});
+
+  @override
+  State<_TransferGymDialog> createState() => _TransferGymDialogState();
+}
+
+class _TransferGymDialogState extends State<_TransferGymDialog> {
+  bool _loading = false;
+  bool _checkingStatus = true;
+  bool _hasPending = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkExisting();
+  }
+
+  Future<void> _checkExisting() async {
+    try {
+      final service = widget.ref.read(clientServiceProvider);
+      final status = await service.getTransferStatus();
+      if (mounted) {
+        setState(() {
+          _checkingStatus = false;
+          _hasPending = status['has_pending'] == true;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _checkingStatus = false);
+    }
+  }
+
+  Future<void> _requestTransfer() async {
+    setState(() => _loading = true);
+    try {
+      final service = widget.ref.read(clientServiceProvider);
+      await service.requestGymTransfer();
+      if (mounted) {
+        Navigator.pop(context);
+        showSnack(widget.parentContext, 'Richiesta registrata! Recati nella nuova palestra per completare il trasferimento.');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        String msg = 'Errore nella richiesta';
+        if (e is DioException && e.response?.data is Map) {
+          msg = (e.response!.data as Map)['detail']?.toString() ?? msg;
+        }
+        showSnack(context, msg, isError: true);
+      }
+    }
+  }
+
+  Future<void> _cancelTransfer() async {
+    setState(() => _loading = true);
+    try {
+      final service = widget.ref.read(clientServiceProvider);
+      await service.cancelTransfer();
+      if (mounted) {
+        Navigator.pop(context);
+        showSnack(widget.parentContext, 'Richiesta annullata');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _loading = false);
+        showSnack(context, 'Errore nell\'annullamento', isError: true);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_checkingStatus) {
+      return Dialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: const Padding(
+          padding: EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [CircularProgressIndicator(color: AppColors.primary)],
+          ),
+        ),
+      );
+    }
+
+    // Already has a pending request
+    if (_hasPending) {
+      return Dialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.hourglass_top_rounded, color: AppColors.warning, size: 40),
+              const SizedBox(height: 16),
+              const Text(
+                'Trasferimento in corso',
+                style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Recati nella nuova palestra per completare il trasferimento. Lo staff ti accoglierà.',
+                style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: OutlinedButton(
+                  onPressed: _loading ? null : _cancelTransfer,
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: AppColors.danger,
+                    side: BorderSide(color: AppColors.danger.withValues(alpha: 0.3)),
+                  ),
+                  child: _loading
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('Annulla richiesta'),
+                ),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text('Chiudi', style: TextStyle(color: AppColors.textSecondary)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    // New request
+    return Dialog(
+      backgroundColor: AppColors.surface,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.swap_horiz_rounded, color: AppColors.primary, size: 40),
+            const SizedBox(height: 16),
+            const Text(
+              'Cambia Palestra',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
+            ),
+            const SizedBox(height: 12),
+            const Text(
+              'Vuoi trasferirti in un\'altra palestra?\n\nRecati nella nuova palestra e lo staff completerà il trasferimento. Il tuo abbonamento attuale verrà cancellato automaticamente.',
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: _loading ? null : _requestTransfer,
+                child: _loading
+                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : const Text('Richiedi Trasferimento'),
+              ),
+            ),
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annulla', style: TextStyle(color: AppColors.textSecondary)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ─── 8. LOG WEIGHT DIALOG ──────────────────────────────────────
 
 Future<void> showLogWeightDialog(BuildContext context, WidgetRef ref, {double? currentWeight}) {

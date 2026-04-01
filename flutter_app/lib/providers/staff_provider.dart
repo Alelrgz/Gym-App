@@ -42,3 +42,9 @@ final staffSubscriptionPlansProvider =
   final service = ref.read(staffServiceProvider);
   return service.getSubscriptionPlans();
 });
+
+final staffPendingTransfersProvider =
+    FutureProvider.autoDispose<List<Map<String, dynamic>>>((ref) async {
+  final service = ref.read(staffServiceProvider);
+  return service.getPendingTransfers();
+});

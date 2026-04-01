@@ -38,6 +38,67 @@ async def get_public_gym_info(gym_code: str):
         db.close()
 
 
+@router.get("/api/public/gyms")
+async def discover_gyms(
+    lat: float = None,
+    lng: float = None,
+    q: str = None,
+):
+    """Public endpoint for gym discovery. Returns active gyms sorted by distance if location provided."""
+    from models_orm import GymORM
+    import math
+    db = get_db_session()
+    try:
+        query = db.query(GymORM).filter(GymORM.is_active == True)
+
+        if q:
+            search = f"%{q.strip().lower()}%"
+            query = query.filter(
+                (GymORM.name.ilike(search)) | (GymORM.city.ilike(search))
+            )
+
+        gyms = query.limit(50).all()
+
+        def _distance(gym):
+            """Haversine distance in km."""
+            if not lat or not lng or not gym.latitude or not gym.longitude:
+                return None
+            R = 6371
+            dlat = math.radians(gym.latitude - lat)
+            dlng = math.radians(gym.longitude - lng)
+            a = math.sin(dlat/2)**2 + math.cos(math.radians(lat)) * math.cos(math.radians(gym.latitude)) * math.sin(dlng/2)**2
+            return R * 2 * math.atan2(math.sqrt(a), math.sqrt(1-a))
+
+        result = []
+        for gym in gyms:
+            dist = _distance(gym)
+            owner = db.query(UserORM).filter(UserORM.id == gym.owner_id).first()
+            # Count members
+            member_count = db.query(ClientProfileORM).filter(ClientProfileORM.gym_id == gym.owner_id).count()
+            result.append({
+                "id": gym.id,
+                "name": gym.name or (owner.username if owner else "Palestra"),
+                "logo": gym.logo,
+                "gym_code": gym.gym_code,
+                "address": gym.address,
+                "city": gym.city,
+                "latitude": gym.latitude,
+                "longitude": gym.longitude,
+                "distance_km": round(dist, 1) if dist is not None else None,
+                "member_count": member_count,
+            })
+
+        # Sort by distance if location provided, otherwise by name
+        if lat and lng:
+            result.sort(key=lambda g: g['distance_km'] if g['distance_km'] is not None else 999999)
+        else:
+            result.sort(key=lambda g: (g['name'] or '').lower())
+
+        return result
+    finally:
+        db.close()
+
+
 # --- CLIENT ENDPOINTS ---
 
 @router.post("/api/client/join-gym")

@@ -61,8 +61,12 @@ class GymAssignmentService:
                 # Already a member of this gym
                 raise HTTPException(status_code=400, detail="You are already a member of this gym")
             else:
-                # Update existing profile (switching gyms)
+                # Switching gyms — clean up old assignments
                 profile.gym_id = owner.id
+                profile.trainer_id = None
+                profile.nutritionist_id = None
+                profile.current_split_id = None
+                profile.split_expiry_date = None
 
             db.commit()
             db.refresh(profile)
@@ -252,9 +256,12 @@ class GymAssignmentService:
             if not profile.gym_id:
                 raise HTTPException(status_code=400, detail="You are not currently in a gym")
 
-            # Clear gym and trainer assignments
+            # Clear gym and all gym-related assignments
             profile.gym_id = None
             profile.trainer_id = None
+            profile.nutritionist_id = None
+            profile.current_split_id = None
+            profile.split_expiry_date = None
             db.commit()
 
             logger.info(f"Client {client_id} left their gym")
