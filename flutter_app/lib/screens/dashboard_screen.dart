@@ -145,56 +145,57 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    color: AppColors.primary.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: const Icon(Icons.auto_awesome_rounded, color: AppColors.primary, size: 28),
-                ),
-                const SizedBox(height: 18),
+                const Icon(Icons.auto_awesome_rounded, color: AppColors.primary, size: 32),
+                const SizedBox(height: 14),
                 const Text(
-                  'FitOS Solo',
+                  'Allenati da solo',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                 ),
-                const SizedBox(height: 6),
+                const SizedBox(height: 4),
                 const Text(
-                  '€4.99/mese',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primary),
+                  'Scegli il piano che fa per te',
+                  style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
                 ),
-                const SizedBox(height: 18),
-                _PaywallFeature(icon: Icons.smart_toy_rounded, text: 'Workout generati con AI'),
-                const SizedBox(height: 8),
-                _PaywallFeature(icon: Icons.restaurant_menu_rounded, text: 'Piano alimentare personalizzato'),
-                const SizedBox(height: 8),
-                _PaywallFeature(icon: Icons.trending_up_rounded, text: 'Tracking progressi avanzato'),
-                const SizedBox(height: 8),
-                _PaywallFeature(icon: Icons.calendar_month_rounded, text: 'Programmazione allenamenti'),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      Navigator.pop(ctx);
-                      try {
-                        final service = ref.read(clientServiceProvider);
-                        final checkoutUrl = await service.createSoloCheckout();
-                        if (context.mounted) {
-                          await launchUrl(Uri.parse(checkoutUrl), mode: LaunchMode.externalApplication);
-                        }
-                      } catch (e) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(content: Text('Errore nel pagamento'), backgroundColor: AppColors.danger),
-                          );
-                        }
-                      }
-                    },
-                    child: const Text('Abbonati ora'),
-                  ),
+                const SizedBox(height: 20),
+
+                // Solo plan — €4.99
+                _SoloPlanCard(
+                  title: 'Solo',
+                  price: '€4.99',
+                  period: '/mese',
+                  features: const [
+                    'Crea i tuoi allenamenti',
+                    'Diario alimentare',
+                    'Tracking progressi',
+                    'Programmazione settimanale',
+                  ],
+                  isPro: false,
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await _startCheckout(context, 'solo');
+                  },
                 ),
+                const SizedBox(height: 12),
+
+                // Solo Pro plan — €9.99
+                _SoloPlanCard(
+                  title: 'Solo Pro',
+                  price: '€9.99',
+                  period: '/mese',
+                  features: const [
+                    'Tutto di Solo, più:',
+                    'Workout generati con AI',
+                    'Piano alimentare AI personalizzato',
+                    'Analisi avanzata progressi',
+                  ],
+                  isPro: true,
+                  onTap: () async {
+                    Navigator.pop(ctx);
+                    await _startCheckout(context, 'solo_pro');
+                  },
+                ),
+                const SizedBox(height: 12),
+
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
                   child: const Text('Non ora', style: TextStyle(color: AppColors.textTertiary, fontSize: 13)),
@@ -205,6 +206,22 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         );
       },
     );
+  }
+
+  Future<void> _startCheckout(BuildContext context, String plan) async {
+    try {
+      final service = ref.read(clientServiceProvider);
+      final checkoutUrl = await service.createSoloCheckout(plan: plan);
+      if (context.mounted) {
+        await launchUrl(Uri.parse(checkoutUrl), mode: LaunchMode.externalApplication);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Errore nel pagamento'), backgroundColor: AppColors.danger),
+        );
+      }
+    }
   }
 
   void _showWelcomeModal(BuildContext context, ClientProfile profile) {
@@ -2011,22 +2028,81 @@ class _PathOptionCard extends StatelessWidget {
   }
 }
 
-// ─── PAYWALL FEATURE ROW ────────────────────────────────────────
+// ─── SOLO PLAN CARD ─────────────────────────────────────────────
 
-class _PaywallFeature extends StatelessWidget {
-  final IconData icon;
-  final String text;
+class _SoloPlanCard extends StatelessWidget {
+  final String title;
+  final String price;
+  final String period;
+  final List<String> features;
+  final bool isPro;
+  final VoidCallback onTap;
 
-  const _PaywallFeature({required this.icon, required this.text});
+  const _SoloPlanCard({
+    required this.title,
+    required this.price,
+    required this.period,
+    required this.features,
+    required this.isPro,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: [
-        Icon(icon, color: AppColors.primary, size: 18),
-        const SizedBox(width: 10),
-        Text(text, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
-      ],
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isPro
+              ? AppColors.primary.withValues(alpha: 0.08)
+              : Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isPro
+                ? AppColors.primary.withValues(alpha: 0.4)
+                : Colors.white.withValues(alpha: 0.08),
+            width: isPro ? 1.5 : 1,
+          ),
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                if (isPro) ...[
+                  const SizedBox(width: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: const Text('AI', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w800, color: AppColors.primary)),
+                  ),
+                ],
+                const Spacer(),
+                Text(price, style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: isPro ? AppColors.primary : AppColors.textPrimary)),
+                Text(period, style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+              ],
+            ),
+            const SizedBox(height: 10),
+            for (final f in features)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Row(
+                  children: [
+                    Icon(Icons.check_rounded, size: 14, color: isPro ? AppColors.primary : AppColors.textTertiary),
+                    const SizedBox(width: 8),
+                    Flexible(child: Text(f, style: TextStyle(fontSize: 12, color: AppColors.textSecondary))),
+                  ],
+                ),
+              ),
+          ],
+        ),
+      ),
     );
   }
 }

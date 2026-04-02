@@ -76,8 +76,8 @@ class ClientService {
   }
 
   /// Create solo subscription checkout session.
-  Future<String> createSoloCheckout() async {
-    final response = await _api.post(ApiConfig.clientSoloCheckout);
+  Future<String> createSoloCheckout({String plan = 'solo'}) async {
+    final response = await _api.post(ApiConfig.clientSoloCheckout, data: {'plan': plan});
     return (response.data as Map<String, dynamic>)['checkout_url'] as String;
   }
 

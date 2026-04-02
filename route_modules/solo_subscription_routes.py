@@ -7,6 +7,8 @@ from fastapi.responses import RedirectResponse
 from auth import get_current_user
 from models_orm import UserORM, ClientProfileORM
 from database import get_db_session
+from pydantic import BaseModel
+from typing import Optional
 import os
 import stripe
 import logging
@@ -14,18 +16,30 @@ import logging
 logger = logging.getLogger("gym_app")
 router = APIRouter()
 
-SOLO_PRICE_MONTHLY = 499  # €4.99 in cents
-SOLO_PLAN_NAME = "FitOS Solo"
+PLANS = {
+    "solo": {"price": 499, "name": "FitOS Solo", "description": "Allenamenti personalizzati, diario alimentare, tracking"},
+    "solo_pro": {"price": 999, "name": "FitOS Solo Pro", "description": "Workout AI, piano alimentare AI, analisi avanzata"},
+}
+
+
+class SoloCheckoutRequest(BaseModel):
+    plan: Optional[str] = "solo"
 
 
 @router.post("/api/client/solo-checkout")
 async def create_solo_checkout(
+    body: SoloCheckoutRequest,
     request: Request,
     user: UserORM = Depends(get_current_user),
 ):
-    """Create a Stripe Checkout Session for the solo monthly subscription."""
+    """Create a Stripe Checkout Session for a solo subscription plan."""
     if user.role != "client":
         raise HTTPException(status_code=403, detail="Solo i clienti")
+
+    plan_key = body.plan or "solo"
+    plan = PLANS.get(plan_key)
+    if not plan:
+        raise HTTPException(status_code=400, detail="Piano non valido")
 
     stripe.api_key = os.environ.get("STRIPE_SECRET_KEY")
     if not stripe.api_key:
@@ -34,7 +48,7 @@ async def create_solo_checkout(
     db = get_db_session()
     try:
         profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == user.id).first()
-        if profile and profile.account_type == "solo_premium":
+        if profile and profile.account_type in ("solo_premium", "solo_pro"):
             raise HTTPException(status_code=400, detail="Hai già un abbonamento Solo attivo")
 
         # Determine base URL for redirects
@@ -47,11 +61,11 @@ async def create_solo_checkout(
             line_items=[{
                 "price_data": {
                     "currency": "eur",
-                    "unit_amount": SOLO_PRICE_MONTHLY,
+                    "unit_amount": plan["price"],
                     "recurring": {"interval": "month"},
                     "product_data": {
-                        "name": SOLO_PLAN_NAME,
-                        "description": "Workout AI, dieta personalizzata, tracking avanzato",
+                        "name": plan["name"],
+                        "description": plan["description"],
                     },
                 },
                 "quantity": 1,
@@ -63,6 +77,7 @@ async def create_solo_checkout(
             metadata={
                 "user_id": user.id,
                 "type": "solo_subscription",
+                "plan": plan_key,
             },
         )
 
@@ -94,7 +109,8 @@ async def solo_checkout_success(session_id: str):
 
         profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == user_id).first()
         if profile:
-            profile.account_type = "solo_premium"
+            plan_key = session.metadata.get("plan", "solo") if session.metadata else "solo"
+            profile.account_type = "solo_pro" if plan_key == "solo_pro" else "solo_premium"
             profile.is_premium = True
             db.commit()
             logger.info(f"Solo subscription activated for {user_id}")
