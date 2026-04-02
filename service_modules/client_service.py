@@ -625,6 +625,19 @@ class ClientService:
                 )
                 db.add(weight_entry)
 
+            if profile_update.height_cm is not None:
+                profile.height_cm = profile_update.height_cm
+            if profile_update.gender is not None:
+                profile.gender = profile_update.gender
+            if profile_update.fitness_goal is not None:
+                # Store on diet settings (where fitness_goal column lives)
+                diet = db.query(ClientDietSettingsORM).filter(ClientDietSettingsORM.id == client_id).first()
+                if diet:
+                    diet.fitness_goal = profile_update.fitness_goal
+                else:
+                    diet = ClientDietSettingsORM(id=client_id, fitness_goal=profile_update.fitness_goal)
+                    db.add(diet)
+
             db.commit()
             return {"status": "success", "message": "Profile updated"}
         except Exception as e:

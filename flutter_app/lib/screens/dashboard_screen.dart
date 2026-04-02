@@ -41,8 +41,38 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (!seen && context.mounted) {
         await prefs.setBool('welcome_seen', true);
         if (context.mounted) _showWelcomeModal(context, profile);
+        return;
+      }
+
+      // Then: onboarding (goal + body stats) if not completed yet
+      final onboarded = prefs.getBool('onboarding_done') ?? false;
+      if (!onboarded && profile.fitnessGoal == null && context.mounted) {
+        _showOnboardingFlow(context);
       }
     });
+  }
+
+  void _showOnboardingFlow(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: false,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _OnboardingSheet(
+        onComplete: (goal, weight, height, gender) async {
+          final service = ref.read(clientServiceProvider);
+          await service.updateProfile({
+            'fitness_goal': goal,
+            'weight': weight,
+            'height_cm': height,
+            'gender': gender,
+          });
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('onboarding_done', true);
+          ref.invalidate(clientDataProvider);
+        },
+      ),
+    );
   }
 
   void _showPathChoiceModal(BuildContext context) {
@@ -2101,6 +2131,277 @@ class _SoloPlanCard extends StatelessWidget {
                 ),
               ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── ONBOARDING SHEET (Goal + Body Stats) ───────────────────────
+
+class _OnboardingSheet extends StatefulWidget {
+  final Future<void> Function(String goal, double weight, double height, String gender) onComplete;
+
+  const _OnboardingSheet({required this.onComplete});
+
+  @override
+  State<_OnboardingSheet> createState() => _OnboardingSheetState();
+}
+
+class _OnboardingSheetState extends State<_OnboardingSheet> {
+  int _step = 0; // 0 = goal, 1 = body stats
+  String? _goal;
+  final _weightCtrl = TextEditingController();
+  final _heightCtrl = TextEditingController();
+  String _gender = 'male';
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _weightCtrl.dispose();
+    _heightCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _complete() async {
+    final weight = double.tryParse(_weightCtrl.text.trim());
+    final height = double.tryParse(_heightCtrl.text.trim());
+    if (_goal == null || weight == null || height == null) return;
+
+    setState(() => _saving = true);
+    try {
+      await widget.onComplete(_goal!, weight, height, _gender);
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(24, 16, 24, 16 + bottomInset),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1A1A2E),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2)),
+            ),
+
+            // Step indicator
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _StepDot(active: _step == 0),
+                const SizedBox(width: 8),
+                _StepDot(active: _step == 1),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            if (_step == 0) ...[
+              // ── GOAL SELECTION ──
+              const Text(
+                'Qual è il tuo obiettivo?',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Questo ci aiuta a personalizzare la tua esperienza',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              _GoalOption(icon: Icons.trending_down_rounded, label: 'Perdere peso', value: 'lose_weight', selected: _goal, onTap: (v) => setState(() => _goal = v)),
+              const SizedBox(height: 10),
+              _GoalOption(icon: Icons.fitness_center_rounded, label: 'Aumentare massa', value: 'build_muscle', selected: _goal, onTap: (v) => setState(() => _goal = v)),
+              const SizedBox(height: 10),
+              _GoalOption(icon: Icons.favorite_rounded, label: 'Mantenersi in forma', value: 'stay_active', selected: _goal, onTap: (v) => setState(() => _goal = v)),
+              const SizedBox(height: 10),
+              _GoalOption(icon: Icons.sports_soccer_rounded, label: 'Preparazione sportiva', value: 'sport', selected: _goal, onTap: (v) => setState(() => _goal = v)),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _goal != null ? () => setState(() => _step = 1) : null,
+                  child: const Text('Avanti'),
+                ),
+              ),
+            ] else ...[
+              // ── BODY STATS ──
+              const Text(
+                'I tuoi dati',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Servono per calcolare il tuo piano personalizzato',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+
+              // Gender
+              Row(
+                children: [
+                  _GenderChip(label: 'Uomo', value: 'male', selected: _gender, onTap: (v) => setState(() => _gender = v)),
+                  const SizedBox(width: 10),
+                  _GenderChip(label: 'Donna', value: 'female', selected: _gender, onTap: (v) => setState(() => _gender = v)),
+                  const SizedBox(width: 10),
+                  _GenderChip(label: 'Altro', value: 'other', selected: _gender, onTap: (v) => setState(() => _gender = v)),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Weight
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _weightCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 16),
+                      decoration: InputDecoration(
+                        labelText: 'Peso (kg)',
+                        labelStyle: TextStyle(color: AppColors.textTertiary),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.06),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _heightCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 16),
+                      decoration: InputDecoration(
+                        labelText: 'Altezza (cm)',
+                        labelStyle: TextStyle(color: AppColors.textTertiary),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.06),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: () => setState(() => _step = 0),
+                    child: const Text('Indietro', style: TextStyle(color: AppColors.textSecondary)),
+                  ),
+                  const Spacer(),
+                  ElevatedButton(
+                    onPressed: _saving ? null : _complete,
+                    child: _saving
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Iniziamo!'),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StepDot extends StatelessWidget {
+  final bool active;
+  const _StepDot({required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: active ? 24 : 8,
+      height: 8,
+      decoration: BoxDecoration(
+        color: active ? AppColors.primary : Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+      ),
+    );
+  }
+}
+
+class _GoalOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final String? selected;
+  final ValueChanged<String> onTap;
+
+  const _GoalOption({required this.icon, required this.label, required this.value, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = selected == value;
+    return GestureDetector(
+      onTap: () => onTap(value),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? AppColors.primary.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.08),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: isSelected ? AppColors.primary : AppColors.textTertiary, size: 22),
+            const SizedBox(width: 14),
+            Text(label, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: isSelected ? AppColors.primary : AppColors.textPrimary)),
+            const Spacer(),
+            if (isSelected) const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GenderChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final String selected;
+  final ValueChanged<String> onTap;
+
+  const _GenderChip({required this.label, required this.value, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = selected == value;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onTap(value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: isSelected ? AppColors.primary : Colors.white.withValues(alpha: 0.08)),
+          ),
+          child: Center(
+            child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isSelected ? AppColors.primary : AppColors.textSecondary)),
+          ),
         ),
       ),
     );
