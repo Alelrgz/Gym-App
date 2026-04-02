@@ -199,7 +199,10 @@ class ClientProfileORM(Base):
     nutritionist_id = Column(String, ForeignKey("users.id", ondelete="SET NULL"), index=True, nullable=True)
 
     is_premium = Column(Boolean, default=False)
-    account_type = Column(String, default="free")  # free, solo_premium, gym_member
+    account_type = Column(String, default="free")  # free, solo_trial, solo_premium, solo_pro, gym_member
+    trial_started_at = Column(String, nullable=True)  # ISO date when trial began
+    trial_ends_at = Column(String, nullable=True)  # ISO date when trial expires
+    email_verified = Column(Boolean, default=False)
 
     # Personal info
     date_of_birth = Column(String, nullable=True)  # Format: YYYY-MM-DD

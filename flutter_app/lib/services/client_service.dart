@@ -75,6 +75,17 @@ class ClientService {
     return response.data as Map<String, dynamic>;
   }
 
+  /// Send trial verification code.
+  Future<void> trialSendCode(String email) async {
+    await _api.post(ApiConfig.clientTrialSendCode, data: {'email': email});
+  }
+
+  /// Verify code and activate trial.
+  Future<Map<String, dynamic>> trialVerify(String email, String code) async {
+    final response = await _api.post(ApiConfig.clientTrialVerify, data: {'email': email, 'code': code});
+    return response.data as Map<String, dynamic>;
+  }
+
   /// Create solo subscription checkout session.
   Future<String> createSoloCheckout({String plan = 'solo'}) async {
     final response = await _api.post(ApiConfig.clientSoloCheckout, data: {'plan': plan});

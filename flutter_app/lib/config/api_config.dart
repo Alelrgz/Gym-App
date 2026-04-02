@@ -55,6 +55,8 @@ class ApiConfig {
   static const clientAppointments = '/api/client/appointments';
   static const clientSubscriptionPlans = '/api/client/subscription-plans';
   static const clientSoloCheckout = '/api/client/solo-checkout';
+  static const clientTrialSendCode = '/api/client/trial-send-code';
+  static const clientTrialVerify = '/api/client/trial-verify';
   static const clientJoinGym = '/api/client/join-gym';
   static const clientLeaveGym = '/api/client/leave-gym';
   static const clientRequestTransfer = '/api/client/request-gym-transfer';
