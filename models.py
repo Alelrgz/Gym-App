@@ -117,6 +117,7 @@ class ClientData(BaseModel):
     trainer_name: Optional[str] = None
     is_premium: Optional[bool] = False
     account_type: Optional[str] = "free"
+    trial_ends_at: Optional[str] = None
     profile_picture: Optional[str] = None
     todays_workout: Optional[Workout] = None
     daily_quests: List[DailyQuest]

@@ -100,6 +100,18 @@ class ClientService:
                 db.commit()
                 db.refresh(profile)
 
+            # --- CHECK TRIAL EXPIRY ---
+            if profile.account_type == "solo_trial" and profile.trial_ends_at:
+                try:
+                    trial_end = datetime.fromisoformat(profile.trial_ends_at)
+                    if datetime.utcnow() > trial_end:
+                        profile.account_type = "free"
+                        profile.is_premium = False
+                        db.commit()
+                        logger.info(f"Trial expired for client {client_id}")
+                except (ValueError, TypeError):
+                    pass
+
             # --- FETCH DATA ---
 
             # 2. Get Diet / Progress
@@ -390,6 +402,7 @@ class ClientService:
                 trainer_name=trainer_name,
                 is_premium=profile.is_premium,
                 account_type=getattr(profile, 'account_type', 'free') or 'free',
+                trial_ends_at=getattr(profile, 'trial_ends_at', None),
                 profile_picture=user.profile_picture,
                 todays_workout=todays_workout,
                 daily_quests=daily_quests,
