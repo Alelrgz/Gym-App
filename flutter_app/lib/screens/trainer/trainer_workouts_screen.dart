@@ -2558,6 +2558,44 @@ class _ClientCardState extends ConsumerState<_ClientCard> {
                         ),
                         const SizedBox(height: 12),
 
+                        // Client stats (goal, weight, height)
+                        if (client.weight != null || client.fitnessGoal != null)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(12),
+                            margin: const EdgeInsets.only(bottom: 12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF252525),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                            ),
+                            child: Wrap(
+                              spacing: 16,
+                              runSpacing: 8,
+                              children: [
+                                if (client.fitnessGoal != null)
+                                  _ClientStatChip(
+                                    label: 'Obiettivo',
+                                    value: {
+                                      'lose_weight': 'Perdere peso',
+                                      'build_muscle': 'Massa',
+                                      'stay_active': 'Forma',
+                                      'sport': 'Sport',
+                                    }[client.fitnessGoal] ?? client.fitnessGoal!,
+                                  ),
+                                if (client.weight != null)
+                                  _ClientStatChip(label: 'Peso', value: '${client.weight} kg'),
+                                if (client.heightCm != null)
+                                  _ClientStatChip(label: 'Altezza', value: '${client.heightCm!.round()} cm'),
+                                if (client.gender != null)
+                                  _ClientStatChip(
+                                    label: 'Genere',
+                                    value: {'male': 'M', 'female': 'F', 'other': '-'}[client.gender] ?? client.gender!,
+                                  ),
+                              ],
+                            ),
+                          ),
+
                         // Vedi Programma
                         _WebAppModalBtn(
                           icon: Icons.assignment_rounded,
@@ -4755,6 +4793,25 @@ class _VideoUploadButtonState extends ConsumerState<_VideoUploadButton> {
               )
             : const Icon(Icons.video_library_rounded, size: 22, color: AppColors.primary),
       ),
+    );
+  }
+}
+
+class _ClientStatChip extends StatelessWidget {
+  final String label;
+  final String value;
+
+  const _ClientStatChip({required this.label, required this.value});
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: TextStyle(fontSize: 9, fontWeight: FontWeight.w600, color: Colors.white.withValues(alpha: 0.35), letterSpacing: 0.5)),
+        const SizedBox(height: 1),
+        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+      ],
     );
   }
 }

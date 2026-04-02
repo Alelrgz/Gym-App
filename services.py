@@ -328,6 +328,9 @@ class UserService:
                     ClientScheduleORM.date >= today.isoformat(),
                 ).count()
 
+                # Get fitness goal from diet settings
+                diet_settings = db.query(ClientDietSettingsORM).filter(ClientDietSettingsORM.id == c.id).first()
+
                 clients.append({
                     "id": c.id,
                     "name": profile.name if profile and profile.name else c.username,
@@ -340,6 +343,10 @@ class UserService:
                     "assigned_split": assigned_split_name,
                     "plan_expiry": split_expiry,
                     "upcoming_workouts": upcoming_workouts,
+                    "weight": profile.weight if profile else None,
+                    "height_cm": profile.height_cm if profile else None,
+                    "gender": profile.gender if profile else None,
+                    "fitness_goal": diet_settings.fitness_goal if diet_settings else None,
                 })
             
             # --- FETCH MY WORKOUT (TRAINER) ---

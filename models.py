@@ -145,6 +145,10 @@ class ClientSummary(BaseModel):
     profile_picture: Optional[str] = None
     assigned_split: Optional[str] = None
     plan_expiry: Optional[str] = None
+    weight: Optional[float] = None
+    height_cm: Optional[float] = None
+    gender: Optional[str] = None
+    fitness_goal: Optional[str] = None
     upcoming_workouts: Optional[int] = 0
 
 class Video(BaseModel):
