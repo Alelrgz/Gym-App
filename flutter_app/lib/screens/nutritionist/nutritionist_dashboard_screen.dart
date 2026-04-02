@@ -142,46 +142,7 @@ class _NutritionistDashboardScreenState
   Widget _buildMobile(Map<String, dynamic> data) {
     final clients = _filteredClients(data);
 
-    // If a client is selected, show detail as full page
-    if (_selectedClientId != null && _clientDetail != null) {
-      return SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () =>
-                        setState(() => _selectedClientId = null),
-                    child: const Icon(Icons.arrow_back_rounded,
-                        color: Colors.white),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Text(
-                      _clientDetail!['name'] ?? '',
-                      style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.all(16),
-                child: _buildClientDetailContent(),
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    // Mobile: client detail is shown via Navigator push (see _selectClientMobile)
 
     return RefreshIndicator(
       color: _kCyan,
@@ -2129,6 +2090,20 @@ class _NutritionistDashboardScreenState
         _loadingDetail = false;
       });
       _loadCharts();
+
+      // On mobile, push detail as a separate page with animation
+      final isDesktop = MediaQuery.of(context).size.width > _kDesktopBreakpoint;
+      if (!isDesktop && mounted) {
+        Navigator.of(context).push(AppAnim.dialogRoute(
+          _MobileClientDetailPage(
+            parentState: this,
+            onBack: () => setState(() {
+              _selectedClientId = null;
+              _clientDetail = null;
+            }),
+          ),
+        ));
+      }
     } catch (e, st) {
       debugPrint('>>> FAILED: $e');
       debugPrint('>>> Stack: $st');
@@ -2550,4 +2525,63 @@ class _BarChartPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant _BarChartPainter oldDelegate) =>
       oldDelegate.values != values;
+}
+
+// ─── MOBILE CLIENT DETAIL PAGE ──────────────────────────────────
+
+class _MobileClientDetailPage extends StatelessWidget {
+  final _NutritionistDashboardScreenState parentState;
+  final VoidCallback onBack;
+
+  const _MobileClientDetailPage({required this.parentState, required this.onBack});
+
+  @override
+  Widget build(BuildContext context) {
+    final detail = parentState._clientDetail;
+    if (detail == null) {
+      return const Scaffold(
+        backgroundColor: AppColors.background,
+        body: Center(child: CircularProgressIndicator(color: AppColors.primary)),
+      );
+    }
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(8, 4, 8, 0),
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back_rounded, color: Colors.white),
+                    onPressed: () {
+                      onBack();
+                      Navigator.pop(context);
+                    },
+                  ),
+                  const SizedBox(width: 4),
+                  Expanded(
+                    child: Text(
+                      detail['name'] ?? '',
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: Colors.white),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 4),
+            Expanded(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(16),
+                child: parentState._buildClientDetailContent(),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

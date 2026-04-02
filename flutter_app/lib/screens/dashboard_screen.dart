@@ -51,38 +51,29 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       barrierDismissible: false,
       barrierLabel: '',
       barrierColor: Colors.black87,
-      transitionDuration: const Duration(milliseconds: 300),
+      transitionDuration: AppAnim.dialog,
       pageBuilder: (ctx, anim1, anim2) => const SizedBox(),
       transitionBuilder: (ctx, anim1, anim2, child) {
         return ScaleTransition(
           scale: CurvedAnimation(parent: anim1, curve: Curves.easeOutBack),
           child: AlertDialog(
-            backgroundColor: const Color(0xFF1A1A2E),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card)),
             contentPadding: const EdgeInsets.all(24),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [AppColors.primary, Color(0xFF16A34A)]),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: const Icon(Icons.fitness_center_rounded, color: Colors.white, size: 32),
-                ),
-                const SizedBox(height: 20),
-                const Text(
-                  'Come vuoi allenarti?',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-                ),
                 const SizedBox(height: 8),
                 const Text(
-                  'Scegli come iniziare il tuo percorso',
-                  style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                  'Come vuoi allenarti?',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                 ),
-                const SizedBox(height: 28),
+                const SizedBox(height: 6),
+                Text(
+                  'Scegli come iniziare il tuo percorso',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[500]),
+                ),
+                const SizedBox(height: 24),
 
                 // Option 1: Join a Gym
                 _PathOptionCard(
@@ -510,26 +501,28 @@ class _WorkoutCard extends ConsumerWidget {
                       ),
                     ),
                     if (hasWorkout)
-                      GestureDetector(
-                        onTap: () {
-                          Navigator.of(context).push(AppAnim.pageRoute(WorkoutBuilderPage(
-                            existingWorkout: workout,
-                            onSaved: () {
-                              ref.invalidate(clientDataProvider);
-                              Navigator.of(context).pop();
-                            },
-                          )));
+                      PopupMenuButton<String>(
+                        icon: Icon(Icons.more_horiz_rounded, size: 20, color: Colors.grey[500]),
+                        color: AppColors.surface,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onSelected: (v) {
+                          if (v == 'edit') {
+                            Navigator.of(context).push(AppAnim.pageRoute(WorkoutBuilderPage(
+                              existingWorkout: workout,
+                              onSaved: () {
+                                ref.invalidate(clientDataProvider);
+                                Navigator.of(context).pop();
+                              },
+                            )));
+                          } else if (v == 'list') {
+                            context.go('/workouts');
+                          }
                         },
-                        child: Container(
-                          width: 36,
-                          height: 36,
-                          decoration: BoxDecoration(
-                            color: AppColors.elevated,
-                            borderRadius: BorderRadius.circular(10),
-                            // no border
-                          ),
-                          child: const Icon(Icons.edit_rounded, size: 16, color: AppColors.textSecondary),
-                        ),
+                        itemBuilder: (_) => [
+                          const PopupMenuItem(value: 'edit', child: Text('Modifica allenamento', style: TextStyle(fontSize: 13, color: AppColors.textPrimary))),
+                          const PopupMenuItem(value: 'list', child: Text('I miei allenamenti', style: TextStyle(fontSize: 13, color: AppColors.textPrimary))),
+                        ],
                       ),
                   ],
                 ),
@@ -557,16 +550,19 @@ class _WorkoutCard extends ConsumerWidget {
                     style: TextStyle(fontSize: 14, color: AppColors.textTertiary),
                   ),
                   const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      onPressed: () => context.go('/workouts'),
-                      icon: const Icon(Icons.add_rounded, size: 18),
-                      label: const Text('Crea il tuo allenamento'),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primary,
-                        side: BorderSide(color: AppColors.primary.withValues(alpha: 0.3)),
-                        padding: const EdgeInsets.symmetric(vertical: 10),
+                  GestureDetector(
+                    onTap: () => context.go('/workouts'),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.04),
+                        borderRadius: BorderRadius.circular(AppRadius.button),
+                      ),
+                      child: const Text(
+                        'Crea il tuo allenamento',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary),
                       ),
                     ),
                   ),
@@ -1468,7 +1464,6 @@ class _PhotoMealsGrid extends ConsumerWidget {
                     decoration: BoxDecoration(
                       color: Colors.white.withValues(alpha: 0.04),
                       borderRadius: BorderRadius.circular(AppRadius.card),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
                     ),
                     child: Stack(
                       fit: StackFit.expand,
@@ -1491,7 +1486,6 @@ class _PhotoMealsGrid extends ConsumerWidget {
                                 padding: const EdgeInsets.symmetric(vertical: 10),
                                 decoration: BoxDecoration(
                                   color: Colors.black.withValues(alpha: 0.50),
-                                  border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 0.5),
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                                 child: const Text(
@@ -1972,51 +1966,20 @@ class _PathOptionCard extends StatelessWidget {
         width: double.infinity,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: isPrimary
-              ? AppColors.primary.withValues(alpha: 0.1)
-              : Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: isPrimary
-                ? AppColors.primary.withValues(alpha: 0.3)
-                : Colors.white.withValues(alpha: 0.08),
-          ),
+          color: Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(AppRadius.card),
         ),
         child: Row(
           children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: isPrimary
-                    ? AppColors.primary.withValues(alpha: 0.2)
-                    : Colors.white.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: isPrimary ? AppColors.primary : AppColors.textSecondary, size: 22),
-            ),
-            const SizedBox(width: 14),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
-                  const SizedBox(height: 2),
-                  Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
-                  const SizedBox(height: 4),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: isPrimary
-                          ? AppColors.primary.withValues(alpha: 0.15)
-                          : Colors.white.withValues(alpha: 0.06),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: Text(
-                      tag,
-                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isPrimary ? AppColors.primary : AppColors.textTertiary),
-                    ),
-                  ),
+                  Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  const SizedBox(height: 3),
+                  Text(subtitle, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                  const SizedBox(height: 6),
+                  Text(tag, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: isPrimary ? AppColors.primary : Colors.grey[500])),
                 ],
               ),
             ),

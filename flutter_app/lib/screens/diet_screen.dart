@@ -901,6 +901,24 @@ class _CalendarMealPlanCardState extends ConsumerState<_CalendarMealPlanCard> {
     _loadPlan();
   }
 
+  void _showCreateDietSheet() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+      builder: (ctx) => _SelfAssignDietSheet(
+        onSave: (cals, protein, carbs, fat) async {
+          Navigator.pop(ctx);
+          final service = ref.read(clientServiceProvider);
+          await service.selfAssignDiet(calories: cals, protein: protein, carbs: carbs, fat: fat);
+          _loadPlan();
+          ref.invalidate(clientDataProvider);
+        },
+      ),
+    );
+  }
+
   Future<void> _loadPlan() async {
     try {
       final service = ref.read(clientServiceProvider);
@@ -1132,14 +1150,35 @@ class _CalendarMealPlanCardState extends ConsumerState<_CalendarMealPlanCard> {
 
     final dayMeals = _plan?[widget.selectedDay.toString()] as List<dynamic>?;
     if (dayMeals == null || dayMeals.isEmpty) {
+      // Check if any day has meals (plan exists but not for today)
+      final hasPlanAtAll = _plan != null && _plan!.values.any((v) => v is List && v.isNotEmpty);
+
       return Padding(
-        padding: const EdgeInsets.symmetric(vertical: 24),
+        padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 16),
         child: Center(
           child: Column(
             children: [
               Icon(Icons.restaurant_menu_rounded, color: Colors.white.withValues(alpha: 0.15), size: 36),
               const SizedBox(height: 10),
-              Text('Nessun piano per questo giorno', style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.3))),
+              Text(
+                hasPlanAtAll ? 'Nessun piano per questo giorno' : 'Nessun piano alimentare',
+                style: TextStyle(fontSize: 13, color: Colors.white.withValues(alpha: 0.3)),
+              ),
+              if (!hasPlanAtAll && widget.canEdit) ...[
+                const SizedBox(height: 16),
+                GestureDetector(
+                  onTap: () => _showCreateDietSheet(),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(AppRadius.button),
+                    ),
+                    child: const Text('Crea la tua dieta',
+                      style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+                  ),
+                ),
+              ],
             ],
           ),
         ),

@@ -97,6 +97,98 @@ class LocalNotificationService {
     );
   }
 
+  // ─── REST TIMER NOTIFICATION ───────────────────────────
+
+  static const _timerChannel = AndroidNotificationChannel(
+    'fitos_rest_timer',
+    'Timer Riposo',
+    description: 'Countdown timer durante il riposo tra le serie',
+    importance: Importance.low,
+    playSound: false,
+    enableVibration: false,
+  );
+
+  static const int _timerNotificationId = 99999;
+
+  /// Show or update the rest timer notification with remaining seconds.
+  Future<void> showRestTimer({required int secondsRemaining, required String exerciseName}) async {
+    if (kIsWeb || !_initialized) return;
+
+    final minutes = secondsRemaining ~/ 60;
+    final seconds = secondsRemaining % 60;
+    final timeStr = minutes > 0
+        ? '${minutes}m ${seconds.toString().padLeft(2, '0')}s'
+        : '${seconds}s';
+
+    // Create timer channel if needed
+    final androidPlugin = _plugin.resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin>();
+    if (androidPlugin != null) {
+      await androidPlugin.createNotificationChannel(_timerChannel);
+    }
+
+    final androidDetails = AndroidNotificationDetails(
+      _timerChannel.id,
+      _timerChannel.name,
+      channelDescription: _timerChannel.description,
+      importance: Importance.low,
+      priority: Priority.low,
+      ongoing: true,
+      autoCancel: false,
+      showWhen: false,
+      playSound: false,
+      enableVibration: false,
+      icon: '@mipmap/ic_launcher',
+      subText: exerciseName,
+    );
+
+    final details = NotificationDetails(
+      android: androidDetails,
+      iOS: const DarwinNotificationDetails(),
+    );
+
+    await _plugin.show(
+      _timerNotificationId,
+      'Riposo — $timeStr',
+      'Prossima serie di $exerciseName',
+      details,
+    );
+  }
+
+  /// Show "rest complete" notification.
+  Future<void> showRestComplete({required String exerciseName}) async {
+    if (kIsWeb || !_initialized) return;
+
+    await _plugin.cancel(_timerNotificationId);
+
+    final androidDetails = AndroidNotificationDetails(
+      _androidChannel.id,
+      _androidChannel.name,
+      channelDescription: _androidChannel.description,
+      importance: Importance.high,
+      priority: Priority.high,
+      icon: '@mipmap/ic_launcher',
+    );
+
+    final details = NotificationDetails(
+      android: androidDetails,
+      iOS: const DarwinNotificationDetails(),
+    );
+
+    await _plugin.show(
+      _timerNotificationId + 1,
+      'Riposo completato!',
+      'Continua con $exerciseName',
+      details,
+    );
+  }
+
+  /// Cancel the rest timer notification.
+  Future<void> cancelRestTimer() async {
+    if (kIsWeb || !_initialized) return;
+    await _plugin.cancel(_timerNotificationId);
+  }
+
   void _onNotificationTap(NotificationResponse response) {
     // Future: deep-link based on response.payload
   }

@@ -10,6 +10,7 @@ import '../providers/trainer_provider.dart';
 import '../providers/websocket_provider.dart';
 import '../widgets/exercise_video.dart';
 import '../services/client_service.dart';
+import '../services/local_notification_service.dart';
 
 // ─── Cardio Detection ────────────────────────────────────────────
 
@@ -821,6 +822,7 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
   void dispose() {
     _coopCompletedSub?.cancel();
     _restTimer?.cancel();
+    LocalNotificationService().cancelRestTimer();
     super.dispose();
   }
 
@@ -913,13 +915,22 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
 
   void _startRestTimer(int seconds) {
     _restTimer?.cancel();
+    final exName = exercises[currentExerciseIdx]['name'] ?? 'Esercizio';
     setState(() { isResting = true; restSeconds = seconds; });
+
+    // Show notification
+    LocalNotificationService().showRestTimer(secondsRemaining: seconds, exerciseName: exName);
+
     _restTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
       if (restSeconds <= 1) {
         timer.cancel();
         if (mounted) setState(() => isResting = false);
+        LocalNotificationService().showRestComplete(exerciseName: exName);
       } else {
-        if (mounted) setState(() => restSeconds--);
+        if (mounted) {
+          setState(() => restSeconds--);
+          LocalNotificationService().showRestTimer(secondsRemaining: restSeconds, exerciseName: exName);
+        }
       }
     });
   }
@@ -927,6 +938,7 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
   void _skipRest() {
     _restTimer?.cancel();
     setState(() => isResting = false);
+    LocalNotificationService().cancelRestTimer();
   }
 
   void _switchExercise(int idx) {
@@ -1442,7 +1454,7 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
                         top: MediaQuery.of(context).padding.top + 8,
                         left: 12,
                         child: GestureDetector(
-                          onTap: () => context.go(widget.isTrainer ? '/trainer/schedule' : '/home'),
+                          onTap: () => Navigator.of(context).pop(),
                           child: Container(
                             width: 40, height: 40,
                             decoration: BoxDecoration(
@@ -1492,7 +1504,7 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
                           top: MediaQuery.of(context).padding.top + 8,
                           left: 12,
                           child: GestureDetector(
-                            onTap: () => context.go(widget.isTrainer ? '/trainer/schedule' : '/home'),
+                            onTap: () => Navigator.of(context).pop(),
                             child: Container(
                               width: 40, height: 40,
                               decoration: BoxDecoration(
@@ -1503,40 +1515,7 @@ class _WorkoutViewState extends ConsumerState<_WorkoutView> {
                             ),
                           ),
                         ),
-                        // IN DIRETTA badge
-                        Positioned(
-                          top: MediaQuery.of(context).padding.top + 12,
-                          right: 12,
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                            decoration: BoxDecoration(
-                              color: Colors.black.withValues(alpha: 0.6),
-                              borderRadius: BorderRadius.circular(20),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Container(
-                                  width: 8, height: 8,
-                                  decoration: const BoxDecoration(
-                                    color: AppColors.primary,
-                                    shape: BoxShape.circle,
-                                  ),
-                                ),
-                                const SizedBox(width: 6),
-                                const Text(
-                                  'IN DIRETTA',
-                                  style: TextStyle(
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                    color: Colors.white,
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                        // (IN DIRETTA badge removed)
                         // Expand/collapse hint
                         Positioned(
                           bottom: 8,

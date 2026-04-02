@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import '../config/api_config.dart';
 import '../config/theme.dart';
+import '../providers/auth_provider.dart';
 import '../providers/client_provider.dart';
 import '../providers/community_provider.dart';
 
@@ -263,17 +264,20 @@ class _FeedTabState extends ConsumerState<_FeedTab> with AutomaticKeepAliveClien
           }
           final postData = feedState.posts[index];
           final postId = postData['id'] as String;
+          final currentUserId = ref.read(authProvider).user?.id;
+          final isOwner = postData['author_id'] == currentUserId;
           return GestureDetector(
             onTap: () => Navigator.of(context).push(
               AppAnim.pageRoute(_PostDetailPage(
                 post: postData,
                 ref: ref,
-                onDelete: () => _deletePost(postId),
+                onDelete: isOwner ? () => _deletePost(postId) : null,
                 scope: widget.scope,
               )),
             ),
             child: _PostCard(
               post: postData,
+              isOwner: isOwner,
               onLike: () => ref.read(communityFeedProvider(widget.scope).notifier).toggleLike(postId),
               onComment: () => _openComments(context, postData),
               onDelete: () => _deletePost(postId),
@@ -308,8 +312,9 @@ class _PostCard extends StatelessWidget {
   final VoidCallback onComment;
   final VoidCallback onDelete;
   final VoidCallback? onParticipate;
+  final bool isOwner;
 
-  const _PostCard({required this.post, required this.onLike, required this.onComment, required this.onDelete, this.onParticipate});
+  const _PostCard({required this.post, required this.onLike, required this.onComment, required this.onDelete, this.onParticipate, this.isOwner = false});
 
   String _relativeTime(String? iso) => relativeTime(iso);
 
@@ -405,18 +410,19 @@ class _PostCard extends StatelessWidget {
                         ],
                       ),
                     ),
-                    PopupMenuButton<String>(
-                      icon: Icon(Icons.more_horiz_rounded, color: Colors.grey[600], size: 20),
-                      color: AppColors.surface,
-                      padding: EdgeInsets.zero,
-                      constraints: const BoxConstraints(),
-                      onSelected: (v) {
-                        if (v == 'delete') onDelete();
-                      },
-                      itemBuilder: (_) => [
-                        const PopupMenuItem(value: 'delete', child: Text('Elimina', style: TextStyle(fontSize: 13, color: Colors.redAccent))),
-                      ],
-                    ),
+                    if (isOwner)
+                      PopupMenuButton<String>(
+                        icon: Icon(Icons.more_horiz_rounded, color: Colors.grey[600], size: 20),
+                        color: AppColors.surface,
+                        padding: EdgeInsets.zero,
+                        constraints: const BoxConstraints(),
+                        onSelected: (v) {
+                          if (v == 'delete') onDelete();
+                        },
+                        itemBuilder: (_) => [
+                          const PopupMenuItem(value: 'delete', child: Text('Elimina', style: TextStyle(fontSize: 13, color: Colors.redAccent))),
+                        ],
+                      ),
                   ],
                 ),
 
@@ -1114,10 +1120,10 @@ class _CreatePostSheetState extends State<_CreatePostSheet> {
 class _PostDetailPage extends StatefulWidget {
   final Map<String, dynamic> post;
   final WidgetRef ref;
-  final VoidCallback onDelete;
+  final VoidCallback? onDelete;
   final String scope;
 
-  const _PostDetailPage({required this.post, required this.ref, required this.onDelete, this.scope = 'local'});
+  const _PostDetailPage({required this.post, required this.ref, this.onDelete, this.scope = 'local'});
 
   @override
   State<_PostDetailPage> createState() => _PostDetailPageState();
@@ -1258,14 +1264,15 @@ class _PostDetailPageState extends State<_PostDetailPage> with SingleTickerProvi
                         ],
                       ),
                     ),
-                    PopupMenuButton<String>(
-                      icon: Icon(Icons.more_horiz_rounded, color: Colors.grey[600], size: 20),
-                      color: AppColors.surface,
-                      onSelected: (v) { if (v == 'delete') { widget.onDelete(); Navigator.pop(context); } },
-                      itemBuilder: (_) => [
-                        const PopupMenuItem(value: 'delete', child: Text('Elimina', style: TextStyle(fontSize: 13, color: Colors.redAccent))),
-                      ],
-                    ),
+                    if (widget.onDelete != null)
+                      PopupMenuButton<String>(
+                        icon: Icon(Icons.more_horiz_rounded, color: Colors.grey[600], size: 20),
+                        color: AppColors.surface,
+                        onSelected: (v) { if (v == 'delete') { widget.onDelete!(); Navigator.pop(context); } },
+                        itemBuilder: (_) => [
+                          const PopupMenuItem(value: 'delete', child: Text('Elimina', style: TextStyle(fontSize: 13, color: Colors.redAccent))),
+                        ],
+                      ),
                   ],
                 ),
 
