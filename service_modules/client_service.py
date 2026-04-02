@@ -100,6 +100,18 @@ class ClientService:
                 db.commit()
                 db.refresh(profile)
 
+            # --- CHECK TRIAL EXPIRY ---
+            if profile.account_type == "solo_trial" and profile.trial_ends_at:
+                try:
+                    trial_end = datetime.fromisoformat(profile.trial_ends_at)
+                    if datetime.utcnow() > trial_end:
+                        profile.account_type = "free"
+                        profile.is_premium = False
+                        db.commit()
+                        logger.info(f"Trial expired for client {client_id}")
+                except (ValueError, TypeError):
+                    pass
+
             # --- FETCH DATA ---
 
             # 2. Get Diet / Progress
@@ -390,6 +402,7 @@ class ClientService:
                 trainer_name=trainer_name,
                 is_premium=profile.is_premium,
                 account_type=getattr(profile, 'account_type', 'free') or 'free',
+                trial_ends_at=getattr(profile, 'trial_ends_at', None),
                 profile_picture=user.profile_picture,
                 todays_workout=todays_workout,
                 daily_quests=daily_quests,
@@ -624,6 +637,19 @@ class ClientService:
                     recorded_at=datetime.now().isoformat()
                 )
                 db.add(weight_entry)
+
+            if profile_update.height_cm is not None:
+                profile.height_cm = profile_update.height_cm
+            if profile_update.gender is not None:
+                profile.gender = profile_update.gender
+            if profile_update.fitness_goal is not None:
+                # Store on diet settings (where fitness_goal column lives)
+                diet = db.query(ClientDietSettingsORM).filter(ClientDietSettingsORM.id == client_id).first()
+                if diet:
+                    diet.fitness_goal = profile_update.fitness_goal
+                else:
+                    diet = ClientDietSettingsORM(id=client_id, fitness_goal=profile_update.fitness_goal)
+                    db.add(diet)
 
             db.commit()
             return {"status": "success", "message": "Profile updated"}

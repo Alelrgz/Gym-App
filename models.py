@@ -117,6 +117,7 @@ class ClientData(BaseModel):
     trainer_name: Optional[str] = None
     is_premium: Optional[bool] = False
     account_type: Optional[str] = "free"
+    trial_ends_at: Optional[str] = None
     profile_picture: Optional[str] = None
     todays_workout: Optional[Workout] = None
     daily_quests: List[DailyQuest]
@@ -129,6 +130,9 @@ class ClientProfileUpdate(BaseModel):
     password: Optional[str] = None
     weight: Optional[float] = None  # Weight in kg
     body_fat_pct: Optional[float] = None  # Body fat percentage
+    height_cm: Optional[float] = None
+    gender: Optional[str] = None  # male / female / other
+    fitness_goal: Optional[str] = None  # lose_weight / build_muscle / stay_active / sport
 
 # --- TRAINER ---
 
@@ -142,6 +146,10 @@ class ClientSummary(BaseModel):
     profile_picture: Optional[str] = None
     assigned_split: Optional[str] = None
     plan_expiry: Optional[str] = None
+    weight: Optional[float] = None
+    height_cm: Optional[float] = None
+    gender: Optional[str] = None
+    fitness_goal: Optional[str] = None
     upcoming_workouts: Optional[int] = 0
 
 class Video(BaseModel):

@@ -71,6 +71,10 @@ class TrainerClient {
   final String? assignedSplit;
   final String? planExpiry;
   final int upcomingWorkouts;
+  final double? weight;
+  final double? heightCm;
+  final String? gender;
+  final String? fitnessGoal;
 
   const TrainerClient({
     required this.id,
@@ -83,6 +87,10 @@ class TrainerClient {
     this.assignedSplit,
     this.planExpiry,
     this.upcomingWorkouts = 0,
+    this.weight,
+    this.heightCm,
+    this.gender,
+    this.fitnessGoal,
   });
 
   factory TrainerClient.fromJson(Map<String, dynamic> json) {
@@ -97,6 +105,10 @@ class TrainerClient {
       assignedSplit: json['assigned_split'] as String?,
       planExpiry: json['plan_expiry'] as String?,
       upcomingWorkouts: json['upcoming_workouts'] as int? ?? 0,
+      weight: (json['weight'] as num?)?.toDouble(),
+      heightCm: (json['height_cm'] as num?)?.toDouble(),
+      gender: json['gender'] as String?,
+      fitnessGoal: json['fitness_goal'] as String?,
     );
   }
 }

@@ -1,5 +1,6 @@
 import 'dart:math' show sin;
 import 'dart:ui' as ui;
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
@@ -41,8 +42,38 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       if (!seen && context.mounted) {
         await prefs.setBool('welcome_seen', true);
         if (context.mounted) _showWelcomeModal(context, profile);
+        return;
+      }
+
+      // Then: onboarding (goal + body stats) if not completed yet
+      final onboarded = prefs.getBool('onboarding_done') ?? false;
+      if (!onboarded && profile.fitnessGoal == null && context.mounted) {
+        _showOnboardingFlow(context);
       }
     });
+  }
+
+  void _showOnboardingFlow(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      isDismissible: false,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _OnboardingSheet(
+        onComplete: (goal, weight, height, gender) async {
+          final service = ref.read(clientServiceProvider);
+          await service.updateProfile({
+            'fitness_goal': goal,
+            'weight': weight,
+            'height_cm': height,
+            'gender': gender,
+          });
+          final prefs = await SharedPreferences.getInstance();
+          await prefs.setBool('onboarding_done', true);
+          ref.invalidate(clientDataProvider);
+        },
+      ),
+    );
   }
 
   void _showPathChoiceModal(BuildContext context) {
@@ -185,7 +216,38 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     await _startCheckout(context, 'solo_pro');
                   },
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: 16),
+
+                // Free trial
+                GestureDetector(
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showTrialFlow(context);
+                  },
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: AppColors.primary.withValues(alpha: 0.3)),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Center(
+                      child: Text.rich(
+                        TextSpan(
+                          text: 'Prova gratis per 15 giorni ',
+                          style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.primary),
+                          children: [
+                            TextSpan(
+                              text: '(richiede email)',
+                              style: TextStyle(fontSize: 11, fontWeight: FontWeight.w400, color: AppColors.textTertiary),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
 
                 TextButton(
                   onPressed: () => Navigator.pop(ctx),
@@ -213,6 +275,20 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
         );
       }
     }
+  }
+
+  void _showTrialFlow(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (_) => _TrialSignupSheet(
+        onComplete: () {
+          ref.invalidate(clientDataProvider);
+        },
+        ref: ref,
+      ),
+    );
   }
 
   void _showWelcomeModal(BuildContext context, ClientProfile profile) {
@@ -2065,6 +2141,459 @@ class _SoloPlanCard extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// ─── ONBOARDING SHEET (Goal + Body Stats) ───────────────────────
+
+class _OnboardingSheet extends StatefulWidget {
+  final Future<void> Function(String goal, double weight, double height, String gender) onComplete;
+
+  const _OnboardingSheet({required this.onComplete});
+
+  @override
+  State<_OnboardingSheet> createState() => _OnboardingSheetState();
+}
+
+class _OnboardingSheetState extends State<_OnboardingSheet> {
+  int _step = 0; // 0 = goal, 1 = body stats
+  String? _goal;
+  final _weightCtrl = TextEditingController();
+  final _heightCtrl = TextEditingController();
+  String _gender = 'male';
+  bool _saving = false;
+
+  @override
+  void dispose() {
+    _weightCtrl.dispose();
+    _heightCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _complete() async {
+    final weight = double.tryParse(_weightCtrl.text.trim());
+    final height = double.tryParse(_heightCtrl.text.trim());
+    if (_goal == null || weight == null || height == null) return;
+
+    setState(() => _saving = true);
+    try {
+      await widget.onComplete(_goal!, weight, height, _gender);
+      if (mounted) Navigator.pop(context);
+    } catch (_) {
+      if (mounted) setState(() => _saving = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(24, 16, 24, 16 + bottomInset),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1A1A2E),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Handle
+            Container(
+              width: 40, height: 4,
+              margin: const EdgeInsets.only(bottom: 16),
+              decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2)),
+            ),
+
+            // Step indicator
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _StepDot(active: _step == 0),
+                const SizedBox(width: 8),
+                _StepDot(active: _step == 1),
+              ],
+            ),
+            const SizedBox(height: 20),
+
+            if (_step == 0) ...[
+              // ── GOAL SELECTION ──
+              const Text(
+                'Qual è il tuo obiettivo?',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Questo ci aiuta a personalizzare la tua esperienza',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              _GoalOption(icon: Icons.trending_down_rounded, label: 'Perdere peso', value: 'lose_weight', selected: _goal, onTap: (v) => setState(() => _goal = v)),
+              const SizedBox(height: 10),
+              _GoalOption(icon: Icons.fitness_center_rounded, label: 'Aumentare massa', value: 'build_muscle', selected: _goal, onTap: (v) => setState(() => _goal = v)),
+              const SizedBox(height: 10),
+              _GoalOption(icon: Icons.favorite_rounded, label: 'Mantenersi in forma', value: 'stay_active', selected: _goal, onTap: (v) => setState(() => _goal = v)),
+              const SizedBox(height: 10),
+              _GoalOption(icon: Icons.sports_soccer_rounded, label: 'Preparazione sportiva', value: 'sport', selected: _goal, onTap: (v) => setState(() => _goal = v)),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _goal != null ? () => setState(() => _step = 1) : null,
+                  child: const Text('Avanti'),
+                ),
+              ),
+            ] else ...[
+              // ── BODY STATS ──
+              const Text(
+                'I tuoi dati',
+                style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Servono per calcolare il tuo piano personalizzato',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+
+              // Gender
+              Row(
+                children: [
+                  _GenderChip(label: 'Uomo', value: 'male', selected: _gender, onTap: (v) => setState(() => _gender = v)),
+                  const SizedBox(width: 10),
+                  _GenderChip(label: 'Donna', value: 'female', selected: _gender, onTap: (v) => setState(() => _gender = v)),
+                  const SizedBox(width: 10),
+                  _GenderChip(label: 'Altro', value: 'other', selected: _gender, onTap: (v) => setState(() => _gender = v)),
+                ],
+              ),
+              const SizedBox(height: 20),
+
+              // Weight
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _weightCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 16),
+                      decoration: InputDecoration(
+                        labelText: 'Peso (kg)',
+                        labelStyle: TextStyle(color: AppColors.textTertiary),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.06),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: TextField(
+                      controller: _heightCtrl,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      style: const TextStyle(color: AppColors.textPrimary, fontSize: 16),
+                      decoration: InputDecoration(
+                        labelText: 'Altezza (cm)',
+                        labelStyle: TextStyle(color: AppColors.textTertiary),
+                        filled: true,
+                        fillColor: Colors.white.withValues(alpha: 0.06),
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: () => setState(() => _step = 0),
+                    child: const Text('Indietro', style: TextStyle(color: AppColors.textSecondary)),
+                  ),
+                  const Spacer(),
+                  ElevatedButton(
+                    onPressed: _saving ? null : _complete,
+                    child: _saving
+                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                        : const Text('Iniziamo!'),
+                  ),
+                ],
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StepDot extends StatelessWidget {
+  final bool active;
+  const _StepDot({required this.active});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: active ? 24 : 8,
+      height: 8,
+      decoration: BoxDecoration(
+        color: active ? AppColors.primary : Colors.white.withValues(alpha: 0.15),
+        borderRadius: BorderRadius.circular(4),
+      ),
+    );
+  }
+}
+
+class _GoalOption extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final String value;
+  final String? selected;
+  final ValueChanged<String> onTap;
+
+  const _GoalOption({required this.icon, required this.label, required this.value, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = selected == value;
+    return GestureDetector(
+      onTap: () => onTap(value),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isSelected ? AppColors.primary.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.08),
+            width: isSelected ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(icon, color: isSelected ? AppColors.primary : AppColors.textTertiary, size: 22),
+            const SizedBox(width: 14),
+            Text(label, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: isSelected ? AppColors.primary : AppColors.textPrimary)),
+            const Spacer(),
+            if (isSelected) const Icon(Icons.check_circle_rounded, color: AppColors.primary, size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _GenderChip extends StatelessWidget {
+  final String label;
+  final String value;
+  final String selected;
+  final ValueChanged<String> onTap;
+
+  const _GenderChip({required this.label, required this.value, required this.selected, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    final isSelected = selected == value;
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => onTap(value),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 10),
+          decoration: BoxDecoration(
+            color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: isSelected ? AppColors.primary : Colors.white.withValues(alpha: 0.08)),
+          ),
+          child: Center(
+            child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isSelected ? AppColors.primary : AppColors.textSecondary)),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── TRIAL SIGNUP SHEET ─────────────────────────────────────────
+
+class _TrialSignupSheet extends StatefulWidget {
+  final VoidCallback onComplete;
+  final WidgetRef ref;
+
+  const _TrialSignupSheet({required this.onComplete, required this.ref});
+
+  @override
+  State<_TrialSignupSheet> createState() => _TrialSignupSheetState();
+}
+
+class _TrialSignupSheetState extends State<_TrialSignupSheet> {
+  final _emailCtrl = TextEditingController();
+  final _codeCtrl = TextEditingController();
+  int _step = 0; // 0 = enter email, 1 = enter code
+  bool _loading = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _codeCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _sendCode() async {
+    final email = _emailCtrl.text.trim();
+    if (email.isEmpty || !email.contains('@')) {
+      setState(() => _error = 'Inserisci un\'email valida');
+      return;
+    }
+    setState(() { _loading = true; _error = null; });
+    try {
+      final service = widget.ref.read(clientServiceProvider);
+      await service.trialSendCode(email);
+      if (mounted) setState(() { _step = 1; _loading = false; });
+    } catch (e) {
+      if (mounted) {
+        String msg = 'Errore nell\'invio';
+        if (e is DioException && e.response?.data is Map) {
+          msg = (e.response!.data as Map)['detail']?.toString() ?? msg;
+        }
+        setState(() { _error = msg; _loading = false; });
+      }
+    }
+  }
+
+  Future<void> _verify() async {
+    final code = _codeCtrl.text.trim();
+    if (code.length != 6) {
+      setState(() => _error = 'Inserisci il codice a 6 cifre');
+      return;
+    }
+    setState(() { _loading = true; _error = null; });
+    try {
+      final service = widget.ref.read(clientServiceProvider);
+      await service.trialVerify(_emailCtrl.text.trim(), code);
+      widget.onComplete();
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Prova gratuita di 15 giorni attivata!'), backgroundColor: AppColors.primary),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        String msg = 'Codice non valido';
+        if (e is DioException && e.response?.data is Map) {
+          msg = (e.response!.data as Map)['detail']?.toString() ?? msg;
+        }
+        setState(() { _error = msg; _loading = false; });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bottomInset = MediaQuery.of(context).viewInsets.bottom;
+
+    return Container(
+      padding: EdgeInsets.fromLTRB(24, 16, 24, 16 + bottomInset),
+      decoration: const BoxDecoration(
+        color: Color(0xFF1A1A2E),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40, height: 4,
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(2)),
+          ),
+
+          Icon(
+            _step == 0 ? Icons.email_rounded : Icons.pin_rounded,
+            color: AppColors.primary,
+            size: 36,
+          ),
+          const SizedBox(height: 14),
+          Text(
+            _step == 0 ? 'Prova gratuita 15 giorni' : 'Verifica email',
+            style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            _step == 0
+                ? 'Inserisci la tua email per attivare la prova'
+                : 'Inserisci il codice a 6 cifre inviato a ${_emailCtrl.text.trim()}',
+            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 20),
+
+          if (_step == 0)
+            TextField(
+              controller: _emailCtrl,
+              keyboardType: TextInputType.emailAddress,
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 15),
+              decoration: InputDecoration(
+                hintText: 'email@esempio.com',
+                hintStyle: TextStyle(color: Colors.grey[600]),
+                prefixIcon: const Icon(Icons.email_outlined, size: 20, color: AppColors.textTertiary),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.06),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+              onSubmitted: (_) => _sendCode(),
+            )
+          else
+            TextField(
+              controller: _codeCtrl,
+              keyboardType: TextInputType.number,
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 24, letterSpacing: 6),
+              textAlign: TextAlign.center,
+              maxLength: 6,
+              decoration: InputDecoration(
+                hintText: '000000',
+                hintStyle: TextStyle(color: Colors.grey[700]),
+                counterText: '',
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.06),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+              onSubmitted: (_) => _verify(),
+            ),
+
+          if (_error != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 10),
+              child: Text(_error!, style: const TextStyle(color: AppColors.danger, fontSize: 13)),
+            ),
+
+          const SizedBox(height: 20),
+
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: _loading ? null : (_step == 0 ? _sendCode : _verify),
+              child: _loading
+                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : Text(_step == 0 ? 'Invia codice' : 'Attiva prova gratuita'),
+            ),
+          ),
+
+          if (_step == 1)
+            TextButton(
+              onPressed: () => setState(() { _step = 0; _error = null; }),
+              child: const Text('Cambia email', style: TextStyle(color: AppColors.textSecondary, fontSize: 13)),
+            )
+          else
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Annulla', style: TextStyle(color: AppColors.textTertiary, fontSize: 13)),
+            ),
+        ],
       ),
     );
   }

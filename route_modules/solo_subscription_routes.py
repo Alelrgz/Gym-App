@@ -9,7 +9,9 @@ from models_orm import UserORM, ClientProfileORM
 from database import get_db_session
 from pydantic import BaseModel
 from typing import Optional
+from datetime import datetime, timedelta
 import os
+import secrets
 import stripe
 import logging
 
@@ -24,6 +26,19 @@ PLANS = {
 
 class SoloCheckoutRequest(BaseModel):
     plan: Optional[str] = "solo"
+
+
+class TrialEmailRequest(BaseModel):
+    email: str
+
+
+class TrialVerifyRequest(BaseModel):
+    email: str
+    code: str
+
+
+# In-memory verification codes (short-lived, no need for DB)
+_pending_verifications: dict[str, dict] = {}
 
 
 @router.post("/api/client/solo-checkout")
@@ -121,5 +136,151 @@ async def solo_checkout_success(session_id: str):
     except Exception as e:
         logger.error(f"Solo checkout success error: {e}")
         return RedirectResponse(url="/?role=client&solo_error=true")
+    finally:
+        db.close()
+
+
+# ─── FREE TRIAL WITH EMAIL VERIFICATION ─────────────────────────
+
+TRIAL_DAYS = 15
+
+
+@router.post("/api/client/trial-send-code")
+async def trial_send_verification_code(
+    body: TrialEmailRequest,
+    user: UserORM = Depends(get_current_user),
+):
+    """Send a 6-digit verification code to the user's email. Blocks disposable emails."""
+    if user.role != "client":
+        raise HTTPException(status_code=403, detail="Solo i clienti")
+
+    email = body.email.strip().lower()
+
+    # Check disposable email
+    from service_modules.disposable_email_checker import validate_email_for_trial
+    is_valid, error_msg = validate_email_for_trial(email)
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=error_msg)
+
+    db = get_db_session()
+    try:
+        # Check if user already had a trial
+        profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == user.id).first()
+        if profile and profile.trial_started_at:
+            raise HTTPException(status_code=400, detail="Hai già usufruito della prova gratuita")
+
+        # Check if email is already used by another verified user
+        other = db.query(UserORM).filter(
+            UserORM.email == email,
+            UserORM.id != user.id
+        ).first()
+        if other:
+            other_profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == other.id).first()
+            if other_profile and other_profile.email_verified:
+                raise HTTPException(status_code=400, detail="Questa email è già associata a un altro account")
+
+        # Generate 6-digit code
+        code = f"{secrets.randbelow(900000) + 100000}"
+        _pending_verifications[user.id] = {
+            "code": code,
+            "email": email,
+            "expires": (datetime.utcnow() + timedelta(minutes=10)).isoformat(),
+        }
+
+        # Send email
+        from service_modules.email_service import get_email_service
+        email_service = get_email_service()
+        if not email_service.is_configured():
+            raise HTTPException(status_code=500, detail="Servizio email non configurato")
+
+        html = f"""
+        <div style="font-family: -apple-system, sans-serif; max-width: 400px; margin: 0 auto; padding: 32px;">
+            <h2 style="color: #22c55e; margin-bottom: 8px;">FitOS</h2>
+            <p>Il tuo codice di verifica:</p>
+            <div style="font-size: 32px; font-weight: 800; letter-spacing: 4px; color: #22c55e;
+                        background: #1a1a2e; padding: 16px 24px; border-radius: 12px; text-align: center; margin: 16px 0;">
+                {code}
+            </div>
+            <p style="color: #888; font-size: 13px;">Il codice scade tra 10 minuti.</p>
+        </div>
+        """
+        sent = email_service.send_email(email, "Il tuo codice FitOS", html)
+        if not sent:
+            raise HTTPException(status_code=500, detail="Errore nell'invio dell'email")
+
+        logger.info(f"Verification code sent to {email} for user {user.id}")
+        return {"status": "success", "message": "Codice inviato"}
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Trial send code error: {e}")
+        raise HTTPException(status_code=500, detail="Errore nell'invio del codice")
+    finally:
+        db.close()
+
+
+@router.post("/api/client/trial-verify")
+async def trial_verify_and_activate(
+    body: TrialVerifyRequest,
+    user: UserORM = Depends(get_current_user),
+):
+    """Verify the email code and activate the 15-day free trial."""
+    if user.role != "client":
+        raise HTTPException(status_code=403, detail="Solo i clienti")
+
+    pending = _pending_verifications.get(user.id)
+    if not pending:
+        raise HTTPException(status_code=400, detail="Nessun codice in attesa. Richiedi un nuovo codice.")
+
+    # Check expiry
+    if datetime.utcnow() > datetime.fromisoformat(pending["expires"]):
+        del _pending_verifications[user.id]
+        raise HTTPException(status_code=400, detail="Codice scaduto. Richiedi un nuovo codice.")
+
+    # Check code
+    if body.code.strip() != pending["code"]:
+        raise HTTPException(status_code=400, detail="Codice non valido")
+
+    # Check email matches
+    if body.email.strip().lower() != pending["email"]:
+        raise HTTPException(status_code=400, detail="Email non corrispondente")
+
+    # Clean up
+    del _pending_verifications[user.id]
+
+    db = get_db_session()
+    try:
+        # Update user email
+        db_user = db.query(UserORM).filter(UserORM.id == user.id).first()
+        if db_user:
+            db_user.email = pending["email"]
+
+        # Activate trial
+        profile = db.query(ClientProfileORM).filter(ClientProfileORM.id == user.id).first()
+        if not profile:
+            profile = ClientProfileORM(id=user.id, name=db_user.username if db_user else "User")
+            db.add(profile)
+
+        now = datetime.utcnow()
+        profile.email_verified = True
+        profile.account_type = "solo_trial"
+        profile.trial_started_at = now.isoformat()
+        profile.trial_ends_at = (now + timedelta(days=TRIAL_DAYS)).isoformat()
+        profile.is_premium = True
+        db.commit()
+
+        logger.info(f"Trial activated for user {user.id}, expires {profile.trial_ends_at}")
+
+        return {
+            "status": "success",
+            "message": f"Prova gratuita di {TRIAL_DAYS} giorni attivata!",
+            "trial_ends_at": profile.trial_ends_at,
+        }
+
+    except Exception as e:
+        db.rollback()
+        logger.error(f"Trial activation error: {e}")
+        raise HTTPException(status_code=500, detail="Errore nell'attivazione della prova")
     finally:
         db.close()
