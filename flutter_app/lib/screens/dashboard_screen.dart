@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../config/api_config.dart';
 import '../config/theme.dart';
 import '../models/client_profile.dart';
@@ -28,12 +29,186 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     _welcomeChecked = true;
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final prefs = await SharedPreferences.getInstance();
+
+      // First priority: show path choice if no gym and free account
+      if (profile.gymId == null && profile.accountType == 'free') {
+        final choiceMade = prefs.getBool('path_choice_seen') ?? false;
+        if (!choiceMade && context.mounted) {
+          await prefs.setBool('path_choice_seen', true);
+          if (context.mounted) _showPathChoiceModal(context);
+          return;
+        }
+      }
+
+      // Then: welcome modal for first-time users who already have a gym
       final seen = prefs.getBool('welcome_seen') ?? false;
       if (!seen && context.mounted) {
         await prefs.setBool('welcome_seen', true);
         if (context.mounted) _showWelcomeModal(context, profile);
       }
     });
+  }
+
+  void _showPathChoiceModal(BuildContext context) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierLabel: '',
+      barrierColor: Colors.black87,
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (ctx, anim1, anim2) => const SizedBox(),
+      transitionBuilder: (ctx, anim1, anim2, child) {
+        return ScaleTransition(
+          scale: CurvedAnimation(parent: anim1, curve: Curves.easeOutBack),
+          child: AlertDialog(
+            backgroundColor: const Color(0xFF1A1A2E),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            contentPadding: const EdgeInsets.all(24),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 64,
+                  height: 64,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(colors: [AppColors.primary, Color(0xFF16A34A)]),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.fitness_center_rounded, color: Colors.white, size: 32),
+                ),
+                const SizedBox(height: 20),
+                const Text(
+                  'Come vuoi allenarti?',
+                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Scegli come iniziare il tuo percorso',
+                  style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+                ),
+                const SizedBox(height: 28),
+
+                // Option 1: Join a Gym
+                _PathOptionCard(
+                  icon: Icons.group_rounded,
+                  title: 'Unisciti a una palestra',
+                  subtitle: 'Trainer, corsi, comunità e molto altro',
+                  tag: 'Incluso nell\'abbonamento',
+                  isPrimary: true,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    showJoinGymDialog(context, ref);
+                  },
+                ),
+                const SizedBox(height: 12),
+
+                // Option 2: Solo
+                _PathOptionCard(
+                  icon: Icons.person_rounded,
+                  title: 'Allenati da solo',
+                  subtitle: 'Workout AI, dieta personalizzata, tracking',
+                  tag: '€4.99/mese',
+                  isPrimary: false,
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showSoloPaywall(context);
+                  },
+                ),
+
+                const SizedBox(height: 16),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text(
+                    'Decidi dopo',
+                    style: TextStyle(color: AppColors.textTertiary, fontSize: 13),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _showSoloPaywall(BuildContext context) {
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: '',
+      barrierColor: Colors.black54,
+      transitionDuration: const Duration(milliseconds: 250),
+      pageBuilder: (ctx, anim1, anim2) => const SizedBox(),
+      transitionBuilder: (ctx, anim1, anim2, child) {
+        return FadeTransition(
+          opacity: anim1,
+          child: AlertDialog(
+            backgroundColor: const Color(0xFF1A1A2E),
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+            contentPadding: const EdgeInsets.all(24),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(Icons.auto_awesome_rounded, color: AppColors.primary, size: 28),
+                ),
+                const SizedBox(height: 18),
+                const Text(
+                  'FitOS Solo',
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                ),
+                const SizedBox(height: 6),
+                const Text(
+                  '€4.99/mese',
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: AppColors.primary),
+                ),
+                const SizedBox(height: 18),
+                _PaywallFeature(icon: Icons.smart_toy_rounded, text: 'Workout generati con AI'),
+                const SizedBox(height: 8),
+                _PaywallFeature(icon: Icons.restaurant_menu_rounded, text: 'Piano alimentare personalizzato'),
+                const SizedBox(height: 8),
+                _PaywallFeature(icon: Icons.trending_up_rounded, text: 'Tracking progressi avanzato'),
+                const SizedBox(height: 8),
+                _PaywallFeature(icon: Icons.calendar_month_rounded, text: 'Programmazione allenamenti'),
+                const SizedBox(height: 24),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton(
+                    onPressed: () async {
+                      Navigator.pop(ctx);
+                      try {
+                        final service = ref.read(clientServiceProvider);
+                        final checkoutUrl = await service.createSoloCheckout();
+                        if (context.mounted) {
+                          await launchUrl(Uri.parse(checkoutUrl), mode: LaunchMode.externalApplication);
+                        }
+                      } catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Errore nel pagamento'), backgroundColor: AppColors.danger),
+                          );
+                        }
+                      }
+                    },
+                    child: const Text('Abbonati ora'),
+                  ),
+                ),
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Non ora', style: TextStyle(color: AppColors.textTertiary, fontSize: 13)),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
   }
 
   void _showWelcomeModal(BuildContext context, ClientProfile profile) {
@@ -197,6 +372,37 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
                     // No gym prompt
                     if (profile.gymId == null) _NoGymCard(onJoin: () => showJoinGymDialog(context, ref)),
+                    // Solo upgrade prompt for free gymless users
+                    if (profile.gymId == null && profile.accountType == 'free') ...[
+                      const SizedBox(height: 12),
+                      GlassCard(
+                        onTap: () => _showSoloPaywall(context),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 40,
+                              height: 40,
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(Icons.auto_awesome_rounded, color: AppColors.primary, size: 20),
+                            ),
+                            const SizedBox(width: 12),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Allenati da solo con FitOS', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                                  Text('Workout AI e dieta personalizzata — €4.99/mese', style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+                                ],
+                              ),
+                            ),
+                            Icon(Icons.chevron_right_rounded, color: Colors.grey[600], size: 20),
+                          ],
+                        ),
+                      ),
+                    ],
                   ]),
                 ),
               ),
@@ -1721,6 +1927,109 @@ class _WelcomeStep extends StatelessWidget {
             ],
           ),
         ),
+      ],
+    );
+  }
+}
+
+// ─── PATH CHOICE CARD ───────────────────────────────────────────
+
+class _PathOptionCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String tag;
+  final bool isPrimary;
+  final VoidCallback onTap;
+
+  const _PathOptionCard({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.tag,
+    required this.isPrimary,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: isPrimary
+              ? AppColors.primary.withValues(alpha: 0.1)
+              : Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isPrimary
+                ? AppColors.primary.withValues(alpha: 0.3)
+                : Colors.white.withValues(alpha: 0.08),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: isPrimary
+                    ? AppColors.primary.withValues(alpha: 0.2)
+                    : Colors.white.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: isPrimary ? AppColors.primary : AppColors.textSecondary, size: 22),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                  const SizedBox(height: 2),
+                  Text(subtitle, style: TextStyle(fontSize: 12, color: AppColors.textTertiary)),
+                  const SizedBox(height: 4),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: isPrimary
+                          ? AppColors.primary.withValues(alpha: 0.15)
+                          : Colors.white.withValues(alpha: 0.06),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      tag,
+                      style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: isPrimary ? AppColors.primary : AppColors.textTertiary),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, color: Colors.grey[600], size: 20),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── PAYWALL FEATURE ROW ────────────────────────────────────────
+
+class _PaywallFeature extends StatelessWidget {
+  final IconData icon;
+  final String text;
+
+  const _PaywallFeature({required this.icon, required this.text});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, color: AppColors.primary, size: 18),
+        const SizedBox(width: 10),
+        Text(text, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary)),
       ],
     );
   }

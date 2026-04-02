@@ -388,6 +388,8 @@ class ClientService:
                 gym_name=gym_name,
                 trainer_id=profile.trainer_id,
                 trainer_name=trainer_name,
+                is_premium=profile.is_premium,
+                account_type=getattr(profile, 'account_type', 'free') or 'free',
                 profile_picture=user.profile_picture,
                 todays_workout=todays_workout,
                 daily_quests=daily_quests,

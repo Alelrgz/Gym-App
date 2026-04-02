@@ -9,6 +9,7 @@ class ClientProfile {
   final int gems;
   final double? healthScore;
   final bool isPremium;
+  final String accountType; // free, solo_premium, gym_member
   final double? weight;
   final double? bodyFatPct;
   final String? fitnessGoal;
@@ -47,6 +48,7 @@ class ClientProfile {
     this.gems = 0,
     this.healthScore,
     this.isPremium = false,
+    this.accountType = 'free',
     this.weight,
     this.bodyFatPct,
     this.fitnessGoal,
@@ -87,6 +89,7 @@ class ClientProfile {
       gems: profile['gems'] as int? ?? json['gems'] as int? ?? 0,
       healthScore: _toDouble(profile['health_score'] ?? json['health_score']),
       isPremium: profile['is_premium'] as bool? ?? json['is_premium'] as bool? ?? false,
+      accountType: profile['account_type'] as String? ?? json['account_type'] as String? ?? 'free',
       weight: _toDouble(profile['weight'] ?? json['weight']),
       bodyFatPct: _toDouble(profile['body_fat_pct'] ?? json['body_fat_pct']),
       fitnessGoal: profile['fitness_goal'] as String? ?? json['fitness_goal'] as String?,

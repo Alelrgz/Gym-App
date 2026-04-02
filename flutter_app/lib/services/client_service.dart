@@ -75,6 +75,12 @@ class ClientService {
     return response.data as Map<String, dynamic>;
   }
 
+  /// Create solo subscription checkout session.
+  Future<String> createSoloCheckout() async {
+    final response = await _api.post(ApiConfig.clientSoloCheckout);
+    return (response.data as Map<String, dynamic>)['checkout_url'] as String;
+  }
+
   /// Discover nearby gyms (public, no auth needed).
   Future<List<Map<String, dynamic>>> discoverGyms({double? lat, double? lng, String? query}) async {
     final params = <String, dynamic>{};
