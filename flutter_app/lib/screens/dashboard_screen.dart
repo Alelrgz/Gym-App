@@ -30,14 +30,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final prefs = await SharedPreferences.getInstance();
 
-      // First priority: show path choice if no gym and free account
-      if (profile.gymId == null && profile.accountType == 'free') {
-        final choiceMade = prefs.getBool('path_choice_seen') ?? false;
-        if (!choiceMade && context.mounted) {
-          await prefs.setBool('path_choice_seen', true);
-          if (context.mounted) _showPathChoiceModal(context);
-          return;
-        }
+      // Show path choice every time for gymless free users until they choose
+      if (profile.gymId == null && profile.accountType == 'free' && context.mounted) {
+        _showPathChoiceModal(context);
+        return;
       }
 
       // Then: welcome modal for first-time users who already have a gym
