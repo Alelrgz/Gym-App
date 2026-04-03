@@ -61,7 +61,7 @@ class ProfileScreen extends ConsumerWidget {
                       child: Stack(
                         children: [
                           CircleAvatar(
-                            radius: 44,
+                            radius: 40,
                             backgroundColor: AppColors.primary.withValues(alpha: 0.2),
                             child: clientData.when(
                               data: (profile) => _buildAvatarFromUrl(profile.profilePicture),
@@ -72,76 +72,74 @@ class ProfileScreen extends ConsumerWidget {
                           Positioned(
                             bottom: 0, right: 0,
                             child: Container(
-                              padding: const EdgeInsets.all(5),
+                              padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
                                 color: AppColors.primary,
                                 shape: BoxShape.circle,
                                 border: Border.all(color: AppColors.background, width: 2),
                               ),
-                              child: const Icon(Icons.camera_alt_rounded, size: 12, color: Colors.white),
+                              child: const Icon(Icons.camera_alt_rounded, size: 10, color: Colors.white),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
 
                     // Name
                     Text(
                       user?.username ?? '',
-                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                     ),
 
                     // Gym name
                     if (clientData.valueOrNull?.gymName != null)
                       Padding(
-                        padding: const EdgeInsets.only(top: 4),
+                        padding: const EdgeInsets.only(top: 2),
                         child: Text(
                           clientData.valueOrNull!.gymName!,
-                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey[500]),
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500, color: Colors.grey[500]),
                         ),
                       ),
 
                     // Bio
                     if (clientData.valueOrNull?.bio != null && clientData.valueOrNull!.bio!.isNotEmpty)
                       Padding(
-                        padding: const EdgeInsets.only(top: 8),
+                        padding: const EdgeInsets.only(top: 6),
                         child: Text(
                           clientData.valueOrNull!.bio!,
-                          style: TextStyle(fontSize: 14, color: Colors.grey[400], height: 1.4),
+                          style: TextStyle(fontSize: 13, color: Colors.grey[400], height: 1.3),
                           textAlign: TextAlign.center,
                         ),
                       ),
 
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
 
-                    // Compact stats
+                    // Stats row
                     clientData.when(
                       data: (profile) => Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           _compactStat('🔥', '${profile.streak}', 'Streak'),
-                          Container(width: 1, height: 24, margin: const EdgeInsets.symmetric(horizontal: 16), color: Colors.white.withValues(alpha: 0.06)),
+                          Container(width: 1, height: 24, margin: const EdgeInsets.symmetric(horizontal: 24), color: Colors.white.withValues(alpha: 0.06)),
                           _compactStat('💎', '${profile.gems}', 'Gemme'),
-                          Container(width: 1, height: 24, margin: const EdgeInsets.symmetric(horizontal: 16), color: Colors.white.withValues(alpha: 0.06)),
-                          _compactStat('❤️', '${profile.healthScore}%', 'Salute'),
                         ],
                       ),
                       loading: () => const SizedBox(height: 30),
                       error: (_, _) => const SizedBox.shrink(),
                     ),
 
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 14),
 
                     // Edit profile button
                     GestureDetector(
                       onTap: () => _showEditProfile(context, ref),
                       child: Container(
                         width: double.infinity,
-                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        padding: const EdgeInsets.symmetric(vertical: 8),
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.04),
-                          borderRadius: BorderRadius.circular(AppRadius.button),
+                          borderRadius: BorderRadius.circular(AppRadius.chip),
                         ),
                         child: const Text('Modifica profilo',
                           textAlign: TextAlign.center,
@@ -540,8 +538,7 @@ class _EditProfileSheet extends StatefulWidget {
 
 class _EditProfileSheetState extends State<_EditProfileSheet> {
   late TextEditingController _nameCtrl;
-  late TextEditingController _emailCtrl;
-  late TextEditingController _passwordCtrl;
+  late TextEditingController _bioCtrl;
   bool _saving = false;
   bool _uploadingPic = false;
 
@@ -549,23 +546,21 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
   void initState() {
     super.initState();
     final user = widget.ref.read(authProvider).user;
+    final profile = widget.ref.read(clientDataProvider).valueOrNull;
     _nameCtrl = TextEditingController(text: user?.username ?? '');
-    _emailCtrl = TextEditingController(text: user?.email ?? '');
-    _passwordCtrl = TextEditingController();
+    _bioCtrl = TextEditingController(text: profile?.bio ?? '');
   }
 
   @override
   void dispose() {
     _nameCtrl.dispose();
-    _emailCtrl.dispose();
-    _passwordCtrl.dispose();
+    _bioCtrl.dispose();
     super.dispose();
   }
 
   Future<void> _saveProfile() async {
     final name = _nameCtrl.text.trim();
-    final email = _emailCtrl.text.trim();
-    final password = _passwordCtrl.text;
+    final bio = _bioCtrl.text.trim();
 
     if (name.isEmpty) {
       showSnack(context, 'Il nome non può essere vuoto');
@@ -575,12 +570,7 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
     setState(() => _saving = true);
     try {
       final service = widget.ref.read(clientServiceProvider);
-      final data = <String, dynamic>{
-        'name': name,
-        'email': email,
-      };
-      if (password.isNotEmpty) data['password'] = password;
-      await service.updateProfile(data);
+      await service.updateProfile({'name': name, 'bio': bio});
       if (mounted) {
         showSnack(context, 'Profilo aggiornato');
         Navigator.pop(context);
@@ -681,28 +671,42 @@ class _EditProfileSheetState extends State<_EditProfileSheet> {
             Text('Cambia foto', style: TextStyle(fontSize: 12, color: AppColors.primary)),
             const SizedBox(height: 20),
 
-            _buildField('Nome Completo', _nameCtrl, Icons.person_outline),
+            _buildField('Nome', _nameCtrl, Icons.person_outline),
             const SizedBox(height: 12),
-            _buildField('Email', _emailCtrl, Icons.email_outlined,
-                keyboardType: TextInputType.emailAddress),
-            const SizedBox(height: 12),
-            _buildField('Nuova Password (opzionale)', _passwordCtrl, Icons.lock_outline,
-                obscure: true),
-            const SizedBox(height: 24),
+            TextField(
+              controller: _bioCtrl,
+              maxLines: 3,
+              maxLength: 150,
+              style: const TextStyle(color: AppColors.textPrimary, fontSize: 14),
+              decoration: InputDecoration(
+                labelText: 'Bio',
+                labelStyle: const TextStyle(color: AppColors.textTertiary, fontSize: 14),
+                hintText: 'Racconta qualcosa di te...',
+                hintStyle: TextStyle(color: Colors.grey[700], fontSize: 13),
+                filled: true,
+                fillColor: AppColors.elevated,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide.none,
+                ),
+                counterStyle: TextStyle(color: Colors.grey[600], fontSize: 10),
+              ),
+            ),
+            const SizedBox(height: 20),
 
-            SizedBox(
-              width: double.infinity,
-              height: 48,
-              child: ElevatedButton(
-                onPressed: _saving ? null : _saveProfile,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primary,
-                  foregroundColor: Colors.white,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            GestureDetector(
+              onTap: _saving ? null : _saveProfile,
+              child: Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: _saving ? Colors.grey[800] : AppColors.primary,
+                  borderRadius: BorderRadius.circular(AppRadius.button),
                 ),
                 child: _saving
-                    ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                    : const Text('SALVA MODIFICHE', style: TextStyle(fontWeight: FontWeight.w700)),
+                    ? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)))
+                    : const Text('Salva', textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
               ),
             ),
           ],
@@ -1918,11 +1922,12 @@ class _ProfilePostsSectionState extends ConsumerState<_ProfilePostsSection> {
     final isActive = _tab == index;
     return Expanded(
       child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
         onTap: onTap,
         child: Column(
           children: [
             Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.symmetric(vertical: 14),
               child: Text(label,
                 textAlign: TextAlign.center,
                 style: TextStyle(
@@ -1947,6 +1952,9 @@ class _ProfilePostsSectionState extends ConsumerState<_ProfilePostsSection> {
     final time = post['created_at'] as String?;
     final likes = post['likes_count'] ?? 0;
     final comments = post['comments_count'] ?? 0;
+    final authorName = post['author_username'] as String? ?? '';
+    final authorPic = post['author_profile_picture'] as String?;
+    final showAuthor = _tab == 2; // Show author on "Mi piace" tab
 
     String timeAgo = '';
     if (time != null) {
@@ -1973,6 +1981,28 @@ class _ProfilePostsSectionState extends ConsumerState<_ProfilePostsSection> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          if (showAuthor) ...[
+            Row(
+              children: [
+                CircleAvatar(
+                  radius: 16,
+                  backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                  backgroundImage: authorPic != null && authorPic.isNotEmpty
+                      ? NetworkImage(authorPic.startsWith('http') ? authorPic : '${ApiConfig.baseUrl}$authorPic')
+                      : null,
+                  child: authorPic == null || authorPic.isEmpty
+                      ? Text(authorName.isNotEmpty ? authorName[0].toUpperCase() : '?',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700, color: AppColors.primary))
+                      : null,
+                ),
+                const SizedBox(width: 10),
+                Text(authorName, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+                const SizedBox(width: 6),
+                Text(timeAgo, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              ],
+            ),
+            const SizedBox(height: 8),
+          ],
           if (content.isNotEmpty)
             Text(content, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, height: 1.4)),
           if (imageUrl != null && imageUrl.isNotEmpty) ...[

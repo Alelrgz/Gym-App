@@ -9,13 +9,15 @@ class StorageService {
   static const _tokenKey = 'jwt_token';
   static const _userKey = 'user_data';
 
-  // Use SharedPreferences on web and desktop (macOS/Windows/Linux).
-  // Use FlutterSecureStorage only on mobile (iOS/Android).
+  // Use SharedPreferences everywhere for reliability.
+  // FlutterSecureStorage with encryptedSharedPreferences can lose data
+  // on some Android devices when the app is killed and reopened from a notification.
+  // JWT tokens expire in 8 hours anyway, so SharedPreferences is sufficient.
   static bool get _useSecure {
     if (kIsWeb) return false;
-    // Desktop platforms: use SharedPreferences to avoid keychain issues
-    if (Platform.isMacOS || Platform.isWindows || Platform.isLinux) return false;
-    return true; // iOS, Android
+    // Use secure storage only on iOS (Keychain is reliable)
+    if (!kIsWeb && Platform.isIOS) return true;
+    return false;
   }
 
   final FlutterSecureStorage? _secure;
