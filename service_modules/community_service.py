@@ -85,7 +85,9 @@ class CommunityService:
             result = []
             for post in posts:
                 author = authors.get(post.author_id)
-                result.append(self._format_post(post, author, post.id in liked_ids))
+                d = self._post_to_dict(post, author, post.id in liked_ids, False)
+                d["liked"] = post.id in liked_ids
+                result.append(d)
 
             return {
                 "posts": result,
