@@ -593,6 +593,13 @@ class ClientService {
     return response.data as Map<String, dynamic>;
   }
 
+  Future<Map<String, dynamic>> getMyPosts({String? cursor, int limit = 20}) async {
+    final params = <String, dynamic>{'limit': limit};
+    if (cursor != null) params['cursor'] = cursor;
+    final response = await _api.get('/api/community/my-posts', queryParameters: params);
+    return response.data as Map<String, dynamic>;
+  }
+
   Future<Map<String, dynamic>> createCommunityPost({
     required String postType,
     String scope = 'local',

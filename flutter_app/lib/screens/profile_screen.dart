@@ -24,204 +24,163 @@ class ProfileScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
-          children: [
-            // ── Avatar + Name + Bio ──
-            Center(
-              child: Column(
-                children: [
-                  GestureDetector(
-                    onTap: () => _showEditProfile(context, ref),
-                    child: Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 48,
-                          backgroundColor: AppColors.primary.withValues(alpha: 0.2),
-                          child: clientData.when(
-                            data: (profile) => _buildAvatarFromUrl(profile.profilePicture),
-                            loading: () => _buildAvatar(user),
-                            error: (_, _) => _buildAvatar(user),
-                          ),
-                        ),
-                        Positioned(
-                          bottom: 0, right: 0,
-                          child: Container(
-                            padding: const EdgeInsets.all(6),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary,
-                              shape: BoxShape.circle,
-                              border: Border.all(color: AppColors.background, width: 2),
-                            ),
-                            child: const Icon(Icons.camera_alt_rounded, size: 14, color: Colors.white),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    user?.username ?? '',
-                    style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-                  ),
-                  if (clientData.valueOrNull?.bio != null && clientData.valueOrNull!.bio!.isNotEmpty)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 4),
-                      child: Text(
-                        clientData.valueOrNull!.bio!,
-                        style: TextStyle(fontSize: 14, color: Colors.grey[400], height: 1.3),
-                        textAlign: TextAlign.center,
+        child: CustomScrollView(
+          slivers: [
+            // ── Top bar with settings ──
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 12, 0),
+                child: Row(
+                  children: [
+                    const Spacer(),
+                    IconButton(
+                      icon: Icon(Icons.settings_rounded, color: Colors.grey[500], size: 22),
+                      onPressed: () => Navigator.of(context).push(
+                        AppAnim.pageRoute(_SettingsPage(ref: ref)),
                       ),
                     ),
-                  if (clientData.valueOrNull?.gymName != null)
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                  ],
+                ),
+              ),
+            ),
+
+            // ── Profile Header ──
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                child: Column(
+                  children: [
+                    // Avatar
+                    GestureDetector(
+                      onTap: () => _showEditProfile(context, ref),
+                      child: Stack(
                         children: [
-                          Icon(Icons.fitness_center_rounded, size: 14, color: AppColors.primary),
-                          const SizedBox(width: 4),
-                          Text(
-                            clientData.valueOrNull!.gymName!,
-                            style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.primary),
+                          CircleAvatar(
+                            radius: 44,
+                            backgroundColor: AppColors.primary.withValues(alpha: 0.2),
+                            child: clientData.when(
+                              data: (profile) => _buildAvatarFromUrl(profile.profilePicture),
+                              loading: () => _buildAvatar(user),
+                              error: (_, _) => _buildAvatar(user),
+                            ),
+                          ),
+                          Positioned(
+                            bottom: 0, right: 0,
+                            child: Container(
+                              padding: const EdgeInsets.all(5),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary,
+                                shape: BoxShape.circle,
+                                border: Border.all(color: AppColors.background, width: 2),
+                              ),
+                              child: const Icon(Icons.camera_alt_rounded, size: 12, color: Colors.white),
+                            ),
                           ),
                         ],
                       ),
                     ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
+                    const SizedBox(height: 12),
 
-            // ── Stats Row ──
-            clientData.when(
-              data: (profile) => _buildStatsRow(profile),
-              loading: () => const SizedBox(height: 80),
-              error: (_, _) => const SizedBox.shrink(),
-            ),
-            const SizedBox(height: 28),
+                    // Name
+                    Text(
+                      user?.username ?? '',
+                      style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
+                    ),
 
-            // ── Section: Attività ──
-            _sectionHeader('Attività'),
-            const SizedBox(height: 8),
-            _buildGroupedTiles([
-              _TileData(
-                icon: Icons.emoji_events_rounded,
-                iconColor: const Color(0xFFEAB308),
-                label: 'Classifica',
-                subtitle: 'Vedi la tua posizione',
-                onTap: () => context.push('/leaderboard'),
-              ),
-              _TileData(
-                icon: Icons.trending_up_rounded,
-                iconColor: const Color(0xFF60A5FA),
-                label: 'I Miei Progressi',
-                subtitle: 'Peso, forza e foto fisico',
-                onTap: () => showProgressSheet(context, ref),
-              ),
-              _TileData(
-                icon: Icons.calendar_today_rounded,
-                iconColor: const Color(0xFF8B5CF6),
-                label: 'Calendario',
-                subtitle: 'Appuntamenti e allenamenti',
-                onTap: () => showCalendarSheet(context, ref),
-              ),
-            ]),
-            const SizedBox(height: 24),
+                    // Gym name
+                    if (clientData.valueOrNull?.gymName != null)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          clientData.valueOrNull!.gymName!,
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w500, color: Colors.grey[500]),
+                        ),
+                      ),
 
-            // ── Section: Il Mio Piano ──
-            clientData.when(
-              data: (profile) => _buildPlanSection(profile, context),
-              loading: () => const SizedBox.shrink(),
-              error: (_, _) => const SizedBox.shrink(),
-            ),
+                    // Bio
+                    if (clientData.valueOrNull?.bio != null && clientData.valueOrNull!.bio!.isNotEmpty)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          clientData.valueOrNull!.bio!,
+                          style: TextStyle(fontSize: 14, color: Colors.grey[400], height: 1.4),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
 
-            // ── Section: Personale ──
-            _sectionHeader('Personale'),
-            const SizedBox(height: 8),
-            _buildGroupedTiles([
-              if (clientData.valueOrNull?.trainerName != null)
-                _TileData(
-                  icon: Icons.person_rounded,
-                  iconColor: const Color(0xFF22C55E),
-                  label: 'Il Mio Trainer',
-                  subtitle: clientData.valueOrNull!.trainerName!,
-                  onTap: () => showBookAppointmentSheet(context, ref),
-                ),
-              _TileData(
-                icon: Icons.medical_information_rounded,
-                iconColor: const Color(0xFFEF4444),
-                label: 'Certificato Medico',
-                subtitle: 'Carica o visualizza il certificato',
-                onTap: () => _showCertificateSheet(context, ref),
-              ),
-              _TileData(
-                icon: Icons.favorite_rounded,
-                iconColor: const Color(0xFFF59E0B),
-                label: 'Profilo Salute',
-                subtitle: 'Altezza, allergie, preferenze alimentari',
-                onTap: () => _showHealthProfileSheet(context, ref),
-              ),
-              _TileData(
-                icon: Icons.shield_rounded,
-                iconColor: const Color(0xFF3B82F6),
-                label: 'Gestione Consensi',
-                subtitle: 'Controlla chi accede ai tuoi dati',
-                onTap: () => _showConsentManagement(context, ref),
-              ),
-            ]),
-            const SizedBox(height: 24),
+                    const SizedBox(height: 16),
 
-            // ── Section: Account ──
-            _sectionHeader('Account'),
-            const SizedBox(height: 8),
-            _buildGroupedTiles([
-              _TileData(
-                icon: Icons.person_outline_rounded,
-                iconColor: Colors.grey[400]!,
-                label: 'Modifica Profilo',
-                subtitle: 'Nome, email, password',
-                onTap: () => _showEditProfile(context, ref),
-              ),
-              _TileData(
-                icon: Icons.lock_outline_rounded,
-                iconColor: Colors.grey[400]!,
-                label: 'Privacy',
-                subtitle: 'Chi può contattarti',
-                onTap: () => _showPrivacySettings(context, ref),
-              ),
-              if (ref.watch(clientDataProvider).valueOrNull?.gymId != null)
-                _TileData(
-                  icon: Icons.swap_horiz_rounded,
-                  iconColor: AppColors.warning,
-                  label: 'Cambia Palestra',
-                  subtitle: 'Passa a un\'altra palestra',
-                  onTap: () => showSwitchGymDialog(context, ref),
-                ),
-            ]),
-            const SizedBox(height: 24),
+                    // Compact stats
+                    clientData.when(
+                      data: (profile) => Row(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          _compactStat('🔥', '${profile.streak}', 'Streak'),
+                          Container(width: 1, height: 24, margin: const EdgeInsets.symmetric(horizontal: 16), color: Colors.white.withValues(alpha: 0.06)),
+                          _compactStat('💎', '${profile.gems}', 'Gemme'),
+                          Container(width: 1, height: 24, margin: const EdgeInsets.symmetric(horizontal: 16), color: Colors.white.withValues(alpha: 0.06)),
+                          _compactStat('❤️', '${profile.healthScore}%', 'Salute'),
+                        ],
+                      ),
+                      loading: () => const SizedBox(height: 30),
+                      error: (_, _) => const SizedBox.shrink(),
+                    ),
 
-            // ── Logout ──
-            GestureDetector(
-              onTap: () async {
-                await ref.read(authProvider.notifier).logout();
-                if (context.mounted) context.go('/login');
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.04),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.danger.withValues(alpha: 0.2)),
-                ),
-                child: const Center(
-                  child: Text('Esci', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.danger)),
+                    const SizedBox(height: 20),
+
+                    // Edit profile button
+                    GestureDetector(
+                      onTap: () => _showEditProfile(context, ref),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(vertical: 10),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.04),
+                          borderRadius: BorderRadius.circular(AppRadius.button),
+                        ),
+                        child: const Text('Modifica profilo',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: AppColors.textSecondary)),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
+
+            // ── My Posts Header ──
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
+                child: Text('I MIEI POST',
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[500], letterSpacing: 0.8)),
+              ),
+            ),
+
+            // ── My Posts Feed ──
+            _MyPostsFeed(ref: ref),
+
+            const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _compactStat(String emoji, String value, String label) {
+    return Column(
+      children: [
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(emoji, style: const TextStyle(fontSize: 14)),
+            const SizedBox(width: 4),
+            Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppColors.textPrimary)),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(label, style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+      ],
     );
   }
 
@@ -453,7 +412,7 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _showEditProfile(BuildContext context, WidgetRef ref) {
+  static void _showEditProfile(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -468,7 +427,7 @@ class ProfileScreen extends ConsumerWidget {
     });
   }
 
-  void _showPrivacySettings(BuildContext context, WidgetRef ref) {
+  static void _showPrivacySettings(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -480,7 +439,7 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _showConsentManagement(BuildContext context, WidgetRef ref) {
+  static void _showConsentManagement(BuildContext context, WidgetRef ref) {
     final clientService = ref.read(clientServiceProvider);
     showModalBottomSheet(
       context: context,
@@ -490,7 +449,7 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _showHealthProfileSheet(BuildContext context, WidgetRef ref) {
+  static void _showHealthProfileSheet(BuildContext context, WidgetRef ref) {
     final clientService = ref.read(clientServiceProvider);
     showGeneralDialog(
       context: context,
@@ -511,7 +470,7 @@ class ProfileScreen extends ConsumerWidget {
     );
   }
 
-  void _showCertificateSheet(BuildContext context, WidgetRef ref) {
+  static void _showCertificateSheet(BuildContext context, WidgetRef ref) {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -1603,6 +1562,369 @@ class _HealthProfileSheetState extends State<_HealthProfileSheet> {
         child: Text(labels[i], style: const TextStyle(fontSize: 14)),
       )),
       onChanged: (v) => onChanged(v ?? ''),
+    );
+  }
+}
+
+// ─── SETTINGS PAGE ──────────────────────────────────────────────
+
+class _SettingsPage extends StatelessWidget {
+  final WidgetRef ref;
+  const _SettingsPage({required this.ref});
+
+  @override
+  Widget build(BuildContext context) {
+    final clientData = ref.watch(clientDataProvider);
+    final profile = clientData.valueOrNull;
+
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: SafeArea(
+        child: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 100),
+          children: [
+            // Top bar
+            Row(
+              children: [
+                IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded, color: AppColors.textPrimary),
+                  onPressed: () => Navigator.pop(context),
+                ),
+                const Text('Impostazioni',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700, color: AppColors.textPrimary)),
+              ],
+            ),
+            const SizedBox(height: 16),
+
+            // ── Il Mio Piano ──
+            if (profile != null) ...[
+              _sectionHeader('Il Mio Piano'),
+              const SizedBox(height: 8),
+              _planCard(profile, context),
+              const SizedBox(height: 24),
+            ],
+
+            // ── Attività ──
+            _sectionHeader('Attività'),
+            const SizedBox(height: 8),
+            _tile(Icons.emoji_events_rounded, const Color(0xFFEAB308), 'Classifica', 'Vedi la tua posizione',
+                () => context.push('/leaderboard')),
+            _tile(Icons.trending_up_rounded, const Color(0xFF60A5FA), 'I Miei Progressi', 'Peso, forza e foto fisico',
+                () => showProgressSheet(context, ref)),
+            _tile(Icons.calendar_today_rounded, const Color(0xFF8B5CF6), 'Calendario', 'Appuntamenti e allenamenti',
+                () => showCalendarSheet(context, ref)),
+            const SizedBox(height: 24),
+
+            // ── Personale ──
+            _sectionHeader('Personale'),
+            const SizedBox(height: 8),
+            if (profile?.trainerName != null)
+              _tile(Icons.person_rounded, const Color(0xFF22C55E), 'Il Mio Trainer', profile!.trainerName!,
+                  () => showBookAppointmentSheet(context, ref)),
+            _tile(Icons.medical_information_rounded, const Color(0xFFEF4444), 'Certificato Medico', 'Carica o visualizza',
+                () => ProfileScreen._showCertificateSheet(context, ref)),
+            _tile(Icons.favorite_rounded, const Color(0xFFF59E0B), 'Profilo Salute', 'Altezza, allergie, preferenze',
+                () => ProfileScreen._showHealthProfileSheet(context, ref)),
+            _tile(Icons.shield_rounded, const Color(0xFF3B82F6), 'Gestione Consensi', 'Controlla chi accede ai tuoi dati',
+                () => ProfileScreen._showConsentManagement(context, ref)),
+            const SizedBox(height: 24),
+
+            // ── Account ──
+            _sectionHeader('Account'),
+            const SizedBox(height: 8),
+            _tile(Icons.person_outline_rounded, Colors.grey, 'Modifica Profilo', 'Nome, email, password',
+                () => ProfileScreen._showEditProfile(context, ref)),
+            _tile(Icons.lock_outline_rounded, Colors.grey, 'Privacy', 'Chi può contattarti',
+                () => ProfileScreen._showPrivacySettings(context, ref)),
+            if (profile?.gymId != null)
+              _tile(Icons.swap_horiz_rounded, AppColors.warning, 'Cambia Palestra', 'Passa a un\'altra palestra',
+                  () => showSwitchGymDialog(context, ref)),
+            const SizedBox(height: 24),
+
+            // ── Logout ──
+            GestureDetector(
+              onTap: () async {
+                await ref.read(authProvider.notifier).logout();
+                if (context.mounted) context.go('/login');
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(AppRadius.card),
+                ),
+                child: const Center(
+                  child: Text('Esci', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.danger)),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _sectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(title.toUpperCase(),
+        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[500], letterSpacing: 0.8)),
+    );
+  }
+
+  Widget _tile(IconData icon, Color color, String title, String subtitle, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 6),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(AppRadius.button),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 38, height: 38,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 20),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.textPrimary)),
+                  Text(subtitle, style: TextStyle(fontSize: 11, color: Colors.grey[500])),
+                ],
+              ),
+            ),
+            Icon(Icons.chevron_right_rounded, size: 18, color: Colors.grey[600]),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _planCard(ClientProfile profile, BuildContext context) {
+    final type = profile.accountType;
+    String planName;
+    String planSubtitle;
+    Color planColor;
+    IconData planIcon;
+
+    switch (type) {
+      case 'solo_trial':
+        final endsAt = profile.trialEndsAt;
+        String daysLeft = '';
+        if (endsAt != null) {
+          final end = DateTime.tryParse(endsAt);
+          if (end != null) {
+            final days = end.difference(DateTime.now()).inDays;
+            daysLeft = days > 0 ? ' — $days giorni rimasti' : ' — scaduta';
+          }
+        }
+        planName = 'Prova Gratuita';
+        planSubtitle = '15 giorni$daysLeft';
+        planColor = const Color(0xFF22C55E);
+        planIcon = Icons.timer_outlined;
+        break;
+      case 'solo_premium':
+        planName = 'Solo';
+        planSubtitle = '€4.99/mese';
+        planColor = AppColors.primary;
+        planIcon = Icons.star_rounded;
+        break;
+      case 'solo_pro':
+        planName = 'Solo Pro';
+        planSubtitle = '€9.99/mese — AI inclusa';
+        planColor = AppColors.primary;
+        planIcon = Icons.auto_awesome_rounded;
+        break;
+      case 'gym_member':
+        planName = 'Membro Palestra';
+        planSubtitle = profile.gymName ?? 'Incluso nell\'abbonamento';
+        planColor = const Color(0xFF60A5FA);
+        planIcon = Icons.fitness_center_rounded;
+        break;
+      default:
+        planName = 'Piano Gratuito';
+        planSubtitle = 'Funzionalità base';
+        planColor = Colors.grey;
+        planIcon = Icons.person_outline_rounded;
+    }
+
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.04),
+        borderRadius: BorderRadius.circular(AppRadius.card),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44, height: 44,
+            decoration: BoxDecoration(
+              color: planColor.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(planIcon, color: planColor, size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(planName, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: planColor)),
+                const SizedBox(height: 2),
+                Text(planSubtitle, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── MY POSTS FEED ──────────────────────────────────────────────
+
+class _MyPostsFeed extends ConsumerStatefulWidget {
+  final WidgetRef ref;
+  const _MyPostsFeed({required this.ref});
+
+  @override
+  ConsumerState<_MyPostsFeed> createState() => _MyPostsFeedState();
+}
+
+class _MyPostsFeedState extends ConsumerState<_MyPostsFeed> {
+  List<Map<String, dynamic>> _posts = [];
+  bool _loading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPosts();
+  }
+
+  Future<void> _loadPosts() async {
+    try {
+      final service = ref.read(clientServiceProvider);
+      final data = await service.getMyPosts();
+      if (mounted) {
+        setState(() {
+          _posts = (data['posts'] as List<dynamic>?)
+              ?.map((e) => Map<String, dynamic>.from(e as Map))
+              .toList() ?? [];
+          _loading = false;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_loading) {
+      return const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.all(32),
+          child: Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)),
+        ),
+      );
+    }
+
+    if (_posts.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+          child: Center(
+            child: Column(
+              children: [
+                Icon(Icons.forum_outlined, size: 36, color: Colors.grey[700]),
+                const SizedBox(height: 10),
+                Text('Nessun post', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.grey[500])),
+                const SizedBox(height: 4),
+                Text('I tuoi post nella community appariranno qui',
+                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                  textAlign: TextAlign.center),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (context, i) {
+          final post = _posts[i];
+          final content = post['content'] as String? ?? '';
+          final imageUrl = post['image_url'] as String?;
+          final time = post['created_at'] as String?;
+          final likes = post['likes_count'] ?? 0;
+          final comments = post['comments_count'] ?? 0;
+
+          String timeAgo = '';
+          if (time != null) {
+            final dt = DateTime.tryParse(time);
+            if (dt != null) {
+              final diff = DateTime.now().difference(dt);
+              if (diff.inMinutes < 60) timeAgo = '${diff.inMinutes}min';
+              else if (diff.inHours < 24) timeAgo = '${diff.inHours}h';
+              else if (diff.inDays < 7) timeAgo = '${diff.inDays}g';
+              else timeAgo = '${(diff.inDays / 7).floor()} sett';
+            }
+          }
+
+          return Container(
+            margin: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.04),
+              borderRadius: BorderRadius.circular(AppRadius.card),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (content.isNotEmpty)
+                  Text(content, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, height: 1.4)),
+                if (imageUrl != null && imageUrl.isNotEmpty) ...[
+                  const SizedBox(height: 10),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(12),
+                    child: Image.network(
+                      imageUrl.startsWith('http') ? imageUrl : '${ApiConfig.baseUrl}$imageUrl',
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 10),
+                Row(
+                  children: [
+                    Icon(Icons.favorite_rounded, size: 14, color: Colors.grey[600]),
+                    const SizedBox(width: 4),
+                    Text('$likes', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                    const SizedBox(width: 16),
+                    Icon(Icons.chat_bubble_outline_rounded, size: 14, color: Colors.grey[600]),
+                    const SizedBox(width: 4),
+                    Text('$comments', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+                    const Spacer(),
+                    Text(timeAgo, style: TextStyle(fontSize: 11, color: Colors.grey[700])),
+                  ],
+                ),
+              ],
+            ),
+          );
+        },
+        childCount: _posts.length,
+      ),
     );
   }
 }

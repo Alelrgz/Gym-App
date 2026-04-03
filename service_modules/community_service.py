@@ -58,6 +58,43 @@ class CommunityService:
             "created_at": post.created_at,
         }
 
+    def get_user_posts(self, user_id: str, cursor: Optional[str] = None, limit: int = 20) -> dict:
+        """Get posts by a specific user."""
+        db = get_db_session()
+        try:
+            query = db.query(CommunityPostORM).filter(
+                CommunityPostORM.author_id == user_id,
+                CommunityPostORM.is_deleted == False,
+            )
+            if cursor:
+                query = query.filter(CommunityPostORM.created_at < cursor)
+            posts = query.order_by(CommunityPostORM.created_at.desc()).limit(limit + 1).all()
+
+            has_more = len(posts) > limit
+            posts = posts[:limit]
+
+            author_ids = list({p.author_id for p in posts})
+            authors = {u.id: u for u in db.query(UserORM).filter(UserORM.id.in_(author_ids)).all()} if author_ids else {}
+            liked_ids = set()
+            if posts:
+                liked_ids = {r[0] for r in db.query(CommunityLikeORM.post_id).filter(
+                    CommunityLikeORM.user_id == user_id,
+                    CommunityLikeORM.post_id.in_([p.id for p in posts])
+                ).all()}
+
+            result = []
+            for post in posts:
+                author = authors.get(post.author_id)
+                result.append(self._format_post(post, author, post.id in liked_ids))
+
+            return {
+                "posts": result,
+                "next_cursor": posts[-1].created_at if has_more else None,
+                "has_more": has_more,
+            }
+        finally:
+            db.close()
+
     def get_feed(self, user_id: str, scope: str = "local", cursor: Optional[str] = None, limit: int = 20) -> dict:
         """Get the community feed — local (gym) or global."""
         db = get_db_session()

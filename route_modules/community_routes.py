@@ -35,6 +35,17 @@ async def get_community_feed(
     return service.get_feed(current_user.id, scope=scope, cursor=cursor, limit=limit)
 
 
+@router.get("/api/community/my-posts")
+async def get_my_posts(
+    cursor: str = Query(None),
+    limit: int = Query(20, ge=1, le=50),
+    current_user: UserORM = Depends(get_current_user),
+    service: CommunityService = Depends(get_community_service),
+):
+    """Get posts by the current user."""
+    return service.get_user_posts(current_user.id, cursor=cursor, limit=limit)
+
+
 @router.post("/api/community/posts")
 async def create_community_post(
     post_type: str = Form("text"),
