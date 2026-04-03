@@ -1639,25 +1639,10 @@ class _SettingsPage extends StatelessWidget {
             if (profile?.gymId != null)
               _tile(Icons.swap_horiz_rounded, AppColors.warning, 'Cambia Palestra', 'Passa a un\'altra palestra',
                   () => showSwitchGymDialog(context, ref)),
-            const SizedBox(height: 24),
-
-            // ── Logout ──
-            GestureDetector(
-              onTap: () async {
-                await ref.read(authProvider.notifier).logout();
-                if (context.mounted) context.go('/login');
-              },
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.04),
-                  borderRadius: BorderRadius.circular(AppRadius.card),
-                ),
-                child: const Center(
-                  child: Text('Esci', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppColors.danger)),
-                ),
-              ),
-            ),
+            _tile(Icons.logout_rounded, AppColors.danger, 'Disconnetti', 'Esci dal tuo account', () async {
+              await ref.read(authProvider.notifier).logout();
+              if (context.mounted) context.go('/login');
+            }),
           ],
         ),
       ),

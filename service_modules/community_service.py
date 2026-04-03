@@ -220,7 +220,7 @@ class CommunityService:
                 raise HTTPException(status_code=404, detail="User not found")
 
             gym_id = self._get_user_gym_id(author_id, db)
-            if not gym_id:
+            if not gym_id and scope == "local":
                 raise HTTPException(status_code=400, detail="User not associated with a gym")
 
             # Only owner/trainer can create events/quests

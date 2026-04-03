@@ -614,20 +614,22 @@ class ClientService {
     int? questXpReward,
     String? questDeadline,
   }) async {
-    final formData = FormData.fromMap(<String, dynamic>{
+    final map = <String, dynamic>{
       'post_type': postType,
       'scope': scope,
-      'content': ?content,
-      'event_title': ?eventTitle,
-      'event_date': ?eventDate,
-      'event_time': ?eventTime,
-      'event_location': ?eventLocation,
-      'max_participants': ?maxParticipants,
-      'quest_xp_reward': ?questXpReward,
-      'quest_deadline': ?questDeadline,
-      if (imageBytes != null && imageFilename != null)
-        'image': MultipartFile.fromBytes(imageBytes, filename: imageFilename),
-    });
+    };
+    if (content != null) map['content'] = content;
+    if (eventTitle != null) map['event_title'] = eventTitle;
+    if (eventDate != null) map['event_date'] = eventDate;
+    if (eventTime != null) map['event_time'] = eventTime;
+    if (eventLocation != null) map['event_location'] = eventLocation;
+    if (maxParticipants != null) map['max_participants'] = maxParticipants;
+    if (questXpReward != null) map['quest_xp_reward'] = questXpReward;
+    if (questDeadline != null) map['quest_deadline'] = questDeadline;
+    if (imageBytes != null && imageFilename != null) {
+      map['image'] = MultipartFile.fromBytes(imageBytes, filename: imageFilename);
+    }
+    final formData = FormData.fromMap(map);
     final response = await _api.upload(ApiConfig.communityPosts, formData);
     return response.data as Map<String, dynamic>;
   }
