@@ -17,10 +17,11 @@ if IS_POSTGRES:
     # Production: PostgreSQL with connection pooling
     engine = create_engine(
         DATABASE_URL,
-        pool_size=20,
-        max_overflow=10,
+        pool_size=10,
+        max_overflow=5,
         pool_timeout=30,
-        pool_recycle=1800
+        pool_recycle=300,       # Recycle connections every 5 min (prevents stale connections)
+        pool_pre_ping=True,     # Test connection before using it (auto-replaces dead ones)
     )
 else:
     # Development: SQLite (no connection pooling)

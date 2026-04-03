@@ -7,6 +7,7 @@ import '../config/api_config.dart';
 import '../config/theme.dart';
 import '../providers/auth_provider.dart';
 import '../providers/client_provider.dart';
+import '../models/client_profile.dart';
 import '../services/client_service.dart';
 import '../widgets/consent_management_sheet.dart';
 import '../widgets/dashboard_sheets.dart';
@@ -127,6 +128,13 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ]),
             const SizedBox(height: 24),
+
+            // ── Section: Il Mio Piano ──
+            clientData.when(
+              data: (profile) => _buildPlanSection(profile, context),
+              loading: () => const SizedBox.shrink(),
+              error: (_, _) => const SizedBox.shrink(),
+            ),
 
             // ── Section: Personale ──
             _sectionHeader('Personale'),
@@ -273,6 +281,110 @@ class ProfileScreen extends ConsumerWidget {
           value: profile.healthScore != null ? '${profile.healthScore!.round()}%' : '--',
           label: 'Salute',
         ),
+      ],
+    );
+  }
+
+  Widget _buildPlanSection(ClientProfile profile, BuildContext context) {
+    final type = profile.accountType;
+    String planName;
+    String planSubtitle;
+    Color planColor;
+    IconData planIcon;
+
+    switch (type) {
+      case 'solo_trial':
+        final endsAt = profile.trialEndsAt;
+        String daysLeft = '';
+        if (endsAt != null) {
+          final end = DateTime.tryParse(endsAt);
+          if (end != null) {
+            final days = end.difference(DateTime.now()).inDays;
+            daysLeft = days > 0 ? ' — $days giorni rimasti' : ' — scaduta';
+          }
+        }
+        planName = 'Prova Gratuita';
+        planSubtitle = '15 giorni$daysLeft';
+        planColor = const Color(0xFF22C55E);
+        planIcon = Icons.timer_outlined;
+        break;
+      case 'solo_premium':
+        planName = 'Solo';
+        planSubtitle = '€4.99/mese';
+        planColor = AppColors.primary;
+        planIcon = Icons.star_rounded;
+        break;
+      case 'solo_pro':
+        planName = 'Solo Pro';
+        planSubtitle = '€9.99/mese — AI inclusa';
+        planColor = AppColors.primary;
+        planIcon = Icons.auto_awesome_rounded;
+        break;
+      case 'gym_member':
+        planName = 'Membro Palestra';
+        planSubtitle = profile.gymName ?? 'Incluso nell\'abbonamento';
+        planColor = const Color(0xFF60A5FA);
+        planIcon = Icons.fitness_center_rounded;
+        break;
+      default:
+        planName = 'Piano Gratuito';
+        planSubtitle = 'Funzionalità base';
+        planColor = Colors.grey;
+        planIcon = Icons.person_outline_rounded;
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _sectionHeader('Il Mio Piano'),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.04),
+            borderRadius: BorderRadius.circular(AppRadius.card),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44, height: 44,
+                decoration: BoxDecoration(
+                  color: planColor.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(planIcon, color: planColor, size: 22),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(planName, style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: planColor)),
+                    const SizedBox(height: 2),
+                    Text(planSubtitle, style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                  ],
+                ),
+              ),
+              if (type == 'free' || type == 'solo_trial')
+                GestureDetector(
+                  onTap: () {
+                    // Open upgrade flow
+                    Navigator.pop(context);
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(AppRadius.chip),
+                    ),
+                    child: const Text('Upgrade', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white)),
+                  ),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 24),
       ],
     );
   }

@@ -155,20 +155,21 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       barrierDismissible: true,
       barrierLabel: '',
       barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 250),
+      transitionDuration: AppAnim.dialog,
       pageBuilder: (ctx, anim1, anim2) => const SizedBox(),
       transitionBuilder: (ctx, anim1, anim2, child) {
-        return FadeTransition(
-          opacity: anim1,
-          child: AlertDialog(
-            backgroundColor: const Color(0xFF1A1A2E),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        return ScaleTransition(
+          scale: CurvedAnimation(parent: anim1, curve: Curves.easeOutBack),
+          child: FadeTransition(
+            opacity: anim1,
+            child: AlertDialog(
+            backgroundColor: AppColors.surface,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card)),
             contentPadding: const EdgeInsets.all(24),
             content: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.auto_awesome_rounded, color: AppColors.primary, size: 32),
-                const SizedBox(height: 14),
+                const SizedBox(height: 8),
                 const Text(
                   'Allenati da solo',
                   style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
@@ -256,6 +257,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
               ],
             ),
           ),
+          ),
         );
       },
     );
@@ -297,66 +299,68 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
       barrierDismissible: true,
       barrierLabel: '',
       barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 300),
+      transitionDuration: AppAnim.dialog,
       pageBuilder: (ctx, anim1, anim2) => const SizedBox(),
       transitionBuilder: (ctx, anim1, anim2, child) {
         return ScaleTransition(
           scale: CurvedAnimation(parent: anim1, curve: Curves.easeOutBack),
-          child: AlertDialog(
-            backgroundColor: const Color(0xFF1A1A2E),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Container(
-                  width: 64,
-                  height: 64,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [AppColors.primary, Color(0xFF16A34A)]),
-                    borderRadius: BorderRadius.circular(16),
+          child: FadeTransition(
+            opacity: anim1,
+            child: AlertDialog(
+              backgroundColor: AppColors.surface,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(AppRadius.card)),
+              contentPadding: const EdgeInsets.all(24),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 8),
+                  Text(
+                    "Benvenuto su Heaven's!",
+                    style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                   ),
-                  child: const Icon(Icons.fitness_center_rounded, color: Colors.white, size: 32),
-                ),
-                const SizedBox(height: 20),
-                Text(
-                  'Benvenuto su FitOS!',
-                  style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800, color: AppColors.textPrimary),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  'Ecco come iniziare:',
-                  style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 20),
-                _WelcomeStep(
-                  icon: Icons.fitness_center_rounded,
-                  title: profile.gymId != null ? 'Palestra connessa' : 'Unisciti a una palestra',
-                  subtitle: profile.gymId != null ? 'Sei già iscritto!' : 'Inserisci il codice della tua palestra',
-                  done: profile.gymId != null,
-                ),
-                const SizedBox(height: 10),
-                _WelcomeStep(
-                  icon: Icons.calendar_today_rounded,
-                  title: 'Prenota un appuntamento',
-                  subtitle: 'Conosci il tuo trainer',
-                  done: profile.trainerName != null,
-                ),
-                const SizedBox(height: 10),
-                _WelcomeStep(
-                  icon: Icons.directions_run_rounded,
-                  title: 'Inizia ad allenarti',
-                  subtitle: 'Completa il tuo primo workout',
-                  done: false,
-                ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    onPressed: () => Navigator.of(ctx).pop(),
-                    child: const Text('Iniziamo!'),
+                  const SizedBox(height: 6),
+                  Text(
+                    'Ecco come iniziare:',
+                    style: TextStyle(fontSize: 13, color: Colors.grey[500]),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 20),
+                  _WelcomeStep(
+                    icon: Icons.fitness_center_rounded,
+                    title: profile.gymId != null ? 'Palestra connessa' : 'Unisciti a una palestra',
+                    subtitle: profile.gymId != null ? 'Sei già iscritto!' : 'Inserisci il codice della tua palestra',
+                    done: profile.gymId != null,
+                  ),
+                  const SizedBox(height: 10),
+                  _WelcomeStep(
+                    icon: Icons.calendar_today_rounded,
+                    title: 'Prenota un appuntamento',
+                    subtitle: 'Conosci il tuo trainer',
+                    done: profile.trainerName != null,
+                  ),
+                  const SizedBox(height: 10),
+                  _WelcomeStep(
+                    icon: Icons.directions_run_rounded,
+                    title: 'Inizia ad allenarti',
+                    subtitle: 'Completa il tuo primo workout',
+                    done: false,
+                  ),
+                  const SizedBox(height: 24),
+                  GestureDetector(
+                    onTap: () => Navigator.of(ctx).pop(),
+                    child: Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(AppRadius.button),
+                      ),
+                      child: const Text('Iniziamo!',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
         );
@@ -2192,9 +2196,9 @@ class _OnboardingSheetState extends State<_OnboardingSheet> {
 
     return Container(
       padding: EdgeInsets.fromLTRB(24, 16, 24, 16 + bottomInset),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
       ),
       child: SingleChildScrollView(
         child: Column(
@@ -2239,11 +2243,18 @@ class _OnboardingSheetState extends State<_OnboardingSheet> {
               const SizedBox(height: 10),
               _GoalOption(icon: Icons.sports_soccer_rounded, label: 'Preparazione sportiva', value: 'sport', selected: _goal, onTap: (v) => setState(() => _goal = v)),
               const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _goal != null ? () => setState(() => _step = 1) : null,
-                  child: const Text('Avanti'),
+              GestureDetector(
+                onTap: _goal != null ? () => setState(() => _step = 1) : null,
+                child: Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  decoration: BoxDecoration(
+                    color: _goal != null ? AppColors.primary : Colors.grey[800],
+                    borderRadius: BorderRadius.circular(AppRadius.button),
+                  ),
+                  child: const Text('Avanti',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white)),
                 ),
               ),
             ] else ...[
@@ -2266,8 +2277,6 @@ class _OnboardingSheetState extends State<_OnboardingSheet> {
                   _GenderChip(label: 'Uomo', value: 'male', selected: _gender, onTap: (v) => setState(() => _gender = v)),
                   const SizedBox(width: 10),
                   _GenderChip(label: 'Donna', value: 'female', selected: _gender, onTap: (v) => setState(() => _gender = v)),
-                  const SizedBox(width: 10),
-                  _GenderChip(label: 'Altro', value: 'other', selected: _gender, onTap: (v) => setState(() => _gender = v)),
                 ],
               ),
               const SizedBox(height: 20),
@@ -2315,11 +2324,18 @@ class _OnboardingSheetState extends State<_OnboardingSheet> {
                     child: const Text('Indietro', style: TextStyle(color: AppColors.textSecondary)),
                   ),
                   const Spacer(),
-                  ElevatedButton(
-                    onPressed: _saving ? null : _complete,
-                    child: _saving
-                        ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : const Text('Iniziamo!'),
+                  GestureDetector(
+                    onTap: _saving ? null : _complete,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                      decoration: BoxDecoration(
+                        color: _saving ? Colors.grey[800] : AppColors.primary,
+                        borderRadius: BorderRadius.circular(AppRadius.button),
+                      ),
+                      child: _saving
+                          ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                          : const Text('Iniziamo!', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white)),
+                    ),
                   ),
                 ],
               ),
@@ -2367,11 +2383,7 @@ class _GoalOption extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         decoration: BoxDecoration(
           color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : Colors.white.withValues(alpha: 0.04),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: isSelected ? AppColors.primary.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.08),
-            width: isSelected ? 1.5 : 1,
-          ),
+          borderRadius: BorderRadius.circular(AppRadius.button),
         ),
         child: Row(
           children: [
@@ -2405,8 +2417,7 @@ class _GenderChip extends StatelessWidget {
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
             color: isSelected ? AppColors.primary.withValues(alpha: 0.15) : Colors.white.withValues(alpha: 0.04),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: isSelected ? AppColors.primary : Colors.white.withValues(alpha: 0.08)),
+            borderRadius: BorderRadius.circular(AppRadius.button),
           ),
           child: Center(
             child: Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isSelected ? AppColors.primary : AppColors.textSecondary)),
@@ -2435,6 +2446,7 @@ class _TrialSignupSheetState extends State<_TrialSignupSheet> {
   int _step = 0; // 0 = enter email, 1 = enter code
   bool _loading = false;
   String? _error;
+  bool _termsAccepted = false;
 
   @override
   void dispose() {
@@ -2499,9 +2511,9 @@ class _TrialSignupSheetState extends State<_TrialSignupSheet> {
 
     return Container(
       padding: EdgeInsets.fromLTRB(24, 16, 24, 16 + bottomInset),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.card)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -2571,15 +2583,74 @@ class _TrialSignupSheetState extends State<_TrialSignupSheet> {
               child: Text(_error!, style: const TextStyle(color: AppColors.danger, fontSize: 13)),
             ),
 
-          const SizedBox(height: 20),
+          if (_step == 0) ...[
+            const SizedBox(height: 16),
+            GestureDetector(
+              onTap: () => setState(() => _termsAccepted = !_termsAccepted),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 20, height: 20,
+                    decoration: BoxDecoration(
+                      color: _termsAccepted ? AppColors.primary : Colors.transparent,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: _termsAccepted ? AppColors.primary : Colors.grey[600]!,
+                        width: 1.5,
+                      ),
+                    ),
+                    child: _termsAccepted
+                        ? const Icon(Icons.check_rounded, size: 14, color: Colors.white)
+                        : null,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text.rich(
+                      TextSpan(
+                        text: 'Accetto i ',
+                        style: TextStyle(fontSize: 12, color: Colors.grey[500]),
+                        children: const [
+                          TextSpan(
+                            text: 'Termini di Servizio',
+                            style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+                          ),
+                          TextSpan(text: ' e la '),
+                          TextSpan(
+                            text: 'Privacy Policy',
+                            style: TextStyle(color: AppColors.primary, fontWeight: FontWeight.w600),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
 
-          SizedBox(
-            width: double.infinity,
-            child: ElevatedButton(
-              onPressed: _loading ? null : (_step == 0 ? _sendCode : _verify),
+          const SizedBox(height: 16),
+
+          GestureDetector(
+            onTap: _loading ? null : (_step == 0
+                ? (_termsAccepted ? _sendCode : null)
+                : _verify),
+            child: Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(vertical: 14),
+              decoration: BoxDecoration(
+                color: (_step == 0 && !_termsAccepted) || _loading
+                    ? Colors.grey[800]
+                    : AppColors.primary,
+                borderRadius: BorderRadius.circular(AppRadius.button),
+              ),
               child: _loading
-                  ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                  : Text(_step == 0 ? 'Invia codice' : 'Attiva prova gratuita'),
+                  ? const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white)))
+                  : Text(
+                      _step == 0 ? 'Invia codice' : 'Attiva prova gratuita',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700, color: Colors.white),
+                    ),
             ),
           ),
 
