@@ -24,8 +24,13 @@ class ProfileScreen extends ConsumerWidget {
     return Scaffold(
       backgroundColor: AppColors.background,
       body: SafeArea(
-        child: CustomScrollView(
-          slivers: [
+        child: RefreshIndicator(
+          color: AppColors.primary,
+          onRefresh: () async {
+            ref.invalidate(clientDataProvider);
+          },
+          child: CustomScrollView(
+            slivers: [
             // ── Top bar with settings ──
             SliverToBoxAdapter(
               child: Padding(
@@ -148,20 +153,12 @@ class ProfileScreen extends ConsumerWidget {
               ),
             ),
 
-            // ── My Posts Header ──
-            SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 24, 20, 8),
-                child: Text('I MIEI POST',
-                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Colors.grey[500], letterSpacing: 0.8)),
-              ),
-            ),
-
-            // ── My Posts Feed ──
-            _MyPostsFeed(ref: ref),
+            // ── Posts tabs + feed ──
+            _ProfilePostsSection(ref: ref),
 
             const SliverToBoxAdapter(child: SizedBox(height: 100)),
           ],
+        ),
         ),
       ),
     );
@@ -1775,19 +1772,23 @@ class _SettingsPage extends StatelessWidget {
   }
 }
 
-// ─── MY POSTS FEED ──────────────────────────────────────────────
+// ─── PROFILE POSTS SECTION (tabs: Post, Media, Like) ────────────
 
-class _MyPostsFeed extends ConsumerStatefulWidget {
+class _ProfilePostsSection extends ConsumerStatefulWidget {
   final WidgetRef ref;
-  const _MyPostsFeed({required this.ref});
+  const _ProfilePostsSection({required this.ref});
 
   @override
-  ConsumerState<_MyPostsFeed> createState() => _MyPostsFeedState();
+  ConsumerState<_ProfilePostsSection> createState() => _ProfilePostsSectionState();
 }
 
-class _MyPostsFeedState extends ConsumerState<_MyPostsFeed> {
-  List<Map<String, dynamic>> _posts = [];
+class _ProfilePostsSectionState extends ConsumerState<_ProfilePostsSection> {
+  int _tab = 0; // 0 = Post, 1 = Media, 2 = Mi piace
+  List<Map<String, dynamic>> _myPosts = [];
+  List<Map<String, dynamic>> _likedPosts = [];
   bool _loading = true;
+  bool _likedLoading = false;
+  bool _likedLoaded = false;
 
   @override
   void initState() {
@@ -1798,10 +1799,10 @@ class _MyPostsFeedState extends ConsumerState<_MyPostsFeed> {
   Future<void> _loadPosts() async {
     try {
       final service = ref.read(clientServiceProvider);
-      final data = await service.getMyPosts();
+      final data = await service.getMyPosts(limit: 50);
       if (mounted) {
         setState(() {
-          _posts = (data['posts'] as List<dynamic>?)
+          _myPosts = (data['posts'] as List<dynamic>?)
               ?.map((e) => Map<String, dynamic>.from(e as Map))
               .toList() ?? [];
           _loading = false;
@@ -1812,103 +1813,195 @@ class _MyPostsFeedState extends ConsumerState<_MyPostsFeed> {
     }
   }
 
+  Future<void> _loadLikedPosts() async {
+    if (_likedLoaded) return;
+    setState(() => _likedLoading = true);
+    try {
+      final service = ref.read(clientServiceProvider);
+      final data = await service.getLikedPosts(limit: 50);
+      if (mounted) {
+        setState(() {
+          _likedPosts = (data['posts'] as List<dynamic>?)
+              ?.map((e) => Map<String, dynamic>.from(e as Map))
+              .toList() ?? [];
+          _likedLoading = false;
+          _likedLoaded = true;
+        });
+      }
+    } catch (_) {
+      if (mounted) setState(() => _likedLoading = false);
+    }
+  }
+
+  List<Map<String, dynamic>> get _filteredPosts {
+    switch (_tab) {
+      case 1: // Media — only posts with images
+        return _myPosts.where((p) {
+          final img = p['image_url'] as String?;
+          return img != null && img.isNotEmpty;
+        }).toList();
+      case 2: // Liked
+        return _likedPosts;
+      default: // All posts
+        return _myPosts;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_loading) {
-      return const SliverToBoxAdapter(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)),
-        ),
-      );
-    }
+    final posts = _filteredPosts;
 
-    if (_posts.isEmpty) {
-      return SliverToBoxAdapter(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
-          child: Center(
-            child: Column(
+    return SliverMainAxisGroup(
+      slivers: [
+        // Tab bar
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 20, 20, 0),
+            child: Row(
               children: [
-                Icon(Icons.forum_outlined, size: 36, color: Colors.grey[700]),
-                const SizedBox(height: 10),
-                Text('Nessun post', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.grey[500])),
-                const SizedBox(height: 4),
-                Text('I tuoi post nella community appariranno qui',
-                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
-                  textAlign: TextAlign.center),
+                _tabButton('Post', 0, () => setState(() => _tab = 0)),
+                _tabButton('Media', 1, () => setState(() => _tab = 1)),
+                _tabButton('Mi piace', 2, () { setState(() => _tab = 2); _loadLikedPosts(); }),
               ],
             ),
           ),
         ),
-      );
-    }
 
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, i) {
-          final post = _posts[i];
-          final content = post['content'] as String? ?? '';
-          final imageUrl = post['image_url'] as String?;
-          final time = post['created_at'] as String?;
-          final likes = post['likes_count'] ?? 0;
-          final comments = post['comments_count'] ?? 0;
+        // Divider
+        SliverToBoxAdapter(
+          child: Container(
+            height: 0.5,
+            margin: const EdgeInsets.only(top: 0),
+            color: Colors.white.withValues(alpha: 0.06),
+          ),
+        ),
 
-          String timeAgo = '';
-          if (time != null) {
-            final dt = DateTime.tryParse(time);
-            if (dt != null) {
-              final diff = DateTime.now().difference(dt);
-              if (diff.inMinutes < 60) timeAgo = '${diff.inMinutes}min';
-              else if (diff.inHours < 24) timeAgo = '${diff.inHours}h';
-              else if (diff.inDays < 7) timeAgo = '${diff.inDays}g';
-              else timeAgo = '${(diff.inDays / 7).floor()} sett';
-            }
-          }
-
-          return Container(
-            margin: const EdgeInsets.fromLTRB(20, 0, 20, 8),
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.04),
-              borderRadius: BorderRadius.circular(AppRadius.card),
+        // Content
+        if (_loading || (_tab == 2 && _likedLoading))
+          const SliverToBoxAdapter(
+            child: Padding(
+              padding: EdgeInsets.all(32),
+              child: Center(child: CircularProgressIndicator(color: AppColors.primary, strokeWidth: 2)),
             ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (content.isNotEmpty)
-                  Text(content, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, height: 1.4)),
-                if (imageUrl != null && imageUrl.isNotEmpty) ...[
-                  const SizedBox(height: 10),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(12),
-                    child: Image.network(
-                      imageUrl.startsWith('http') ? imageUrl : '${ApiConfig.baseUrl}$imageUrl',
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                    ),
-                  ),
-                ],
-                const SizedBox(height: 10),
-                Row(
+          )
+        else if (posts.isEmpty)
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 40, horizontal: 20),
+              child: Center(
+                child: Column(
                   children: [
-                    Icon(Icons.favorite_rounded, size: 14, color: Colors.grey[600]),
-                    const SizedBox(width: 4),
-                    Text('$likes', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                    const SizedBox(width: 16),
-                    Icon(Icons.chat_bubble_outline_rounded, size: 14, color: Colors.grey[600]),
-                    const SizedBox(width: 4),
-                    Text('$comments', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-                    const Spacer(),
-                    Text(timeAgo, style: TextStyle(fontSize: 11, color: Colors.grey[700])),
+                    Icon(
+                      _tab == 1 ? Icons.image_outlined : _tab == 2 ? Icons.favorite_outline : Icons.forum_outlined,
+                      size: 36, color: Colors.grey[700]),
+                    const SizedBox(height: 10),
+                    Text(
+                      _tab == 1 ? 'Nessuna foto' : _tab == 2 ? 'Nessun like' : 'Nessun post',
+                      style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Colors.grey[500])),
                   ],
                 ),
-              ],
+              ),
             ),
-          );
-        },
-        childCount: _posts.length,
+          )
+        else
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (context, i) => _buildPostCard(posts[i]),
+              childCount: posts.length,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _tabButton(String label, int index, VoidCallback onTap) {
+    final isActive = _tab == index;
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Text(label,
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+                  color: isActive ? AppColors.primary : Colors.grey[500],
+                )),
+            ),
+            Container(
+              height: 2,
+              color: isActive ? AppColors.primary : Colors.transparent,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPostCard(Map<String, dynamic> post) {
+    final content = post['content'] as String? ?? '';
+    final imageUrl = post['image_url'] as String?;
+    final time = post['created_at'] as String?;
+    final likes = post['likes_count'] ?? 0;
+    final comments = post['comments_count'] ?? 0;
+
+    String timeAgo = '';
+    if (time != null) {
+      final dt = DateTime.tryParse(time);
+      if (dt != null) {
+        final diff = DateTime.now().difference(dt);
+        if (diff.inMinutes < 60) {
+          timeAgo = '${diff.inMinutes}min';
+        } else if (diff.inHours < 24) {
+          timeAgo = '${diff.inHours}h';
+        } else if (diff.inDays < 7) {
+          timeAgo = '${diff.inDays}g';
+        } else {
+          timeAgo = '${(diff.inDays / 7).floor()} sett';
+        }
+      }
+    }
+
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 14),
+      decoration: BoxDecoration(
+        border: Border(bottom: BorderSide(color: Colors.white.withValues(alpha: 0.04))),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (content.isNotEmpty)
+            Text(content, style: const TextStyle(fontSize: 14, color: AppColors.textPrimary, height: 1.4)),
+          if (imageUrl != null && imageUrl.isNotEmpty) ...[
+            if (content.isNotEmpty) const SizedBox(height: 10),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(12),
+              child: Image.network(
+                imageUrl.startsWith('http') ? imageUrl : '${ApiConfig.baseUrl}$imageUrl',
+                width: double.infinity,
+                fit: BoxFit.cover,
+                errorBuilder: (_, _, _) => const SizedBox.shrink(),
+              ),
+            ),
+          ],
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Icon(Icons.favorite_rounded, size: 14, color: Colors.grey[600]),
+              const SizedBox(width: 4),
+              Text('$likes', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              const SizedBox(width: 16),
+              Icon(Icons.chat_bubble_outline_rounded, size: 14, color: Colors.grey[600]),
+              const SizedBox(width: 4),
+              Text('$comments', style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+              const Spacer(),
+              Text(timeAgo, style: TextStyle(fontSize: 11, color: Colors.grey[700])),
+            ],
+          ),
+        ],
       ),
     );
   }

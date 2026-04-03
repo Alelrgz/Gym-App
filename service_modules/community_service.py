@@ -97,6 +97,50 @@ class CommunityService:
         finally:
             db.close()
 
+    def get_liked_posts(self, user_id: str, cursor: Optional[str] = None, limit: int = 20) -> dict:
+        """Get posts that a user has liked."""
+        db = get_db_session()
+        try:
+            # Get liked post IDs
+            like_query = db.query(CommunityLikeORM.post_id, CommunityLikeORM.created_at).filter(
+                CommunityLikeORM.user_id == user_id,
+            ).order_by(CommunityLikeORM.created_at.desc())
+
+            if cursor:
+                like_query = like_query.filter(CommunityLikeORM.created_at < cursor)
+
+            likes = like_query.limit(limit + 1).all()
+            has_more = len(likes) > limit
+            likes = likes[:limit]
+
+            if not likes:
+                return {"posts": [], "next_cursor": None, "has_more": False}
+
+            post_ids = [l.post_id for l in likes]
+            posts_map = {p.id: p for p in db.query(CommunityPostORM).filter(
+                CommunityPostORM.id.in_(post_ids),
+                CommunityPostORM.is_deleted == False,
+            ).all()}
+
+            author_ids = list({p.author_id for p in posts_map.values()})
+            authors = {u.id: u for u in db.query(UserORM).filter(UserORM.id.in_(author_ids)).all()} if author_ids else {}
+
+            result = []
+            for like in likes:
+                post = posts_map.get(like.post_id)
+                if post:
+                    d = self._post_to_dict(post, authors.get(post.author_id), True, False)
+                    d["liked"] = True
+                    result.append(d)
+
+            return {
+                "posts": result,
+                "next_cursor": likes[-1].created_at if has_more else None,
+                "has_more": has_more,
+            }
+        finally:
+            db.close()
+
     def get_feed(self, user_id: str, scope: str = "local", cursor: Optional[str] = None, limit: int = 20) -> dict:
         """Get the community feed — local (gym) or global."""
         db = get_db_session()

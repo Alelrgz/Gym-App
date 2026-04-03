@@ -46,6 +46,17 @@ async def get_my_posts(
     return service.get_user_posts(current_user.id, cursor=cursor, limit=limit)
 
 
+@router.get("/api/community/liked-posts")
+async def get_liked_posts(
+    cursor: str = Query(None),
+    limit: int = Query(20, ge=1, le=50),
+    current_user: UserORM = Depends(get_current_user),
+    service: CommunityService = Depends(get_community_service),
+):
+    """Get posts liked by the current user."""
+    return service.get_liked_posts(current_user.id, cursor=cursor, limit=limit)
+
+
 @router.post("/api/community/posts")
 async def create_community_post(
     post_type: str = Form("text"),
